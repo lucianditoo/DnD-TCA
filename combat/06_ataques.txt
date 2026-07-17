@@ -1,0 +1,153 @@
+TIRADA DE ATAQUE
+Una tirada de ataque representa tu intento de golpear a un oponente en tu turno de un asalto. Al realizar una tirada de ataque, debes lanzar 1d20 y añadir tu bonificador de ataque (es posible aplicar otros modificadores a esta tirada). Si tu resultado es igual o superior a la CA de tu enemigo, tu golpe habrá tenido éxito e infligirá daño.
+Impactos y fallos automáticos: un 1 natural (cuando el d20 muestra un 1) en una tirada de ataque siempre es un fallo. Un 20 natural (cuando el d20 muestra un 20) siempre es un impacto. Un 20 natural también es una amenaza (una posibilidad) de impacto crítico (consulta 'Golpes críticos', pág. 140).
+BONIFICADOR DE ATAQUE
+Tu bonificador de ataque con un arma de cuerpo a cuerpo es: Ataque base + modificador de Fuerza + modificador de tamaño Con un arma de ataque a distancia, tu bonificador de ataque es: Ataque base + modificador de Destreza + modificador de tamaño + penalizador de distancia
+Modificador de Fuerza: la Fuerza te ayuda a blandir las armas con mayor potencia y rapidez; por lo tanto, tu modificador de Fuerza se aplicará a las tiradas de ataque cuerpo a cuerpo.
+Modificador de Destreza: como la Destreza mide la coordinación y el pulso, tu modificador de Destreza se aplicará a las tiradas de ataque a distancia.
+Modificador de tamaño: cuanto más pequeño seas, mayores serán las demás criaturas en comparación contigo. Un humano es blanco fácil para un mediano, igual que un ogro lo es para un humano. Como este mismo modificador de tamaño se aplica a la CA, dos criaturas del mismo tamaño se golpearán mutuamente con normalidad, sin importar cuál sea su tamaño real.
+
+TABLA 8-1: MODIFICADORES DE TAMAÑO
+Tamaño	Modificador de tamaño
+Colosal	-8
+Gargantuesco	-4
+Enorme	-2
+Grande	-1
+Mediano	+0
+Pequeño	+1
+Menudo	+2
+Diminuto	+4
+Minúsculo	+8
+
+Penalizador de distancia: el penalizador de distancia con un arma arrojadiza o de proyectil dependerá del arma y de lo lejos que se encuentre el blanco. Tanto las armas arrojadizas como las de proyectil poseen un incremento de distancia, como 10' en el caso de la daga arrojadiza y 120' en el de la ballesta pesada
+(consulta la tabla 7-5: armas, en la pág. 116). Los ataques contra blancos situados a menos de un incremento de distancia no sufrirán penalizador, por lo que una flecha disparada con un arco corto (incremento de distancia de 60') puede impactar a enemigos hasta una distancia máxima de 59' sin penalizador. Sin embargo, cada incremento de distancia completo impondrá un penalizador -2 acumulativo en la tirada de ataque. Un arquero que disparase un arco corto contra un blanco situado a 200' sufriría un penalizador -6 al ataque (porque los 200 pasan de los 3 incrementos de distancia, pero no llegan a los cuatro). Las armas arrojadizas, como las jabalinas, tienen un alcance máximo de 5 incrementos de distancia; las de proyectil, como los arcos, pueden disparar llegando hasta los 10 incrementos.
+DAÑO
+Cuando logras golpear, el daño que infliges depende del tipo de arma (consulta la tabla 7-5: armas, en la pág. 116). En lo que se refiere a los efectos que modifican el daño de las armas, se considera que los impactos sin arma y los ataques físicos naturales de las criaturas infligen daño por arma. El daño reduce los puntos de golpe que tenga un objetivo.
+Daño mínimo: si los penalizadores al daño reducen el daño por debajo de 1, un golpe seguirá infligiendo 1 punto de daño
+bonificador de Fuerza: al impactar con un arma cuerpo a cuerpo o arrojadiza (incluida la honda), tu bonificador de Fuerza se suma al daño. Si se tiene un penalizador de Fuerza (en vez de un bonificador), éste debe aplicarse a los ataques realizados con un arco, a menos que se trate de un arco compuesto.
+Armas en la mano torpe: cuando inflijas daño con un arma blandida con la mano torpe, sólo añadirás la mitad de tu bonificador de Fuerza
+Blandir un arma con las dos manos: al infligir daño con un arma que estés blandiendo con las dos manos, añadirás una vez y media tu bonificador de Fuerza. Las armas ligeras blandidas con las dos manos no se benefician de este bonificador de Fuerza superior al normal (consulta 'Armas ligeras, a una mano y a dos manos', en la pág. 113).
+Multiplicar el daño: a veces, debes multiplicar el daño por un factor, como cuando logras un golpe crítico. Realiza la tirada de daño tantas veces como indique el factor (aplicando todos los modificadores) y suma todos los resultados.
+Nota: cuando un daño se multiplica más de una vez, todos los multiplicadores parten del daño original sin multiplicar (consulta 'Cómo multiplicar', pág. 305).
+Excepción: los bonificadores al daño representados como dados adicionales, como los de un ataque furtivo o una espada flamígera, no se multiplican al asestar un golpe crítico. Por ejemplo, Krusk, el bárbaro semiorco, obtiene un bonificador +3 de Fuerza. Esto quiequiere decir que obtiene un bonificador +3 al daño cuando utiliza una espada larga, un bonificador +4 cuando usa una gran hacha (a dos manos) y un bonificador +1 cuando golpea con un arma en su mano torpe. Su multiplicador de crítico con una gran hacha es ×3; por tanto, si logra asestar un golpe crítico, lanzará tres veces 1d12+4 puntos de daño (o, lo que es lo mismo, lanzaría 3d12+12).
+Daño a las puntuaciones de característica: ciertas criaturas y efectos mágicos pueden causar daño temporal a las características (una reducción de una puntuación de característica). Los detalles sobre el daño de característica se encuentran en la Guía del Dungeon Master.
+
+ATAQUES
+En combate, la acción estándar más habitual es un ataque. Puedes moverte tu velocidad y efectuar un solo ataque en un asalto (una acción de movimiento y una acción estándar). Los personajes experimentados pueden atacar más de una vez, pero sólo si no se mueven (una acción de asalto completo). Efectuar un ataque a distancia permite realizar ataques de oportunidad a los enemigos que te estén amenazando (ver más adelante).
+Tirada de ataque
+Para asestar con tu tirada de ataque un golpe que inflija daño, debes obtener un resultado igual o superior a la Clase de Armadura (CA) de tu oponente.
+Tirada de ataque cuerpo a cuerpo: 1d20 + ataque base + modificador de Fuerza + modificador de tamaño.
+Tirada de ataque a distancia: 1d20 + ataque base + modificador de Destreza + modificador de tamaño + penalizador de distancia.
+Daño
+Si logras asestar un golpe, haz una tirada de daño y resta el resultado de los puntos de golpe que le queden al oponente. Tu modificador de Fuerza se añadirá al daño de armas arrojadizas y de cuerpo a cuerpo. Si estas usando un arma con la mano torpe, sólo añadirás la mitad de tu modificador de Fuerza (en caso de ser un bonificador). Si estás blandiendo un arma con las dos manos, añadirás una vez y media tu modificador de Fuerza (si fuera un bonificador). Clase de Armadura La Clase de Armadura (CA) de un personaje es el número que necesitas obtener en la tirada de ataque para golpear a ese oponente en combate.
+Clase de Armadura: 10 + bonificador de armadura + bonificador de escudo + modificador de Destreza + modificador de tamaño.
+
+ACCIONES ESTANDAR
+La mayoría de las acciones estándar implican realizar un ataque, lanzar un conjuro o activar un objeto. Estas tres son las acciones más comunes y directas que un personaje o criatura pueden realizar en un combate. En 'Ataques especiales', pág. 154 se cubren acciones más especializadas. Ataque Realizar un ataque es una acción estándar.
+Ataques cuerpo a cuerpo: con un arma de cuerpo a cuerpo normal puedes golpeara un oponente a no más de 5' (se considera que un oponente a no más de 5' está adyacentea ti). Algunas armas de cuerpo a cuerpo tienen alcance, tal y como se indica en su descripción del Capítulo 7: equipo. Con un arma de alcance típica puedes golpear a oponentes a 10' de distancia, pero no puedes impactar en enemigos adyacentes (los que están a no más de 5').
+Ataques sin arma: golpear para causar daño con puñetazos, patadas y cabezazos es muy parecido a atacar con un arma cuerpo a cuerpo, salvo en lo siguiente:
+Ataques de oportunidad: atacar sin armas provoca un ataque de oportunidad por parte del personaje al que atacas, si es que está armado. El ataque de oportunidad se realiza antes de tu ataque. Un ataque sin armas no provoca ataques de oportunidad de otros enemigos, como sucede al disparar un arco, ni provoca ataques de oportunidad por parte de un enemigo desarmado. El ataque de oportunidad se provoca porque aproximas tu cuerpo a tu oponente. Un personaje sin arma no puede realizar ataques de oportunidad (pero consulta 'Ataques sin arma "armados", a continuación).
+Ataques sin arma "armados": a veces el ataque sin arma de un personaje o criatura cuenta como un ataque con arma. Un monje, un personaje con la dote Impacto sin arma mejorado (pág. 98), un lanzador de conjuros utilizando un conjuro de ataque de toque, y una criatura con garras, colmillos o un arma fisica natural similar son considerados armados. Ten en cuenta que estar armado cuenta tanto para el ataque como para la defensa. Un monje no sólo no provoca un ataque de oportunidad al atacar a un enemigo armado, si no que podrá realizar un ataque de oportunidad él mismo si un oponente le ataca sin arma.
+Daño de un impacto sin arma: un impacto sin arma de un personaje Mediano inflige 1d3 puntos de daño (más tu modificador de Fuerza, del modo habitual). El impacto sin arma de un personaje pequeño inflige 1d2 puntos de daño, mientras que el de un personaje Grande causa 1d4 puntos de daño. Todo el daño procedente de impactos sin armas es daño no letal. Los impactos sin arma cuentan como armas ligeras a efectos de los penalizadores por atacar con dos armas y demás.
+Infligir daño letal: puedes especificar que tu impacto sin arma infligirá daño letal antes de realizar tu tirada de ataque, pero sufrirás un penalizador -4 en la tirada de ataque por ello, ya que para causar ese daño letal tienes que golpear en puntos especialmente vulnerables. Si tienes la dote Impacto sin arma mejorado, puedes causar daño letal con un impacto sin arma sin sufrir ningún penalizador a la tirada de ataque.
+Ataques a distancia: un arma de ataque a distancia puede ser disparada o lanzada contra un blanco situado dentro del alcance máximo del arma y en la línea visual del tirador. El alcance máximo de las armas arrojadizas es de 5 incrementos de distancia, y el de las armas de proyectil, de 10 incrementos. Algunas armas de este tipo tienen distancias máximas inferiores, según se indica en sus descripciones.
+Tiradas de ataque: una tirada de ataque representa tu intento de golpear a un oponente. No representa un solo golpe de tu arma; más bien indica que a lo largo de varios intentos en el asalto has logrado acertar de manera general. Tu tirada de ataque es 1d20 + el bonificador de ataque con el arma que estés usando. Si el resultado es igual o superior a la CA de tu oponente, habrás logrado acertar e infligirle daño.
+Fallos y aciertos automáticos: un 1 natural (un resultado de 1 en 1d20) en una tirada de ataque es siempre un fallo. Un 20 natural (un resultado de 20 en 1d20) es siempre un éxito. Un 20 natural también implica una amenaza, es decir, un posible crítico (consulta la barra lateral 'Golpes críticos', pág. 140).
+Tiradas de daño: si el resultado de la tirada de ataque es igual o superior a la CA de tu oponente, habrás logrado asestarle un golpe e infligirle daño. Haz la tirada de daño adecuada para tu arma (consulta la tabla 7-5: armas, en la pág. 116). El daño se restará de los puntos de golpe que tenga la víctima en ese momento. Si éstos quedaran reducidos a 0 o una cifra inferior, lo tendrá bastante mal (consulta 'Heridas y muerte', en la pág. 145).
+Ataques múltiples: un personaje capaz de efectuar más de un ataque por asalto deberá usar la acción de ataque completo (consulta Acciones de asalto completo', más adelante) para asestar más de un golpe.
+Ataques a distancia contra blancos en cuerpo a cuerpo: si atacas con un arma arrojadiza o de proyectil contra un blanco que esté enzarzado en combate cuerpo a cuerpo con un aliado tuyo, sufrirás un penalizador -4 en la tirada de ataque por tener que apuntar con cuidado para no herir a tu amigo. Dos personajes están enzarzados en combate cuerpo a cuerpo cuando son enemigos y están amenazándose mutuamente (un personaje inconsciente o inmovilizado de algún modo no se considerará enzarzado en combate a no ser que esté siendo atacado). Si tu blanco (o la parte de éste a la que estés apuntando, en caso de tratarse de un objetivo grande) se encuentra al menos a 10' de distancia de tu aliado más cercano, puedes ignorar el penalizador -4 aunque estuviera enzarzado en cuerpo a cuerpo con él.
+Disparo preciso: si posees la dote Disparo preciso (pág. 95), no sufrirás este penalizador.
+Combatir a la defensiva como acción estándar: puedes elegir luchar a la defensiva cuando atacas. En tal caso, sufrirías un penalizador -4 en todos tus ataques durante un asalto a cambio de obtener un bonificador +2 de esquiva a la CA durante ese mismo asalto. Este bonificador se apila con el bonificador a la CA proporcionado por la dote Pericia en combate (pág. 100).
+Lanzar un conjuro
+Lanzar la mayoría de los conjuros requiere 1 acción estándar. Puedes lanzar este tipo de conjuros antes o después de realizar una acción de movimiento. Consulta el Capítulo 10: magia, para los detalles del lanzamiento de conjuros, sus efectos, TS, etc.
+
+Nota: al lanzar un conjuro, conservas tu bonificador de Destreza a la CA.
+
+Componentes de los conjuros: para lanzar un conjuro con componente verbal (V), tienes que pronunciarlo con voz firme. Si estás amordazado o dentro del área de efecto de un conjuro de silencio, no podrás ejecutar un sortilegio de ese tipo. Todo lanzador de conjuros que haya quedado ensordecido tendrá un 20% de fracasar al ejecutar un sortilegio que tenga componente verbal.
+
+Para lanzar un conjuro con componente somático (S), debes tener libre al menos una mano con la que poder realizar los gestos. No podrás ejecutar un sortilegio de este tipo cuando estés atado, apresado o con ambas manos llenas u ocupadas (nadando, escalando un acantilado, etc.).
+
+Para lanzar un conjuro con componente material (M), foco (F) o foco divino (FD), debes poseer los materiales adecuados, tal y como se describa en el propio sortilegio. Preparar estos materiales se considera una acción gratuita, siempre y cuando no se trate de objetos elaborados, como el espejo de 2 × 4' que un mago necesita para ejecutar un escudriñamiento. En cuanto a los componentes y focos cuyo precio no aparezca en la lista, puedes dar por sentado que los posees si tienes en tu poder tu bolsa para componentes de conjuro.
+
+Algunos conjuros poderosos poseen un componente de puntos de experiencia (PX) y conllevan ese gasto de PX por tu parte. Ningún conjuro (ni siquiera restablecimiento) puede devolver los PX perdidos. No podrás gastar tantos PX como para perder un nivel, ni podrás ejecutar el sortilegio en caso de no tener suficientes PX para gastar. No obstante, si obtuvieses suficientes PX como para adquirir un nuevo nivel, podrías emplearlos inmediatamente en el lanzamiento del conjuro en lugar de quedártelos para subir de nivel. Los PX se gastarán en cuanto ejecutes el sortilegio, tengas o no éxito en el lanzamiento.
+
+Concentración: para lanzar un conjuro, debes concentrarte; si no logras concentrarte (porque estás en la cubierta de un navío zarandeado por una tormenta, por ejemplo), no podrás ejecutarlo. Si empiezas a lanzar un conjuro y algo interrumpe tu concentración, como un ogro que aproveche la oportunidad para darte con su clava (teniendo éxito al golpearte con su ataque de oportunidad), deberás realizar una prueba de Concentración o perderás el sortilegio. La CD de la prueba depende de lo que esté perjudicando tu concentración (consulta la habilidad de Concentración, en la pág. 69, y el apartado 'Concentración', en la pág. 170). Si fallas la prueba, el conjuro se esfumará sin causar efecto alguno. Si tu personaje prepara los conjuros (los clérigos, druidas, exploradores, magos y paladines lo hacen), este sortilegio deja de estar preparado. Si tu personaje ejecuta sortilegios a voluntad (como hacen los bardos y hechiceros), el sortilegio en cuestión cuenta para el límite de conjuros que puedes lanzar al día, a pesar de haber resultado fallido.
+
+Concentrarse en mantener un conjuro: algunos conjuros exigen concentración continua para que su efecto se mantenga. Concentrarse en mantener un conjuro es una acción estándar que no provoca ataque de oportunidad. Cualquier cosa que pueda romper tu concentración al ejecutar un sortilegio también la romperá para mantenerlo. Si tu concentración se rompe, el efecto del conjuro finalizará.
+
+Tiempo de lanzamiento: la mayoría de conjuros tienen un tiempo de lanzamiento de 1 acción estándar. Los sortilegios ejecutados de este modo surten efecto inmediatamente.
+
+Ataques de oportunidad: normalmente, los enemigos en cuya área de amenaza te encuentres tendrán derecho a realizar un ataque de oportunidad cuando estés lanzando un conjuro. Si sufres daño por culpa del ataque de oportunidad, tendrás que realizar una prueba de Concentración (CD 10 + puntos de daño sufridos + nivel de conjuro) o perderás el sortilegio. Los conjuros que sólo requieren una acción gratuita para ser lanzados (como caída de pluma o un conjuro apresurado) no provocan ataques de oportunidad.
+
+Lanzar conjuros a la defensiva: puedes intentar lanzar un conjuro a la vez que prestas atención a las amenazas y evitas los golpes. Haciendo esto, serás igual de vulnerable que si estuvieras simplemente de pie; por tanto, ejecutar un sortilegio a la defensiva no provocará ataques de oportunidad. No obstante, para conseguirlo te hará falta una prueba de Concentración (CD 15 + nivel del conjuro); un fallo indica que el conjuro se pierde.
+
+Conjuros de toque durante el combate: muchos conjuros tienen un alcance de "toque". Para usarlos, primero lanzas el conjuro y después tocas al receptor, ya sea en el mismo asalto o en cualquier momento posterior. Podrás tocar (o intentar tocar) a tu víctima en el mismo asalto en que ejecutes el sortilegio. Podrás llevar a cabo tu movimiento antes de ejecutarlo, después de tocar a la víctima, o entre el lanzamiento y el ataque de toque. Podrás tocar a un amigo o lanzar el conjuro sobre ti mismo automáticamente, pero deberás tener éxito en una tirada de ataque si quieres tocar a un oponente.
+
+GOLPES CRÍTICOS
+Cuando hagas una tirada de ataque y obtengas un 20 natural (un resultado de 20 en 1d20), lograrás golpear a tu oponente, sin importar cuál sea su CA, y habrá posibilidad de crítico, lo que equivale a decir que tu golpe podría ser crítico (abreviado "crít."). Para averiguarlo, deberás realizar inmediatamente una tirada crítica, es decir, una nueva tirada de ataque con todos los modificadores iguales a la que diera lugar a la amenaza. Si la tirada crítica también iguala o supera la CA del oponente, tu golpe original será crítico (a la tirada crítica le basta con acertar para concederte un crítico; no tiene por qué ser 20 otra vez). Si la tirada crítica falla, tu golpe original no será crítico, sino normal.
+
+Asestar un golpe crítico implica tener que hacer la tirada de daño más de una vez, con todos tus bonificadores habituales, sumando los resultados para averiguar el daño total. Si no se indica lo contrario, el rango de amenaza de las tiradas de ataque será 20 y el multiplicador al daño será ×2.
+
+Excepción: los bonificadores al daño representados como dados adicionales, como los de un ataque furtivo o una espada flamígera, no se multiplican al asestar un golpe crítico.
+
+Rango de amenaza incrementado: a veces, tu rango de amenaza es mejor que 20; es decir, que puedes conseguir una amenaza de crítico con un resultado inferior. Por ejemplo, las espadas largas te conceden amenaza con un resultado natural de 19 ó 20 en la tirada de ataque. En tales casos, un resultado inferior a 20 no será considerado acierto automático. Las tiradas de ataque que no supongan un golpe con éxito tampoco supondrán una amenaza de crítico.
+
+Multiplicador de crítico incrementado: algunas armas, como las hachas de batalla y las flechas, infligen más del doble de daño con un golpe crítico. Consulta la tabla 7-5: armas, y el subapartado 'Crítico' de la sección 'Cualidades de las armas', en la pág. 114.
+
+Conjuros y golpes críticos: todo conjuro que exija una tirada de ataque, como un contacto electrizante o una flecha ácida de Melf, puede dar lugar a un crítico. Los ataques especiales que no exijan tirada de ataque, como el rayo relampagueante, no darán lugar a golpe crítico.
+
+Ataques de toque: como sólo necesitarás tocar a tu enemigo, la tirada será un ataque de toque en lugar de un ataque normal. Tocar a un oponente con un conjuro de toque se considera ataque con arma y, por tanto, no provoca ataques de oportunidad al ser dirigido contra un oponente armado. El conjuro de toque te convertirá en una amenaza que el defensor estará obligado a tener en cuenta, tanto o más que si le atacaras con un arma. No obstante, el hecho de lanzar el conjuro sí dará lugar a ataques de oportunidad, por lo que seguramente te convenga lanzar el conjuro y acercarte después a tu enemigo en lugar de hacerlo al revés. Existen dos tipos de ataques de toque: ataques de toque en cuerpo a cuerpo (para los que lleves a cabo, por ejemplo, con la mano) y ataques de toque a distancia (para los toques efectuados, por ejemplo, con un rayo mágico). Puedes asestar golpes críticos con ambos tipos de ataque. Contra un ataque de toque, la CA de tu oponente no incluirá ningún bonificador de armadura, bonificador de escudo ni bonificador de armadura natural. No obstante, su modificador de tamaño, modificador de Destreza y bonificador de desvío (en caso de tenerlo) seguirán aplicándose de manera normal.
+
+Retener la descarga: si no descargas el conjuro en el momento de ejecutarlo, puedes retenerlo (retener la descarga) indefinidamente. Mientras lo hagas, po drás seguir realizando ataques de toque un asalto tras otro. En lugar de eso, también podrías tocar a un amigo como acción estándar o a un máximo de seis amigos como acción de asalto completo. Si tocas cualquier cosa o a cualquier criatura (aunque sea sin querer) mientras estés reteniendo una descarga, el conjuro retenido se descargará automáticamente. Si lanzas otro conjuro, el conjuro de toque que estés reteniendo se disipará. Como opción, puedes realizar un ataque sin arma (o un ataque con un arma natural) de la forma normal mientras retienes la descarga. En este caso no se te considera armado y provocas ataques de oportunidad del modo normal (si tu ataque sin arma o con arma natural no provoca ataques de oportunidad, este tampoco lo hará). Si el ataque acierta, in fligirás el daño normal para el ataque sin arma o con arma natural y el conjuro se descargará. Si el ataque falla, seguirás reteniendo la descarga.
+Poner fin a un conjuro: poner fin a un conjuro activo (como alterar el propio aspecto) es una acción estándar que no provoca ataques de oportunidad Activar un objeto mágico
+Muchos objetos mágicos no necesitan ser activados: las armas y armaduras mágicas, los guanteletes de destreza, etc. Sin embargo, hay otros que deben ser activados, especialmente pociones, rollos de pergamino, varitas, cetros y bastones. Activar un objeto mágico es una acción estándar (a no ser que la descripción del objeto indique lo contrario).
+Objetos de finalización de conjuro: activar un objeto de finalización de conjuro (como un rollo de pergamino) equivale a lanzar un sortilegio: exige concentración y provoca ataques de oportunidad. Perderás el conjuro si se rompe tu concentración, y podrás intentar activar el objeto a la defensiva como si fuera un sortilegio (consulta 'Lanzar un conjuro a la defensiva, más arriba). Objetos de palabra de mando, desencadentes de conjuro y de activación por uso: usar un objeto de cualquiera de estos tipos no exige concentración ni provoca ataques de oportunidad. La Guía del Dungeon Master ofrece mucha más información acerca de los objetos mágicos. Usar una aptitud especial Usar una aptitud especial normalmente es una acción estándar, pero cada aptitud definirá si se trata de una acción estándar, una acción de asalto completo o si la actividad no se considera acción. Consulta 'Aptitudes especiales', en la pág. 180.
+Aptitudes sortílegas: usar una aptitud sortílega (como cuando un paladín llama a su montura especial) funciona igual que el lanzamiento de un conjuro en la medida que exige concentración y provoca ataques de oportunidad. Las aptitudes sortílegas pueden ser interrumpidas. Si se rompe tu concentración, el intento de usar la aptitud fracasará, pero contará como si la hubieses utilizado (por ejemplo, contará para tu límite de usos diarios, en caso de que lo tuvieras). El tiempo de lanzamiento de una aptitud sortílega es una acción estándar, a no ser que la descripción de la aptitud indique lo contrario.
+Usar una aptitud sortílega a la defensiva: puedes intentar usar una aptitud sortílega a la defensiva, igual que si fuera un sortilegio. Si fallas tu prueba de Concentración (CD 15 + el nivel del conjuro), no podrás usar tu aptitud, pero el intento seguirá contando como si la hubieras utilizado.
+Aptitudes sobrenaturales: usar una aptitud sobrenatural (como la de expulsar o reprender muertos vivientes que poseen los clérigos) suele considerarse como una acción estándar (a no ser que se indique lo contrario en la descripción de la aptitud). El uso de estas aptitudes no puede ser interrumpido, no exige concentración ni provoca ataques de oportunidad.
+Aptitudes extraordinarias: usar una aptitud extraordinaria (como la esquiva asombrosa de los bárbaros) no suele considerarse acción, pues la mayoría de aptitudes de este tipo tienen lugar automáticamente a modo de reacción. Normalmente, las aptitudes extraordinarias que se consideran acciones cuentan como acciones estándar que no pueden ser interrumpidas, no exigen concentración ni provocan ataques de oportunidad.
+CÓMO ACELERAR EL COMBATE
+Puedes utilizar algunos trucos para hacer que un combate transcurra más deprisa.
+Ataque y daño: tira tus dados de ataque y de daño al mismo tiempo. Si fallas, puedes ignorar el daño, pero, si impactas, tus amigos no tendrán que esperar a que realices una segunda tirada para el daño.
+Ataques múltiples: utiliza dados de diferentes colores para que puedas realizar tus tiradas de ataque al mismo tiempo en lugar de una a una. Indica qué ataque corresponde a cada color antes de tirar. Defensa total Puedes limitarte a defenderte como acción estándar. Obtienes un bonificador +4 de esquiva a la CA durante 1 asalto. Tu CA mejora nada más dar comienzo la acción, por lo que será de gran ayuda contra cuálquier ataque de oportuni dad al que te veas expuesto durante el asalto. No puedes combinar defensa to tal con combatir a la defensiva ni con el beneficio de la dote Pericia en combate (ya que ambos requieren que declares un ataque o un ataque completo). No puedes realizar ataques de oportunidad mientras realizas una defensa total. Comenzar/completar una acción de asalto completo La acción estándar "iniciaruna acción de asalto completo te permite llevar a cabo una acción de asalto completo, que puedes completar en el siguiente asalto utilizando otra acción estándar. Por ejemplo, si estás limitado a re alizar sólo una acción estándar cada turno, puedes disparar una ballesta pe sada cada 3 turnos, empleando 2 asaltos para cargarla (una acción de asalto completo) y 1 asalto para dispararla. Además, si quieres lanzar un conjuro con un tiempo de lanzamiento de 1 asalto, puedes comenzar a lanzarlo en un asalto y completarlo en el siguiente, por ejemplo. No puedes utilizares ta acción para comenzar o completar un ataque completo, una carga, una acción de correr o una acción de retirarse del combate.
+
+MODIFICADORES DE COMBATE
+A veces, los personajes luchan cara a cara sin más, pero lo más normal es que salgan ganando si buscan una posición ventajosa, ya sea ofensiva o defensiva. Esta sección trata las situaciones en que los personajes pueden llevar a cabo ataques especialmente buenos o se ven obligados a usar uno desfavorable.
+CONDICIONES FAVORABLES Y
+DESFAVORABLES
+Dependiendo de tu situación, obtienes bonificadores o sufres penalizado res en tu tirada de ataque. En general, cualquier modificador de situación creado por la posición de un atacante o las tácticas utilizadas se aplica a la tira da de ataque, mientras que cualquier modificador de situación creado por la posición, estado o tácticas del defensor se aplica a la CA de este. Tu DM decidirá qué bonificadores y penalizadores aplicarusando como guía la tabla 8-5:
+modificadores a la tirada de ataque, y la tabla 8-6: modificadores a la CA.
+
+TABLA 8-5: MODIFICADORES A LA TIRADA DE ATAQUE
+El atacante está...	Cuerpo a cuerpo	A distancia
+Deslumbrado	-1	-1
+En posición elevada	+1	+0
+Enmarañado	-2¹	-2¹
+Escurriéndose a través de un espacio	-4	-4
+Estremecido o asustado	-2	-2
+Flanqueando al defensor	+2	-
+Invisible	+2²	+2²
+Tumbado	-4	-³
+¹ Un personaje enmarañado sufre además un penalizador -4 a la Destreza que puede afectar a su tirada de ataque.
+² El defensor pierde cualquier bonificador de Des a la CA. Este bonificador no se aplica si el objetivo está cegado.
+³ La mayoría de las armas a distancia no pueden ser utilizadas mientras el atacante está tumbado, pero puedes emplear una ballesta o shuriken de este modo sin penalizador.
+
+TABLA 8-6: MODIFICADORES A LA CA
+El defensor está...	Cuerpo a cuerpo	A distancia
+Aturdido	-2¹	-2¹
+Cegado	-2¹	-2¹
+Desprevenido (como cuando es sorprendido, está trepando, balanceándose, etc.)	+0¹	+0¹
+Enmarañado	+0²	+0²
+Escurriéndose a través de un espacio	-4	-4
+Gateando	-2¹	-2¹
+Indefenso (paralizado, durmiendo, atado, etc.)	-4⁴	+0⁴
+Oculto o invisible	Consulta Ocultación
+Participando en presa (el atacante, no)	+0¹	+0¹, ³
+Sentado o de rodillas	-2	+2
+Sujeto	-4⁴	+0⁴
+Tras cobertura	+4	+4
+Tumbado	-4	+4
+¹ El defensor pierde cualquier bonificador de Des a la CA.
+² Una criatura enmarañada sufre además un penalizador -4 a la Destreza.
+³ Haz una tirada al azar para saber a qué participante de la presa alcanzas con tu ataque. El defensor alcanzado perderá su bonificador de Destreza a la CA.
+⁴ Considera que la Destreza del Defensor es 0 (modificador -5). Los pícaros pueden realizar ataques furtivos contra defensores sujetos o indefensos. Consulta también 'Defensores indefensos', en la pág. 152.

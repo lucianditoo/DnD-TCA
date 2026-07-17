@@ -1,0 +1,65 @@
+{
+  "abilities": [
+    {
+      "id": "magic-missile",
+      "name": "Magic Missile",
+      "description": "Proyectiles de fuerza que impactan automáticamente; no realizan tirada de ataque.",
+      "actionType": "standard",
+      "rangeFeet": 100,
+      "target": "enemy",
+      "resolution": { "kind": "automatic-damage", "damageExpression": "manual" }
+    },
+    {
+      "id": "shocking-grasp",
+      "name": "Shocking Grasp",
+      "description": "Ataque de toque cuerpo a cuerpo que descarga electricidad.",
+      "actionType": "standard",
+      "rangeFeet": 5,
+      "target": "enemy",
+      "resolution": {
+        "kind": "attack-roll",
+        "attackType": "melee",
+        "targetAcType": "touch",
+        "abilityForAttack": "strength",
+        "damageExpression": "manual",
+        "criticalThreatFrom": 20,
+        "criticalMultiplier": 2
+      }
+    },
+    {
+      "id": "ray-of-frost",
+      "name": "Ray of Frost",
+      "description": "Rayo que requiere un ataque de toque a distancia.",
+      "actionType": "standard",
+      "rangeFeet": 30,
+      "target": "enemy",
+      "resolution": {
+        "kind": "attack-roll",
+        "attackType": "ranged",
+        "targetAcType": "touch",
+        "abilityForAttack": "dexterity",
+        "damageExpression": "1d3",
+        "criticalThreatFrom": 20,
+        "criticalMultiplier": 2
+      }
+    },
+    {
+      "id": "haste",
+      "name": "Haste",
+      "description": "Demo buff: +1 ataque, +10 ft velocidad.",
+      "actionType": "standard",
+      "rangeFeet": 30,
+      "target": "ally",
+      "resolution": { "kind": "effect", "effectId": "haste" }
+    },
+    {
+      "id": "cure-light-wounds",
+      "name": "Cure Light Wounds",
+      "description": "Curación manual demo aplicada a un aliado tocado.",
+      "actionType": "standard",
+      "rangeFeet": 5,
+      "target": "ally",
+      "resolution": { "kind": "healing", "healingExpression": "manual" }
+    }
+  ]
+}

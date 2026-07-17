@@ -1,0 +1,381 @@
+# Project Status
+
+Este documento es una foto del estado actual. La guia principal del proyecto es `CODEX_GUIDE.md`.
+
+Proyecto: D&D 3.5 Tactical Combat Assistant
+
+Ruta local:
+
+`C:\Users\lucia\OneDrive\Documentos\dnd-tactical-combat-assistant`
+
+## Proceso de Trabajo (Sprints)
+
+El desarrollo del proyecto está organizado en **Sprints**.
+Existen dos tipos:
+- **Sprints Arquitectónicos**: Enfocados en infraestructura, deuda técnica y reorganización documental (Ej. Sprint 001).
+- **Sprints Funcionales**: Enfocados en implementar reglas del motor (Ej. Conditions, Critical Hits).
+
+Todo cambio requiere:
+- Aprobación explícita del diseño.
+- Plan de implementación.
+- Validación final de DoD (Build, Typecheck, Unit Tests, E2E).
+
+## Hecho
+
+- Monorepo con `npm workspaces`.
+- Frontend React + Vite en `apps/web`.
+- Servidor Express + WebSocket en `apps/server`.
+- Paquete compartido TypeScript en `packages/shared`.
+- Roles de GM y jugador.
+- Ownership/control de combatientes validado en servidor.
+- Conexion desde celular usando el hostname de la pagina cuando no existe `VITE_WS_URL`.
+- Salas locales en memoria.
+- Fases de encuentro (`EncounterPhase`):
+  - `preparation`
+  - `active`
+  - `opportunity-resolution`
+  - `critical-confirmation`
+  - `finished`
+- Función centralizada `syncEncounterPhase(room)` para evitar estados inválidos.
+- Tablero tactico, tokens con posicion unica y bloqueo de casillas ocupadas.
+- Preparacion con carga de heroes/enemigos, posicionamiento e iniciativas.
+- Seleccion automatica del combatiente activo.
+- Acciones por menu: Ver, Mover, Atacar, Habilidad, Tacticas.
+- Movimiento por ruta paso a paso.
+- Coste diagonal 5/10/5/10 ft.
+- Overlays:
+  - verde para movimiento.
+  - rojo para amenaza melee.
+  - naranja para alcance a distancia/arrojadizo.
+  - dorado para rutas previstas.
+- Ataque simple, ataque completo y luchar a la defensiva.
+- Ataques a distancia con incrementos de alcance.
+- D20 y danio manual o automatico.
+- Defensa total.
+- Carga con ruta prevista.
+- Prestar ayuda con buff pendiente de eleccion.
+- **Fase Actual:** Sprint ATK-RANGED-INTO-MELEE completado (ver "FASE ACTUAL" más abajo). *(Cabecera resincronizada: declaraba erróneamente "Sprint 031 bloqueado", detectado en la revisión del plan de saneamiento.)*
+- **Estado:** ✅ ATK-RANGED-INTO-MELEE implementado y validado · 🟡 Sprint 038 (Full Attack V2) diseñado, pendiente de `Proceed` · ❄️ Sprint 039 (Power Attack) congelado por decreto de producto.
+- **Hitos Completados Recientes:**
+  - `Sprint 030`: Escape de Presa autoritativo, rangos de habilidades V6, restricciones de armas en agarre, penalizador melee etiquetado y preview UI compartido.
+  - `Sprint 029`: primitivas genéricas de toque/oposición, vínculo contextual `srd_grappling`, Presa transaccional y preview UI de modificadores.
+  - `Sprint 028`: compresión Large 2×1/1×2 derivada, penalizadores contextuales, movimiento forzado puro, Embestida transaccional y preview UI de trayectoria/footprint.
+  - `Sprint 027`: geometría rectangular efímera, distancia O(1), flanqueo por footprints completos, índice local de ocupación y trazas de AdO consolidadas.
+  - `Sprint 026`: inventario por instancias, ranuras V5, persistencia/migración V5, munición autoritativa transaccional, equip/unequip, AUTO servidor y UI de stock.
+  - `Sprint 025-R`: proyección vital canónica, Diehard, Stand Up seguro y preview isomorfo.
+  - `Sprint 025-A`: huellas derivadas multicelda, flanqueo por caras, movimiento/colocación autoritativos y tokens Large 2×2 interactivos; preservado tras la repriorización.
+  - `Sprint 024`: salvaciones automáticas autoritativas, mitigación `half`/`negates`, commit transaccional de lanzamiento y preview compartido.
+  - `Sprint 022`: Mecánica de Stand Up con AdO incondicional (sin piruetas) y Percentile Roller puro.
+  - por abandonar amenaza.
+  - por ataque a distancia amenazado.
+  - multiples AdO contra el mismo objetivo.
+  - bloqueo de flujo hasta resolver/limpiar.
+  - resolucion contra snapshot de la casilla abandonada.
+- Estados de vida:
+  - active.
+  - disabled.
+  - dying.
+  - stable.
+  - dead.
+- HP hasta -10 y muerte a -10.
+- Estabilizacion con limite de un intento por turno.
+- Cure Light Wounds, Haste y Magic Missile demo.
+- Resultado de Victoria/TPK y pantalla de estadisticas.
+- Panel GM:
+  - curar.
+  - ajustar HP.
+  - cambiar estado.
+  - limpiar AdO.
+  - forzar resultado.
+  - nota al log.
+  - reposicionar tokens respetando casillas ocupadas.
+- Editor de perfiles en `/profiles`, separado del combate.
+- Persistencia de perfiles en localStorage.
+- Agregar perfiles guardados al combate.
+- Catalogo oficial de equipamiento en `packages/shared/src/data/equipment`.
+- `EquipmentCatalog` como API para armas, armaduras y escudos.
+- Perfiles guardan IDs de equipo, no objetos completos.
+- Estadisticas base separadas de estadisticas derivadas:
+  - `baseSpeedFeet`, características, tamaño, equipo y defensa intrínseca son fuentes.
+  - CA, ataque, velocidad efectiva y daño medio se consultan mediante reglas/selectores y no se cachean en el snapshot.
+- Primera version de `CombatantSnapshot`/`CombatSnapshot`:
+  - perfiles permanentes se convierten en estado temporal de combate.
+  - HP actual, iniciativa, buffs, posicion y stats viven en el snapshot.
+  - ownership se asigna en servidor.
+  - derivados se recalculan desde IDs de catalogo.
+- Tests automatizados con `npm test`.
+- E2E WebSocket en `scripts/e2e-websocket.mjs`.
+- Sistema de críticos completo:
+  - amenaza configurable por arma.
+  - confirmación con modificador de ataque (no total).
+  - multiplicador de daño.
+  - cancelación aplica daño normal.
+- Catálogo unificado y sistema de efectos activos (`ActiveEffects` / `CombatRulesSnapshot`):
+  - Catálogo productivo único y verificable en runtime (`effects/catalog.ts`).
+  - Evaluador de reglas desacoplado (`RulesEngine`).
+  - Traits inyectables (Ej: `CANNOT_ACT`, `NO_DEX_TO_AC`, `CANNOT_MAKE_AOO`).
+  - Penalizadores y bonos apilables (Stacking).
+  - Soporte de duración y expiración (`durationPreset` y Tick Layer).
+  - Inyección y eliminación GM (`gm-apply-effect`).
+  - Condición implementada: `srd_stunned` (Sprint 006).
+  - Condición implementada: `srd_flat_footed` con ciclo de vida automático vía `sort-initiative` (Sprint 007).
+  - bloqueo de flujo durante confirmación.
+  - críticos en ataques de oportunidad.
+- Validación runtime de comandos WebSocket con Zod:
+  - schemas por dominio en `packages/shared/src/schemas/commands/`.
+  - `validateClientCommand` en `apps/server/src/validation/`.
+  - errores seguros sin stack trace.
+- Flanqueo:
+  - bonus táctico dinámico calculado puros (+2 ataque).
+  - validación estricta de alcance, estado y posición.
+- Paso de 5 pies (5-foot step):
+  - acción táctica explícita que consume 5 ft de movimiento pero no la acción de movimiento.
+  - reposicionamiento libre sin ataques de oportunidad.
+  - compatible con ataque completo.
+- Ataque Completo Formal e Iterativos:
+  - Rutinas iterativas calculadas puramente basadas en BAB.
+  - El límite de ataques por turno se incrementa automáticamente (hasta 4 ataques).
+  - Bloqueo dinámico si se usó la acción de movimiento normal (el 5-foot step sigue permitido).
+  - UI interactiva mostrando el progreso y penalizadores iterativos.
+  - Modo Explícito de Ataque Completo: el jugador declara la intención (Estándar o Completo, más Lucha a la Defensiva opcional) antes de consumir la acción.
+  - El consumo real de la acción (Estándar o Asalto Completo) ocurre sólo al resolver el primer ataque.
+- Esfuerzo de Incapacitado (Disabled Effort) centralizado:
+  - Helper pura de validación para economía de acciones (una acción estándar o de movimiento).
+  - Muta HP de manera segura sin logs, interceptado correctamente en tácticas, ataques y movimientos.
+- Sistema Base de Efectos Activos (ActiveEffects):
+  - Catálogo puramente declarativo y sin lógica acoplada (EFFECTS-SYS-CATALOG).
+  - Gestor inmutable de mutaciones y copias defensivas (EFFECTS-SYS-CORE).
+  - Tick Layer funcional sin registro global, basado en Event Bus (EFFECTS-SYS-TICK).
+  - Identidad temporal monotónica vía eventSequence.
+  - Expiración inmutable delegada (until_turn y rounds).
+- Sprint 009 — Clase de Armadura Desglosada:
+  - `armorClassBreakdown` tipado y persistido en snapshots nuevos.
+  - proyecciones Normal AC, Touch AC, Flat-Footed AC y Touch + Flat-Footed mediante `Rules.totalArmorClass`.
+  - Touch filtra armor, shield y natural armor; Flat-Footed filtra Destreza positiva y dodge.
+  - penalizadores de Destreza se conservan.
+  - los fallbacks legacy de este sprint fueron retirados por Sprint 010.
+  - servidor autoritativo: `targetAcType` se deriva de la fuente catalogada y no existe en el comando WebSocket.
+  - UI muestra las tres variantes defensivas en el panel del combatiente seleccionado.
+- Sprint 010 — Migración total y ataques de toque reales:
+  - perfiles V2 persisten únicamente fuentes: características, tamaño, BAB, velocidad base, equipo, dotes, defensa intrínseca y aptitudes.
+  - migrador Zod V0/V1→V2 con backup, idempotencia, validación de catálogos y cuarentena explícita.
+  - todas las criaturas integradas producen snapshots con `armorClassBreakdown` obligatorio; Canocrock usa defensa y ataque natural explícitos.
+  - `SizeRulesCatalog` separa modificadores de ataque/CA, Presa, espacio y alcance.
+  - Shocking Grasp y Ray of Frost usan el resolver común contra Touch AC; Magic Missile continúa como impacto automático.
+  - `resolve-ability-attack` no acepta `targetAcType`, característica ni bonus de ataque enviados por el cliente.
+- Sprint 011 — Flanqueo y Amenaza:
+  - `ThreatProfile.meleeSources` se deriva al crear el snapshot desde equipo y ataques naturales catalogados; el snapshot valida y congela la capacidad.
+  - `threatensTarget` unifica facción, estado vital, `NO_THREAT`, fuentes melee y alcance para flanqueo y detección de AdO.
+  - `isFlanking` aplica oposición exacta por caras sobre la huella derivada del defensor, conservando los casos 1×1 y habilitando Large 2×2.
+  - `getAttackContextModifiers` separa melee (+2 circunstancial) de ranged (+0); servidor y React consumen el mismo helper sin flags de red.
+  - ataques normales, iterativos, AdO, carga y aptitudes con tirada reciben el contexto antes de `resolveAttack`; el resolver permanece ajeno al espacio.
+  - la daga amenaza a 5 ft aunque pueda lanzarse; Flat-Footed conserva amenaza, mientras `NO_THREAT` la elimina.
+- Sprint 012 — Ataque Furtivo y purga legacy:
+  - eliminados de `CombatantSnapshot`, producción, fixtures y E2E los cuatro caches escalares prohibidos; un guard de tipos impide reintroducirlos.
+  - snapshots fuente-first conservan equipo, defensa intrínseca, anatomía, tipo y features; la creación falla de forma descriptiva si faltan fuentes V3.
+  - persistencia elevada a StoredProfile V3 con schema Zod estricto, backup, migración idempotente de casos inequívocos y cuarentena para perfiles opacos.
+  - `CreatureTypeCatalog` inyecta traits inmutables; undead y construct son inmunes a críticos y daño de precisión.
+  - Bane deriva `sneakAttackDice: 1` desde `srd_sneak_attack_1d6`; la UI de perfiles permite seleccionar tipo racial y progresión de Ataque Furtivo.
+  - `canApplySneakAttack` centraliza flanqueo/DEX negada, inmunidades y límite ranged de 30 ft.
+  - `DamageBundle` separa base y precisión; el servidor tira Nd6, aplica HP y loguea el desglose. `neverMultiply` mantiene la precisión lineal en críticos.
+- Sprint 013 — Cobertura y Alcance Dinámico (Dynamic Reach):
+  - Cobertura (+4 AC) implementada vía intercepción geométrica efímera calculada en `getAttackLineInterception`.
+  - El modificador se aplica en `AttackContext` sin polucionar `CombatRoom` ni la CA estática de la criatura.
+  - Alcance dinámico (Dynamic Reach) modelado en `MeleeThreatSource` usando `minReachFeet` y `maxReachFeet`. Armas como *Longspear* ahora amenazan a 10 pies, pero no a 5 pies.
+  - Frontend despliega advertencias visuales de "Cobertura (+4 AC)" si hay un aliado en la línea de visión al declarar el ataque.
+- Sprint 014 — Condiciones V3 Formales:
+  - Implementación de `Fatigued`, `Prone`, `Dazed` y `Paralyzed` con lógica de sobrescritura de características.
+  - Integración de `getEffectiveAbilityScore` y nuevas pruebas de regresión.
+
+### FASE ACTUAL: Sprint ATK-RANGED-INTO-MELEE completado; Sprint 038 en gate; Sprint 039 congelado
+
+  **Sprint completado: ATK-RANGED-INTO-MELEE (Penalizador -4 por disparar a combate cuerpo a cuerpo)**
+  - Vertical slice aprobada por el pivot de saneamiento (`docs/designs/core-rules-consolidation.md` Rev. 2; NDD: `docs/designs/ranged-into-melee-penalty.md`).
+  - **Helper puro** `getRangedIntoMeleeAssessment` (`rules.ts`): contrato RAW "either threatens" (una dirección de amenaza basta — corrige la imprecisión de traducción del corpus, hallazgo D-11), excepción de 10 ft medida entre footprints (`distanceBetweenFootprintsFeet`, correcta para Large/Huge) respecto del amistoso más cercano en general, exclusión de objetivos fuera de combate/indefensos, exención declarativa de Disparo Preciso.
+  - **Sede de integración**: `getAttackContextModifiers.byAttackType.ranged` — la misma costura isomorfa del flanqueo, ya consumida por el servidor (armas en `attackCommands`, **conjuros con tirada de ataque en `abilityCommands`** — los rayos de toque a distancia heredan la regla sin código extra) y por la UI predictiva. **Decisión clave**: se descartó integrar en `totalAttackBonus` + `AttackContext.targetId` (habría exigido un campo nuevo, un cast en el evaluador genérico y habría dejado fuera a los conjuros); cero cambios en servidor y UI.
+  - **FeatCatalog**: nuevo campo declarativo `rangedAttackRules` + fold `rangedAttackContribution` (patrón `lifeRules`) + registro de `srd_precise_shot`. Point Blank Shot NO registrado (es prerrequisito, no exención — distinción fijada por test).
+  - **Tests**: `tests/ranged-into-melee.test.mjs` (13 casos: unilateralidad, alcance, 10 ft, footprints Large, amistoso más cercano general, Precise/Point Blank, parts, determinismo, moribundo) + `tests/aoo-limit-regression.test.mjs` (4 casos que cierran la deuda residual de AOO-03). **32/32 en verde** vía `node --test` contra `dist/` (incluye regresión de Sprints 036/037); `typecheck` y `build:shared`/`build:server` en verde; `npm test` completo/`build:web`/E2E pendientes de la máquina Windows (limitación pre-existente de binarios nativos).
+  - Cobertura: Combat Rules 61/96 (64%), Feats 7/87.
+
+  **Sprint 038 en gate:**
+
+  **Sprint activo:** Full Attack V2 — Disparo Rápido (Rapid Shot) y Aceleración (Haste)
+  - **Hallazgos clave de Fase 1:** (1) el NDD recibido redeclaraba `IterativeAttack`/`AttackRoutineContribution` como si no existieran — ya existen desde Sprint 036, con forma ligeramente distinta a la propuesta. (2) **Gap crítico**: `attackCommands.ts` sigue gateando `attacksMade` contra `getAttackRoutine` (rutina cruda por BAB), no contra `getEffectiveAttackRoutine` — de no corregirse, cualquier ataque extra sería visible en la UI pero rechazado por el servidor al intentar resolverlo. (3) *Haste* no vive en `EffectDefinition`/`effectsCatalog`: es un caso especial hardcodeado que empuja un `Buff` plano en `abilityResolver.ts` (`effectId === "haste" || "srd_haste"`) — anexar `attackRoutineRules` a `EffectDefinition`, como proponía el NDD, no habría tenido ningún efecto sobre Haste.
+  - **Delta re-acotado:** poblar por primera vez el punto de extensión inerte de `FeatCatalog` con `srd_rapid_shot` (`extraAttack` + `flatAttackBonusToRoutine: -2`, condicionado a `appliesToAttackType: "ranged"`); extender `Buff` con `grantsExtraAttack` para Haste (en vez de migrarlo a `EffectInstance`); reescribir `getEffectiveAttackRoutine` para plegar ambas fuentes; **corregir `attackCommands.ts` para que use `getEffectiveAttackRoutine`** en el gating autoritativo. Cero cambios de UI adicionales (`ActionsPanel.tsx` ya consume la función correcta desde Sprint 036).
+  - **Explícitamente fuera de alcance:** migrar Haste al sistema `ActiveEffects`; apilar múltiples fuentes de ataque extra simultáneas; Ataque con Dos Armas/Ráfaga de Golpes/ataques naturales concatenados (validados solo como extensibilidad futura, no implementados).
+  - **Gate:** NDD (`docs/designs/full-attack-v2-haste-rapid-shot-design.md`) y plan creados; a la espera de aprobación `Proceed` **específica para Sprint 038**.
+
+### Master Plan de Cobertura Total PHB 3.5 (V1.0)
+
+  El proyecto opera bajo un mandato de gobernanza que decreta cobertura fiel y completa de dotes, conjuros y equipamiento del Manual del Jugador 3.5 como criterio de cierre de la Versión de Lanzamiento 1.0. El marco de principios (contenido declarativo sobre `rules.ts`/`FeatCatalog`/`ActiveEffects`/`EquipmentCatalog`, prohibición de condicionales ad-hoc por regla) y el inventario taxativo de brechas viven en `.ai/coverage/`: `V1_LAUNCH_MANIFESTO.md`, `FEATS_CHECKLIST.md` + `FEATS_PHB_CHECKLIST.md`, `SPELLS_CHECKLIST.md` + `SPELLS_PHB_CHECKLIST.md`, `EQUIPMENT_CHECKLIST.md` + `EQUIPMENT_PHB_CHECKLIST.md`. Estos documentos son puramente analíticos — cada fila `[ ]` que se quiera cerrar requiere su propia NDD, Design Review Checklist y `Proceed` explícito antes de tocar código.
+
+  **Sprints Recientes (Completados):**
+  * **Sprint 037 (Restricción de Esquinas y Obstáculos Diagonales — MOVE-05):** `isFootprintHardBlocked` simplificada y renombrada a `isCornerAnchorBlockedByTerrain`, corrigiendo una divergencia deliberada de Sprint 015 que bloqueaba el corte de esquina diagonal por criaturas además de por muros. Cero cambios de UI (heredado vía `validateMovePath`). `tests/difficult-terrain.test.mjs` actualizado + nuevo `tests/corners-geometry.test.mjs`, 12/12 ejecutados realmente en verde vía `node --test`; `typecheck`/`build:shared`/`build:server` en verde; `npm test`/`build:web`/E2E pendientes de confirmación en la máquina Windows local.
+  * **Sprint 036 (Consolidación de la Rutina de Ataques Iterativos):** `getEffectiveAttackRoutine` (read-model puro que compone `getAttackRoutine` + `Rules.totalAttackBonus`), punto de extensión declarativo inerte en `FeatCatalog` (`attackRoutineRules`) para Disparo Rápido/Dos Armas/Haste real, UI de `ActionsPanel` mostrando bonus absoluto. `tests/iterative-attacks-effective-routine.test.mjs` ejecutado realmente en verde (5/5) vía `node --test` contra `dist/index.js`; `typecheck`/`build:shared`/`build:server` verificados en verde; `npm test` completo/`build:web`/E2E pendientes de confirmación en la máquina Windows local.
+  * **Sprint 035 (Defensas Contextuales — Dodge & Mobility):** Esquiva (+1 CA redeclarable contra un `dodgeTargetId` designado) y Movilidad (+4 CA solo en AdO con `isOpportunityAttack && isMovementProvoked`) modeladas como reglas puras derivadas de `combatant.featIds` dentro de `Rules.totalArmorClass`, reutilizando `suppressDexAndDodge` como única fuente de anulación. Nuevo comando `declare-dodge-target`, UI en `SelectedInfo` ("CA vs. objetivo actual" + control "Declarar Esquiva"). `tests/dodge-mobility.test.mjs` escrito; `typecheck`/`build:shared`/`build:server` verificados en verde; `npm test`/`build:web`/E2E pendientes de confirmación en la máquina Windows local (mismo bloqueo de binarios nativos que Sprint 034).
+  * **Sprint 034 (Salvaciones Pasivas Ambientales & Trampas):** `targetCells` en `EffectInstance`, bloque `hazard` declarativo, `getEnvironmentalHazardHits` puro, `resolveEnvironmentalHazards` orquestado fuera del Event Bus puro, comando GM `gm-apply-environmental-hazard`, overlay `hazard-cell`. `typecheck`/`build` verificados en verde en todo el monorepo tras alinear el toolchain local. `npm test`/E2E WebSocket/Playwright pendientes de confirmación final (ver `walkthrough.md`).
+  * **Sprint 033 (Spell Areas of Effect & Polygonal Templates):** geometría isomórfica `cone`/`line`/`burst` (`getCellsIntersectedByAoE`), intercepción con huellas multiposición disparando salvaciones y mitigaciones simultáneas, y overlays predictivos en React.
+  * **Sprint 032 (Advanced AoO Limits & Reaction Triggers):** oráculo puro de provocación (`Rules.actionProvokesOpportunityAttack`), límites dinámicos de AdO con reinicio en `roundTickListener`, e interrupción transaccional en el backend para conjuros y armas a distancia. Alerta preventiva predictiva en React si la acción provocará AdO. Total 309 pruebas unitarias aprobadas.
+  * **Sprint 031 (Consolidación de Infraestructura Espacial):** consolidación del efecto de squeezing, transiciones espaciales idempotentes (commitSpatialTransition), y footprint efectivo en movimiento forzado. Verificadas las 305 pruebas unitarias, compilación y pruebas de red (E2E) con éxito completo.
+* **Sprint 030 (Grapple Core V2):** Escape de Presa transaccional por check de Presa o Escapismo, SkillRanks/StoredProfile V6, elegibilidad de armas compartida y UI predictiva; 303/303 unitarias, 87/87 WebSocket y 5/5 Playwright.
+* **Sprint 029 (Grapple Core V1):** primitivas compartidas de toque/oposición, `srd_grappling` contextual, bloqueo de movimiento, resolución atómica y preview React; 295/295 unitarias, 87/87 WebSocket y 4/4 Playwright.
+* **Sprint 028 (Bull Rush & Dynamic Squeezing):** compresión Large 2×1/1×2, coste doble, efecto contextual, movimiento forzado, Embestida transaccional y preview de footprint; 288/288 unitarias, 87/87 WebSocket y 3/3 Playwright.
+* **Sprint 027 (Large Footprints Core Integration):** proyección rectangular privada, distancia O(1) equivalente al oráculo exhaustivo, oposición por caras completas, ocupación indexada y AdO multiposición sin recomputaciones internas.
+* **Sprint 026 (Inventory & Ammunition Core):** inventario V5 por identidad de instancia, ranuras mutables sin caches, migración estricta, munición finita, ataques transaccionales, AUTO servidor y stock predictivo en React.
+* **Sprint 025-R (Prone Eschewal & Diehard):** capacidades declarativas en `FeatCatalog`, `LifeStateProjection`, normalización post-HP, Tick Layer semántica, economía Disabled en negativos y Stand Up seguro compartido por servidor/React.
+* **Sprint 025-A (Large Footprints V1):** selector canónico de celdas ocupadas, distancia y amenaza entre huellas, flanqueo por caras opuestas, validación integral de movimiento/colocación/carga/AdO y token React multicelda seleccionable desde cualquiera de sus celdas.
+* **Sprint 024 (Saving Throws Automation):** El catálogo declara tipo y consecuencia de salvación; el servidor tira el d20, aplica 1/20 natural, calcula el bono efectivo y confirma daño/efecto, slot y logs de forma atómica.
+* **Sprint 021 (Global Round Tracker & Bleeding):** Automatización del Event Bus a nivel de asalto, restaurando reacciones globales y desangrando pasivamente a los moribundos. Se cerró definitivamente la DT-007 (enmendada con restricción estricta de objetivo único por ronda para Ataques de Oportunidad).
+* **Sprint 018 (Special Tactical Maneuvers — Trip):** Pipeline transaccional autoritativo con AdO interruptivo, Touch AC, oposición de atributos/tamaño, efecto `srd_prone` y preview compartido.
+* **Sprint 017 (Total Migration V3):** Guards estáticos de compile-time protegen `CombatantSnapshot`, `CreatureTemplate` y `StoredProfile` contra caches escalares derivados.
+* **Sprint 016 (Sneak Attack Integration):** `SNEAK_ATTACK_DICE` y el pipeline de daño de precisión se integraron de forma autoritativa con preview compartido.
+* **Sprint 015 (Difficult Terrain & Corners):** Se integró el sistema de terreno difícil (doble coste 10/20ft en diagonales), reglas completas de movimiento diagonal por esquinas, y se abstrajeron los cálculos geométricos basándose estrictamente en el estado inmutable del tablero (snapshot).
+* **Sprint 014 (Conditions V3 Formales):** Se incorporaron formalmente `Fatigued`, `Prone`, `Dazed` y `Paralyzed` con matemáticas inmutables, `getEffectiveAbilityScore` y 230/230 tests verdes.
+* **Sprint 013 (Cover & Dynamic Reach):** Cálculo de línea de visión para intercepciones (+4 CA por Cover) y validación de alcance (Reach) por armas largas. 100% tests en verde.
+
+## Falta
+
+- Expandir uso de CombatSnapshot en mas resolvers.
+- Condiciones: Exhausted, Blinded, Entangled, etc.
+- Huellas no cuadradas, rotación y reglas completas de `Squeezing` que alteren temporalmente el espacio.
+- Alcance natural por tamanio.
+- Modificadores de tamanio.
+- Persistencia postcombate de consumos, botín y objetos caídos.
+- Feats.
+- Spells reales:
+  - resistencia a conjuros.
+  - componentes.
+  - concentracion.
+  - áreas y múltiples objetivos.
+  - Evasion/Improved Evasion y salvaciones periódicas.
+  - cargas retenidas de conjuros de toque y su interacción con AdO/amenaza.
+- Skills.
+- Editor de criaturas mas completo.
+- Editor de mapas.
+- Persistencia real de salas/encuentros.
+- Guardado multiusuario/autenticacion real.
+- UI tests de navegador para `/profiles` y flujos criticos.
+
+## Como Correr
+
+```powershell
+npm install
+npm run dev
+```
+
+URLs:
+
+- Web: `http://localhost:5173`
+- Server: `http://localhost:3333`
+- Health: `http://localhost:3333/health`
+
+## Validaciones
+
+```powershell
+npm test
+npm run typecheck
+npm run build
+node scripts/e2e-websocket.mjs
+```
+
+Para el E2E, el servidor debe estar levantado.
+
+## Estructura Actual
+
+```text
+apps/
+  server/
+    src/
+      auth/
+      combat/
+      commands/
+      gm/
+      room/
+      index.ts
+  web/
+    src/
+      components/
+      hooks/
+      pages/
+      App.tsx
+packages/
+  shared/
+    src/
+      data/
+        equipment/
+        abilities.json
+        creatures.json
+      equipmentCatalog.ts
+      equipmentStats.ts
+      profileStorage.ts
+      rules.ts
+      types.ts
+scripts/
+  e2e-websocket.mjs
+tests/
+  equipment-stats.test.mjs
+docs/
+  prompts/
+  phase-*.md
+  *-checklist.md
+```
+
+## Decisiones Tecnicas Actuales
+
+**La documentación oficial normativa del motor de reglas (D&D 3.5 Capítulo 8) está en la carpeta: `combat/`**
+- **Política de Integración:** [docs/designs/combat-documentation-integration.md](docs/designs/combat-documentation-integration.md)
+- **Matriz de Cobertura:** [docs/designs/combat-rules-coverage.md](docs/designs/combat-rules-coverage.md)
+- **Divergencias (Bugs/Simplificaciones):** [docs/designs/combat-rules-deviations.md](docs/designs/combat-rules-deviations.md)
+- **Roadmap Dependencias:** [ROADMAP.md](ROADMAP.md)
+- **Documento Arquitectónico Central:** [docs/architecture/combat-engine.md](docs/architecture/combat-engine.md)
+
+- El servidor es autoritativo.
+- El estado de sala vive en memoria.
+- WebSocket sincroniza sala en tiempo real.
+- El cliente nunca decide ownership.
+- El servidor valida ownership y permisos.
+- Los datos de equipo se consultan por `EquipmentCatalog`.
+- Los perfiles guardan IDs de catalogo.
+- Los calculos derivados viven en helpers compartidos y testeables.
+- Las reglas importantes no deben vivir solo en UI.
+- La UI puede guiar, colorear y deshabilitar.
+- Los AdO pendientes bloquean el flujo normal del combate.
+- Las reglas se agregan incrementalmente y con tests.
+
+## Testing
+
+- [x] Sprint 010: pruebas de catálogo migrado, tamaño, persistencia V2, fallo cerrado y ataque de toque autoritativo.
+- [x] Suite completa: 225/225 tests al cierre del Sprint 012.
+- [x] E2E WebSocket completo: 80/80 verificaciones, incluidos flanqueo autoritativo y Ray of Frost contra Touch AC 11 conservando DEX.
+- [x] UI Playwright: 2/2 escenarios, incluido preview melee/Shocking Grasp visible y Ray of Frost sin bono.
+- [x] Multiplicador de daño crítico como test unitario.
+- [x] Expiración de buff por turno como test unitario.
+- [x] Tests para cobertura.
+- [x] Límite 1 AdO por criatura por ronda.
+- [x] CombatRulesSnapshot auto-verificación de campos.
+- [x] Tests para condiciones.
+- [x] Tests de UI para editor de perfiles.
+- [x] Sprint 013: Cobertura viva (+4) e intervalos de alcance dinámico (Longspear test).
+- [x] Sprint 024: 279/279 tests, typecheck/build y 82/82 verificaciones WebSocket con salvaciones automáticas.
+- [x] Sprint 025-R: 290/290 tests, typecheck/build, 87/87 verificaciones WebSocket y 3/3 escenarios Playwright.
+- [x] Sprint 027: 283/283 tests, typecheck/build, 87/87 verificaciones WebSocket y 3/3 escenarios Playwright.
+- [x] Sprint 029: 295/295 tests, typecheck/build, 87/87 verificaciones WebSocket y 4/4 escenarios Playwright.
+- [x] Sprint 030: 303/303 tests, typecheck/build, 87/87 verificaciones WebSocket y 5/5 escenarios Playwright.
+- [ ] Sprint 034: `tests/environmental-hazards.test.mjs` escrito (detección pura, ronda completa con mitigación half/full, hazard sin daño con `onFailEffectId`, idempotencia, sin recursión). `typecheck:shared`/`build:shared` verificados en verde; **suite completa, `typecheck:server`, `build`, E2E WebSocket y Playwright pendientes de correr en la máquina local** (ver `walkthrough.md`).
+- [ ] Sprint 035: `tests/dodge-mobility.test.mjs` escrito (foco de Esquiva dinámico/redeclarable, bono de Movilidad exclusivo a AdO por movimiento, anulación total por Flat-Footed, sin dote sin bono, regresiones de `declare-dodge-target`). `typecheck` y `build:shared`/`build:server` verificados en verde en todo el monorepo; **`npm test`, `build:web`, E2E WebSocket y Playwright pendientes de correr en la máquina local** (mismo bloqueo de binarios nativos que Sprint 034).
+- [x] Sprint 036: `tests/iterative-attacks-effective-routine.test.mjs` escrito y **ejecutado realmente en verde (5/5)** vía `node --test` puro contra `packages/shared/dist/index.js` (sin `tsx`/esbuild). `typecheck` y `build:shared`/`build:server` verificados en verde en todo el monorepo; **`npm test` completo vía `tsx`, `build:web` y E2E/Playwright pendientes de correr en la máquina local** (mismo bloqueo de binarios nativos que Sprints 034/035).
+- [x] Sprint 037: `tests/difficult-terrain.test.mjs` actualizado (esquina dividida en bloqueo-por-muro/permiso-junto-a-enemigo) y nuevo `tests/corners-geometry.test.mjs` (anclas horizontal/vertical, aliado, enemigo, Large 2×2). **12/12 pruebas ejecutadas realmente en verde** vía `node --test` puro contra `packages/shared/dist/rules.js`. `typecheck` y `build:shared`/`build:server` verificados en verde; **`npm test` completo, `build:web` y E2E/Playwright pendientes de correr en la máquina local** (mismo bloqueo de binarios nativos que Sprints 034-036).
+
+Ver [docs/testing-coverage-report.md](docs/testing-coverage-report.md) para análisis completo.
+
+## Problemas Pendientes
+
+Ver [docs/technical-debt.md](docs/technical-debt.md) para la lista consolidada y priorizada de deuda técnica.
+
+DT-004 y DT-017 quedaron resueltas en Sprint 010. El registro consolidado conserva las deudas restantes.
+Sprint 012 eliminó además los caches escalares residuales y cerró la ruta de reintroducción mediante contrato TypeScript y fixtures V3.
+Sprint 019 completó la integración transaccional full-stack de conjuros.
+
+## Proxima Tarea Recomendada
+
+Aprobar formalmente el diseño y plan del Sprint 038 (`docs/designs/full-attack-v2-haste-rapid-shot-design.md` + `implementation_plan.md`) con `Proceed`, o solicitar ajustes al re-acotamiento propuesto (en particular la corrección obligatoria de `attackCommands.ts` y la decisión de extender `Buff` en vez de migrar Haste a `ActiveEffects`). Hasta entonces no se modifican archivos ejecutables. Pendiente en paralelo: confirmar en la máquina Windows local, para los Sprints 034-037, `npm test` (suite completa), `npm run build` (incluye `build:web` con Vite), `node scripts/e2e-websocket.mjs` y Playwright (`npm run test:ui`) — este sandbox no puede ejecutar ninguno de los cuatro por un mismatch de binarios nativos multiplataforma; `typecheck` y `build:shared`/`build:server` sí están verificados en verde para los cuatro, y los Sprints 036 y 037 además lograron ejecutar realmente sus tests nuevos (`node --test` puro contra `dist/*.js`, sin `tsx`).

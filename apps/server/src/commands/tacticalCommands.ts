@@ -1,0 +1,336 @@
+import { applyDamage, canStandardAttack, canUseFiveFootStep, findTriggeredOpportunityAttacksForPath, getAttackContextModifiers, isAdjacent, lifeStatus, makeLog, Rules, threatensTarget, createCombatRulesSnapshot, validateMovePath, validateStandUp, getEffectiveAbilityModifier, hasEffectTrait, FeatCatalog, type ClientCommand, type CombatRoom, type CombatRulesSnapshot } from "@dnd-tactical/shared";
+import { requireCombatantControl } from "../auth/control.js";
+import { resolveAttack, resolveWeaponAttackSource } from "../combat/attackResolver.js";
+import { applyStartOfNextTurnBuff } from "../combat/buffRules.js";
+import { calculatePathDistanceFeet, canCharge, findChargePath } from "../combat/chargeResolver.js";
+import { ensureActiveTurn } from "../combat/turnManager.js";
+import { pruneInvalidOpportunityAttacks } from "../combat/opportunityAttackResolver.js";
+import { checkCombatOutcome, findCombatant, logStatusChange } from "../room/roomState.js";
+import { broadcast } from "../room/roomStore.js";
+import { applyAttackMutations } from "./attackCommands.js";
+import { applyDisabledExertion } from "../combat/lifeStatusEffects.js";
+import { resolveSavingThrow } from "../combat/savingThrowResolver.js";
+import { rollDice } from "../combat/diceRoller.js";
+import { effectsCatalog } from "@dnd-tactical/shared";
+import { commitSpatialTransition } from "../combat/spatialTransition.js";
+export function handleUseTacticalAction(room: CombatRoom, command: Extract<ClientCommand, { type: "use-tactical-action" }>): void {
+  if (room.phase !== "active") throw new Error("Esta accion solo esta disponible con el combate en curso.");
+  const combatant = findCombatant(room, command.combatantId);
+  requireCombatantControl(command.actorId, combatant);
+  ensureActiveTurn(room, combatant.id);
+  const snapshot = createCombatRulesSnapshot(room);
+  
+  const availability = Rules.evaluateActionAvailability(snapshot, combatant);
+  if (!availability.ok) throw new Error(availability.error);
+
+  if (command.action === "total-defense") return handleTotalDefense(room, snapshot, combatant);
+  if (command.action === "charge") return handleCharge(room, snapshot, command, combatant);
+  if (command.action === "aid-another") return handleAidAnother(room, snapshot, command, combatant);
+  if (command.action === "five-foot-step") return handleFiveFootStep(room, snapshot, command, combatant);
+  if (command.action === "stand-up") return handleStandUp(room, snapshot, command, combatant);
+}
+
+export function handleChooseAidBonus(room: CombatRoom, command: Extract<ClientCommand, { type: "choose-aid-bonus" }>): void {
+  if (room.phase !== "active") throw new Error("Esta accion solo esta disponible con el combate en curso.");
+  const combatant = findCombatant(room, command.combatantId);
+  requireCombatantControl(command.actorId, combatant);
+  ensureActiveTurn(room, combatant.id);
+  const buff = combatant.buffs.find((item) => item.id === command.buffId);
+  if (!buff || buff.aidChoice !== "pending") throw new Error("Esa ayuda ya no esta pendiente.");
+  buff.aidChoice = command.choice;
+  room.log.unshift(makeLog("status", combatant.name + " reserva " + buff.name + " como +" + (buff.aidBonus ?? 2) + " a " + (command.choice === "attack" ? "su proximo ataque" : "su CA contra el proximo ataque") + " contra " + (buff.aidTargetName ?? "el objetivo") + "."));
+  broadcast(room);
+}
+
+export function handleDeclareAttackMode(room: CombatRoom, command: Extract<ClientCommand, { type: "declare-attack-mode" }>): void {
+  if (room.phase !== "active") throw new Error("Esta accion solo esta disponible con el combate en curso.");
+  const combatant = findCombatant(room, command.combatantId);
+  requireCombatantControl(command.actorId, combatant);
+  ensureActiveTurn(room, combatant.id);
+
+  const snapshot = createCombatRulesSnapshot(room);
+  const availability = Rules.evaluateActionAvailability(snapshot, combatant);
+  if (!availability.ok) throw new Error(availability.error);
+
+  if (room.currentTurn.attacksMade > 0) throw new Error("No se puede cambiar el modo despues de haber atacado.");
+  
+  if (command.mode === "full") {
+    if (lifeStatus(combatant) === "disabled") {
+      throw new Error("Un personaje a 0 HP no puede realizar un Ataque Completo.");
+    }
+    if (room.currentTurn.usedMoveAction || room.currentTurn.movementUsedFeet > 5) {
+      throw new Error("El Ataque Completo requiere no haberse movido previamente (excepto paso de 5 pies).");
+    }
+  }
+
+  room.currentTurn.attackMode = command.mode;
+  room.currentTurn.defensiveFightingDeclared = command.defensive;
+  room.log.unshift(makeLog("status", combatant.name + " prepara Ataque " + (command.mode === "full" ? "Completo" : "Estandar") + (command.defensive ? " a la defensiva" : "") + "."));
+  broadcast(room);
+}
+
+export function handleCancelAttackMode(room: CombatRoom, command: Extract<ClientCommand, { type: "cancel-attack-mode" }>): void {
+  if (room.phase !== "active") throw new Error("Esta accion solo esta disponible con el combate en curso.");
+  const combatant = findCombatant(room, command.combatantId);
+  requireCombatantControl(command.actorId, combatant);
+  ensureActiveTurn(room, combatant.id);
+
+  if (room.currentTurn.attacksMade > 0) throw new Error("No se puede cancelar el modo despues de haber atacado.");
+
+  room.currentTurn.attackMode = "none";
+  room.currentTurn.defensiveFightingDeclared = false;
+  room.log.unshift(makeLog("status", combatant.name + " cancela la preparacion de ataque."));
+  broadcast(room);
+}
+
+function handleTotalDefense(room: CombatRoom, snapshot: CombatRulesSnapshot<import("@dnd-tactical/shared").ProductionEffectId>, combatant: ReturnType<typeof findCombatant>): void {
+  const turnCheck = canStandardAttack(snapshot, combatant);
+  if (!turnCheck.ok) throw new Error(turnCheck.error);
+  if (room.currentTurn.movementUsedFeet > 0 || room.currentTurn.usedMoveAction || room.currentTurn.usedFiveFootStep) throw new Error("Defensa total requiere renunciar al movimiento, ataques y conjuros de este turno.");
+  
+  const wasDisabledAtActionStart = lifeStatus(combatant) === "disabled";
+  
+  applyStartOfNextTurnBuff(combatant, { name: "Defensa total", source: "Tacticas", acBonus: 4, acBonusType: "dodge", preventsOpportunityAttacks: true });
+  room.currentTurn.usedStandardAction = true;
+  room.currentTurn.usedMoveAction = true;
+  room.currentTurn.usedTotalDefense = true;
+  room.log.unshift(makeLog("status", combatant.name + " usa Defensa total: +4 de esquiva a la CA hasta el inicio de su proximo turno y no puede realizar ataques de oportunidad."));
+  
+  const exertion = applyDisabledExertion(combatant, { wasDisabledAtActionStart, actionKind: "standard", actionWasExerting: true });
+  if (exertion.applied) {
+    room.log.unshift(makeLog("status", combatant.name + " actua incapacitado con " + exertion.previousHp + " HP y pierde 1 HP por esfuerzo. HP: " + exertion.currentHp + "/" + combatant.hpMax + "."));
+    logStatusChange(room, combatant, exertion.statusBefore, exertion.statusAfter);
+    checkCombatOutcome(room);
+  }
+  
+  broadcast(room);
+}
+
+function handleCharge(room: CombatRoom, snapshot: CombatRulesSnapshot<import("@dnd-tactical/shared").ProductionEffectId>, command: Extract<ClientCommand, { type: "use-tactical-action"; action: "charge" }>, combatant: ReturnType<typeof findCombatant>): void {
+  const target = findCombatant(room, command.targetId);
+  const turnCheck = canCharge(snapshot, combatant);
+  if (!turnCheck.ok) throw new Error(turnCheck.error);
+  if (target.type === combatant.type) throw new Error("Carga requiere un enemigo como objetivo.");
+  const chargePath = findChargePath(snapshot, combatant, target);
+  if (!chargePath.ok || !chargePath.value) throw new Error(chargePath.error);
+  
+  const wasDisabledAtActionStart = lifeStatus(combatant) === "disabled";
+  
+  const movementDistance = calculatePathDistanceFeet(combatant.position, chargePath.value, room.board.cellSizeFeet);
+  const opportunities = findTriggeredOpportunityAttacksForPath(
+    snapshot, 
+    combatant, 
+    chargePath.value, 
+    movementDistance,
+    (c) => Rules.canMakeOpportunityAttack(snapshot, c, combatant.id)
+  );
+  commitSpatialTransition(room, combatant, chargePath.value[chargePath.value.length - 1], "natural");
+  combatant.stats.distanceMovedFeet += movementDistance;
+  room.currentTurn.movementUsedFeet += movementDistance;
+  room.currentTurn.usedFullAttack = true;
+  room.log.unshift(makeLog("movement", combatant.name + " carga " + movementDistance + " pies hacia " + target.name + "."));
+  if (opportunities.length > 0) {
+    room.pendingOpportunityAttacks.push(...opportunities);
+    for (const opportunity of opportunities) room.log.unshift(makeLog("opportunity", opportunity.reason + " Resolver ataque de oportunidad con tirada manual."));
+  }
+  const tactical = getAttackContextModifiers(snapshot, combatant, target).byAttackType.melee;
+  const result = resolveAttack(snapshot, combatant, target, command.d20Roll, command.damage, "carga", 2 + tactical.attackBonus, { source: resolveWeaponAttackSource(combatant, "melee") });
+  result.attackParts.push("carga +2");
+  result.attackParts.push(...tactical.labelParts);
+  
+  if (result.threatened) {
+    room.activeAttackThreat = {
+      attackerId: combatant.id,
+      targetId: target.id,
+      initialD20Roll: command.d20Roll,
+      attackBonusTotal: result.attackBonusTotal ?? 0,
+      targetArmorClass: result.targetArmorClass ?? 10,
+      normalDamageBundle: result.damageBundle,
+      criticalThreatFrom: result.threatFrom ?? 20,
+      criticalMultiplier: result.multiplier ?? 2,
+      weaponName: result.weaponName ?? "arma",
+      isFullAttack: false,
+      fightingDefensively: false,
+      label: "carga"
+    };
+    room.log.unshift(makeLog("status", combatant.name + " amenaza con un crítico contra " + target.name + " en una carga usando " + (result.weaponName ?? "su arma") + "! Esperando confirmación..."));
+  } else {
+    applyAttackMutations(room, combatant, target, command.d20Roll, 0, "carga", result);
+  }
+  applyStartOfNextTurnBuff(combatant, { name: "Carga", source: "Tacticas", acBonus: -2 });
+  room.log.unshift(makeLog("status", combatant.name + " queda con -2 a la CA por cargar hasta el inicio de su proximo turno."));
+  
+  const exertion = applyDisabledExertion(combatant, { wasDisabledAtActionStart, actionKind: "full-round", actionWasExerting: true });
+  if (exertion.applied) {
+    room.log.unshift(makeLog("status", combatant.name + " actua incapacitado con " + exertion.previousHp + " HP y pierde 1 HP por esfuerzo. HP: " + exertion.currentHp + "/" + combatant.hpMax + "."));
+    logStatusChange(room, combatant, exertion.statusBefore, exertion.statusAfter);
+  }
+
+  checkCombatOutcome(room);
+  pruneInvalidOpportunityAttacks(room);
+  broadcast(room);
+}
+
+function handleAidAnother(room: CombatRoom, snapshot: CombatRulesSnapshot<import("@dnd-tactical/shared").ProductionEffectId>, command: Extract<ClientCommand, { type: "use-tactical-action"; action: "aid-another" }>, combatant: ReturnType<typeof findCombatant>): void {
+  const ally = findCombatant(room, command.allyId);
+  const target = findCombatant(room, command.targetId);
+  const turnCheck = canStandardAttack(snapshot, combatant);
+  if (!turnCheck.ok) throw new Error(turnCheck.error);
+  if (ally.id === combatant.id) throw new Error("Prestar ayuda requiere elegir otro aliado.");
+  if (ally.type !== combatant.type) throw new Error("Prestar ayuda requiere un aliado.");
+  if (target.type === combatant.type) throw new Error("Prestar ayuda en combate requiere un enemigo como oponente.");
+  if (!threatensTarget(snapshot, combatant, target)) throw new Error(combatant.name + " no amenaza a " + target.name + "; no puede ayudar en ese combate cuerpo a cuerpo.");
+  
+  const wasDisabledAtActionStart = lifeStatus(combatant) === "disabled";
+  
+  const attack = Rules.totalAttackBonus(snapshot, combatant);
+  const total = command.d20Roll + attack.total;
+  room.currentTurn.usedStandardAction = true;
+  if (total >= 10) {
+    ally.buffs.push({
+      id: "buff-" + Math.random().toString(36).slice(2, 10),
+      name: "Ayuda de " + combatant.name,
+      source: combatant.name,
+      remainingTurns: 1,
+      expiresAfterTurnOf: ally.id,
+      aidBonus: 2,
+      aidTargetId: target.id,
+      aidTargetName: target.name,
+      aidChoice: "pending",
+      aidSourceId: combatant.id
+    });
+    room.log.unshift(makeLog("status", combatant.name + " presta ayuda a " + ally.name + " contra " + target.name + ". d20 " + command.d20Roll + " + ataque " + attack.total + " = " + total + " contra CA 10. " + ally.name + " tendra que elegir +2 ataque o +2 CA en su turno."));
+  } else {
+    room.log.unshift(makeLog("status", combatant.name + " intenta prestar ayuda a " + ally.name + " contra " + target.name + ", pero falla. d20 " + command.d20Roll + " + ataque " + attack.total + " = " + total + " contra CA 10."));
+  }
+  
+  const exertion = applyDisabledExertion(combatant, { wasDisabledAtActionStart, actionKind: "standard", actionWasExerting: true });
+  if (exertion.applied) {
+    room.log.unshift(makeLog("status", combatant.name + " actua incapacitado con " + exertion.previousHp + " HP y pierde 1 HP por esfuerzo. HP: " + exertion.currentHp + "/" + combatant.hpMax + "."));
+    logStatusChange(room, combatant, exertion.statusBefore, exertion.statusAfter);
+  }
+
+  checkCombatOutcome(room);
+  broadcast(room);
+}
+
+function handleFiveFootStep(room: CombatRoom, snapshot: CombatRulesSnapshot<import("@dnd-tactical/shared").ProductionEffectId>, command: Extract<ClientCommand, { type: "use-tactical-action"; action: "five-foot-step" }>, combatant: ReturnType<typeof findCombatant>): void {
+  const stepCheck = canUseFiveFootStep(snapshot, combatant);
+  if (!stepCheck.ok) throw new Error(stepCheck.error);
+
+  const validation = validateMovePath(snapshot, combatant, [command.to], room.board.cellSizeFeet, true);
+  if (!validation.ok || !validation.value) throw new Error(validation.error);
+
+  const spatialTransition = commitSpatialTransition(room, combatant, command.to, validation.value.finalSpatialMode);
+  combatant.stats.distanceMovedFeet += validation.value.distanceFeet;
+  room.currentTurn.usedFiveFootStep = true;
+  room.currentTurn.movementUsedFeet += validation.value.distanceFeet;
+
+  room.log.unshift(makeLog("movement", combatant.name + " usa paso de 5 pies hacia (" + command.to.x + ", " + command.to.y + "). Sin ataque de oportunidad."));
+  if (spatialTransition.previousMode !== spatialTransition.currentMode) {
+    room.log.unshift(makeLog("movement", spatialTransition.currentMode === "squeezing"
+      ? combatant.name + " entra en compresion espacial."
+      : combatant.name + " recupera su huella natural."));
+  }
+  broadcast(room);
+}
+
+function handleStandUp(room: CombatRoom, snapshot: CombatRulesSnapshot<import("@dnd-tactical/shared").ProductionEffectId>, command: Extract<ClientCommand, { type: "use-tactical-action"; action: "stand-up" }>, combatant: ReturnType<typeof findCombatant>): void {
+  const validation = validateStandUp(snapshot, combatant);
+  if (!validation.ok || !validation.value) throw new Error(validation.error);
+
+  const wasDisabledAtActionStart = lifeStatus(combatant) === "disabled";
+
+  // Remove PRONE effect directly
+  room.effectInstances = room.effectInstances.filter(ei => {
+    if (!ei.targets || !ei.targets.includes(combatant.id)) return true;
+    const effectDef = effectsCatalog[ei.effectId as keyof typeof effectsCatalog];
+    return effectDef && (!effectDef.traits || !(effectDef.traits as readonly string[]).includes("PRONE"));
+  });
+
+  room.currentTurn.movementUsedFeet += validation.value.costFeet;
+  room.currentTurn.usedMoveAction = true;
+  room.log.unshift(makeLog("movement", combatant.name + " se levanta consumiendo " + validation.value.costFeet + " pies de movimiento. " + validation.value.labelParts.join(", ") + "."));
+
+  const opportunities = [];
+  if (validation.value.provokesOpportunityAttacks) {
+    const enemies = room.combatants.filter(c => c.type !== combatant.type && lifeStatus(c) === "active");
+    for (const enemy of enemies) {
+      if (Rules.canMakeOpportunityAttack(snapshot, enemy, combatant.id) && threatensTarget(snapshot, enemy, combatant)) {
+        opportunities.push({
+          id: "opp-" + Math.random().toString(36).slice(2, 10),
+          attackerId: enemy.id,
+          targetId: combatant.id,
+          trigger: "stand-up",
+          reason: `${enemy.name} ataca a ${combatant.name} por levantarse.`,
+          isValid: true,
+          positionAtTrigger: { ...combatant.position },
+          attackMode: "melee" as const,
+          sourceEffectId: null,
+          attackerPosition: { ...enemy.position },
+          origin: { ...combatant.position },
+          destination: { ...combatant.position },
+          createdAt: new Date().toISOString()
+        });
+      }
+    }
+  }
+  room.pendingOpportunityAttacks.push(...opportunities);
+  if (opportunities.length > 0) {
+    room.log.unshift(makeLog("attack", `${combatant.name} provoca ${opportunities.length} Ataques de Oportunidad al levantarse.`));
+  }
+
+  const exertion = applyDisabledExertion(combatant, { wasDisabledAtActionStart, actionKind: "move", actionWasExerting: false });
+  if (exertion.applied) {
+    room.log.unshift(makeLog("status", combatant.name + " actua incapacitado con " + exertion.previousHp + " HP y pierde 1 HP por esfuerzo. HP: " + exertion.currentHp + "/" + combatant.hpMax + "."));
+    logStatusChange(room, combatant, exertion.statusBefore, exertion.statusAfter);
+  }
+
+  checkCombatOutcome(room);
+  broadcast(room);
+}
+
+export function handleResolveSavingThrow(room: CombatRoom, command: Extract<ClientCommand, { type: "resolve-saving-throw" }>): void {
+  if (room.phase !== "active") throw new Error("Esta accion solo esta disponible con el combate en curso.");
+  const target = findCombatant(room, command.targetId);
+  // requireCombatantControl(command.actorId, target); // El DM también puede lanzar salvaciones si es necesario
+  const snapshot = createCombatRulesSnapshot(room);
+
+  const result = resolveSavingThrow(snapshot, target, command.saveType, command.dc, command.d20Roll);
+  
+  let outcomeText = result.success ? "éxito" : "fallo";
+  if (result.isNatural1) outcomeText = "Fallo Crítico (1 natural)";
+  if (result.isNatural20) outcomeText = "Éxito Crítico (20 natural)";
+
+  room.log.unshift(makeLog(
+    "system",
+    target.name + " intenta salvación de " + command.saveType + " contra CD " + command.dc + ". Tirada: " + command.d20Roll + " (d20) + " + result.modifier + " = " + result.total + ". Resultado: " + outcomeText
+  ));
+
+  broadcast(room);
+}
+
+export function handleDeclareDodgeTarget(room: CombatRoom, command: Extract<ClientCommand, { type: "declare-dodge-target" }>): void {
+  if (room.phase !== "active") throw new Error("Esta accion solo esta disponible con el combate en curso.");
+  const combatant = findCombatant(room, command.combatantId);
+  requireCombatantControl(command.actorId, combatant);
+  ensureActiveTurn(room, combatant.id);
+
+  if (!FeatCatalog.hasFeat(combatant.featIds, "srd_dodge")) {
+    throw new Error(combatant.name + " no posee la dote Esquiva (Dodge).");
+  }
+
+  if (command.targetId === null) {
+    combatant.dodgeTargetId = null;
+    room.log.unshift(makeLog("status", combatant.name + " retira su designación de Esquiva."));
+    broadcast(room);
+    return;
+  }
+
+  const target = findCombatant(room, command.targetId);
+  if (lifeStatus(target) === "dead") throw new Error(target.name + " ya esta muerto y no puede ser designado.");
+
+  combatant.dodgeTargetId = target.id;
+  room.log.unshift(makeLog("status", combatant.name + " designa a " + target.name + " como objetivo de Esquiva."));
+  broadcast(room);
+}

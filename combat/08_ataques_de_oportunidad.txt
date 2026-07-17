@@ -1,0 +1,190 @@
+CONJUROS
+En la mayoría de los casos, puedes moverte tu velocidad y lanzar un conjuro en el mismo asalto (una acción de movimiento y una acción estándar). Ejecutar un sortilegio permite hacer ataques de oportunidad a los enemigos que te estén amenazando (véase más adelante).
+
+ATAQUES DE OPORTUNIDAD
+Durante un combate, amenazas todas las casillas adyacentes a ti, incluso cuando no te toca actuar. Cuando un enemigo hace ciertas cosas estando en tu área amenazada, eso te da derecho a efectuar un ataque de oportunidad. Un ataque de oportunidad es un ataque cuerpo a cuerpo gratuito que no gasta ninguna de tus acciones. Puedes realizar un ataque de oportunidad por asalto. Las acciones que provocan un ataque de oportunidad incluyen moverse (salvo en los casos que se indican a continuación), lanzar un conjuro y emplear un arma de ataque a distancia. Cuandote mueves para salir de una casilla amenazada provocas un ataque de oportunidad, salvo en los siguientes casos: Si te retiras (una acción de asalto completo) tus enemigos no tendrán derecho a efectuar ataques de oportunidad cuando salgas de tu casilla inicial. No obstante, si entras en otra casilla amenazada, los oponentes tendrán derecho a ataques de oportunidad al abandonarla Si todo tu movimiento en el asalto se limita a 5' (un paso de 5'), tus enemigos no tendrán derecho a efectuar ataques de oportunidad contra ti.
+
+ATAQUES DE OPORTUNIDAD
+Las reglas de combate cuerpo a cuerpo suponen que los combatientes hacen esfuerzos activos para evitar los ataques. Un jugador no tiene que declarar nada especial para que su personaje actúe a la defensiva. Aunque la miniatura de un personaje esté inmóvil en el tablero de batalla, puedes dar por seguro que si un orco con un hacha de batalla ataca al personaje, este se moverá, esquivará e incluso amenazará al orco con un arma para hacer que se preocupe un poco por su propio pellejo. No obstante, a veces un contendiente en un combate cuerpo a cuerpo baja la guardia y deja de mantener su postura defensiva habitual. En este caso, los combatientes cercanos a él pueden sacar provecho de ese hueco en su defensa y atacarle de forma gratuita. Estos ataques gratuitos son denominados ataques de oportunidad.
+Casillas amenazadas: amenazas todas las casillas en las ccuales puedes rea lizar un ataque de cuerpo a cuerpo, aunque esa no sea tu acción. En general esto quiequiere decir todas las casillas adyacentes a tu espacio (incluidas las diagonales). Un enemigo que realice ciertas acciones mientras esté en una casilla amenazada te permite realizar un ataque de oportunidad contra él. Si no tienes armas, normalmente no amenazas ninguna casilla, y por lo tanto no puedes realizar ataques de oportunidad (pero consulta Ataques sin arma, en la pág. 139).
+Armas de alcance: la mayoría de las criaturas de tamaño Mediano o menor tienen un alcance de sólo 5'. Esto quiequiere decirque solo pueden realizar ataques cuerpo a cuerpo contra criaturas a un máximo de 5' (1 casilla) de distancia. No obstante, las criaturas Medianas y Pequeñas que esgriman armas de alcance (como una lanza larga) amenazan más casillas que una criatura normal. Por ejemplo, un humano con una lanza larga amenaza todas las casillas a 10' (2 casillas) de distancia, incluso en diagonal (esto es una excepción a la regla que dice que 2 casillas medidas en diagonal equivalen a 15'). Además, la mayoría de las criaturas de un tamaño superior al Mediano tienen un alcance natural de 10' o más (consulta 'Criaturas grandes y pequeñas en combate', pág. 149).
+Cómo provocar un ataque de oportunidad: dos tipos de acciones
+pueden provocar ataques de oportunidad: salir de una casilla amenazada y realizar una acción dentro de una casilla amenazada.
+Movimiento: moverse hacia fuera de una casilla amenazada normalmente provoca un ataque de oportunidad por parte del oponente que la
+amenace. Hay dos métodos comunes de evitar este ataque: el paso de 5' (ver pág. 144) y la acción de retirarse (ver pág. 143).
+Realizar una acción que distraiga: algunas acciones, cuando son realizadas en una casilla amenazada, provocan ataques de oportunidad porque apartas tu atención de la batalla. Lanzar un conjuro o atacar con un arma a distancia son ejemplos de acciones que distraen. La tabla 8-2: acciones en combate, lista muchas de las acciones que provocan ataques de oportunidad. Recuerda que incluso las acciones que normalmente provocan ataques de oportunidad pueden tener excepciones a esta regla. Por ejemplo, un personaje con la dote Impacto sin arma mejorado no provoca un ataque de oportunidad al realizar un ataque sin arma.
+Cómo realizar un ataque de oportunidad: un ataque de oportunidad es un único ataque cuerpo a cuerpo, y sólo puedes realizar uno por asalto. No tienes por qué realizar un ataque de oportunidad si no quieres. Un personaje experimentado obtiene ataques normales adicionales cuerpo a cuerpo (utilizando la acción de ataque completo), aunque con un bonificador de ataque menor. Sin embargo, realizas tu ataque de oportunidad con tu bonificador de ataque normal (incluso si ya has atacado en ese asalto). Un ataque de oportunidad "interrumpe" el curso normal de las acciones del asalto. Si se provoca un ataque de oportunidad, este se resuelve inmediatamente, y después continúa el turno del siguiente personaje (o se completa el turno actual, si el ataque fue provocado en medio del turno de un personaje).
+Reflejos de combate y ataques de oportunidad adicionales: si tienes la dote Reflejos de combate (pág. 101) puedes sumar tu modificador de Destreza al número de ataques de oportunidad que puedes realizar en un asalto. Esta dote no te permite realizar más de un ataque en cada oportunidad, pero si el mismo oponente provoca dos ataques de oportunidad (como al salir de una casilla amenazada y después lanzar un conjuro desde otra casilla amenazada) puedes realizar dos ataques de oportunidad independientes (ya que cada uno corresponde a una oportunidad diferente). Salir de más de una casilla amenazada por el mismo oponente en el mismo asalto no cuenta como más de una oportunidad para ese oponente. Todos estos ataques se realizan a tu bonificador normal de ataque. No reduces el bonificador de ataque por realizar varios ataques de oportunidad.
+
+Acción de movimiento: una acción de movimiento te permite moverte tu velocidad o realizar una acción que requiera una cantidad similar de tiempo. Puedes moverte tu velocidad, trepar un cuarto de tu velocidad, sacar o guardar un arma u objeto, levantarte, recoger un objeto o realizar alguna
+otra acción equivalente (consulta la tabla 8-2: acciones en el combate). Puedes realizar una acción de movimiento en lugar de una acción estándar Por ejemplo, en lugar de mover tu velocidad y atacar, puedes levantarte y moverte tu velocidad (dos acciones de movimiento), enfundar un arma y trepar un cuarto de tu velocidad (dos acciones de movimiento) o recoger un objeto que se haya caído y guardarlo en tu mochila (dos acciones de movimiento). Si no llegas a moverte ninguna distancia real en un asalto (normalmente porque has cambiado tu movimiento por una o más acciones equivalentes al
+
+movimiento, como levantarse), puedes realizar un paso de 5', sea antes, durante, o después de la acción. Por ejemplo, si Tordek está en el suelo, puede levantarse (una acción de movimiento), mover 5' (un paso de 5') y finalmente atacar.
+Acción de asalto completo: una acción de este tipo requiere todo tu esfuerzo durante un asalto de combate. El únicomovimiento que podrás llevar a cabo será dar un paso de 5' antes, durante, o después de la acción de asalto completo. Podrás llevar a cabo acciones gratuitas (véase más abajo) según permita tu DM. La acción de asalto completo más común es un ataque completo, que te permite realizar varios ataques cuerpo a cuerpo o a distancia en un único asalto. Algunas acciones de asalto completo no permiten dar un paso de 5'. Algunas acciones de asalto completo pueden realizarse como acciones estándar, pero sólo en situaciones en las que estás limitado a realizar tan sólo acciones estándar durante tu asalto (como en un asalto de sorpresa). En la descripción específica de cada acción, más adelante, se detalla qué acciones permiten esta opción.
+Acción gratuita: las acciones gratuitas requieren una cantidad ínfima de tiempo y esfuerzo, y su trascendencia a lo largo del asalto es tan pequeña que se considera que puedes realizarlas libremente. Mientras realices otra acción normal, podrás llevar a cabo una o más acciones gratuitas. Sin embargo, el DM puede marcar dónde se encuentra el límite razonable entre lo que es "gratuito"y lo que no lo es. Por ejemplo, pedir ayuda a tus amigos, dejar caer un objeto y dejar de concentrarte en un conjuro son acciones gratuitas.
+No considerado como acción: algunas actividades ni siquiera se consideran acciones gratuitas, pues no consumen nada de tiempo y forman parte inherente de otra cosa que se esté haciendo. Por ejemplo, emplear la habilidad de Usar objeto mágico (pág. 85) para emular rasgos de una clase diferente mientras se activa un objeto no se considerará acción, pues forma parte de la acción que sirve para activar el propio objeto mágico.
+Actividad limitada: en algunas situaciones (como cuando estás ralentizado o durante un asalto de sorpresa), puedes ser incapaz de realizar todas las acciones de un asalto. En estos casos estás limitado a realizar sólo una acción estándar o sólo una acción de movimiento (más las acciones gratuitas, de modo normal). No puedes realizar una acción de asalto completo (aunque puedes comenzar o completar una acción de asalto completo utilizando una acción estándar; ver más adelante).
+ACCIONES ESTANDAR
+La mayoría de las acciones estándar implican realizar un ataque, lanzar un conjuro o activar un objeto. Estas tres son las acciones más comunes y directas que un personaje o criatura pueden realizar en un combate. En 'Ataques especiales', pág. 154 se cubren acciones más especializadas. Ataque Realizar un ataque es una acción estándar.
+Ataques cuerpo a cuerpo: con un arma de cuerpo a cuerpo normal puedes golpeara un oponente a no más de 5' (se considera que un oponente a no más de 5' está adyacentea ti). Algunas armas de cuerpo a cuerpo tienen alcance, tal y como se indica en su descripción del Capítulo 7: equipo. Con un arma de alcance típica puedes golpear a oponentes a 10' de distancia, pero no puedes impactar en enemigos adyacentes (los que están a no más de 5').
+Ataques sin arma: golpear para causar daño con puñetazos, patadas y cabezazos es muy parecido a atacar con un arma cuerpo a cuerpo, salvo en lo siguiente:
+Ataques de oportunidad: atacar sin armas provoca un ataque de oportunidad por parte del personaje al que atacas, si es que está armado. El ataque de oportunidad se realiza antes de tu ataque. Un ataque sin armas no provoca ataques de oportunidad de otros enemigos, como sucede al disparar un arco, ni provoca ataques de oportunidad por parte de un enemigo desarmado. El ataque de oportunidad se provoca porque aproximas tu cuerpo a tu oponente. Un personaje sin arma no puede realizar ataques de oportunidad (pero consulta 'Ataques sin arma "armados", a continuación).
+Ataques sin arma "armados": a veces el ataque sin arma de un personaje o criatura cuenta como un ataque con arma. Un monje, un personaje con la dote Impacto sin arma mejorado (pág. 98), un lanzador de conjuros utilizando un conjuro de ataque de toque, y una criatura con garras, colmillos o un arma fisica natural similar son considerados armados. Ten en cuenta que estar armado cuenta tanto para el ataque como para la defensa. Un monje no sólo no provoca un ataque de oportunidad al atacar a un enemigo armado, si no que podrá realizar un ataque de oportunidad él mismo si un oponente le ataca sin arma.
+
+Ataques de oportunidad: normalmente, los enemigos en cuya área de amenaza te encuentres tendrán derecho a realizar un ataque de oportunidad cuando estés lanzando un conjuro. Si sufres daño por culpa del ataque de oportunidad, tendrás que realizar una prueba de Concentración (CD 10 + puntos de daño sufridos + nivel de conjuro) o perderás el sortilegio. Los conjuros que sólo requieren una acción gratuita para ser lanzados (como caída de pluma o un conjuro apresurado) no provocan ataques de oportunidad.
+
+Lanzar conjuros a la defensiva: puedes intentar lanzar un conjuro a la vez que prestas atención a las amenazas y evitas los golpes. Haciendo esto, serás igual de vulnerable que si estuvieras simplemente de pie; por tanto, ejecutar un sortilegio a la defensiva no provocará ataques de oportunidad. No obstante, para conseguirlo te hará falta una prueba de Concentración (CD 15 + nivel del conjuro); un fallo indica que el conjuro se pierde.
+
+TABLA 8-2: ACCIONES EN EL COMBATE
+Acción estándar	Ataque de oportunidad¹
+Activar un anillo, bastón, cetro, objeto maravilloso o varita	No
+Arrollar (pág. 154)	No
+Ataque (a distancia)	Sí
+Ataque (cuerpo a cuerpo)	No
+Ataque (sin arma)	Sí
+Beber una poción o aplicar un aceite	Sí
+Concentrarse para mantener un conjuro activo	No
+Defensa total	No
+Desactivar resistencia a conjuros	No
+Desenvainar un arma oculta (consulta Juego de manos, pág. 77)	No
+Deshacer un conjuro	No
+Embestida (pág. 156)	No
+Encender una antorcha con una ramita yesquera (pág. 129)	Sí
+Estabilizar a un amigo moribundo (consulta Sanar, pág. 81)	Sí
+Expulsar o reprender muertos vivientes (pág. 156)	No
+Fintar (consulta pág. 158)	No
+Golpear un arma (ataque)	Sí
+Golpear un objeto (ataque)	Depende³
+Lanzar un conjuro (tiempo de lanzamiento de 1 acción estándar)	Sí
+Leer un rollo de pergamino	Sí
+Librarse de una presa (pág. 159)	No
+Preparar una acción (desencadena una acción parcial)	No
+Prestar ayuda (pág. 158)	Depende²
+Usar una aptitud extraordinaria	No
+Usar una aptitud sobrenatural	No
+Usar una aptitud sortílega	Sí
+Usar una habilidad que requiera 1 acción	Norm. sí
+
+Acción de movimiento	Ataque de oportunidad¹
+Abrir o cerrar una puerta	No
+Cargar una ballesta de mano o ligera	Sí
+Controlar a una montura asustada	Sí
+Desenvainar un arma⁴	No
+Dirigir o asignar un nuevo objetivo a un conjuro activo	No
+Envainar un arma	Sí
+Levantarse estando tumbado	Sí
+Montar o desmontar de un caballo	No
+Mover un objeto pesado	Sí
+Moverse	Sí
+Ponerse o soltarse un escudo⁴	No
+Recoger un objeto	Sí
+Sacar un objeto guardado	Sí
+
+Acción de asalto completo	Ataque de oportunidad¹
+Apagar un fuego	No
+Ataque completo	No
+Cargar⁵ (pág. 154)	No
+Cargar una ballesta pesada o de repetición	Sí
+Correr	Sí
+Dar un golpe de gracia (pág. 152)	Sí
+Encender una antorcha	Sí
+Enganchar o desenganchar un arma a un guantelete de sujeción	Sí
+Librarse de una red (pág. 121)	Sí
+Preparar un arma deflagradora para lanzarla (pág. 158)	Sí
+Retirarse del combate⁵	No
+Usar un conjuro de toque sobre un máximo de seis amigos	Sí
+Usar una habilidad que requiera 1 asalto	Norm. sí
+
+Acción gratuita	Ataque de oportunidad¹
+Dejar caer un objeto	No
+Dejar de concentrarse en un conjuro	No
+Echarse al suelo	No
+Hablar	No
+Lanzar un conjuro apresurado (pág. 94)	No
+Preparar los componentes de un conjuro para lanzarlo⁶	No
+
+No considerado acción	Ataque de oportunidad¹
+Paso de 5'	No
+Retrasar una acción	No
+
+Acciones de tipo variable	Ataque de oportunidad¹
+Derribar a un oponente⁷ (pág. 156)	No
+Desarmar⁷ (pág. 156)	Sí
+Presa⁷ (pág. 158)	Sí
+Usar una dote⁸	Varía
+
+¹ Sin importar cual sea la acción, si te mueves para salir de una casilla amenazada, lo normal es que provoques un ataque de oportunidad. Esta columna indica si la acción por sí misma (no el movimiento) provoca un ataque de oportunidad.
+² Si prestas ayuda a alguien realizando una acción que normalmente provocaría un ataque de oportunidad, entonces el prestar ayuda también provoca un ataque de oportunidad.
+³ Si el objeto está siendo sostenido, transportado o llevado puesto por una criatura, sí. En los demás casos, no.
+⁴ Si tienes un bonificador de ataque +1 o superior, puedes combinar una de estas acciones con un movimiento normal. Si tienes la dote de Combate con dos armas, puedes desenvainar dos armas ligeras o de una mano en el tiempo que normalmente hace falta para desenvainar una.
+⁵ Puede realizarse como acción estándar, si estás limitado a realizar tan sólo una acción por asalto.
+⁶ Salvo que el componente sea extremadamente grande o complicado (decisión del DM).
+⁷ Estas formas de ataque reemplazan a un ataque cuerpo a cuerpo, no a una acción. Como ataques cuerpo a cuerpo, pueden utilizarse una vez en una acción de ataque o carga, uno o más veces en una acción de asalto completo, o incluso pueden utilizarse en un ataque de oportunidad.
+⁸ La descripción de la dote define su efecto.
+
+ACCIONES DE MOVIMIENTO
+Con la excepción de algunas habilidades específicas que implican movimiento, la mayoría de las acciones de movimiento no requieren una prueba. Moverse La más sencilla de las acciones de movimiento es mover a la velocidad de tu personaje. Si realizas este tipo de acción durante un asalto, no puedes realizar además un paso de 5'. La mayoría de los modos no estándar de moverse quedan cubiertos por esta categoría, incluyendo trepar (hasta un 1/4 de tu velocidad) y na dar (hasta 1/4 de tu velocidad).
+Arrastrarse: puedes arrastrarte 5' como acción de movimiento. Arrastrarse provoca ataques de oportunidad de todos los atacantes que te amenacen en cualquier punto de tu movimiento.
+Escalada acelerada: puedes trepar la mitad de tu velocidad como acción de movimiento aceptando un penalizador -5 en tu prueba de Trepar. Desenvainar o envainar un arma Desenvainar un arma para que puedas utilizarla en combate o guardarla para que puedas tener una mano libre requiere una acción de movimiento. Esta acción también se aplica a objetos similares a un arma que lleves fácilmente accesibles, como varitas. Si tu arma u objeto equivalente está guardado en una mochila o no es fácilmente accesible por cualquier otro motivo, debes considerar esta acción como sacar un objeto guardado. Si tienes un ataque base de +1 o superior, puedes desenvainar un arma como acción gratuita junto con un movimiento normal. Si tienes la dote Combate con dos armas (pág. 92), puedes desenvainar dos armas ligeras o a una mano en el tiempo que normalmente te llevaría desenvainar una. Sacar munición para utilizarla con un arma a distancia (como flechas, balas, shurikens o virotes) es una acción gratuita. Ponerse o soltar un escudo Con una acción de movimiento puedes sujetar un escudo a tu mano para que proporcione su bonificador de armadura a tu CA, o soltarlo y dejarlo caer para que puedas utilizar la mano del escudo para otros fines. Si tienes
+Dados como contadores: utiliza los dados para llevar la cuenta del número de asaltos que lleva activo un efecto mágico de corta duración; cada asalto que continúe el efecto no tienes más que darle la vuelta al dado para que indique el número siguiente.
+Tiradas de ocultación: si sabes que tu personaje tiene posibilidades de fallar debido a la ocultación del objetivo, puedes tirar junto con tu tirada de ataque. Si la tirada de ocultación indica un fallo, ignora la tirada de ataque. un ataque base de +1 o superior, puedes ponerte o soltar un escudo como una acción gratuita combinada con un movimiento normal. Dejar caer un escudo que estés transportando (pero que no lleves puesto) es una acción gratuita. Manipular un objeto En la mayoría de los casos, mover o manipular un objeto es una acción de movimiento. Esto incluye sacar un objeto guardado o devolverlo a su sitio, recoger un objeto, mover un objeto pesado y abrir una puerta. En la
+tabla 8-2: acciones en el combate, se dan algunos ejemplos de este tipo de acciones y se indica si provocan o no ataques de oportunidad. Dirigir o asignar un nuevo objetivo a un conjuro Algunos conjuros, como esfera flamígera y arma espiritual te permiten dirigir el efecto a nuevos objetivos o zonas después de lanzarlos. Asignar un nuevo objetivo a un conjuro requiere una acción de movimiento y no provoca ataques de oportunidad ni requiere concentración (consulta Lanzar un conjuro' en 'Acciones estándar', pág. 140). Levantarse Levantarte desde una posición tumbada requiere una acción de movimiento y provoca ataques de oportunidad. Montar y desmontar Montar o desmontar de un caballo u otra montura requiere una acción de movimiento.
+Montar o desmontar rápidamente: puedes montar o desmontar como acción gratuita con una prueba de Montar a CD 20 (tu penalizador de armadura se aplica a esta prueba, en caso de tenerlo). Si fallas la prueba, montar o desmontar será una acción de movimiento (para que puedas tratar de montar o desmontar rápidamente deberás poder montar o desmontar como acción de movimiento en ese asalto).
+
+de lanzamiento de 1 asalto: en este caso el conjuro produce sus efectos en el mismo asalto en el que comienzas a lanzarlo, y no es necesario que continúes con las invocaciones, gestos y concentración hasta el asalto siguiente. Para conjuros con un tiempo de lanzamiento mayor, es necesaria una acción de asalto completo adicional para lanzarlos como conjuros metamágicos. Los clérigos también necesitan más tiempo para lanzar espontáneamente una versión metamágica de un conjuro de curar o infligir. Por ejemplo, un clérigo de nivel 11.º puede cambiar un conjuro preparado de 6.º nivel para lanzarun curar heridas críticas potenciado. El lanzamiento espontáneo de una versión metamágica de un conjuro con un tiempo de lanzamiento de 1 acción estándar es una acción de asalto completo, y los conjuros con un tiempo de lanzamiento mayor requieren una acción de asalto completo adicional para su lanzamiento. Usar una aptitud especial Utilizar una aptitud especial normalmente es una acción estándar, pero en algunos casos puede ser una acción de asalto completo, según se defina en la aptitud. Consulta 'Aptitudes especiales', pág. 180, y 'Usar una aptitud especial' en 'Acciones estándar', pág, 142. Retirarse Retirarse de un combate cuerpo a cuerpo es una acción de asalto completo. Cuandote retiras puedes moverte hasta el doble de tu velocidad. La casilla en la que comienzas no es considerada amenazada por ningún oponente que puedas ver, por lo que los oponentes visibles no obtienen ataques de oportunidad contra ti cuandote mueves fuera de esa casilla (los enemigos invisibles siguen teniendo ataques de oportunidad contra ti; además, no puedes retirarte de un combate si estás cegado). No puedes realizar un paso de 5' durante el mismo asalto en el que te retiras. Si, durante la retirada, te mueves fuera de una casilla amenazada (que no sea la casilla desde la que comenzaste), los enemigos reciben ataques de oportunidad de forma normal. No puedes retirarte utilizando una forma de movimiento para la cual no tengas indicada una velocidad. Por ejemplo, una araña monstruosa cuenta con una velocidad de trepar, por lo que puede retirarse trepando. Tu personaje normalmente no tiene indicada una velocidad de trepar (salvo que estés bajo los efectos de un conjuro de trepar cual arácnido, por ejemplo), por lo que no podrás utilizar Trepar para retirarte del combate. Ten en cuenta que a pesar del nombre de esta acción, no es necesario que abandones el combate completamente. Por ejemplo, puedes utilizar una acción de retirarse para alejarte de un enemigo y acercarte a otro.
+Retirada limitada: si estás limitado a realizar sólo una acción estándar cada asalto (por ejemplo, si has sido ralentizado o durante un asalto de sorpresa), puedes retirarte como acción estándar. En este caso, puedes moverte hasta tu velocidad, en lugar de hasta el doble de tu velocidad. Correr Puedes correr como acción de asalto completo (al hacer esto, no tendrás derecho a un paso de 5'). Cuando corres puedes moverte en línea recta hasta 4 veces tu velocidad normal (o 3 veces tu velocidad normal, si llevas puesta una armadura pesada). Al no poder evitar los ataques, perderás tu bonificador de Destreza a la CA salvo que tengas la dote de Correr (pág. 94), que te permite conservarlo. Puedes correr durante tantos asaltos como puntuación tengas en Constitución; transcurrido ese tiempo, deberás tener éxito en una prueba de Constitución (CD 10) para poder seguir corriendo. Llegado este punto, deberás realizar una nueva prueba cada asalto que mantengas la carrera, y la CD irá aumentando en 1 punto con cada nueva tirada. En cuanto falles una de estas pruebas, tendrás que parar. Un personaje que haya corrido hasta el límite debe descansar durante 1 minuto (10 asaltos) antes de poder correr de nuevo. Durante un periodo de descanso, el personaje no podrá desplazarse más deprisa que con una acción de movimiento normal. No puedes correr a través de terreno difícil (consulta la pág. 148), ni tampoco puedes correr si no ves hacia dónde vas. Correr representa una velocidad de unas 12 millas por hora para un humanosin impedimenta. Mover 5' a través de terreno difícil En algunas situaciones, tu movimiento puede estar tan entorpecido que no tengas la velocidad suficiente para moverte ni siquiera 5' (una sola casilla). En estos casos, puedes emplear una acción de asalto completo para moverte 5'(1 casilla) en cualquier dirección, incluso en diagonal. Aunque aparentemente esto sea igual a un paso de 5', no lo es, y por ello provoca ataques de oportunidad de modo normal. No puedes aprovecharte de esta regla para moverte a través de terreno infranqueable o para moverte cuando todo movimiento te esté prohibido, como cuando estás paralizado.
+
+COBERTURA
+Una de las mejores defensas que existen es la cobertura. Cubriéndote detrás de un árbol, una pared, un lateral de carro o las almenas de un castiIlo, puedes protegerte de los ataques, en especial de los efectuados a distancia, y también de ser descubierto. Para determinar si tu objetivo tiene cobertura frente a tus ataques a distancia, elige una esquina de tu casilla. Si cualquier línea desde esa esquina hasta cualquier esquina de la casilla del objetivo pasa a través de una casilla o lado que bloquee la línea de efecto o proporcione cobertura, o a través de una ca silla ocupada por una criatura, el objetivo tienen cobertura (+4 a la CA). Cuando realices un ataque cuerpo a cuerpo contra un objetivo adyacente, tu objetivo tiene cobertura si cualquier línea desde tu espacio hasta el espacio del objetivo pasa a través de un muro (incluyendo un muro bajo). Cuando realices un ataque cuerpo a cuerpo contra un objetivo que no esté adyacente a ti (por ejemplo, con un arma de alcance), utiliza las reglas para determinar la cobertura frente a los ataques a distancia.
+Obstáculos bajos y cobertura: un obstáculo bajo (como un muro que llegue como máximo a la mitad de tu altura) proporciona cobertura, pero sólo a criaturas a un máximo de 30' (6 casillas) de él. El atacante puede ignorar la cobertura si está más cerca del obstáculo que su objetivo.
+Cobertura y ataques de oportunidad: no puedes realizar un ataque de oportunidad contra un oponente que tenga cobertura respecto a ti.
+
+ARROLLAR
+Puedes intentar arrollar a alguien como acción estándar realizada durante tu movimiento, o como parte de una carga (en general no puedes realizar una acción estándar durante un movimiento; esto es una excepción a esa regla). Al arrollar intentas echar a un lado a tu oponente (y pasar a través de su casilla) mientras te mueves. Sólo puedes arrollar a un oponente que sea una categoría de tamaño mayor que tú, de tu mismo tamaño o más pequeño, y sólo puedes realizar un intento por asalto. Si estás intentando arrollar a un oponente sigue los pasos indicados aquí.
+Paso 1: ataque de oportunidad. Ya que comienzas el intento de arrollar moviéndote en el espacio del defensor, provocas un ataque de oportunidad por parte de este.
+
+DERRIBO
+Puedes intentar derribar a un oponente como si fuera un ataque sin arma de cuerpo a cuerpo. Sólo podrás intentarlo contra uno que sea una categoría de tamaño mayor que tú, de tu mismo tamaño o más pequeño.
+Efectuar un ataque de derribo: realiza un ataque sin arma de toque en cuerpo a cuerpo. Esto provoca un ataque de oportunidad de tu objetivo, tal y como sucede con los ataques sin arma normales. Si tu ataque tiene éxito, realiza una prueba de Fuerza enfrentada a una de Fuerza o Destreza del defensor (aquella de las dos en la que tenga un mayor modificador). Cada contendiente sumará un bonificador +4 por cada categoría de tamaño que posea por encima de Mediano y restará un penalizador 4 por cada una que tenga por debajo. El defensor obtendrá un bonificador +4 de estabilidad si tiene más de dos piernas o si por algún otro motivo posee una estabilidad superior a la de un humanoide normal (como sucede con los enanos). Si vences, habrás logrado derribar al defensor. Si pierdes, éste podrá reaccionar inmediatamente y realizar una prueba de Fuerza, enfrentada a una tuya de Fuerza o Destreza, para intentar derribarte a ti
+Evitar ataques de oportunidad: si tienes la dote Derribo mejorado, o si estás derribando con un arma (ver más adelante), no provocas un ataque de oportunidad al realizar un ataque de derribo.
+
+DESARMAR
+Puedes intentar desarmar a alguien como ataque cuerpo a cuerpo. Si lo in tentas con un arma, arrancas el arma de las manos del oponente y ésta cae al suelo. Si intentas desarmas sin armas, terminas con el arma en tus manos. Si estás intentando desarmar a alguien con un arma de cuerpo a cuerpo, sigue los pasos indicados aquí. Si el objeto del que estás intentando desarmar no és un arma de cuerpo a cuerpo (por ejemplo, un arco o una varita), el defensor sigue oponiéndose a ti con una tirada de ataque, pero sufre un penalizador y no puede intentar desarmarte a ti si tu ataque falla.
+Paso 1: ataque de oportunidad. Provocas un ataque de oportunidad del objetivo al que estás intentando desarmar (si tienes la dote Desarme mejorado no provocas un ataque de oportunidad al realizar un intento de desarme). Si el ataque de oportunidad del defensor te inflige algún daño, tu intento de desarme falla.
+
+EMBESTIR
+Puedes embestir como acción estándar (un ataque) o como parte de una carga (ver 'Carga', más arriba). Al llevar a cabo una embestida, intentarás empujar a tu oponente en lugar de atacarlo. Sólo podrás empujar a un oponente que sea una categoría mayor que tú, de tu mismo tamaño o más pequeño.
+Iniciar una embestida: en primer lugar tendrás que entrar en el espacio del defensor. Esto permitirá efectuar ataques de oportunidad a todo enemigo cuya área amenazada atravieses, incluyendo al propio defensor (si tienes la dote Embestida mejorada, no provocarás un ataque de oportunidad del defensor). Durante la embestida, cualquier ataque de oportunidad realizado por alguien que no sea el defensor tendrá un 25% de posibilidades de alcanzar por acciden te a la criatura embestida; asimismo, cualquier ataque de oportunidad contra el defensor que no proceda de ti tendrá un 25% de posibilidades de golpearte a ti en su lugar (cuando alguien haga un ataque de oportunidad, primero realizará la tirada de ataque y después comprobará a quién ha alcanzado). En segundo lugar, tanto tú como el defensor realizaréis una prueba enfrentada de Fuerza. Cada uno de vosotros sumará un bonificador +4 por cada cate goría de tamaño que posea por encima de Mediano y restará un penalizador -4 por cada una que tenga por debajo. Si estabas cargando, obtendrás un bonif +2 de carga. El defensor obtendrá un bonificador +4 de estabilidad si tiene más de dos patas o posee algún otro tipo de estabilidad excepcional (como un enano).
+Resultados de la embestida: si consigues vencer al defensor en la prueba de Fuerza, le harás retroceder 5' con tu embestida. Si quisieras moverte junto con él, le harás retroceder 5' más por cada 5 puntos en que hayas superado el resultado de su prueba. Sin embargo, no podrás superar tu límite
+normal de movimiento (Nota: el defensor provocará ataques de oportunidad al ser desplazado, igual que tú en caso de moverte con él; no obstante, ninguno de los dos provocáis ataques de oportunidad respecto al otro). Si no logras derrotar al defensor en la prueba de Fuerza, rebotarás 5 hacia atrás, quedando justo donde estuvieras antes de entrar en el espacio ocupado por el defensor. Si ese espacio estuviera ocupado, te caerás y que darás tumbado en él.
+
+EXPULSAR O REPRENDER MUERTOS VIVIENTES
+Los clérigos y paladines de alineamiento bueno (y algunos clérigos neutrales) pueden canalizar energía positiva que puede detener, ahuyentar (expulsar) o destruir a los muertos vivientes. Los clérigos malignos (y algunos clérigos neutrales) pueden canalizar energía negativa que puede detener, sobrecoger (reprender), controlar (comandar) o reforzar a los muertos vivientes. Sin importar cual sea el efecto, el término general para esta aptitud es "expulsión, y las pruebas que los personajes realizan para intentar ejercer su control divino sobre estas criaturas se llaman genéricamente de expulsión.
+Pruebas de expulsión
+La expulsión de muertos vivientes es una aptitud sobrenatural que un personaje puede llevar a cabo como acción estándar, que no dará lugar a ataques de oportunidad. Debes mostrar tu símbolo sagrado para que surta efecto. La expulsión se considera un ataque.
+
+ROMPER ARMA
+Puedes utilizar un ataque cuerpo a cuerpo con un arma cortante o contundente para golpear un arma o escudo que tu oponente sostenga. En ese caso, sigue los pasos indicados aquí (atacar objetos que un personaje sostenga pero que no sean armas ni escudos también se trata a continuación).
+
+TABLA 8-10: DUREZA Y PUNTOS DE GOLPE DE LAS ARMAS, ARMADURAS Y ESCUDOS CORRIENTES
+Arma o escudo	Ejemplo	Dureza	pg¹
+Hoja ligera	Espada corta	10	2
+Hoja a una mano	Espada larga	10	5
+Hoja a dos manos	Espadón	10	10
+Arma ligera con mango metálico	Maza ligera	10	10
+Arma a una mano con mango metálico	Maza pesada	10	20
+Arma ligera con mango	Hacha de mano	5	2
+Arma a una mano con mango	Hacha de batalla	5	5
+Arma a dos manos con mango	Gran hacha	5	10
+Arma de proyectiles	Ballesta	5	5
+Armadura	-	especial²	bonif. de armadura ×5
+Broquel	-	10	5
+Escudo ligero de madera	-	5	7
+Escudo pesado de madera	-	5	15
+Escudo ligero de acero	-	10	10
+Escudo pesado de acero	-	10	20
+Escudo pavés	-	5	20
+¹ El valor de pg dado es para armas, armaduras y escudos Medianos. Divide el valor entre 2 por cada categoría de tamaño por debajo de Mediano, o multiplícalo por 2 por cada categoría por encima.
+² Varía según el material. Consulta la tabla 9-9, pág. 166.
+
+Paso 1: ataque de oportunidad. Provocas un ataque de oportunidad por parte del objetivo cuya arma o escudo estés intentando romper (excepto si tienes la dote de Romper arma mejorado).

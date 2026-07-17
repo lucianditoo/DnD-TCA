@@ -1,0 +1,14 @@
+01_tablero_de_combate.txt — Tablero, casillas, miniaturas, cuadrículas y representación espacial.
+02_como_funciona_el_combate.txt — Flujo del combate, asaltos, sorpresa, orden y ciclo del combate.
+03_estadisticas_de_combate.txt — Tiradas y bonificadores de ataque, modificadores, tamaño, daño, Clase de Armadura, puntos de golpe, velocidad y tiros de salvación.
+04_iniciativa.txt — Iniciativa, orden de actuación, sorpresa, personajes desprevenidos, retrasar y preparar.
+05_acciones.txt — Acciones estándar, de movimiento, de asalto completo, gratuitas y misceláneas.
+06_ataques.txt — Tiradas de ataque, ataques cuerpo a cuerpo y a distancia, daño, impactos, fallos y golpes críticos.
+07_movimiento.txt — Movimiento, velocidad, desplazamiento, movimiento doble, correr, diagonales y distancias.
+08_ataques_de_oportunidad.txt — Amenaza, casillas amenazadas, provocación, retirada, paso de 5 pies y excepciones.
+09_posicionamiento.txt — Ocupación de casillas, tamaño, alcance, adyacencia y espacio ocupado.
+10_modificadores_de_combate.txt — Cobertura, ocultación, flanqueo, terreno, combate montado, disparar al combate y modificadores circunstanciales.
+11_ataques_especiales.txt — Maniobras y ataques especiales.
+12_acciones_especiales_de_iniciativa.txt — Retrasar y preparar una acción.
+13_heridas_y_muerte.txt — Daño, incapacitación, estado moribundo, muerte, estabilización y curación.
+14_resumen_de_reglas.txt — Checklist técnica de las reglas presentes en el capítulo.

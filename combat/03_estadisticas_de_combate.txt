@@ -1,0 +1,127 @@
+ESTADÍSTICAS DE COMBATE
+Esta sección resume las estadísticas que determinan el éxito en el combate; tras lo cual se detalla cómo utilizarlas.
+TIRADA DE ATAQUE
+Una tirada de ataque representa tu intento de golpear a un oponente en tu turno de un asalto. Al realizar una tirada de ataque, debes lanzar 1d20 y añadir tu bonificador de ataque (es posible aplicar otros modificadores a esta tirada). Si tu resultado es igual o superior a la CA de tu enemigo, tu golpe habrá tenido éxito e infligirá daño.
+Impactos y fallos automáticos: un 1 natural (cuando el d20 muestra un 1) en una tirada de ataque siempre es un fallo. Un 20 natural (cuando el d20 muestra un 20) siempre es un impacto. Un 20 natural también es una amenaza (una posibilidad) de impacto crítico (consulta 'Golpes críticos', pág. 140).
+BONIFICADOR DE ATAQUE
+Tu bonificador de ataque con un arma de cuerpo a cuerpo es: Ataque base + modificador de Fuerza + modificador de tamaño Con un arma de ataque a distancia, tu bonificador de ataque es: Ataque base + modificador de Destreza + modificador de tamaño + penalizador de distancia
+Modificador de Fuerza: la Fuerza te ayuda a blandir las armas con mayor potencia y rapidez; por lo tanto, tu modificador de Fuerza se aplicará a las tiradas de ataque cuerpo a cuerpo.
+Modificador de Destreza: como la Destreza mide la coordinación y el pulso, tu modificador de Destreza se aplicará a las tiradas de ataque a distancia.
+Modificador de tamaño: cuanto más pequeño seas, mayores serán las demás criaturas en comparación contigo. Un humano es blanco fácil para un mediano, igual que un ogro lo es para un humano. Como este mismo modificador de tamaño se aplica a la CA, dos criaturas del mismo tamaño se golpearán mutuamente con normalidad, sin importar cuál sea su tamaño real.
+
+TABLA 8-1: MODIFICADORES DE TAMAÑO
+Tamaño	Modificador de tamaño
+Colosal	-8
+Gargantuesco	-4
+Enorme	-2
+Grande	-1
+Mediano	+0
+Pequeño	+1
+Menudo	+2
+Diminuto	+4
+Minúsculo	+8
+
+Penalizador de distancia: el penalizador de distancia con un arma arrojadiza o de proyectil dependerá del arma y de lo lejos que se encuentre el blanco. Tanto las armas arrojadizas como las de proyectil poseen un incremento de distancia, como 10' en el caso de la daga arrojadiza y 120' en el de la ballesta pesada
+(consulta la tabla 7-5: armas, en la pág. 116). Los ataques contra blancos situados a menos de un incremento de distancia no sufrirán penalizador, por lo que una flecha disparada con un arco corto (incremento de distancia de 60') puede impactar a enemigos hasta una distancia máxima de 59' sin penalizador. Sin embargo, cada incremento de distancia completo impondrá un penalizador -2 acumulativo en la tirada de ataque. Un arquero que disparase un arco corto contra un blanco situado a 200' sufriría un penalizador -6 al ataque (porque los 200 pasan de los 3 incrementos de distancia, pero no llegan a los cuatro). Las armas arrojadizas, como las jabalinas, tienen un alcance máximo de 5 incrementos de distancia; las de proyectil, como los arcos, pueden disparar llegando hasta los 10 incrementos.
+DAÑO
+Cuando logras golpear, el daño que infliges depende del tipo de arma (consulta la tabla 7-5: armas, en la pág. 116). En lo que se refiere a los efectos que modifican el daño de las armas, se considera que los impactos sin arma y los ataques físicos naturales de las criaturas infligen daño por arma. El daño reduce los puntos de golpe que tenga un objetivo.
+Daño mínimo: si los penalizadores al daño reducen el daño por debajo de 1, un golpe seguirá infligiendo 1 punto de daño
+bonificador de Fuerza: al impactar con un arma cuerpo a cuerpo o arrojadiza (incluida la honda), tu bonificador de Fuerza se suma al daño. Si se tiene un penalizador de Fuerza (en vez de un bonificador), éste debe aplicarse a los ataques realizados con un arco, a menos que se trate de un arco compuesto.
+Armas en la mano torpe: cuando inflijas daño con un arma blandida con la mano torpe, sólo añadirás la mitad de tu bonificador de Fuerza
+Blandir un arma con las dos manos: al infligir daño con un arma que estés blandiendo con las dos manos, añadirás una vez y media tu bonificador de Fuerza. Las armas ligeras blandidas con las dos manos no se benefician de este bonificador de Fuerza superior al normal (consulta 'Armas ligeras, a una mano y a dos manos', en la pág. 113).
+Multiplicar el daño: a veces, debes multiplicar el daño por un factor, como cuando logras un golpe crítico. Realiza la tirada de daño tantas veces como indique el factor (aplicando todos los modificadores) y suma todos los resultados.
+Nota: cuando un daño se multiplica más de una vez, todos los multiplicadores parten del daño original sin multiplicar (consulta 'Cómo multiplicar', pág. 305).
+Excepción: los bonificadores al daño representados como dados adicionales, como los de un ataque furtivo o una espada flamígera, no se multiplican al asestar un golpe crítico. Por ejemplo, Krusk, el bárbaro semiorco, obtiene un bonificador +3 de Fuerza. Esto quiequiere decir que obtiene un bonificador +3 al daño cuando utiliza una espada larga, un bonificador +4 cuando usa una gran hacha (a dos manos) y un bonificador +1 cuando golpea con un arma en su mano torpe. Su multiplicador de crítico con una gran hacha es ×3; por tanto, si logra asestar un golpe crítico, lanzará tres veces 1d12+4 puntos de daño (o, lo que es lo mismo, lanzaría 3d12+12).
+Daño a las puntuaciones de característica: ciertas criaturas y efectos mágicos pueden causar daño temporal a las características (una reducción de una puntuación de característica). Los detalles sobre el daño de característica se encuentran en la Guía del Dungeon Master.
+CLASE DE ARMADURA
+Tu Clase de Armadura (CA) representa la dificultad para darte un golpe que inflija daño, e indica el resultado que el oponente necesitará en su tirada de ataque para conseguirlo. Un campesino normal y sin armadura tendrá una CA de 10. La CA de tu personaje será igual a lo siguiente: 10+ bonificador de armadura + bonificador de escudo + modificador de Destreza + modificador de tamaño
+bonificadores de escudo y armadura: tanto el escudo como la armadura conceden bonificadores a la CA; estos bonificadores representan la capacidad de tales objetos para protegerte de los golpes.
+
+TIROS DE SALVACIÓN
+Cuandote conviertes en objetivo de un ataque mágico o insólito, sueles tener derecho a un Tiro de salvación (TS) para negar o reducir su efecto. Para tener éxito en un TS, el resultado de tu tirada ha de ser igual o superior a la Clase de Dificultad (CD) del ataque.
+Tiro de salvación de Fortaleza: 1d20 + salvación base + modificador de Constitución
+Tiro de salvación de Reflejos: 1d20 + salvación base + modificador de Destreza
+Tiro de salvación de Voluntad: 1d20 + salvación base + modificador de Sabiduría
+
+Modificador de Destreza: si tu puntuación de Destrezaes alta, se te dará especialmente bien esquivar los golpes; si es baja, se te dará bastante mal. Ésa es la razón por la que el modificador de Destreza se aplica a la CA. Recuerda que la armadura limitará tu bonificador de Destreza, y que podrías no beneficiarte de éste al completo cuando lleves una armadura
+pesada (consulta la tabla 7-6: armadura y escudos, pág. 123). En ciertas ocasiones, no podrás beneficiarte de tu bonificador de Des treza (si es que lo tienes). Si no puedes reaccionar ante un golpe, no puedes aplicar tu bonificador de Destreza a la CA (si careces de bonificador, no pasará nada). Perderás tu bonificador de Destreza cuando, por ejemplo, seas atacado por un oponente invisible, estés agarrado al lado de un precipicio sobre un río de lava o te cojan desprevenido al principio de un combate.
+Modificador de tamaño: una criatura es más fácil de golpear cuanto más grande es, y más difícil cuanto más pequeña. Como este mismo modificador se aplica a las tiradas de ataque, un mediano por ejemplo no tendría por qué tenerlo más difícil para golpear a uno de sus congéneres.
+Consulta la tabla 8-1: modificadores de tamaño, pág. 134.
+Otros modificadores: otros muchos factores pueden influir en tu CA.
+bonificadores de mejora: los efectos de mejora incrementan la resistencia de tu armadura (cota de mallas +1, escudo pesado +1, etc.).
+bonificador de desvío: los efectos de desvío mágico evitan los ataques y mejoran tu CA.
+Armadura natural: la armadura natural mejora tu CA (los miembros de las razas comunes carecen de armadura natural, que suele consistir en escamas o gruesas capas de piel o músculo).
+bonificadores de esquiva: otros bonificadores a la CA representan la intención activa de evitar los golpes, como el bonificador a la CA que los enanos tienen contra los gigantes o el que se obtiene por combatir a la defensiva. Todos éstos reciben el nombre de bonificadores de esquiva. Cualquier situación que anule tu bonificador de Destreza también negará tus bonificadores de esquiva (no obstante, llevar armadura no limitará estos bonificadores como hace con los de Destreza). Al contrario de lo que sucede con la mayoría de bonificadores, los de esquiva pueden apilarse entre sí. El bonificador +4 contra gigantes poseído por un enano y su bonificador +2 a la CA por luchar a la defensiva se combinarían para dar lugar a un bonificador +6.
+Ataques de toque: algunos ataques ignoran la armadura, incluyendo los escudos y la armadura natural. Por ejemplo, el toque de un mago con un conjuro de contacto electrizante te infligiría daño sin importar qué armadura llevases o lo gruesa que fuera tu piel. En tales casos, el atacante realizará una tirada de ataque de toque (ya sea a distancia o en cuerpo a cuerpo); su tirada de ataque será normal, pero tu CA no incluirá ningún bonificador de armadura, de escudo ni de armadura natural. Todo los demás modificadores, como los de tamaño y Destreza y tu bonificador de desvío (en caso de haberlos) seguirán aplicándose normalmente. Por ejemplo, si un hechicero intentara tocar a Tordek con un conjuro de contacto electrizante, Tordek obtendría su bonificador +1 de Destreza, pero no el bonificador +4 de armadura de su cota de escamas ni el bonificador +2 de su escudo pesado de madera. Contra ataques de toque, su CA sería 11 solamente.
+PUNTOS DE GOLPE
+Tus puntos de golpe te indican cuánto daño puedes aguantar antes de caer. Estos se basan en tu clase y nivel, y varían según tu modificador de Constitución. La mayoría de puntos de golpe de los monstruos se basan en el tipo de criatura al que pertenecen, pero algunos tienen también clase y nivel (mucho cuidado con las medusas hechiceras...). Cuando tus puntos de golpe totales se reduzcan a 0, quedarás incapacitado; cuando lleguen a -1, estarás moribundo; cuando lleguen a -10,
+tus problemas habrán terminado: estarás muerto (consulta 'Heridas y muerte', pág. 145).
+VELOCIDAD
+La velocidad indica cuánto te mueves en un asalto en el que, además, quieras hacer otra cosa, como atacar o lanzar un conjuro. Tu velocidad depende principalmente de tu raza y de la armadura que lleves puesta. Los enanos, gnomos y medianos tienen una velocidad de 20' (4 casillas), o de 15' (3 casillas) cuando llevan armadura intermedia o pesada (salvo los enanos, que mueven ven 20' con cualquier tipo de armadura). Los humanos, elfos, semielfos y semiorcos tienen una velocidad de 30'(6 casillas), o de 20' (4 casillas) cuando llevan armadura intermedia o pesada. Si usas dos acciones de movimiento en un asalto (lo cual a veces se llama acción "de movimiento doble") puedes desplazarte hasta el doble de tu ve locidad. Si dedicas todo el asalto a correr, puedes desplazarte hasta el cuá druple de tu velocidad (o el triple, si llevas puesta una armadura pesada).
+TIROS DE SALVACIÓN
+Como aventurero, deberás preocuparte de mucho más que del daño sufrido. También tendrás que enfrentarte a la mirada petrificante de la medusa, al mor tífero veneno del draco y al irresistible canto de la arpía. Afortunadamente, los aventureros duros también pueden sobrevivir a este tipo de amenazas. Normalmente, al convertirte en objetivo de un ataque mágico o insólito, sueles tener derecho a un TS para negar o reducir su efecto. Al igual que las tiradas de ataque, los TS se realizan con 1d20 más un bonificador basado en tu clase, nivel y puntuación de característica. Tu bonificador a los TS es: Salvación base + modificador de característica
+Tipos de Tiros de salvación: los tres tipos distintos de TS que existen son Fortaleza, Reflejos y Voluntad.
+Fortaleza: estas salvaciones miden tu capacidad para resistir grandes. castigos fisicos o los ataques dirigidos contra tu vitalidad o salud. Aplica tu modificador de Constitución en tus TS de Fortaleza. Estas salvaciones. pueden utilizarse contra ataques o efectos como el veneno, la enferme dad, la parálisis, la petrificación, la consunción de energía y desintegrar.
+Reflejos: estas salvaciones ponen a prueba tu capacidad para esquivar ataques de gran tamaño. Aplica tu modificador de Destreza en tus TS de Reflejos. Estas salvaciones pueden utilizarse contra ataques o efectos como las trampas de foso, que tu ropa se prenda fuego, los conjuros de bola de fuego o rayo relampagueante y el aliento de los dragones rojos.
+Voluntad: estas salvaciones reflejan tu resistencia a la influencia y do minación mentales, así como a numerosos efectos mágicos. Aplica tu modificador de Sabiduría en tus TS de Voluntad. Estas salvaciones pueden utilizarse contra ataques o efectos como los conjuros hechizar persona, inmovilizar persona y la mayoría de sortilegios de ilusión
+Clase de dificultad de los TS: la CD de la salvación viene determinada
+por el propio ataque. Dos ejemplos: el veneno de un ciempiés monstruoso de tamaño Mediano permite una salvación de Fortaleza contra CD 11. El terrible aliento de un dragón rojo venerable permite una salvación de Reflejos contra CD 36.
+Éxitos y fallos automáticos: un 1 natural (cuando el d20 muestra un 1) en un TS siempre es un fallo (y puede causar daño a los objetos expuestos; consulta 'Objetos supervivientes tras un TS', pág. 177). Un 20 natural (cuando el d20 muestra un 20) siempre es un éxito.
+
+TABLA 8-4: TAMAÑO Y ESCALA DE LAS CRIATURAS
+Tamaño de la criatura	Ejemplo de criatura	Espacio¹	Alcance natural¹
+Minúsculo	Mosca	1/2 pie	0
+Diminuto	Sapo	1 pie	0
+Menudo	Gato	2 1/2'	0
+Pequeño	Mediano	5'	5'
+Mediano	Humano	5'	5'
+Grande (alto)	Ogro	10'	10'
+Grande (largo)	Caballo	10'	5'
+Enorme (alto)	Gig. de las nubes	15'	15'
+Enorme (largo)	Terrarón	15'	10'
+Gargantuesco (alto)	Estatua de 50' animada	20'	20'
+Gargantuesco (largo)	Kraken	20'	15'
+Colosal (alto)	Objeto colosal animado	30' o más	30' o más
+Colosal (largo)	Gran sierpe roja	30' o más	20' o más
+¹ Estas cifras son las típicas para criaturas del tamaño indicado. Existen algunas excepciones.
+
+MODIFICADORES DE COMBATE
+A veces, los personajes luchan cara a cara sin más, pero lo más normal es que salgan ganando si buscan una posición ventajosa, ya sea ofensiva o defensiva. Esta sección trata las situaciones en que los personajes pueden llevar a cabo ataques especialmente buenos o se ven obligados a usar uno desfavorable.
+CONDICIONES FAVORABLES Y
+DESFAVORABLES
+Dependiendo de tu situación, obtienes bonificadores o sufres penalizado res en tu tirada de ataque. En general, cualquier modificador de situación creado por la posición de un atacante o las tácticas utilizadas se aplica a la tira da de ataque, mientras que cualquier modificador de situación creado por la posición, estado o tácticas del defensor se aplica a la CA de este. Tu DM decidirá qué bonificadores y penalizadores aplicarusando como guía la tabla 8-5:
+modificadores a la tirada de ataque, y la tabla 8-6: modificadores a la CA.
+
+TABLA 8-5: MODIFICADORES A LA TIRADA DE ATAQUE
+El atacante está...	Cuerpo a cuerpo	A distancia
+Deslumbrado	-1	-1
+En posición elevada	+1	+0
+Enmarañado	-2¹	-2¹
+Escurriéndose a través de un espacio	-4	-4
+Estremecido o asustado	-2	-2
+Flanqueando al defensor	+2	-
+Invisible	+2²	+2²
+Tumbado	-4	-³
+¹ Un personaje enmarañado sufre además un penalizador -4 a la Destreza que puede afectar a su tirada de ataque.
+² El defensor pierde cualquier bonificador de Des a la CA. Este bonificador no se aplica si el objetivo está cegado.
+³ La mayoría de las armas a distancia no pueden ser utilizadas mientras el atacante está tumbado, pero puedes emplear una ballesta o shuriken de este modo sin penalizador.
+
+TABLA 8-6: MODIFICADORES A LA CA
+El defensor está...	Cuerpo a cuerpo	A distancia
+Aturdido	-2¹	-2¹
+Cegado	-2¹	-2¹
+Desprevenido (como cuando es sorprendido, está trepando, balanceándose, etc.)	+0¹	+0¹
+Enmarañado	+0²	+0²
+Escurriéndose a través de un espacio	-4	-4
+Gateando	-2¹	-2¹
+Indefenso (paralizado, durmiendo, atado, etc.)	-4⁴	+0⁴
+Oculto o invisible	Consulta Ocultación
+Participando en presa (el atacante, no)	+0¹	+0¹, ³
+Sentado o de rodillas	-2	+2
+Sujeto	-4⁴	+0⁴
+Tras cobertura	+4	+4
+Tumbado	-4	+4
+¹ El defensor pierde cualquier bonificador de Des a la CA.
+² Una criatura enmarañada sufre además un penalizador -4 a la Destreza.
+³ Haz una tirada al azar para saber a qué participante de la presa alcanzas con tu ataque. El defensor alcanzado perderá su bonificador de Destreza a la CA.
+⁴ Considera que la Destreza del Defensor es 0 (modificador -5). Los pícaros pueden realizar ataques furtivos contra defensores sujetos o indefensos. Consulta también 'Defensores indefensos', en la pág. 152.

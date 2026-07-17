@@ -1,0 +1,49 @@
+# ── Dependencias ─────────────────────────────────────────────
+node_modules/
+
+# ── Builds y artefactos generados ────────────────────────────
+dist/
+build/
+coverage/
+*.tsbuildinfo
+
+# ── Temporales de sincronizadores de nube (Google Drive/OneDrive) ──
+.tmp.driveupload/
+.tmp.drivedownload/
+.tmp-*
+.tmp/
+temp/
+
+# ── Logs ─────────────────────────────────────────────────────
+*.log
+logs/
+npm-debug.log*
+
+# ── Entornos y secretos ──────────────────────────────────────
+.env
+.env.*
+!.env.example
+
+# ── Salidas de testing ───────────────────────────────────────
+playwright-report/
+test-results/
+
+# ── Caches de herramientas ───────────────────────────────────
+.eslintcache
+.vite/
+.turbo/
+.npm/
+
+# ── Artefactos de sistema operativo ──────────────────────────
+.DS_Store
+Thumbs.db
+Desktop.ini
+
+# ── IDEs ─────────────────────────────────────────────────────
+.vscode/
+.idea/
+*.swp
+
+# ── Documentos de trabajo por-sprint (decisión previa del proyecto, preservada) ──
+walkthrough.md
+implementation_plan.md

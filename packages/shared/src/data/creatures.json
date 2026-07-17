@@ -1,0 +1,212 @@
+{
+  "heroes": [
+    {
+      "id": "bane",
+      "name": "Bane",
+      "type": "player",
+      "controller": "player",
+      "playerName": "Jugador",
+      "icon": "B",
+      "hpMax": 42,
+      "baseAttackBonus": 6,
+      "baseSpeedFeet": 30,
+      "abilityScores": {
+        "strength": 14,
+        "dexterity": 18,
+        "constitution": 14,
+        "intelligence": 10,
+        "wisdom": 12,
+        "charisma": 10
+      },
+      "sizeCategory": "medium",
+      "creatureTypeId": "humanoid",
+      "featureIds": [
+        "srd_sneak_attack_1d6"
+      ],
+      "skillRanks": { "escape_artist": 4 },
+      "inventory": [
+        { "itemId": "bane:item:dagger:1", "catalogId": "dagger", "quantity": 6 },
+        { "itemId": "bane:item:chain_shirt:1", "catalogId": "chain_shirt" },
+        { "itemId": "bane:item:buckler:1", "catalogId": "buckler" }
+      ],
+      "equipmentSlots": {
+        "mainHandItemId": "bane:item:dagger:1",
+        "offHandItemId": "bane:item:buckler:1",
+        "armorItemId": "bane:item:chain_shirt:1"
+      },
+      "featIds": [],
+      "intrinsicDefense": {
+        "naturalArmorBonus": 0,
+        "dodgeBonus": 0,
+        "deflectionBonus": 0,
+        "miscArmorClassBonus": 0
+      },
+      "abilities": [
+        "magic-missile",
+        "shocking-grasp",
+        "ray-of-frost",
+        "haste",
+        "cure-light-wounds"
+      ],
+      "buffs": [],
+      "position": {
+        "x": 2,
+        "y": 4,
+        "zFeet": 0
+      },
+      "baseFortitude": 0,
+      "baseReflex": 0,
+      "baseWill": 0
+    },
+    {
+      "id": "cedrick",
+      "name": "Cedrick",
+      "type": "player",
+      "controller": "player",
+      "playerName": "Jugador",
+      "icon": "K",
+      "hpMax": 47,
+      "baseAttackBonus": 6,
+      "baseSpeedFeet": 30,
+      "abilityScores": {
+        "strength": 18,
+        "dexterity": 12,
+        "constitution": 14,
+        "intelligence": 10,
+        "wisdom": 14,
+        "charisma": 12
+      },
+      "sizeCategory": "medium",
+      "creatureTypeId": "humanoid",
+      "featureIds": [],
+      "skillRanks": { "escape_artist": 0 },
+      "inventory": [
+        { "itemId": "cedrick:item:greatsword:1", "catalogId": "greatsword" },
+        { "itemId": "cedrick:item:full_plate:1", "catalogId": "full_plate" }
+      ],
+      "equipmentSlots": {
+        "mainHandItemId": "cedrick:item:greatsword:1",
+        "offHandItemId": null,
+        "armorItemId": "cedrick:item:full_plate:1"
+      },
+      "featIds": [],
+      "intrinsicDefense": {
+        "naturalArmorBonus": 0,
+        "dodgeBonus": 0,
+        "deflectionBonus": 0,
+        "miscArmorClassBonus": 0
+      },
+      "abilities": [
+        "cure-light-wounds",
+        "haste"
+      ],
+      "buffs": [],
+      "position": {
+        "x": 3,
+        "y": 4,
+        "zFeet": 0
+      },
+      "baseFortitude": 0,
+      "baseReflex": 0,
+      "baseWill": 0
+    },
+    {
+      "id": "elaen",
+      "name": "Elaen",
+      "type": "player",
+      "controller": "player",
+      "playerName": "Jugador",
+      "icon": "R",
+      "hpMax": 38,
+      "baseAttackBonus": 6,
+      "baseSpeedFeet": 30,
+      "abilityScores": {
+        "strength": 12,
+        "dexterity": 18,
+        "constitution": 12,
+        "intelligence": 10,
+        "wisdom": 14,
+        "charisma": 10
+      },
+      "sizeCategory": "medium",
+      "creatureTypeId": "humanoid",
+      "featureIds": [],
+      "skillRanks": { "escape_artist": 0 },
+      "inventory": [
+        { "itemId": "elaen:item:longbow:1", "catalogId": "longbow" },
+        { "itemId": "elaen:item:studded_leather:1", "catalogId": "studded_leather" },
+        { "itemId": "elaen:item:arrows_20:1", "catalogId": "arrows_20", "quantity": 20 }
+      ],
+      "equipmentSlots": {
+        "mainHandItemId": "elaen:item:longbow:1",
+        "offHandItemId": null,
+        "armorItemId": "elaen:item:studded_leather:1"
+      },
+      "featIds": [],
+      "intrinsicDefense": {
+        "naturalArmorBonus": 0,
+        "dodgeBonus": 0,
+        "deflectionBonus": 0,
+        "miscArmorClassBonus": 0
+      },
+      "abilities": [],
+      "buffs": [],
+      "position": {
+        "x": 1,
+        "y": 2,
+        "zFeet": 0
+      },
+      "baseFortitude": 0,
+      "baseReflex": 0,
+      "baseWill": 0
+    }
+  ],
+  "enemies": [
+    {
+      "id": "canocrock",
+      "name": "Canocrock",
+      "type": "enemy",
+      "controller": "gm",
+      "icon": "C",
+      "hpMax": 59,
+      "baseAttackBonus": 8,
+      "baseSpeedFeet": 30,
+      "abilityScores": {
+        "strength": 16,
+        "dexterity": 12,
+        "constitution": 16,
+        "intelligence": 2,
+        "wisdom": 12,
+        "charisma": 6
+      },
+      "sizeCategory": "medium",
+      "creatureTypeId": "magical_beast",
+      "featureIds": [],
+      "skillRanks": { "escape_artist": 0 },
+      "inventory": [],
+      "equipmentSlots": {
+        "mainHandItemId": null,
+        "offHandItemId": null,
+        "armorItemId": null
+      },
+      "featIds": [],
+      "intrinsicDefense": {
+        "naturalArmorBonus": 11,
+        "dodgeBonus": 0,
+        "deflectionBonus": 0,
+        "miscArmorClassBonus": 0
+      },
+      "naturalAttackId": "canocrock-bite",
+      "abilities": [],
+      "buffs": [],
+      "position": {
+        "x": 8,
+        "y": 4,
+        "zFeet": 0
+      },
+      "baseFortitude": 0,
+      "baseReflex": 0,
+      "baseWill": 0
+    }
+  ]
+}

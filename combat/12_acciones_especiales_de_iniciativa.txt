@@ -1,0 +1,28 @@
+ACCIONES ESPECIALES DE INICIATIVA
+Aquí tienes varios modos para cambiar el momento en el que actúas durante el combate, cambiando tu lugar en el orden de iniciativa.
+
+RETRASAR UNA ACCIÓN
+Al optar por retrasar una acción, no actúas cuando te llega el turno, pero puedes hacerlo más tarde, con total normalidad y en el momento de iniciativa que prefieras. Cuando eliges retrasarte, reduces voluntariamente el resultado de tu iniciativa para el resto del combate. Cuando, en un momento posterior del mismo asalto, llegue tu nueva iniciativa (de valor reducido), podrás actuar con normalidad. Puedes especificar tu nuevo momento de iniciativa o esperar a un momento posterior del asalto para actuar, haciendo que tu nueva iniciativa empiece a contar desde el momento en que actúes.
+
+Retrasar una acción resulta muy útil cuando necesitas ver qué hacen tus amigos o enemigos antes de decidirte. El precio que se paga al elegir esta opción es perder la iniciativa; tu personaje no podrá recuperar el tiempo empleado en esperar a ver lo que sucede. No obstante, no puedes interrumpir la acción de otro mediante una acción retrasada (como harías con una acción preparada).
+
+Consecuencia de retrasar la iniciativa: tu resultado de iniciativa pasa a ser el momento en el que realizas la acción retrasada. Si llegas hasta tu siguiente acción y todavía no has actuado, no tienes por qué llevar a cabo una acción retrasada (aunque puedes retrasar de nuevo tu siguiente acción). Si llevas a cabo una acción retrasada en el siguiente turno, antes de que llegue tu turno normal, tu momento de iniciativa aumenta hasta este nuevo punto en el orden de batalla, y no recibes tu acción normal de ese asalto.
+
+PREPARAR UNA ACCIÓN
+Esta acción te permite prepararte para actuar más adelante, una vez haya pasado tu turno pero antes de llegar el siguiente. Prepararse se considera una acción estándar, por lo que también podrás moverte; además, no provoca ataques de oportunidad (aunque la acción que prepares sí podría dar lugar a ello).
+
+Preparar una acción: puedes preparar una acción estándar, una acción de movimiento o una acción gratuita. Para hacerlo, especifica la acción que vas a realizar y las condiciones en que la llevarás a cabo. Por ejemplo, puedes especificar que dispararás una flecha a cualquiera que pase a través de una puerta cercana. A continuación, podrás llevar a cabo tu acción en respuesta a las condiciones indicadas en cualquier momento anterior a tu siguiente acción. La acción tendrá lugar justo antes que la acción que la desencadene. Si la acción desencadenante es parte de las actividades de otro personaje, interrumpes al otro personaje. Si éste sigue siendo capaz de continuar lo que estaba haciendo, podrá proseguir su acción una vez que tú completes tu acción preparada.
+
+Tu valor de iniciativa cambia. Durante el resto del combate, tu resultado de iniciativa será el momento exacto en que hayas llevado a cabo la acción preparada y actuarás justo antes de que lo haga el personaje cuya acción la haya desencadenado.
+
+Puedes dar un paso de 5' como parte de tu acción preparada, pero sólo si no te habías movido previamente durante el asalto. Por ejemplo, si te mueves hasta una puerta abierta y tras ello preparas una acción para atacar con tu espada a cualquiera que se ponga a tu alcance, no puedes dar un paso de 5' junto con la acción preparada (porque ya habías movido en ese asalto).
+
+Consecuencias de la preparación en la iniciativa: tu resultado de iniciativa pasa a ser el momento en que hayas llevado a cabo la acción preparada. Si llega tu siguiente acción y aún no has llevado a cabo la que tuvieras preparada, no estarás obligado a realizarla (aunque podrías preparar la misma acción de nuevo). Si llevas a cabo la acción preparada en el asalto siguiente, antes de llegar tu turno normal, tu iniciativa se incrementará hasta ese punto en el orden de batalla y no tendrás derecho a tu acción normal de ese asalto.
+
+Distraer a los lanzadores de conjuros: puedes preparar un ataque contra un lanzador de conjuros, que tenga lugar "si empieza a lanzar un sortilegio". Si logras infligir daño al lanzador o distraerlo de otro modo, éste podría perder el conjuro que estuviera ejecutando (según determine el resultado de su prueba de Concentración).
+
+Preparar un contraconjuro: puedes preparar un contraconjuro para usarlo contra un lanzador de sortilegios (normalmente, con la condición de ejecutarlo "si empieza a lanzar un conjuro"). Una vez el enemigo haya empezado a ejecutar su sortilegio, podrás intentar identificarlo con una prueba de Conocimiento de conjuros (CD 15 + nivel de conjuro). Si lo consigues y puedes ejecutar ese mismo sortilegio (es decir, sabes lanzarlo) y lo tienes preparado (si esto último es necesario), puedes lanzarlo como contraconjuro y arruinar automáticamente la ejecución de tu enemigo. El contraconjuro funciona aunque uno de los sortilegios sea divino y el otro arcano.
+
+Un lanzador de conjuros puede usar disipar magia (pág. 233) para contrarrestar un sortilegio de otro lanzador, pero esto no siempre funciona.
+
+Preparar un arma contra una carga: puedes preparar ciertas armas perforantes, colocándolas para recibir una carga (consulta la tabla 7-5: armas, en la pág. 116). Un arma de este tipo que esté preparada infligirá doble daño cuando se logre alcanzar con ella a un personaje que esté cargando.

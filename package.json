@@ -1,0 +1,34 @@
+{
+  "name": "dnd-tactical-combat-assistant",
+  "private": true,
+  "version": "0.1.0",
+  "description": "Local web tactical combat assistant for D&D 3.5.",
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ],
+  "scripts": {
+    "dev": "npm-run-all --parallel dev:*",
+    "dev:web": "npm --workspace @dnd-tactical/web run dev",
+    "dev:server": "npm --workspace @dnd-tactical/server run dev",
+    "test": "npm --workspace @dnd-tactical/shared run build && npx tsx --test tests/*.test.mjs",
+    "test:ui": "playwright test",
+    "test:serve": "npm-run-all --parallel dev:*",
+    "build": "npm-run-all build:shared build:web build:server",
+    "build:shared": "npm --workspace @dnd-tactical/shared run build",
+    "build:web": "npm --workspace @dnd-tactical/web run build",
+    "build:server": "npm --workspace @dnd-tactical/server run build",
+    "typecheck": "npm-run-all typecheck:shared typecheck:web typecheck:server",
+    "typecheck:shared": "npm --workspace @dnd-tactical/shared run typecheck",
+    "typecheck:web": "npm --workspace @dnd-tactical/web run typecheck",
+    "typecheck:server": "npm --workspace @dnd-tactical/server run typecheck"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.61.1",
+    "npm-run-all": "^4.1.5",
+    "typescript": "^5.5.4"
+  },
+  "optionalDependencies": {
+    "@esbuild/linux-x64": "0.28.1"
+  }
+}

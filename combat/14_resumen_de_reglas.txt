@@ -1,0 +1,94 @@
+✔ Tablero de combate
+✔ Casillas y cuadrícula
+✔ Miniaturas
+✔ Cómo funciona el combate
+✔ Asaltos
+✔ Orden del combate
+✔ Asalto de sorpresa
+✔ Iniciativa
+✔ Personajes desprevenidos
+✔ Estadísticas de combate
+✔ Tirada de ataque
+✔ Bonificador de ataque
+✔ Modificadores por tamaño
+✔ Daño
+✔ Clase de Armadura
+✔ Clase de Armadura de toque
+✔ Puntos de golpe
+✔ Velocidad
+✔ Tiros de salvación
+✔ Acciones en combate
+✔ Acciones estándar
+✔ Acciones de movimiento
+✔ Acciones de asalto completo
+✔ Acciones gratuitas
+✔ Acciones misceláneas
+✔ Ataques cuerpo a cuerpo
+✔ Ataques a distancia
+✔ Ataques sin armas
+✔ Ataques de toque
+✔ Ataques múltiples
+✔ Impactos automáticos
+✔ Fallos automáticos
+✔ Golpes críticos
+✔ Daño a objetos
+✔ Lanzar un conjuro
+✔ Concentración
+✔ Habilidades sortílegas
+✔ Habilidades sobrenaturales
+✔ Ataques de oportunidad
+✔ Casillas amenazadas
+✔ Provocar ataques de oportunidad
+✔ Paso de 5 pies
+✔ Retirada
+✔ Movimiento táctico
+✔ Movimiento doble
+✔ Correr
+✔ Movimiento diagonal
+✔ Distancia
+✔ Terreno difícil
+✔ Obstáculos
+✔ Apretujarse
+✔ Criaturas grandes y pequeñas en combate
+✔ Espacio ocupado
+✔ Alcance natural
+✔ Adyacencia
+✔ Modificadores de combate
+✔ Modificadores a la tirada de ataque
+✔ Modificadores a la Clase de Armadura
+✔ Cobertura
+✔ Cobertura mejorada
+✔ Cobertura total
+✔ Ocultación
+✔ Ocultación total
+✔ Flanquear
+✔ Defensores indefensos
+✔ Disparar o lanzar proyectiles a un combate cuerpo a cuerpo
+✔ Combatir a la defensiva
+✔ Combate montado
+✔ Ataques especiales
+✔ Arrollar
+✔ Cargar
+✔ Combatir con dos armas
+✔ Derribo
+✔ Desarmar
+✔ Embestir
+✔ Expulsar o reprender muertos vivientes
+✔ Fintar
+✔ Lanzar armas deflagradoras
+✔ Prestar ayuda
+✔ Realizar una presa
+✔ Romper un arma
+✔ Romper un objeto
+✔ Heridas y muerte
+✔ Pérdida de puntos de golpe
+✔ Incapacitado
+✔ Moribundo
+✔ Muerto
+✔ Estabilización
+✔ Recuperación
+✔ Curación
+✔ Puntos de golpe temporales
+✔ Daño no letal
+✔ Retrasar
+✔ Preparar una acción
