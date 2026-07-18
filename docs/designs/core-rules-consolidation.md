@@ -27,7 +27,7 @@ Resolución de la incompatibilidad señalada: el "59/96 = 61%" del borrador ante
 
 ## 2. Confirmación documental del cierre de AOO-03
 
-Verificado en código y asentado en el Apéndice A de `docs/designs/combat-rules-deviations.md` (fila `AOO-03`, ahora "CERRADA" con evidencia): `rules.ts:515-521` (límite `1 + max(0, mod(Des))` solo con `srd_combat_reflexes`, rechazo al alcanzar `maxAooAllowed`), incrementos del contador en `attackCommands.ts:204,223,377`, reinicio por ronda (Sprint 032) y DT-007. **No se reimplementa nada.** Deuda residual única: test de regresión dedicado que fije (a) 1 AdO/ronda sin dote, (b) `1+mod(Des)` con dote, (c) reinicio por ronda — tarea menor adjuntable a cualquier sprint futuro.
+Verificado en código y asentado en el Apéndice A de `docs/audits/combat-rules-deviations.md` (fila `AOO-03`, ahora "CERRADA" con evidencia): `rules.ts:515-521` (límite `1 + max(0, mod(Des))` solo con `srd_combat_reflexes`, rechazo al alcanzar `maxAooAllowed`), incrementos del contador en `attackCommands.ts:204,223,377`, reinicio por ronda (Sprint 032) y DT-007. **No se reimplementa nada.** Deuda residual única: test de regresión dedicado que fije (a) 1 AdO/ronda sin dote, (b) `1+mod(Des)` con dote, (c) reinicio por ronda — tarea menor adjuntable a cualquier sprint futuro.
 
 ## 3. Análisis separado de las tres capacidades
 
@@ -94,7 +94,7 @@ Confirmado: `{ type: "mechanic"; rule: "CONCEALMENT"; percentage }` es una varia
 | Documento | Desincronización | Corrección propuesta | Estado |
 |---|---|---|---|
 | `.ai/coverage/RULES_PHB_CHECKLIST.md` | Fila Tabla 8-1 marcada `[ ]` por falso negativo; resumen decía 58 vs 59 del dashboard sin explicar la diferencia | Fila corregida a `[x]` con nota de auditoría; resumen reescrito con cifras completas/parciales/no-implementadas y política de conteo explícita | **Aplicada** (corrección de error factual, autorizada por la revisión §1) |
-| `docs/designs/combat-rules-deviations.md` (Apéndice A) | `AOO-03` decía "Resuelta" sin evidencia de cierre | Fila actualizada a "CERRADA" con evidencia de código y deuda residual (test de regresión) | **Aplicada** (entregable 2 de la revisión) |
+| `docs/audits/combat-rules-deviations.md` (Apéndice A) | `AOO-03` decía "Resuelta" sin evidencia de cierre | Fila actualizada a "CERRADA" con evidencia de código y deuda residual (test de regresión) | **Aplicada** (entregable 2 de la revisión) |
 | `PROJECT_STATUS.md` (líneas 57-59) | Cabecera declara "Fase Actual: diseño técnico del Sprint 031... IMPLEMENTACIÓN BLOQUEADA HASTA Proceed... Sprint Activo: Sprint 031", contradiciendo la sección "FASE ACTUAL: Sprint 038 en diseño" del mismo archivo | Eliminar/reescribir la cabecera obsoleta y reflejar: 038 pendiente de Proceed, 039 congelado, pivot de saneamiento en análisis | Propuesta — pendiente de `Proceed` de sincronización |
 | `TODO.md` | No registra el congelamiento del Sprint 039 ni el pivot de saneamiento | Añadir bloque de estado: 039 congelado, saneamiento en Fase 2, slice recomendada | Propuesta — pendiente |
 | `ROADMAP.md` | Sin mención de ningún sprint ≥036 (grep sin resultados) — desactualizado varios sprints | Refrescar con la secuencia real 036→037→038 (gate)→039 (congelado)→saneamiento | Propuesta — pendiente |

@@ -2,7 +2,7 @@
 
 **Tipo de documento**: Auditoría analítica de cobertura para la V1.0, bajo el marco de `.ai/coverage/V1_LAUNCH_MANIFESTO.md`. Cuarto checklist del Master Plan, complementando dotes/conjuros/equipo con las **reglas de combate** propiamente dichas.
 
-**Diferencia clave con `combat/14_resumen_de_reglas.txt`**: aquel archivo marca ✔ las reglas *transcritas en el corpus normativo* (las 94). Este checklist marca `[x]` las reglas *implementadas en el motor* (servidor autoritativo + `rules.ts`). Son ejes ortogonales: una regla puede estar transcrita y no implementada (Retirada), o implementada con matices no transcritos (rutina iterativa, ver G-01 de `docs/designs/combat-rules-deviations.md`).
+**Diferencia clave con `combat/14_resumen_de_reglas.txt`**: aquel archivo marca ✔ las reglas *transcritas en el corpus normativo* (las 94). Este checklist marca `[x]` las reglas *implementadas en el motor* (servidor autoritativo + `rules.ts`). Son ejes ortogonales: una regla puede estar transcrita y no implementada (Retirada), o implementada con matices no transcritos (rutina iterativa, ver G-01 de `docs/audits/combat-rules-deviations.md`).
 
 **Fuentes de verificación**: historial de sprints en `PROJECT_STATUS.md` (013-037), registro real de comandos Zod (`packages/shared/src/schemas/commands/*.ts`), `rules.ts`, `effects/catalog.ts`, y greps dirigidos ejecutados para esta auditoría. Las filas dudosas se marcaron `[ ]` con nota "PARCIAL" antes que inflar la cobertura.
 

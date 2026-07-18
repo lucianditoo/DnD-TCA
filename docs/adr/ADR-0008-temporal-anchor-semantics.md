@@ -1,7 +1,7 @@
 # ADR-0008: Semántica Temporal y Monotónica en ActiveEffects
 
 ## 1. Contexto y Problema
-En el diseño inicial de ActiveEffects (`docs/designs/effects-system-architecture.md`), la expiración temporal se definió de manera declarativa con tipos como `until_source_turn_start` o `rounds`. Durante el Sprint 004, se determinó que estas definiciones eran ambiguas y dependían de reconstruir el estado para saber cuándo ocurrían.
+En el diseño inicial de ActiveEffects (`docs/architecture/active-effects/effects-system-architecture.md`), la expiración temporal se definió de manera declarativa con tipos como `until_source_turn_start` o `rounds`. Durante el Sprint 004, se determinó que estas definiciones eran ambiguas y dependían de reconstruir el estado para saber cuándo ocurrían.
 
 El problema principal de una declaración como `rounds: 1` usando solo el `round` de aplicación es que no distingue si el efecto fue aplicado *antes*, *durante* o *después* del turno ancla en esa misma ronda. Esto causaría que dos efectos aplicados en distintos momentos de la misma ronda expiren simultáneamente de manera prematura o tardía.
 

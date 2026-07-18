@@ -16,10 +16,12 @@ Documentos que definen cómo está estructurado el código y cómo se relacionan
 - `RULES_ENGINE.md`: Directrices sobre funciones puras vs mutaciones (Raíz).
 - `COMBAT_FLOW.md`: Explicación del ciclo de vida del combate y sincronización de estado (Raíz).
 - `docs/architecture/combat-engine.md`: Detalles técnicos profundos sobre el funcionamiento del motor de turnos y validaciones.
+- `docs/architecture/combat-documentation-integration.md`, `docs/architecture/rule-engine-integration.md`: documentos transversales de integración, no atados a una única feature (reclasificados desde `docs/designs/` en Sprint 040, Lote B).
+- `docs/architecture/active-effects/`: familia de documentos de la arquitectura ActiveEffects (`effects-system-architecture.md`, `effects-tick-layer.md`, `effect-storage-analysis.md`, `effects-vs-conditions-analysis.md`) — una sola narrativa arquitectónica en capas (reclasificados desde `docs/designs/` en Sprint 040, Lote B).
 
 ## 3. Decisiones Arquitectónicas (ADRs)
 Ubicación: `docs/adr/`
-Registros inmutables de las decisiones fundamentales que han consolidado la arquitectura actual.
+Registros inmutables de las decisiones fundamentales que han consolidado la arquitectura actual (incluye `ADR-0008-temporal-anchor-semantics.md`, reclasificado desde `docs/designs/` en Sprint 040, Lote B).
 
 ## 4. Diseños Funcionales
 Ubicación: `docs/designs/`
@@ -33,7 +35,7 @@ El índice maestro y única fuente de verdad sobre el estado de implementación 
 
 ## 6. Sprints y Auditorías
 - `docs/sprints/`: Contiene plantillas y registros de Sprints Arquitectónicos.
-- `docs/audits/`: Contiene plantillas y registros de auditorías de higiene y cobertura.
+- `docs/audits/`: Contiene plantillas y registros de auditorías de higiene y cobertura, incluida `combat-rules-deviations.md` (auditoría cruzada del motor contra el corpus normativo PHB Cap. 8, reclasificada desde `docs/designs/` en Sprint 040, Lote B).
 
 ## 7. Testing
 Ubicación: `docs/testing/`

@@ -12,10 +12,10 @@
 | `ATTACK-FLANK` | Flanqueo | Completa | `docs/designs/flanking-and-threatening-design.md` | `rules.ts`, handlers de comandos, `ActionsPanel.tsx` | Unit, Integration, E2E | 011 | - |
 | `ATTACK-CRIT` | Críticos | Completa | `docs/designs/critical-hits.md` | `attackResolver.ts` | Unit, E2E | - | - |
 | `DEFENSE-TOTAL` | Defensa total | Parcial | `docs/designs/combat-engine-mvp.md` | `tacticalCommands.ts` | Unit | - | - |
-| `EFFECTS-SYS-CORE` | Infraestructura ActiveEffects | Completa | `docs/designs/effects-system-architecture.md` | `effects/manager.ts`, `types.ts` | `active-effects.test.mjs` | 003 | `ADR-0007` |
-| `EFFECTS-SYS-CATALOG`| Catálogo de Efectos | Completa | `docs/designs/effects-system-architecture.md` | `effects/catalog.ts` | `active-effects.test.mjs` | 003 | `ADR-0007` |
-| `EFFECTS-SYS-TICK` | Tick Layer Eventos | Completa | `docs/designs/effects-system-architecture.md` | `effects/tick.ts`, `events/bus.ts` | `effects-tick.test.mjs` | 004 | `ADR-0008` |
-| `EFFECTS-SYS-REDUCER`| Modificadores y Extractor | Completa | `docs/designs/rule-engine-integration.md` | `effects/reducer.ts`, `rules.ts` | `rules-evaluator.test.mjs` | 005 | - |
+| `EFFECTS-SYS-CORE` | Infraestructura ActiveEffects | Completa | `docs/architecture/active-effects/effects-system-architecture.md` | `effects/manager.ts`, `types.ts` | `active-effects.test.mjs` | 003 | `ADR-0007` |
+| `EFFECTS-SYS-CATALOG`| Catálogo de Efectos | Completa | `docs/architecture/active-effects/effects-system-architecture.md` | `effects/catalog.ts` | `active-effects.test.mjs` | 003 | `ADR-0007` |
+| `EFFECTS-SYS-TICK` | Tick Layer Eventos | Completa | `docs/architecture/active-effects/effects-system-architecture.md` | `effects/tick.ts`, `events/bus.ts` | `effects-tick.test.mjs` | 004 | `ADR-0008` |
+| `EFFECTS-SYS-REDUCER`| Modificadores y Extractor | Completa | `docs/architecture/rule-engine-integration.md` | `effects/reducer.ts`, `rules.ts` | `rules-evaluator.test.mjs` | 005 | - |
 | `EFFECT-STUNNED` | Stunned | Parcial (V1) | `docs/designs/sprint-006-conditions.md` | `gmCommands.ts`, `rules.ts` | Unit, E2E | 006 | - |
 | `EFFECT-FLAT-FOOTED` | Flat-Footed (Desprevenido) | Completa | `docs/designs/conditions-v2-design.md` | `initiativeCommands.ts`, `effects/catalog.ts` | Unit | 007 | - |
 | `DEFENSE-AC-SPLIT` | Normal, Touch y Flat-Footed AC | Completa | `docs/designs/ac-split-design.md` | `types.ts`, `equipmentStats.ts`, `combatSnapshot.ts`, `rules.ts`, `attackResolver.ts` | Unit | 009 | - |

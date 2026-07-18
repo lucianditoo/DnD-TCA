@@ -22,7 +22,7 @@ Aquí vive el estado vivo de la regla: `instanceId`, `source`, objetivos (`targe
 Es la colección de `EffectInstance` que afectan directamente a un objetivo específico en un instante dado. El Rule Engine usa esta colección (derivada del estado global) para calcular modificadores finales.
 
 ## 2. Almacenamiento y Ownership (Propiedad Global)
-Tras el análisis en `docs/designs/effect-storage-analysis.md`, se abandona el modelo donde el `Combatant` es dueño de sus efectos.
+Tras el análisis en `effect-storage-analysis.md` (mismo directorio), se abandona el modelo donde el `Combatant` es dueño de sus efectos.
 
 **Modelo Definitivo:**
 El `CombatState` (la sala entera) es el único dueño del array plano de `EffectInstances`.

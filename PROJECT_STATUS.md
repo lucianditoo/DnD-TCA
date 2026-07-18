@@ -187,7 +187,13 @@ Todo cambio requiere:
   - Implementación de `Fatigued`, `Prone`, `Dazed` y `Paralyzed` con lógica de sobrescritura de características.
   - Integración de `getEffectiveAbilityScore` y nuevas pruebas de regresión.
 
-### FASE ACTUAL: Sprint MOVE-WITHDRAW completado (validación Windows pendiente); Sprint 038 en gate; Sprint 039 congelado
+### FASE ACTUAL: Sprint 040 (Document Architecture Cleanup) listo para cierre arquitectónico; Sprint MOVE-WITHDRAW completado (validación Windows pendiente); Sprint 038 en gate; Sprint 039 congelado
+
+  **Sprint 040 — Document Architecture Cleanup (gobernanza documental, sin cambios de motor)**
+  - Diseño: `docs/designs/document-architecture-cleanup.md` (Rev. 2, con auditoría, convención híbrida de designs, 5 diffs semánticos resueltos, plan de migración por lotes).
+  - **Lote A ✅**: `.gitignore` corregido (`implementation_plan.md` deja de ignorarse — nunca fue política aprobada); Withdraw migrado a `docs/designs/withdraw/` (`design.md`, `analysis.md`, `implementation-plan.md`); autoridades documentales actualizadas (`GOVERNANCE.md` = principios, `AGENTS.md` = flujo/DoD, `.ai/WORKFLOW.md` = resumen navegable); índices completados (`INDEX.md`, `.ai/README.md`); 7 huérfanos eliminados (`output.txt`, 5 scripts `fix*.js`, `rewrite-rules.js`). Commit `5837d7c`.
+  - **Lote B ✅**: reclasificaciones inequívocas — `ADR-0008-Temporal-Anchor-Semantics.md` → `docs/adr/ADR-0008-temporal-anchor-semantics.md`; `combat-rules-deviations.md` → `docs/audits/`; `combat-documentation-integration.md`, `rule-engine-integration.md` → `docs/architecture/`; familia ActiveEffects (`effects-system-architecture.md`, `effects-tick-layer.md`, `effect-storage-analysis.md`, `effects-vs-conditions-analysis.md`) → `docs/architecture/active-effects/`. Todas las referencias entrantes corregidas (`registry.md`, `RULES_PHB_CHECKLIST.md`, `ranged-into-melee-penalty.md`, `core-rules-consolidation.md`, `PROJECT_STATUS.md`, `INDEX.md`, y las auto-referencias de los propios archivos movidos).
+  - **Lote C (carpetas para 3 features multi-documento: `full-attack-v2`, `large-footprints-v1`, `prone-eschewal-diehard`) y Lote D (erratas in-situ) siguen pendientes.** Sprint 040 no cerrado formalmente hasta ejecutarlos o decidir explícitamente diferirlos.
 
   **Sprint completado: MOVE-WITHDRAW (Retirada)**
   - Sub-acción `withdraw` de `use-tactical-action` (NDD Rev. 3, `docs/designs/withdraw/design.md`) — `movementCommands.ts` intocado, patrón Charge.
@@ -333,9 +339,9 @@ docs/
 ## Decisiones Tecnicas Actuales
 
 **La documentación oficial normativa del motor de reglas (D&D 3.5 Capítulo 8) está en la carpeta: `combat/`**
-- **Política de Integración:** [docs/designs/combat-documentation-integration.md](docs/designs/combat-documentation-integration.md)
+- **Política de Integración:** [docs/architecture/combat-documentation-integration.md](docs/architecture/combat-documentation-integration.md)
 - **Matriz de Cobertura:** [docs/designs/combat-rules-coverage.md](docs/designs/combat-rules-coverage.md)
-- **Divergencias (Bugs/Simplificaciones):** [docs/designs/combat-rules-deviations.md](docs/designs/combat-rules-deviations.md)
+- **Divergencias (Bugs/Simplificaciones):** [docs/audits/combat-rules-deviations.md](docs/audits/combat-rules-deviations.md)
 - **Roadmap Dependencias:** [ROADMAP.md](ROADMAP.md)
 - **Documento Arquitectónico Central:** [docs/architecture/combat-engine.md](docs/architecture/combat-engine.md)
 

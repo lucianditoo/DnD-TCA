@@ -201,7 +201,7 @@ Cambios aplicados en este lote:
 - **Huérfanos eliminados** (`git rm`, re-confirmados sin referencias justo antes de eliminar): `output.txt`, `fix.js`, `fix2.js`, `fix_rules.js`, `fix-rules2.js`, `fix-rules4.js`, `rewrite-rules.js`.
 - **Desviación técnica registrada**: `fix-rules2.js` y `rewrite-rules.js` tenían modificaciones locales no comiteadas (ruido de fin de línea CRLF/LF preexistente, confirmado con `git diff -w` = 0 diferencias reales desde antes de este sprint) que impidieron el `git rm` normal; se usó `git rm -f` tras reconfirmar que el contenido real era idéntico al commiteado. También se detectó que `.ai/README.md` y `.ai/WORKFLOW.md` tenían el mismo ruido CRLF preexistente en el working tree; se normalizaron a LF antes de stagear para que el diff de este commit muestre únicamente el contenido nuevo, no una reescritura fantasma del archivo completo.
 - **No se tocó código de producción ni tests**: `CODEX_GUIDE.md`, `apps/server/src/combat/chargeResolver.ts`, `apps/server/src/combat/opportunityAttackResolver.ts` y `tests/conditions-v3-formal.test.mjs` tienen el mismo ruido CRLF preexistente pero se dejaron intencionalmente fuera de este commit (no forman parte del Lote A).
-- **Fuera de alcance de este lote (correctamente no tocado)**: `docs/audits/migration-report-001.md`, `docs/designs/combat-documentation-integration.md` y `docs/archive/testing-coverage-report.md` también mencionan la ruta obsoleta `docs/rules-coverage-checklist.md`, pero no estaban en la lista autorizada de 4 archivos de autoridades para este lote — quedan pendientes para un lote futuro o corrección puntual separada.
+- **Fuera de alcance de este lote (correctamente no tocado)**: `docs/audits/migration-report-001.md` y `docs/archive/testing-coverage-report.md` también mencionan la ruta obsoleta `docs/rules-coverage-checklist.md`, pero no estaban en la lista autorizada de 4 archivos de autoridades para este lote — quedan pendientes para un lote futuro o corrección puntual separada. (El tercer archivo mencionado en la Rev. 2, `docs/designs/combat-documentation-integration.md`, ya fue reclasificado a `docs/architecture/combat-documentation-integration.md` en el Lote B — ver §12.)
 
 **Lotes B, C y D siguen pendientes, sin ejecutar.** El Sprint 040 no se declara cerrado.
 
@@ -218,4 +218,25 @@ Cambios aplicados en este lote:
 7. Plan de migración por lotes — §9.
 8. Lista exacta de archivos que cambiaría cada lote — §7 y §9.
 
-**Estado tras Lote A: ejecutado (ver §11). Lotes B, C, D pendientes — Sprint 040 no cerrado.**
+## 12. Lote B — EJECUTADO (Sprint 040)
+
+Reclasificaciones inequívocas ejecutadas vía `git mv` (historial preservado):
+
+| Origen | Destino |
+|---|---|
+| `docs/designs/ADR-0008-Temporal-Anchor-Semantics.md` | `docs/adr/ADR-0008-temporal-anchor-semantics.md` (kebab-case) |
+| `docs/designs/combat-rules-deviations.md` | `docs/audits/combat-rules-deviations.md` |
+| `docs/designs/combat-documentation-integration.md` | `docs/architecture/combat-documentation-integration.md` |
+| `docs/designs/rule-engine-integration.md` | `docs/architecture/rule-engine-integration.md` |
+| `docs/designs/effects-system-architecture.md` | `docs/architecture/active-effects/effects-system-architecture.md` |
+| `docs/designs/effects-tick-layer.md` | `docs/architecture/active-effects/effects-tick-layer.md` |
+| `docs/designs/effect-storage-analysis.md` | `docs/architecture/active-effects/effect-storage-analysis.md` |
+| `docs/designs/effects-vs-conditions-analysis.md` | `docs/architecture/active-effects/effects-vs-conditions-analysis.md` |
+
+**Referencias corregidas**: `PROJECT_STATUS.md` (2 enlaces), `docs/rules/registry.md` (3 filas), `.ai/coverage/RULES_PHB_CHECKLIST.md` (1), `docs/designs/ranged-into-melee-penalty.md` (1), `docs/designs/core-rules-consolidation.md` (2), `docs/architecture/active-effects/effects-system-architecture.md` (auto-referencia a `effect-storage-analysis.md`, ahora relativa al mismo directorio), `docs/adr/ADR-0008-temporal-anchor-semantics.md` (auto-referencia a `effects-system-architecture.md`), `INDEX.md` (§2, §3, §6 actualizadas con la nueva ubicación). No se tocó `docs/designs/combat-rules-coverage.md` en `PROJECT_STATUS.md` línea 337 (enlace ya roto desde antes de este sprint, apunta a un archivo que en realidad vive en `docs/archive/` — fuera de alcance de este lote, registrado aquí para un lote futuro).
+
+**No se movieron features a carpetas, no se fusionó nada, no se tocó código ni tests, no se modificó `walkthrough.md` ni ningún `implementation-plan.md`.**
+
+Lotes C y D siguen pendientes. **Sprint 040 no se declara cerrado.**
+
+**Estado tras Lote A + Lote B: ambos ejecutados (ver §11, §12). Lotes C, D pendientes.**
