@@ -85,7 +85,7 @@
 | [ ] | Competencia con Armas Exóticas / Exotic Weapon Proficiency | Modificador Estático | Igual que la anterior. |
 | [ ] | Desenvainado Rápido / Quick Draw | Modificador de Flujo (Trait) | Sin modelado de "acción de desenvainar" con coste. |
 | [ ] | Ciego en Combate / Blind-Fight | Modificador de Flujo (Trait) | Sin implementar. |
-| [ ] | Correr / Run | Modificador Estático | Sin implementar. |
+| [x] | Correr / Run | Modificador Estático | Sprint 041 (`MOVE-RUN`): `FeatCatalog` (`srd_run`, `runRules.keepsDexBonusWhileRunning`), consumida por `handleRun` para conservar Destreza/Esquiva mientras se corre. |
 | [ ] | Resistencia / Endurance | Modificador Estático | Sin impacto directo en combate por celdas. |
 | [ ] | Voluntad de Hierro / Iron Will | Modificador Estático | +2 Voluntad; sin pipeline de bono declarativo por dote a salvaciones. |
 | [ ] | Reflejos Rápidos / Lightning Reflexes | Modificador Estático | +2 Reflejos; mismo estado que la anterior. |

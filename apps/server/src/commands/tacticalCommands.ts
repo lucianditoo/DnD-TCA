@@ -1,4 +1,4 @@
-import { applyDamage, canStandardAttack, canUseFiveFootStep, canUseMoveAction, canDisabledCombatantTakeAction, findTriggeredOpportunityAttacksForPath, getAttackContextModifiers, getCombatantOccupiedCells, footprintCellKey, isAdjacent, lifeStatus, makeLog, Rules, threatensTarget, createCombatRulesSnapshot, validateMovePath, validateStandUp, getEffectiveAbilityModifier, hasEffectTrait, FeatCatalog, type ClientCommand, type CombatRoom, type CombatRulesSnapshot } from "@dnd-tactical/shared";
+import { applyDamage, canStandardAttack, canUseFiveFootStep, canUseMoveAction, canDisabledCombatantTakeAction, canRun, runSpeedBudgetFeet, buildStraightPath, isDifficultTerrain, findTriggeredOpportunityAttacksForPath, getAttackContextModifiers, getCombatantOccupiedCells, footprintCellKey, isAdjacent, lifeStatus, makeLog, Rules, threatensTarget, createCombatRulesSnapshot, validateMovePath, validateStandUp, getEffectiveAbilityModifier, hasEffectTrait, FeatCatalog, EffectManager, cryptoId, type ClientCommand, type CombatRoom, type CombatRulesSnapshot } from "@dnd-tactical/shared";
 import { requireCombatantControl } from "../auth/control.js";
 import { resolveAttack, resolveWeaponAttackSource } from "../combat/attackResolver.js";
 import { applyStartOfNextTurnBuff } from "../combat/buffRules.js";
@@ -29,6 +29,7 @@ export function handleUseTacticalAction(room: CombatRoom, command: Extract<Clien
   if (command.action === "five-foot-step") return handleFiveFootStep(room, snapshot, command, combatant);
   if (command.action === "stand-up") return handleStandUp(room, snapshot, command, combatant);
   if (command.action === "withdraw") return handleWithdraw(room, snapshot, command, combatant);
+  if (command.action === "run") return handleRun(room, snapshot, command, combatant);
 }
 
 /**
@@ -128,6 +129,113 @@ function handleWithdraw(room: CombatRoom, snapshot: CombatRulesSnapshot<import("
     room.log.unshift(makeLog("status", combatant.name + " actua incapacitado con " + exertion.previousHp + " HP y pierde 1 HP por esfuerzo. HP: " + exertion.currentHp + "/" + combatant.hpMax + "."));
     logStatusChange(room, combatant, exertion.statusBefore, exertion.statusAfter);
     checkCombatOutcome(room);
+  }
+
+  broadcast(room);
+}
+
+/**
+ * MOVE-RUN (NDD docs/designs/run-design.md, decisiones D-1 a D-5 cerradas por PROCEED):
+ * Correr como accion de asalto completo, movimiento en linea recta x4 (x3 con armadura
+ * pesada) sobre la velocidad efectiva ya resuelta. El servidor deriva el camino canonico
+ * desde la posicion actual hasta `to` (nunca confia en un camino enviado por el cliente —
+ * no existe tal campo en este comando). Terreno dificil es un rechazo absoluto, no un
+ * recargo. D-1: sin exencion de AdO (a diferencia de Retirada) — se reutiliza la
+ * generacion normal por camino. D-3/D-5: sin la dote de Correr se suprime Destreza y
+ * Esquiva (NO_DEX_TO_AC) hasta el inicio del proximo turno del propio combatiente.
+ */
+function handleRun(room: CombatRoom, snapshot: CombatRulesSnapshot<import("@dnd-tactical/shared").ProductionEffectId>, command: Extract<ClientCommand, { type: "use-tactical-action"; action: "run" }>, combatant: ReturnType<typeof findCombatant>): void {
+  // ── Validación (cero mutaciones hasta completarla) ─────────────────────────
+  if (room.pendingOpportunityAttacks && room.pendingOpportunityAttacks.length > 0) {
+    throw new Error("Hay ataques de oportunidad pendientes. Resuelvelos antes de continuar.");
+  }
+  if (room.currentTurn.attackMode !== "none") throw new Error("No puede correr con un modo de ataque preparado. Cancele la preparacion primero.");
+
+  const turnCheck = canRun(snapshot, combatant);
+  if (!turnCheck.ok) throw new Error(turnCheck.error);
+
+  const path = buildStraightPath(combatant.position, command.to);
+  if (!path) throw new Error("No hay una línea recta hacia ese destino; Correr exige movimiento en línea recta.");
+
+  const budgetFeet = runSpeedBudgetFeet(snapshot, combatant);
+  const validation = validateMovePath(snapshot, combatant, path, budgetFeet, false, false);
+  if (!validation.ok || !validation.value) throw new Error(validation.error);
+
+  // Prohibición absoluta de terreno difícil (no solo recargo de coste, a diferencia del
+  // movimiento normal): cualquier casilla atravesada que sea terreno difícil rechaza toda la ruta.
+  const crossesDifficultTerrain = validation.value.steps.some((step, stepIndex) => {
+    const stepPosition = validation.value!.path[stepIndex];
+    const occupiedCells = step?.occupiedCells ?? getCombatantOccupiedCells({ ...combatant, position: { ...stepPosition } }, snapshot);
+    return occupiedCells.some((cell) => isDifficultTerrain(snapshot, cell.x, cell.y));
+  });
+  if (crossesDifficultTerrain) throw new Error("No puede correr a través de terreno difícil.");
+
+  // V1: sin Acrobacias y sin atravesar enemigos (mismo precedente que Retirada); destino sin solapar a nadie.
+  const finalStep = validation.value.path[validation.value.path.length - 1];
+  for (let stepIndex = 0; stepIndex < validation.value.path.length; stepIndex++) {
+    const step = validation.value.path[stepIndex];
+    const projectedStep = validation.value.steps[stepIndex];
+    const stepKeys = new Set((projectedStep?.occupiedCells ?? getCombatantOccupiedCells({ ...combatant, position: { ...step } }, snapshot)).map(footprintCellKey));
+    const isFinal = stepIndex === validation.value.path.length - 1;
+    const blocker = snapshot.combatants.find((other) =>
+      other.id !== combatant.id &&
+      lifeStatus(other as Parameters<typeof lifeStatus>[0]) !== "dead" &&
+      (isFinal || other.type !== combatant.type) &&
+      getCombatantOccupiedCells(other, snapshot).some((cell) => stepKeys.has(footprintCellKey(cell)))
+    );
+    if (blocker) {
+      throw new Error(isFinal
+        ? "No puede terminar de correr sobre la casilla de " + blocker.name + "."
+        : "No puede correr a traves de " + blocker.name + " (Correr V1 no admite Acrobacias).");
+    }
+  }
+
+  // D-1: sin exención de huella inicial — se reutiliza la generación normal de AdO por camino.
+  const distanceFeet = validation.value.distanceFeet;
+  const opportunities = findTriggeredOpportunityAttacksForPath(
+    snapshot,
+    combatant,
+    validation.value.path,
+    distanceFeet,
+    (reactor) => Rules.canMakeOpportunityAttack(snapshot, reactor, combatant.id)
+  );
+
+  // ── Commit atomico (patrón handleWithdraw/handleCharge) ────────────────────
+  const spatialTransition = commitSpatialTransition(room, combatant, finalStep, validation.value.finalSpatialMode);
+  combatant.stats.distanceMovedFeet += distanceFeet;
+  room.currentTurn.movementUsedFeet += distanceFeet;
+  room.currentTurn.usedFullAttack = true; // marcador vigente de "acción de asalto completo consumida"
+  room.log.unshift(makeLog("movement", combatant.name + " corre " + distanceFeet + " pies en línea recta (acción de asalto completo)."));
+  if (spatialTransition.previousMode !== spatialTransition.currentMode) {
+    room.log.unshift(makeLog("movement", spatialTransition.currentMode === "squeezing"
+      ? combatant.name + " entra en compresion espacial."
+      : combatant.name + " recupera su huella natural."));
+  }
+  if (opportunities.length > 0) {
+    room.pendingOpportunityAttacks.push(...opportunities);
+    for (const opportunity of opportunities) room.log.unshift(makeLog("opportunity", opportunity.reason + " Resolver ataque de oportunidad con tirada manual."));
+  }
+
+  // D-3/D-5: sin la dote de Correr, se pierde Destreza (y, por la simplificación documentada,
+  // también Esquiva) a la CA hasta el inicio del propio próximo turno.
+  const keepsDex = FeatCatalog.runContribution(combatant.featIds ?? []).keepsDexBonusWhileRunning;
+  if (!keepsDex) {
+    const instance = {
+      instanceId: cryptoId("effect"),
+      effectId: "srd_running_exposed" as const,
+      source: { type: "creature" as const, id: combatant.id },
+      targets: [combatant.id],
+      appliedAtEvent: { type: "ActionResolved" as const, round: room.round },
+      duration: {
+        type: "until_turn" as const,
+        anchorCombatantId: combatant.id,
+        phase: "start" as const,
+        appliedAtSequence: room.eventSequence
+      }
+    };
+    const nextRoom = EffectManager.add(room, instance);
+    Object.assign(room, nextRoom);
+    room.log.unshift(makeLog("status", combatant.name + " pierde su bonificador de Destreza a la CA por correr sin la dote de Correr, hasta el inicio de su próximo turno."));
   }
 
   broadcast(room);

@@ -187,7 +187,19 @@ Todo cambio requiere:
   - Implementación de `Fatigued`, `Prone`, `Dazed` y `Paralyzed` con lógica de sobrescritura de características.
   - Integración de `getEffectiveAbilityScore` y nuevas pruebas de regresión.
 
-### FASE ACTUAL: Sprint 040 (Document Architecture Cleanup) listo para cierre arquitectónico; Sprint MOVE-WITHDRAW completado (validación Windows pendiente); Sprint 038 en gate; Sprint 039 congelado
+### FASE ACTUAL: Sprint 041 (MOVE-RUN) completado (validación Windows pendiente); Sprint 040 (Document Architecture Cleanup) listo para cierre arquitectónico; Sprint MOVE-WITHDRAW completado (validación Windows pendiente); Sprint 038 en gate; Sprint 039 congelado
+
+  **Sprint 041 — Correr (Run)**
+  - Diseño: `docs/designs/run-design.md` (decisiones D-1 a D-5 cerradas por PROCEED, ver §1 y §8 del documento).
+  - Sub-acción `run` de `use-tactical-action` (`apps/server/src/commands/tacticalCommands.ts`, `handleRun`) — `movementCommands.ts` intocado, mismo patrón que Carga/Retirada. El servidor deriva el camino canónico en línea recta desde la posición actual hasta `to`; el comando no acepta `path` del cliente.
+  - Movimiento: asalto completo, presupuesto ×4 (×3 con armadura pesada) sobre la velocidad efectiva ya resuelta (`Rules.totalSpeedFeet`, hereda Prisa/penalizador de armadura sin cálculo adicional). Sin paso de 5' en el mismo asalto. Terreno difícil: rechazo absoluto (no solo recargo de coste, a diferencia del movimiento normal). Disabled: sin variante limitada — ninguna vía legal para correr (a diferencia de Retirada).
+  - AdO (D-1): sin exención de huella inicial — se reutiliza la generación normal por camino, sin evento adicional artificial (a diferencia de Retirada, que sí exime su huella inicial).
+  - Destreza/Esquiva (D-3): se reutiliza `NO_DEX_TO_AC` (nuevo efecto de catálogo `srd_running_exposed`), aplicado con duración `until_turn`/inicio del propio próximo turno, salvo que el combatiente tenga la dote de Correr.
+  - Dote de Correr (D-5): `FeatCatalog` (`runRules.keepsDexBonusWhileRunning`, feat `srd_run`), consumida por `handleRun` para omitir la supresión de Destreza/Esquiva.
+  - Fuera de alcance (D-2, D-4): resistencia multi-asalto (Constitución/CD creciente/descanso) y bloqueo por visión/Cegado — diferidas explícitamente, registradas como deuda técnica (`docs/technical-debt.md` DT-018, DT-019).
+  - Consolidación arquitectónica: `buildStraightPath` (geometría de línea recta, antes privada y duplicada en `chargeResolver.ts`) se movió a `packages/shared/src/rules.ts` como función pura exportada — única fuente de verdad, reutilizada por Carga y Correr sin cambio de comportamiento (verificado con test de regresión).
+  - UI: botón "Correr (×4/×3 velocidad)" en el panel de movimiento (mutuamente excluyente con "Retirarse"), preview con presupuesto ×4/×3 según categoría de armadura; cero lógica de reglas en cliente.
+  - Tests: `run.test.mjs` 21/21 puros en verde real (`node --test` contra `dist/`) + `run-server.test.mjs` (18 casos servidor, escritos, vía `tsx` en Windows). Typecheck estricto (shared+web+server) en verde con todo el código integrado. `npm test` completo/`build:web`/E2E/Playwright: misma limitación pre-existente del sandbox (binarios nativos `win32-x64` en `node_modules`) — **pendientes de Windows, DoD NO declarado completo**. Regresión verificada: los mismos 11 fallos preexistentes en la suite pura aparecen idénticos antes y después de este sprint (ajenos a MOVE-RUN).
 
   **Sprint 040 — Document Architecture Cleanup (gobernanza documental, sin cambios de motor)**
   - Diseño: `docs/designs/document-architecture-cleanup.md` (Rev. 2, con auditoría, convención híbrida de designs, 5 diffs semánticos resueltos, plan de migración por lotes).

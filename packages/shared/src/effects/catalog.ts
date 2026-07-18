@@ -115,6 +115,14 @@ export const effectsCatalog = {
     ruleOverrides: [],
     onStack: "ignore"
   },
+  "srd_running_exposed": {
+    name: "Corriendo (sin Destreza a la CA)",
+    description: "Sprint 041 (MOVE-RUN), D-3: al correr sin la dote de Correr, el personaje no puede evitar los ataques y pierde su bonificador de Destreza a la CA. Reutiliza NO_DEX_TO_AC (suprime Destreza y Esquiva juntos, como Desprevenido); RAW solo priva de Destreza, conservando Esquiva — simplificación documentada en el NDD, sin CANNOT_MAKE_AOO (D-1: correr no impide realizar ataques de oportunidad).",
+    traits: ["NO_DEX_TO_AC"],
+    modifiers: [],
+    ruleOverrides: [],
+    onStack: "ignore"
+  },
 
   // Peligros Ambientales (Sprint 034) — EffectInstance ancla vía `targetCells`, no `targets`.
   "srd_wall_of_fire_hazard": {

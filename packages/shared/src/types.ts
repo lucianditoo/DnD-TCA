@@ -321,6 +321,7 @@ export type ClientCommand =
   | { type: "use-tactical-action"; roomCode: string; actorId: string; combatantId: string; action: "aid-another"; allyId: string; targetId: string; d20Roll: number }
   | { type: "use-tactical-action"; roomCode: string; actorId: string; combatantId: string; action: "five-foot-step"; to: Position }
   | { type: "use-tactical-action"; roomCode: string; actorId: string; combatantId: string; action: "withdraw"; to: Position; path?: Position[] }
+  | { type: "use-tactical-action"; roomCode: string; actorId: string; combatantId: string; action: "run"; to: Position }
   | { type: "use-tactical-action"; roomCode: string; actorId: string; combatantId: string; action: "stand-up"; isAutoRoll?: boolean }
   | { type: "choose-aid-bonus"; roomCode: string; actorId: string; combatantId: string; buffId: string; choice: "attack" | "ac" }
   | { type: "use-ability"; roomCode: string; actorId: string; casterId: string; targetId: string; abilityId: string; amount: number | null }

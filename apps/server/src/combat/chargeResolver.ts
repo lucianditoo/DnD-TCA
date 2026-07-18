@@ -1,4 +1,4 @@
-import { canFullAttack, distanceBetweenFootprintsFeet, getCombatantOccupiedCells, resolveEquippedWeaponProfile, Rules, EffectReducer, effectsCatalog, type CombatRulesSnapshot, type Combatant, type Position } from "@dnd-tactical/shared";
+import { canFullAttack, distanceBetweenFootprintsFeet, getCombatantOccupiedCells, resolveEquippedWeaponProfile, Rules, EffectReducer, effectsCatalog, buildStraightPath, type CombatRulesSnapshot, type Combatant, type Position } from "@dnd-tactical/shared";
 
 export function canCharge(
   room: CombatRulesSnapshot<import("@dnd-tactical/shared").ProductionEffectId>, combatant: Combatant): { ok: boolean; error?: string } {
@@ -44,19 +44,6 @@ export function findChargePath(
   const chosen = candidates[0];
   if (!chosen) return { ok: false, error: "No hay una ruta de carga recta, libre, de al menos 10 pies y dentro de la velocidad doble hacia ese objetivo." };
   return { ok: true, value: chosen.path };
-}
-
-function buildStraightPath(origin: Position, destination: Position): Position[] | null {
-  const dx = destination.x - origin.x;
-  const dy = destination.y - origin.y;
-  const stepX = Math.sign(dx);
-  const stepY = Math.sign(dy);
-  if (dx !== 0 && dy !== 0 && Math.abs(dx) !== Math.abs(dy)) return null;
-  const steps = Math.max(Math.abs(dx), Math.abs(dy));
-  if (steps === 0) return null;
-  const path: Position[] = [];
-  for (let index = 1; index <= steps; index += 1) path.push({ x: origin.x + stepX * index, y: origin.y + stepY * index, zFeet: origin.zFeet });
-  return path;
 }
 
 export function calculatePathDistanceFeet(origin: Pick<Position, "x" | "y">, path: Array<Pick<Position, "x" | "y">>, cellSizeFeet: number): number {

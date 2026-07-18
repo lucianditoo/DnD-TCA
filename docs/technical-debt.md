@@ -257,6 +257,8 @@ Estas deudas no generan riesgo activo pero conviene resolverlas antes de las fas
 | DT-015 | Documentación fragmentada | 🟢 Baja | Docs | No |
 | DT-016 | DurationPolicy acoplado al número de ronda | 🟢 Baja | `effects/tick.ts` | No |
 | ~~DT-017~~ | ~~Variantes de CA legacy sin desglose exacto~~ | ~~🟡 Media~~ | ~~`types.ts`, `combatSnapshot.ts`, `rules.ts`~~ | ~~No~~ | ✅ **Resuelto** |
+| DT-018 | Correr: resistencia multi-asalto (Constitución/CD/descanso) diferida | 🟢 Baja | `rules.ts`, `tacticalCommands.ts` | No |
+| DT-019 | Correr: bloqueo por visión/Cegado diferido (sin modelo de visión) | 🟢 Baja | `rules.ts` | No |
 
 ---
 
@@ -271,3 +273,31 @@ Estas deudas no generan riesgo activo pero conviene resolverlas antes de las fas
 ## Cierre Sprint 030
 
 Grapple Core V2 no introduce deuda técnica nueva. La selección restringida a arma principal ligera o ataque natural es alcance funcional explícito de V2; futuras acciones internas de Presa deben ampliar el catálogo de acciones sobre las mismas fronteras compartidas, sin bypasses en handlers o UI.
+
+---
+
+### DT-018: Correr — resistencia multi-asalto (Constitución/CD creciente/descanso) sin implementar
+
+**Descripción**: Sprint 041 (`MOVE-RUN`) entrega el movimiento de Correr de un único asalto (×4/×3 velocidad, línea recta, terreno difícil bloqueado, pérdida de Destreza salvo dote). El RAW completo (`combat/07_movimiento.txt:33`) exige además: rondas gratuitas de Correr = puntuación de Constitución; agotadas esas rondas, una prueba de Constitución (CD 10, +1 por ronda adicional) cada asalto que se mantenga la carrera; al fallar, detenerse; y un descanso obligatorio de 10 asaltos (1 minuto) antes de poder volver a correr. Ninguna de estas piezas está implementada — es una decisión explícita de acotación de alcance (D-2 del NDD), no un olvido.
+
+**Riesgo**: Un combatiente puede correr indefinidamente asalto tras asalto sin límite de resistencia. Bajo, dado que Correr ya es una acción de asalto completo que expone al personaje (pérdida de Destreza salvo dote) y consume el turno igual que Carga/Retirada.
+
+**Módulo afectado**: `packages/shared/src/rules.ts` (`canRun`), `apps/server/src/commands/tacticalCommands.ts` (`handleRun`). Requeriría estado nuevo persistente entre turnos (asaltos corriendo consecutivos, última CD intentada), hoy inexistente — toda la economía de turno vive en `TurnState`, que se reinicia cada turno.
+
+**Recomendación**: Diseñar en un sprint propio (NDD dedicado) el estado de resistencia multi-asalto antes de implementarlo; no improvisar contadores ad-hoc en el handler de Correr.
+
+**Bloquea MVP**: No.
+
+---
+
+### DT-019: Correr — bloqueo por "no ver hacia dónde vas" sin implementar (depende de un modelo de visión/Cegado)
+
+**Descripción**: El RAW de Correr (`combat/07_movimiento.txt:33`) prohíbe correr si el personaje no puede ver hacia dónde va. El motor no tiene todavía ningún modelo real de visión ni de la condición Cegado — deuda ya registrada de forma general en el Sprint MOVE-WITHDRAW ("exención pro-defensor ante invisibles y Cegado sin validar"). Sprint 041 (`MOVE-RUN`, decisión D-4) difiere explícitamente esta restricción hasta que exista dicho modelo, en vez de introducir una heurística parcial.
+
+**Riesgo**: Un combatiente Cegado o sin línea de visión hacia su destino puede correr igualmente. Bajo en el estado actual del motor (Cegado tampoco está modelado como condición jugable todavía).
+
+**Módulo afectado**: `packages/shared/src/rules.ts` (`canRun`); comparte el mismo punto de extensión futuro que usará Retirada para su deuda de visión equivalente.
+
+**Recomendación**: Cuando se diseñe el modelo de visión/Cegado, conectar tanto Correr como Retirada al mismo gate — no acoplar la solución a una sola de las dos acciones.
+
+**Bloquea MVP**: No.

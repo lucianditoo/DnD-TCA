@@ -77,7 +77,7 @@
 | [x] | Retirada (Withdraw) | **Sprint MOVE-WITHDRAW**: sub-acción `withdraw` de `use-tactical-action` (`handleWithdraw`, patrón Charge). Asalto completo a 2× velocidad (`usedFullAttack` + `movementUsedFeet`); rama RAW "retirada limitada" para Disabled (1×, `usedStandardAction` + esfuerzo). Huella inicial completa exenta del disparo de AdO (parámetro puro en `findTriggeredOpportunityAttacksForPath`, default neutro); resto de la ruta provoca normal. Simplificaciones V1 documentadas: invisibles también exentos (pro-defensor), Cegado sin validar, sin Acrobacias ni atravesar enemigos. Tests: `withdraw.test.mjs` + `withdraw-server.test.mjs`. |
 | [x] | Movimiento táctico | `validateMovePath` completo. |
 | [ ] | Movimiento doble | Sin acción de doble movimiento. |
-| [ ] | Correr | Solo existe `FORBID_RUN` como `RuleOverride` declarativo; la acción de correr (×4) no. |
+| [x] | Correr | Sprint 041 (`MOVE-RUN`): ×4/×3 velocidad, línea recta, sin paso de 5', terreno difícil bloqueado, `FORBID_RUN` consumido, pérdida de Destreza/Esquiva salvo dote. Parcial respecto de la resistencia multi-asalto (Constitución/CD creciente/descanso), diferida — ver `docs/technical-debt.md`. |
 | [x] | Movimiento diagonal | 1-2-1-2 (Sprint 015). |
 | [x] | Distancia | Distancia entre footprints O(1) (Sprint 027). |
 | [x] | Terreno difícil | Coste doble, 10/20 ft diagonal (Sprint 015). |

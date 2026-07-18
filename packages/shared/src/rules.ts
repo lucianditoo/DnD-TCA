@@ -4,7 +4,7 @@ import type { CatalogEffectId } from "./effects/types.js";
 import { EffectReducer } from "./effects/reducer.js";
 import { effectsCatalog, type ProductionEffectId } from "./effects/catalog.js";
 import { EquipmentCatalog } from "./equipmentCatalog.js";
-import { deriveArmorClassBreakdown, deriveMeleeThreatSources, getArmorAdjustedSpeedFeet, getEquippedWeaponEntry, resolveEquippedWeaponProfile } from "./equipmentStats.js";
+import { deriveArmorClassBreakdown, deriveMeleeThreatSources, getArmorAdjustedSpeedFeet, getEquippedArmorEntry, getEquippedWeaponEntry, resolveEquippedWeaponProfile } from "./equipmentStats.js";
 import { FeatCatalog } from "./featCatalog.js";
 import { getSizeRule } from "./sizeRules.js";
 import { SpellsCatalog } from "./spells/catalog.js";
@@ -798,6 +798,73 @@ export function canFullAttack<TCatalog extends Record<string, EffectDefinition>>
   if (room.currentTurn.movementUsedFeet > room.board.cellSizeFeet) return { ok: false, error: "No puede hacer ataque completo despues de moverse mas de 5 pies." };
   if (room.currentTurn.usedStandardAction || room.currentTurn.usedFullAttack) return { ok: false, error: "Ya uso su accion ofensiva este turno." };
   return { ok: true, value: true };
+}
+
+/**
+ * Sprint 041 (MOVE-RUN): gate puro de la accion de asalto completo "Correr", analogo a
+ * `canCharge` (chargeResolver.ts). Vive en el Rule Engine (no en el servidor) por el
+ * principio de arquitectura del proyecto: toda la logica de reglas permanece en funciones
+ * puras aqui, el servidor solo orquesta. Reutiliza `canFullAttack` (economia de turno +
+ * gate de Disabled para acciones de asalto completo) y consume el override declarativo
+ * `FORBID_RUN` (ya declarado en `srd_fatigued` desde antes de este sprint, sin consumidor
+ * hasta ahora), exactamente como `FORBID_CHARGE` ya es consumido por Carga.
+ */
+export function canRun(room: CombatRulesSnapshot<ProductionEffectId>, combatant: Combatant): RuleResult<true> {
+  const turnCheck = canFullAttack(room, combatant);
+  if (!turnCheck.ok) return turnCheck;
+  if (room.currentTurn.movementUsedFeet > 0 || room.currentTurn.usedMoveAction || room.currentTurn.usedFiveFootStep) {
+    return { ok: false, error: combatant.name + " ya se movio este turno; Correr exige el turno completo sin movimiento previo." };
+  }
+  const reduced = EffectReducer.reduceEffectsForTarget({
+    effectInstances: room.effectInstances,
+    targetId: combatant.id,
+    catalog: effectsCatalog
+  });
+  if (reduced.ruleOverrides.includes("FORBID_RUN")) {
+    return { ok: false, error: combatant.name + " no puede correr en su estado actual." };
+  }
+  return { ok: true, value: true };
+}
+
+/**
+ * Sprint 041 (MOVE-RUN): multiplicador RAW de Correr segun categoria de armadura equipada
+ * (pag. 148 del corpus): x4 sin armadura o con armadura ligera/media, x3 con armadura pesada.
+ * Reutiliza la categoria ya expuesta por `getEquippedArmorEntry` (EquipmentCatalog) — sin
+ * nueva data.
+ */
+export function runSpeedMultiplier(combatant: Combatant): 3 | 4 {
+  return getEquippedArmorEntry(combatant)?.category === "heavy" ? 3 : 4;
+}
+
+/**
+ * Sprint 041 (MOVE-RUN): presupuesto de movimiento de Correr, calculado SIEMPRE sobre la
+ * velocidad efectiva ya resuelta (`Rules.totalSpeedFeet`, que ya incorpora Prisa/Haste,
+ * penalizador de velocidad por armadura, etc.) y nunca sobre la velocidad base cruda —
+ * riesgo explicito registrado en el NDD (docs/designs/run-design.md §4).
+ */
+export function runSpeedBudgetFeet(room: CombatRulesSnapshot<ProductionEffectId>, combatant: Combatant): number {
+  return Rules.totalSpeedFeet(room, combatant) * runSpeedMultiplier(combatant);
+}
+
+/**
+ * Sprint 041 (MOVE-RUN): geometria de linea recta, consolidada aqui como unica fuente de
+ * verdad (antes vivia privada y duplicada en `chargeResolver.ts`). Carga la reutiliza sin
+ * cambio de comportamiento; Correr la usa para derivar el camino canonico desde la posicion
+ * actual del combatiente hasta el destino solicitado por el cliente, sin confiar en ningun
+ * camino intermedio enviado por el cliente (evita una segunda implementacion de geometria).
+ * Devuelve null si el destino no es alcanzable en linea recta (ni ortogonal ni diagonal de 45°).
+ */
+export function buildStraightPath(origin: Position, destination: Position): Position[] | null {
+  const dx = destination.x - origin.x;
+  const dy = destination.y - origin.y;
+  const stepX = Math.sign(dx);
+  const stepY = Math.sign(dy);
+  if (dx !== 0 && dy !== 0 && Math.abs(dx) !== Math.abs(dy)) return null;
+  const steps = Math.max(Math.abs(dx), Math.abs(dy));
+  if (steps === 0) return null;
+  const path: Position[] = [];
+  for (let index = 1; index <= steps; index += 1) path.push({ x: origin.x + stepX * index, y: origin.y + stepY * index, zFeet: origin.zFeet });
+  return path;
 }
 
 export function canStandardAttack<TCatalog extends Record<string, EffectDefinition>>(room: CombatRulesSnapshot<CatalogEffectId<TCatalog>>, attacker: Combatant): RuleResult<true> {

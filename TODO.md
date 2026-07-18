@@ -42,6 +42,15 @@ Documento vivo de tareas pendientes. El backlog está organizado en Sprints. Par
 
 ## Sprint Activo
 
+  **Sprint 041 (MOVE-RUN) — COMPLETADO (validación Windows pendiente)**
+  - [x] NDD aprobado con PROCEED; decisiones D-1 a D-5 cerradas (§1/§8 de `docs/designs/run-design.md`).
+  - [x] Shared: variante `run` (types+Zod); gate puro `canRun` + `runSpeedMultiplier`/`runSpeedBudgetFeet` (rules.ts, consume `FORBID_RUN`); `buildStraightPath` consolidado como función pura exportada (antes privada en `chargeResolver.ts`); `FeatCatalog` (`runRules`/`runContribution`, `srd_run`); efecto de catálogo `srd_running_exposed` (`NO_DEX_TO_AC`).
+  - [x] Servidor: `handleRun` en `tacticalCommands.ts` (×4/×3 según armadura, línea recta derivada por el servidor, terreno difícil bloqueado en absoluto, AdO sin exención D-1, supresión Destreza/Esquiva salvo dote; `movementCommands.ts` intocado).
+  - [x] UI: botón "Correr (×4/×3)" + preview, mutuamente excluyente con Retirada.
+  - [x] Tests: 21 puros en verde real (`run.test.mjs`) + 18 de servidor escritos (`run-server.test.mjs`, tsx/Windows); regresión de la suite pura idéntica antes/después (11 fallos preexistentes ajenos a este sprint).
+  - [x] Docs: NDD (D-1 a D-5 cerradas + §8 Implementación), registry `MOVE-RUN`, checklists (`RULES_PHB_CHECKLIST.md`, `FEATS_PHB_CHECKLIST.md`), `docs/technical-debt.md` (DT-018 resistencia, DT-019 visión), `PROJECT_STATUS.md`, memoria.
+  - [ ] Windows: `npm test` completo (`run-server.test.mjs`), `build:web`, E2E WebSocket, Playwright — **DoD no declarado completo hasta entonces**.
+
   **Sprint MOVE-WITHDRAW — COMPLETADO (validación Windows pendiente)**
   - [x] NDD Rev. 3 aprobado con PROCEED; contrato real de economía verificado (matriz en NDD §2).
   - [x] Shared: variante `withdraw` (types+Zod) + `exemptDepartureCellKeys` en `findTriggeredOpportunityAttacksForPath` (default neutro).

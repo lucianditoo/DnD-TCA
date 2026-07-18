@@ -56,6 +56,8 @@ export function ActionsPanel(props: {
   onFiveFootStep: () => void;
   withdrawArmed: boolean;
   onToggleWithdraw: () => void;
+  runArmed: boolean;
+  onToggleRun: () => void;
   onTargetChange: (id: string) => void;
   onD20Change: (value: string) => void;
   onAutoD20Change: (value: boolean) => void;
@@ -164,7 +166,7 @@ export function ActionsPanel(props: {
           <button onClick={props.onUndoMovementStep} disabled={props.movementPathLength === 0}>Deshacer paso</button>
           <button onClick={props.onClearMovementPath} disabled={props.movementPathLength === 0}>Limpiar ruta</button>
         </div>}
-        {room.phase === "active" && <button className="primary move-confirm" onClick={props.onConfirmMovementPath} disabled={actionDisabled || props.movementPathLength === 0 || props.hasPendingOpportunities || props.isMoveDestinationOccupied}><Footprints size={18} /> {props.withdrawArmed ? "Confirmar Retirada" : "Confirmar movimiento"}</button>}
+        {room.phase === "active" && <button className="primary move-confirm" onClick={props.onConfirmMovementPath} disabled={actionDisabled || props.movementPathLength === 0 || props.hasPendingOpportunities || props.isMoveDestinationOccupied}><Footprints size={18} /> {props.withdrawArmed ? "Confirmar Retirada" : props.runArmed ? "Confirmar Correr" : "Confirmar movimiento"}</button>}
         {room.phase === "active" && (() => {
           // MOVE-WITHDRAW: disponibilidad presentacional (el servidor decide la legalidad final).
           const turnVirgin = room.currentTurn.movementUsedFeet === 0 && !room.currentTurn.usedMoveAction && !room.currentTurn.usedStandardAction && !room.currentTurn.usedFullAttack && !room.currentTurn.usedFiveFootStep && !room.currentTurn.usedTotalDefense && room.currentTurn.attacksMade === 0 && room.currentTurn.attackMode === "none";
@@ -174,6 +176,21 @@ export function ActionsPanel(props: {
               {props.withdrawArmed ? "✓ Armada: dibuja la ruta (presupuesto ×2) y confirma." : turnVirgin ? "✓ Disponible con el turno sin usar." : "✗ No disponible: la Retirada exige el turno completo sin acciones previas."}
             </div>
             <button className={props.withdrawArmed ? "primary move-confirm" : "move-confirm"} onClick={props.onToggleWithdraw} disabled={actionDisabled || (!props.withdrawArmed && !turnVirgin) || props.hasPendingOpportunities}><Footprints size={18} /> {props.withdrawArmed ? "Cancelar Retirada" : "Retirarse (×2 velocidad)"}</button>
+          </>;
+        })()}
+        {room.phase === "active" && (() => {
+          // MOVE-RUN: disponibilidad presentacional (el servidor decide la legalidad final:
+          // linea recta, terreno dificil absoluto, FORBID_RUN, economia). Correr no tiene
+          // variante limitada para Disabled — sin turno virgen o Incapacitado, sin via legal.
+          const turnVirgin = room.currentTurn.movementUsedFeet === 0 && !room.currentTurn.usedMoveAction && !room.currentTurn.usedStandardAction && !room.currentTurn.usedFullAttack && !room.currentTurn.usedFiveFootStep && !room.currentTurn.usedTotalDefense && room.currentTurn.attacksMade === 0 && room.currentTurn.attackMode === "none";
+          const isDisabled = lifeStatus(selected) === "disabled";
+          const runAvailable = turnVirgin && !isDisabled;
+          return <>
+            <div className="rules-box" style={{ marginTop: "0.75rem", borderTop: "1px solid var(--border)", paddingTop: "0.75rem" }}>
+              <strong>Correr (Run)</strong> — acción de asalto completo: movimiento en línea recta hasta ×4 velocidad (×3 con armadura pesada). No hay paso de 5' este turno; el terreno difícil lo bloquea por completo. Sin la dote de Correr, pierdes Destreza (y Esquiva) a la CA hasta tu próximo turno.<br />
+              {props.runArmed ? "✓ Armado: dibuja el destino en línea recta y confirma." : isDisabled ? "✗ No disponible: un combatiente Incapacitado no puede correr." : runAvailable ? "✓ Disponible con el turno sin usar." : "✗ No disponible: Correr exige el turno completo sin acciones previas."}
+            </div>
+            <button className={props.runArmed ? "primary move-confirm" : "move-confirm"} onClick={props.onToggleRun} disabled={actionDisabled || (!props.runArmed && !runAvailable) || props.hasPendingOpportunities}><Footprints size={18} /> {props.runArmed ? "Cancelar Correr" : "Correr (×4/×3 velocidad)"}</button>
           </>;
         })()}
         {room.phase === "active" && (() => {

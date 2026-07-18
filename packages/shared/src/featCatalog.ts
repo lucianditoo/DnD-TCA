@@ -40,6 +40,17 @@ export interface RangedAttackContribution {
   readonly ignoresFiringIntoMeleePenalty?: boolean;
 }
 
+/**
+ * Sprint 041 (MOVE-RUN), D-5: contribucion declarativa de la dote de Correr (pag. 94).
+ * Consumida por el handler de Correr (`apps/server/src/commands/tacticalCommands.ts`) via
+ * el fold `runContribution`, mismo patron que `rangedAttackContribution`. Sin la dote, el
+ * personaje pierde Destreza (y, por la simplificacion documentada de D-3, tambien Esquiva)
+ * a la CA mientras corre; con la dote, conserva ambos bonos.
+ */
+export interface RunRuleContribution {
+  readonly keepsDexBonusWhileRunning?: boolean;
+}
+
 export interface FeatDefinition {
   readonly id: string;
   readonly name: string;
@@ -48,6 +59,7 @@ export interface FeatDefinition {
   readonly tacticalActionRules?: readonly TacticalActionRuleContribution[];
   readonly attackRoutineRules?: AttackRoutineContribution;
   readonly rangedAttackRules?: RangedAttackContribution;
+  readonly runRules?: RunRuleContribution;
 }
 
 const definitions = Object.freeze([
@@ -94,6 +106,14 @@ const definitions = Object.freeze([
     avoidsOpportunityOn: Object.freeze([] as SpecialManeuverId[]),
     rangedAttackRules: Object.freeze({
       ignoresFiringIntoMeleePenalty: true
+    })
+  }),
+  Object.freeze({
+    id: "srd_run",
+    name: "Correr (Run)",
+    avoidsOpportunityOn: Object.freeze([] as SpecialManeuverId[]),
+    runRules: Object.freeze({
+      keepsDexBonusWhileRunning: true
     })
   })
 ] satisfies readonly FeatDefinition[]);
@@ -155,5 +175,18 @@ export const FeatCatalog = Object.freeze({
           result.ignoresFiringIntoMeleePenalty === true || contribution.ignoresFiringIntoMeleePenalty === true
       };
     }, {}));
+  },
+  /**
+   * Sprint 041 (MOVE-RUN), D-5: fold OR declarativo sobre `runRules`, mismo patron que
+   * `rangedAttackContribution`. Consumido por el handler de Correr para decidir si suprime
+   * Destreza/Esquiva (`NO_DEX_TO_AC`) mientras el combatiente corre.
+   */
+  runContribution(featIds: readonly string[]): Required<RunRuleContribution> {
+    return Object.freeze(featIds.reduce<Required<RunRuleContribution>>((result, id) => {
+      const contribution = byId.get(id)?.runRules;
+      return {
+        keepsDexBonusWhileRunning: result.keepsDexBonusWhileRunning === true || contribution?.keepsDexBonusWhileRunning === true
+      };
+    }, { keepsDexBonusWhileRunning: false }));
   }
 });
