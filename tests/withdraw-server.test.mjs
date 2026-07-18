@@ -1,7 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import { handleUseTacticalAction } from "../apps/server/src/commands/tacticalCommands.ts";
-import { validateClientCommand } from "../apps/server/src/validation/index.ts";
+import { validateClientCommand } from "../apps/server/src/validation/validateClientCommand.ts";
 import { clients } from "../apps/server/src/room/roomStore.ts";
 import { inventoryEquipment } from "./test-utils.mjs";
 
@@ -172,9 +172,9 @@ test("MOVE-WITHDRAW servidor", async (t) => {
 
   await t.test("W24: payload invalido rechazado por el schema runtime", () => {
     const bad = validateClientCommand({ type: "use-tactical-action", roomCode: "TEST", actorId: "player-1", combatantId: "mover", action: "withdraw" });
-    assert.equal(bad.ok, false, "withdraw sin 'to' debe fallar la validacion Zod.");
+    assert.equal(bad.success, false, "withdraw sin 'to' debe fallar la validacion Zod.");
     const good = validateClientCommand({ type: "use-tactical-action", roomCode: "TEST", actorId: "player-1", combatantId: "mover", action: "withdraw", to: { x: 5, y: 2, zFeet: 0 }, path: [{ x: 3, y: 2, zFeet: 0 }] });
-    assert.equal(good.ok, true, "Payload correcto valida.");
+    assert.equal(good.success, true, "Payload correcto valida.");
   });
 
   await t.test("W25: exencion de huella inicial + AdO posterior pendiente tras confirmar transicion (secuencia real)", () => {
