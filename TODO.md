@@ -37,10 +37,23 @@ Documento vivo de tareas pendientes. El backlog está organizado en Sprints. Par
 - [x] Sprint 031: Consolidación de Infraestructura Espacial — footprints efectivos, transiciones espaciales idempotentes y preview de colisión.
 - [x] Sprint 032: Advanced AoO Limits & Reaction Triggers — oráculo puro de provocación, límites elásticos y alertas predictivas en React.
 - [x] Sprint 033: Spell Areas of Effect & Polygonal Templates — geometría `cone`/`line`/`burst`, intersección con huellas multiposición y overlays de área en React.
+- [x] Sprint 042: Cover — pipeline canónico único, cobertura por criatura/terreno, footprints deterministas, consumidores full-stack y regresiones focalizadas.
 
 ## Próximos Sprints
 
 ## Sprint Activo
+
+  **Sprint 042 (COVER) — IMPLEMENTACIÓN TERMINADA; AUDITORÍA GLOBAL CON BLOQUEOS AJENOS**
+  - [x] Auditar y conservar el trabajo local iniciado por Claude.
+  - [x] Consolidar Cover exclusivamente en `getAttackContextModifiers`.
+  - [x] Preservar cobertura por criatura +4 e incorporar obstáculos completos +4 sin apilamiento.
+  - [x] Migrar armas, touch/conjuros, AdO, Carga, maniobras y UI al mismo `CoverAssessment`.
+  - [x] Eliminar `hasObstacleInterception` y cálculos paralelos de resolución/UI.
+  - [x] Añadir determinismo por footprints, orden de snapshot, inmutabilidad y no doble aplicación.
+  - [x] Tests focalizados: 58/58.
+  - [x] Typecheck, build y E2E WebSocket 87/87.
+  - [ ] Suite global completamente verde: 420/429; permanecen 7 casos reales preexistentes fuera de Cover.
+  - [ ] Playwright: bloqueado por `browserType.launch: spawn EPERM` y dependencias derivadas inaccesibles en OneDrive.
 
   **Sprint 041 (MOVE-RUN) — COMPLETADO (validación Windows pendiente)**
   - [x] NDD aprobado con PROCEED; decisiones D-1 a D-5 cerradas (§1/§8 de `docs/designs/run-design.md`).

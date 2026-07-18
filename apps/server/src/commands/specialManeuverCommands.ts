@@ -55,7 +55,7 @@ function resolveInterruptingOpportunityAttack(
   const d20Roll = checkedD20(diceSource, "opportunity-attack");
   const tactical = getAttackContextModifiers(snapshot, defender, tripper).byAttackType.melee;
   const source = resolveWeaponAttackSource(defender, "melee");
-  let result = resolveAttack(snapshot, defender, tripper, d20Roll, null, "ataque de oportunidad", tactical.attackBonus, { source });
+  let result = resolveAttack(snapshot, defender, tripper, d20Roll, null, "ataque de oportunidad", tactical.attackBonus, { source, cover: tactical.cover });
   if (tactical.labelParts.length > 0) result.attackParts.push(...tactical.labelParts);
 
   if (result.threatened) {

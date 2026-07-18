@@ -1,5 +1,5 @@
 import { Footprints, HeartPulse, MousePointer2, Shield, SkipForward, Sparkles, Swords } from "lucide-react";
-import { averageWeaponDamageForCombatant, EquipmentCatalog, getAmmunitionState, getEquippedWeaponEntry, getGrappleAttackEligibility, getGrappleEscapePreview, lifeStatus, Rules, calculatePathCostFeet, getAttackContextModifiers, getEffectiveAttackRoutine, getWeaponAttackTypeForTarget, getAttackLineInterception, createCombatRulesSnapshot, canApplySneakAttack, getEffectiveSneakAttackDice, validateSpecialManeuver, validateStandUp, SpellsCatalog, type Buff, type CombatOutcome, type CombatRoom, type Combatant, type GrappleEscapeType, type LifeStatus } from "@dnd-tactical/shared";
+import { averageWeaponDamageForCombatant, EquipmentCatalog, getAmmunitionState, getEquippedWeaponEntry, getGrappleAttackEligibility, getGrappleEscapePreview, lifeStatus, Rules, calculatePathCostFeet, getAttackContextModifiers, getEffectiveAttackRoutine, getWeaponAttackTypeForTarget, createCombatRulesSnapshot, canApplySneakAttack, getEffectiveSneakAttackDice, validateSpecialManeuver, validateStandUp, SpellsCatalog, type Buff, type CombatOutcome, type CombatRoom, type Combatant, type GrappleEscapeType, type LifeStatus } from "@dnd-tactical/shared";
 import { type ActionMode, type TacticMode } from "../../viewModel";
 import { Collapsible, D20Control, RollControls } from "../common";
 import { GmPanel } from "../GmPanel/GmPanel";
@@ -206,11 +206,10 @@ export function ActionsPanel(props: {
       </div>}
       {props.actionMode === "attack" && (() => {
         const attackTarget = props.targets.find((t) => t.id === props.targetId);
-        const interception = selected && attackTarget ? getAttackLineInterception(snapshot, selected, attackTarget) : null;
         const attackType = selected && attackTarget ? getWeaponAttackTypeForTarget(snapshot, selected, attackTarget) : "melee";
         const attackContext = selected && attackTarget
           ? getAttackContextModifiers(snapshot, selected, attackTarget).byAttackType[attackType]
-          : { attackBonus: 0, labelParts: [] };
+          : { attackBonus: 0, labelParts: [], cover: { applies: false, acBonus: 0, kind: "none" as const, blockerIds: [], blockedCellKeys: [] } };
         const routine = selected ? getEffectiveAttackRoutine(snapshot, selected, { attackType }) : [];
         const attacksMade = room.currentTurn.attacksMade || 0;
         const currentAttack = routine[attacksMade] || { effectiveAttackBonus: 0 };
@@ -265,7 +264,7 @@ export function ActionsPanel(props: {
               <label>Objetivo<select value={props.targetId} onChange={(event) => props.onTargetChange(event.target.value)}><option value="">Elegir</option>{props.targets.map((target) => <option key={target.id} value={target.id}>{target.name}</option>)}</select></label>
               {props.targetDistanceFeet !== null && <div className="rules-box">Distancia al objetivo: {props.targetDistanceFeet} ft.{props.rangePreview ? " " + props.rangePreview : ""}</div>}
               {attackContext.labelParts.length > 0 && <div className="rules-box">Modificadores de posicion: {attackContext.labelParts.join(", ")}</div>}
-              {interception?.hasObstacleInterception && <div className="rules-box" style={{ color: "var(--danger)" }}>⚠️ El objetivo tiene cobertura (+4 CA) porque la linea de ataque atraviesa otra criatura.</div>}
+              {attackContext.cover.applies && <div className="rules-box" style={{ color: "var(--danger)" }}>⚠️ El objetivo tiene cobertura (+{attackContext.cover.acBonus} CA) porque la linea de ataque atraviesa {attackContext.cover.kind === "terrain-cover" ? "un obstaculo" : "otra criatura"}.</div>}
               {selected && attackTarget && canApplySneakAttack(snapshot, selected, attackTarget) && <div className="rules-box sneak-attack-badge" style={{ backgroundColor: "rgba(16, 185, 129, 0.1)", border: "1px solid var(--success)", color: "var(--success)", fontWeight: "bold", marginTop: "0.5rem" }}><Sparkles size={16} style={{ display: "inline", verticalAlign: "text-bottom", marginRight: "4px" }} />¡Ataque Furtivo disponible! +{getEffectiveSneakAttackDice(snapshot, selected)}d6</div>}
               {(() => {
                 const provokesAoO = attackType === "ranged" && Rules.actionProvokesOpportunityAttack(snapshot, selected, "ranged-attack");
@@ -414,6 +413,7 @@ export function ActionsPanel(props: {
           {props.selectedAbility?.id === "magic-missile" && <label>Daño<input type="number" value={props.damage} onChange={(event) => props.onDamageChange(event.target.value)} /></label>}
           {props.selectedAbility?.resolution.kind === "attack-roll" && <RollControls d20={props.d20Roll} autoD20={props.autoD20} damage={props.damage} autoDamage={props.autoDamage} defaultDamage={0} onD20Change={props.onD20Change} onAutoD20Change={props.onAutoD20Change} onDamageChange={props.onDamageChange} onAutoDamageChange={props.onAutoDamageChange} />}
           {abilityTactical && abilityTactical.labelParts.length > 0 && <div className="rules-box">Modificadores de posición: {abilityTactical.labelParts.join(", ")}</div>}
+          {abilityTactical?.cover.applies && <div className="rules-box" style={{ color: "var(--danger)" }}>⚠️ El objetivo tiene cobertura (+{abilityTactical.cover.acBonus} CA) porque la línea de ataque atraviesa {abilityTactical.cover.kind === "terrain-cover" ? "un obstáculo" : "otra criatura"}.</div>}
           <button className="primary ability-confirm" onClick={() => props.onUseAbility(props.selectedAbilityId || props.selectedAbility?.id || "")} disabled={actionDisabled || room.phase !== "active" || props.hasPendingOpportunities || !props.selectedAbility}><Sparkles size={18} /> Usar habilidad</button>
         </div>}
 

@@ -180,8 +180,9 @@ test("getAttackContextModifiers separa melee y ranged", () => {
 
   const context = getAttackContextModifiers(room, hero, enemy);
   assert.equal(context.flanking, true);
-  assert.deepEqual(context.byAttackType.melee, { attackBonus: 2, labelParts: ["flanqueo +2"] });
-  assert.deepEqual(context.byAttackType.ranged, { attackBonus: 0, labelParts: [] });
+  const noCover = { applies: false, acBonus: 0, kind: "none", blockerIds: [], blockedCellKeys: [] };
+  assert.deepEqual(context.byAttackType.melee, { attackBonus: 2, labelParts: ["flanqueo +2"], cover: noCover });
+  assert.deepEqual(context.byAttackType.ranged, { attackBonus: -4, labelParts: ["disparo a melé -4"], cover: noCover });
 });
 
 test("sin flanqueo ambos contextos retornan cero", () => {
@@ -192,5 +193,5 @@ test("sin flanqueo ambos contextos retornan cero", () => {
   const context = getAttackContextModifiers(room, hero, enemy);
   assert.equal(context.flanking, false);
   assert.equal(context.byAttackType.melee.attackBonus, 0);
-  assert.equal(context.byAttackType.ranged.attackBonus, 0);
+  assert.equal(context.byAttackType.ranged.attackBonus, -4);
 });

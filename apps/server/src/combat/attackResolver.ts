@@ -14,7 +14,7 @@ import {
   type AttackThreatState,
   type DamageBundle,
   type DamageComponent,
-  getAttackLineInterception,
+  type CoverAssessment,
   EffectReducer,
   effectsCatalog,
   hasEffectTrait,
@@ -48,6 +48,8 @@ export interface AttackResolutionOptions {
   /** Sprint 035: banderas de contexto para Movilidad, derivadas autoritativamente por el servidor. */
   isOpportunityAttack?: boolean;
   isMovementProvoked?: boolean;
+  /** Sprint 042: Cover ya resuelto por el caller vía getAttackContextModifiers(...).byAttackType[tipo].cover. */
+  cover?: CoverAssessment;
 }
 
 export interface ResolvedAttackSource {
@@ -94,13 +96,11 @@ export function resolveAttack(
   const helplessLabel = helplessBonus ? "indefenso +4" : "";
   const attackParts = [...attack.parts, rangePenalty.label, aidAttackBonus ? "ayuda +" + aidAttackBonus : "", helplessLabel].filter(Boolean);
   
-  const interception = getAttackLineInterception(context, attacker, target);
-  
   const ac = Rules.totalArmorClass(context, target, {
     attackType: source.attackType,
     targetAcType: source.targetAcType,
     attackerId: attacker.id,
-    hasObstacleInterception: interception.hasObstacleInterception,
+    cover: options.cover,
     isOpportunityAttack: options.isOpportunityAttack,
     isMovementProvoked: options.isMovementProvoked
   });

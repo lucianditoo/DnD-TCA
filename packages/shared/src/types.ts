@@ -72,12 +72,25 @@ export type AoEShape =
 
 export type CardinalDirection = "N" | "NE" | "E" | "SE" | "S" | "SW" | "W" | "NW";
 
+/**
+ * Sprint 042: única sede de tipos para Cover. `kind` distingue la fuente (criatura interpuesta
+ * vs. obstáculo de casilla) para diagnóstico y presentación, sin persistir contexto espacial.
+ */
+export type CoverKind = "none" | "creature-cover" | "terrain-cover";
+export interface CoverAssessment {
+  readonly applies: boolean;
+  readonly acBonus: number;
+  readonly kind: CoverKind;
+  readonly blockerIds: readonly string[];
+  readonly blockedCellKeys: readonly string[];
+}
+
 export interface Ability { id: string; name: string; description: string; actionType: ActionType; rangeFeet: number; target: "self" | "ally" | "enemy" | "creature" | "area"; aoe?: AoEShape; resolution: AbilityResolution; }
 
 export interface AbilityScores { strength: number; dexterity: number; constitution: number; intelligence: number; wisdom: number; charisma: number; }
 export interface WeaponProfile { name: string; handedness: "one-handed" | "two-handed" | "light" | "ranged" | "thrown"; damageDice: string; critical: string; abilityForAttack: "strength" | "dexterity"; abilityForDamage: "strength" | "dexterity" | "none"; damageAbilityMultiplier: number; meleeReachFeet: number; rangeIncrementFeet?: number; maxRangeIncrements?: number; maxRangeFeet: number; notes: string; criticalThreatFrom?: number; criticalMultiplier?: number; }
 export interface MeleeThreatSource { sourceId: string; kind: "weapon" | "natural" | "unarmed" | "effect"; minReachFeet: number; maxReachFeet: number; }
-export interface TacticalModifierSummary { attackBonus: number; labelParts: string[]; }
+export interface TacticalModifierSummary { attackBonus: number; labelParts: string[]; cover: CoverAssessment; }
 export interface AttackContextModifiers {
   flanking: boolean;
   byAttackType: Record<"melee" | "ranged", TacticalModifierSummary>;

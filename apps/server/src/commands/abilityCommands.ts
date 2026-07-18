@@ -70,7 +70,7 @@ export function handleResolveAbilityAttack(room: CombatRoom, command: Extract<Cl
     defaultDamage: Math.max(1, Math.floor(averageDiceDamage(resolution.damageExpression)))
   };
   const tactical = getAttackContextModifiers(snapshot, caster, target).byAttackType[resolution.attackType];
-  const result = resolveAttack(snapshot, caster, target, command.d20Roll, command.damage, ability.name, tactical.attackBonus, { source });
+  const result = resolveAttack(snapshot, caster, target, command.d20Roll, command.damage, ability.name, tactical.attackBonus, { source, cover: tactical.cover });
   result.attackParts.push(...tactical.labelParts);
   const distance = attackRangeFeet(snapshot, caster, target);
   room.currentTurn.usedStandardAction = true;
@@ -273,7 +273,7 @@ export function handleCastSpell(
         defaultDamage: Math.max(1, Math.floor(averageDiceDamage(resolution.damageExpression)))
       };
       const tactical = getAttackContextModifiers(snapshot, caster, target).byAttackType[resolution.attackType];
-      const result = resolveAttack(snapshot, caster, target, command.d20Roll!, command.amount, spell.name, tactical.attackBonus, { source });
+      const result = resolveAttack(snapshot, caster, target, command.d20Roll!, command.amount, spell.name, tactical.attackBonus, { source, cover: tactical.cover });
       result.attackParts.push(...tactical.labelParts);
       const distance = attackRangeFeet(snapshot, caster, target);
 

@@ -95,7 +95,7 @@
 | [ ] | Modificadores de combate (Tablas 8-5/8-6 completas) | PARCIAL: flanqueo, tumbado, cobertura y desprevenido sí; deslumbrado, enmarañado, estremecido, gateando, sentado no. |
 | [ ] | Modificadores a la tirada de ataque (Tabla 8-5) | Subconjunto (flanqueo +2, prone -4 vía condicionales). |
 | [ ] | Modificadores a la CA (Tabla 8-6) | Subconjunto (prone, flat-footed). |
-| [x] | Cobertura | +4 CA por intercepción de línea (`hasObstacleInterception`, Sprint 013). |
+| [x] | Cobertura | **Sprint 042**: +4 CA efímera mediante `CoverAssessment`, calculada exclusivamente en `getAttackContextModifiers`. Preserva criatura interpuesta y añade obstáculo completo de `impassableCells`; footprints deterministas, sin apilar fuentes, consumido por armas, touch/conjuros, AdO, maniobras y preview React. Sin `hasObstacleInterception` legacy. Tests focalizados 58/58. |
 | [ ] | Cobertura mejorada | Sin grados de cobertura. |
 | [ ] | Cobertura total | Sin bloqueo de ataque por cobertura total. |
 | [ ] | Ocultación | El contrato `CONCEALMENT` (con %) existe en `Modifier`, pero sin consumidor verificado en `rules.ts` — la tirada de fallo porcentual no está cableada. |

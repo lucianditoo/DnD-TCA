@@ -1,4 +1,4 @@
-import type { ArmorClassBonusType, ArmorClassBreakdown, AttackContextModifiers, AttackDeliveryContext, CombatLogEntry, CombatRoom, CombatRulesSnapshot, Combatant, CombatantSnapshot, LifeStatus, OpportunityAttack, Position, SavingThrowType, SizeCategory, SpecialManeuverId } from "./types.js";
+import type { ArmorClassBonusType, ArmorClassBreakdown, AttackContextModifiers, AttackDeliveryContext, CombatLogEntry, CombatRoom, CombatRulesSnapshot, Combatant, CombatantSnapshot, CoverAssessment, CoverKind, LifeStatus, OpportunityAttack, Position, SavingThrowType, SizeCategory, SpecialManeuverId } from "./types.js";
 import type { ConditionalModifier, EffectDefinition, ModifierCondition, Trait, TraitCondition, EffectStat } from "./effects/contracts.js";
 import type { CatalogEffectId } from "./effects/types.js";
 import { EffectReducer } from "./effects/reducer.js";
@@ -170,7 +170,8 @@ export interface AttackContext {
   readonly abilityForAttack?: "strength" | "dexterity";
   readonly isFlatFootedOverride?: boolean;
   readonly attackerId?: string;
-  readonly hasObstacleInterception?: boolean;
+  /** Sprint 042: cobertura ya resuelta por `getAttackContextModifiers` para este atacante/objetivo/tipo. */
+  readonly cover?: CoverAssessment;
   /** Sprint 035: distingue si la resolución actual es un Ataque de Oportunidad. */
   readonly isOpportunityAttack?: boolean;
   /** Sprint 035: distingue si el AdO fue provocado específicamente por movimiento (Mobility). */
@@ -418,7 +419,9 @@ export function createRuleEvaluator<TCatalog extends Record<string, EffectDefini
         return sum + (shouldApplyAcModifier(value, buff.acBonusType, attackContext, suppressDexAndDodge) ? value : 0);
       }, 0);
 
-      const coverBonus = attackContext?.hasObstacleInterception ? 4 : 0;
+      // Sprint 042: el valor ya viene resuelto por getAttackContextModifiers (CoverAssessment.acBonus);
+      // futuras variantes (Improved/Total Cover) solo cambian ese cómputo, nunca esta línea.
+      const coverBonus = attackContext?.cover?.acBonus ?? 0;
 
       const acModifier = reduced.numericModifiers["AC"];
       let deltaAC = [...(acModifier?.bonuses ?? []), ...(acModifier?.penalties ?? [])]
@@ -1597,10 +1600,16 @@ export function projectForcedMovement(
   };
 }
 
+/**
+ * Sprint 042: geometría pura de intercepción de línea de ataque. Detecta dos fuentes
+ * independientes de Cover (V1, sin raycasting): una criatura viva interpuesta (Sprint 013,
+ * `creatureBlockerIds`) y una casilla de obstáculo completo del tablero interpuesta
+ * (`board.impassableCells`, `terrainBlockedCellKeys`). Ambas usan la misma prueba de
+ * colinealidad exacta entera; `getAttackContextModifiers` decide cuál aplica por tipo de ataque.
+ */
 export interface AttackLineInterception {
-  readonly hasObstacleInterception: boolean;
-  readonly blockerIds: readonly string[];
-  readonly kind: "none" | "creature-cover";
+  readonly creatureBlockerIds: readonly string[];
+  readonly terrainBlockedCellKeys: readonly string[];
 }
 
 export function getAttackLineInterception(
@@ -1608,31 +1617,79 @@ export function getAttackLineInterception(
   attacker: Combatant,
   target: Combatant
 ): AttackLineInterception {
-  const ax = attacker.position.x;
-  const ay = attacker.position.y;
-  const bx = target.position.x;
-  const by = target.position.y;
+  const compareCells = (left: Position, right: Position): number =>
+    left.x - right.x || left.y - right.y || (left.zFeet ?? 0) - (right.zFeet ?? 0);
+  const attackerCells = [...getCombatantOccupiedCells(attacker, room)].sort(compareCells);
+  const targetCells = [...getCombatantOccupiedCells(target, room)].sort(compareCells);
+  let origin = attackerCells[0] ?? attacker.position;
+  let destination = targetCells[0] ?? target.position;
+  let shortestDistanceSquared = Number.POSITIVE_INFINITY;
+  for (const attackerCell of attackerCells) {
+    for (const targetCell of targetCells) {
+      const dx = targetCell.x - attackerCell.x;
+      const dy = targetCell.y - attackerCell.y;
+      const distanceSquared = dx * dx + dy * dy;
+      if (distanceSquared < shortestDistanceSquared) {
+        shortestDistanceSquared = distanceSquared;
+        origin = attackerCell;
+        destination = targetCell;
+      }
+    }
+  }
+
+  const ax = origin.x;
+  const ay = origin.y;
+  const bx = destination.x;
+  const by = destination.y;
   const dxAB = bx - ax;
   const dyAB = by - ay;
   const lengthSquaredAB = dxAB * dxAB + dyAB * dyAB;
-  const blockerIds: string[] = [];
 
-  for (const combatant of room.combatants) {
+  const isExactInteriorPoint = (px: number, py: number): boolean => {
+    const dxAC = px - ax;
+    const dyAC = py - ay;
+    const cross = dxAB * dyAC - dyAB * dxAC;
+    if (cross !== 0) return false;
+    const dot = dxAC * dxAB + dyAC * dyAB;
+    return dot > 0 && dot < lengthSquaredAB;
+  };
+
+  const creatureBlockerIds: string[] = [];
+  for (const combatant of [...room.combatants].sort((left, right) => left.id.localeCompare(right.id))) {
     if (combatant.id === attacker.id || combatant.id === target.id) continue;
     const status = lifeStatus(combatant);
     if (status !== "active" && status !== "disabled") continue;
-    const dxAC = combatant.position.x - ax;
-    const dyAC = combatant.position.y - ay;
-    const cross = dxAB * dyAC - dyAB * dxAC;
-    if (cross !== 0) continue;
-    const dot = dxAC * dxAB + dyAC * dyAB;
-    if (dot > 0 && dot < lengthSquaredAB) blockerIds.push(combatant.id);
+    if (getCombatantOccupiedCells(combatant, room).some((cell) => isExactInteriorPoint(cell.x, cell.y))) {
+      creatureBlockerIds.push(combatant.id);
+    }
   }
 
+  const terrainBlockedCellKeys: string[] = [];
+  for (const key of [...new Set(room.board.impassableCells ?? [])].sort()) {
+    const [cx, cy] = key.split(",").map(Number);
+    if (Number.isFinite(cx) && Number.isFinite(cy) && isExactInteriorPoint(cx, cy)) terrainBlockedCellKeys.push(key);
+  }
+
+  return { creatureBlockerIds, terrainBlockedCellKeys };
+}
+
+/**
+ * Sprint 042: proyecta la geometría de `getAttackLineInterception` a un veredicto de Cover para
+ * un intento de ataque. El obstáculo solo aplica cuando ocupa una celda interior real entre los
+ * footprints, por lo que un melee adyacente queda naturalmente fuera y un melee con alcance puede
+ * recibir Cover. No acumulable: cualquier combinación de bloqueadores otorga exactamente +4.
+ */
+function buildCoverAssessment(interception: AttackLineInterception): CoverAssessment {
+  const creatureApplies = interception.creatureBlockerIds.length > 0;
+  const terrainApplies = interception.terrainBlockedCellKeys.length > 0;
+  const applies = creatureApplies || terrainApplies;
+  const kind: CoverKind = creatureApplies ? "creature-cover" : terrainApplies ? "terrain-cover" : "none";
   return {
-    hasObstacleInterception: blockerIds.length > 0,
-    blockerIds,
-    kind: blockerIds.length > 0 ? "creature-cover" : "none"
+    applies,
+    acBonus: applies ? 4 : 0,
+    kind,
+    blockerIds: interception.creatureBlockerIds,
+    blockedCellKeys: interception.terrainBlockedCellKeys
   };
 }
 
@@ -1697,11 +1754,15 @@ export function getAttackContextModifiers(
       : rangedIntoMelee.exemption === "feat"
         ? ["disparo a melé evitado (Disparo Preciso)"]
         : [];
+  // Sprint 042: única sede de cómputo de Cover — geometría resuelta una vez y proyectada por
+  // tipo de ataque. Ningún otro punto del servidor/UI vuelve a llamar getAttackLineInterception.
+  const interception = getAttackLineInterception(room, attacker, target);
+  const cover = buildCoverAssessment(interception);
   return {
     flanking,
     byAttackType: {
-      melee: { attackBonus: flanking ? 2 : 0, labelParts: flanking ? ["flanqueo +2"] : [] },
-      ranged: { attackBonus: rangedIntoMelee.penalty, labelParts: rangedLabelParts }
+      melee: { attackBonus: flanking ? 2 : 0, labelParts: flanking ? ["flanqueo +2"] : [], cover },
+      ranged: { attackBonus: rangedIntoMelee.penalty, labelParts: rangedLabelParts, cover }
     }
   };
 }
@@ -1799,12 +1860,11 @@ export function validateMeleeTouchManeuver(
     return { ok: false, error: `${target.name} esta a ${distance} ft, fuera del alcance de ${maneuverName} de ${attacker.name} (${minReachFeet}-${maxReachFeet} ft).` };
   }
   const tactical = getAttackContextModifiers(room, attacker, target).byAttackType.melee;
-  const interception = getAttackLineInterception(room, attacker, target);
   const touchArmorClass = Rules.totalArmorClass(room, target, {
     attackType: "melee",
     targetAcType: "touch",
     attackerId: attacker.id,
-    hasObstacleInterception: interception.hasObstacleInterception
+    cover: tactical.cover
   }).total;
   return {
     ok: true,
@@ -2509,4 +2569,3 @@ export function validateStandUp(
   }
   return { ok: true, value: profile };
 }
-

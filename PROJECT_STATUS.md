@@ -54,9 +54,10 @@ Todo cambio requiere:
 - Defensa total.
 - Carga con ruta prevista.
 - Prestar ayuda con buff pendiente de eleccion.
-- **Fase Actual:** Sprint ATK-RANGED-INTO-MELEE completado (ver "FASE ACTUAL" más abajo). *(Cabecera resincronizada: declaraba erróneamente "Sprint 031 bloqueado", detectado en la revisión del plan de saneamiento.)*
-- **Estado:** ✅ ATK-RANGED-INTO-MELEE implementado y validado · 🟡 Sprint 038 (Full Attack V2) diseñado, pendiente de `Proceed` · ❄️ Sprint 039 (Power Attack) congelado por decreto de producto.
+- **Fase Actual:** Sprint 042 — Cover consolidado, implementación terminada; auditoría final pendiente por gates globales preexistentes/ambientales.
+- **Estado:** ✅ pipeline de Cover y pruebas focalizadas · ✅ typecheck/build/E2E · 🟠 suite global con casos preexistentes fallando · ⚪ Playwright bloqueado por `spawn EPERM`.
 - **Hitos Completados Recientes:**
+  - `Sprint 042`: Cover canónico en `getAttackContextModifiers`, criaturas y obstáculos de casilla, footprints deterministas y consumo uniforme por armas, touch, AdO, maniobras y UI.
   - `Sprint 030`: Escape de Presa autoritativo, rangos de habilidades V6, restricciones de armas en agarre, penalizador melee etiquetado y preview UI compartido.
   - `Sprint 029`: primitivas genéricas de toque/oposición, vínculo contextual `srd_grappling`, Presa transaccional y preview UI de modificadores.
   - `Sprint 028`: compresión Large 2×1/1×2 derivada, penalizadores contextuales, movimiento forzado puro, Embestida transaccional y preview UI de trayectoria/footprint.
@@ -187,7 +188,18 @@ Todo cambio requiere:
   - Implementación de `Fatigued`, `Prone`, `Dazed` y `Paralyzed` con lógica de sobrescritura de características.
   - Integración de `getEffectiveAbilityScore` y nuevas pruebas de regresión.
 
-### FASE ACTUAL: Sprint 041.5 (Test Infrastructure Cleanup) completado — cierre parcial de DT-020; Sprint 041 (MOVE-RUN) completado y validado (ver gate de cierre 2026-07-18); Sprint 040 (Document Architecture Cleanup) listo para cierre arquitectónico; Sprint MOVE-WITHDRAW completado (validación funcional pendiente — ver DT-020); Sprint 038 en gate; Sprint 039 congelado
+### FASE ACTUAL: Sprint 042 — Cover consolidado
+
+  **Sprint 042 — Cover**
+  - `getAttackContextModifiers` es la sede canónica única: calcula una sola vez la intercepción y devuelve `CoverAssessment` para melee/ranged.
+  - Cobertura por criatura de Sprint 013 preservada en +4 CA; obstáculos completos de `impassableCells` conceden el mismo +4 cuando ocupan una celda interior real de la línea discreta.
+  - Geometría determinista por footprints: selecciona el par de celdas ocupadas más cercano, inspecciona todas las celdas de bloqueadores Large y ordena resultados independientemente del orden del snapshot.
+  - Criatura + terreno no apilan: se conservan ambas evidencias pero se aplica una sola parte `cobertura +4`.
+  - Consumidores migrados: armas, conjuros/aptitudes con ataque, touch ranged, AdO, Carga, toque de maniobras y preview React. `resolveAttack` ya no recalcula geometría.
+  - Cover permanece efímero: no se persiste en `CombatRoom`, combatientes ni efectos.
+  - Validación 2026-07-18: focalizadas **58/58**, typecheck completo verde, build completo verde, WebSocket **87/87**. Suite global: **429 tests, 420 pass, 9 fail** (7 casos reales: 5 Environmental Hazards, 1 Ray of Frost legado, 1 Withdraw W22; todos preexistentes y fuera de Sprint 042). Playwright: 5 escenarios no ejecutables por `browserType.launch: spawn EPERM`; bloqueo ambiental, no fallo de Cover.
+
+### Historial inmediato y gates paralelos
 
   **Sprint 041.5 — Test Infrastructure Cleanup (origen: Auditoría Arquitectónica 2026-07-18)**
   - Alcance exclusivo: cerrar DT-020 (`tests/withdraw-server.test.mjs` no ejecutaba ni un solo test por un import roto). Cero cambios de motor, cero refactors.
@@ -395,6 +407,8 @@ docs/
 - [x] Sprint 027: 283/283 tests, typecheck/build, 87/87 verificaciones WebSocket y 3/3 escenarios Playwright.
 - [x] Sprint 029: 295/295 tests, typecheck/build, 87/87 verificaciones WebSocket y 4/4 escenarios Playwright.
 - [x] Sprint 030: 303/303 tests, typecheck/build, 87/87 verificaciones WebSocket y 5/5 escenarios Playwright.
+- [x] Sprint 042: 58/58 tests focalizados de Cover, typecheck/build y 87/87 verificaciones WebSocket.
+- [ ] Sprint 042 — gate global: `npm test` ejecutado con 429 total, 420 pass y 9 fail (7 casos preexistentes ajenos); Playwright bloqueado ambientalmente por `spawn EPERM`.
 - [ ] Sprint 034: `tests/environmental-hazards.test.mjs` escrito (detección pura, ronda completa con mitigación half/full, hazard sin daño con `onFailEffectId`, idempotencia, sin recursión). `typecheck:shared`/`build:shared` verificados en verde; **suite completa, `typecheck:server`, `build`, E2E WebSocket y Playwright pendientes de correr en la máquina local** (ver `walkthrough.md`).
 - [ ] Sprint 035: `tests/dodge-mobility.test.mjs` escrito (foco de Esquiva dinámico/redeclarable, bono de Movilidad exclusivo a AdO por movimiento, anulación total por Flat-Footed, sin dote sin bono, regresiones de `declare-dodge-target`). `typecheck` y `build:shared`/`build:server` verificados en verde en todo el monorepo; **`npm test`, `build:web`, E2E WebSocket y Playwright pendientes de correr en la máquina local** (mismo bloqueo de binarios nativos que Sprint 034).
 - [x] Sprint 036: `tests/iterative-attacks-effective-routine.test.mjs` escrito y **ejecutado realmente en verde (5/5)** vía `node --test` puro contra `packages/shared/dist/index.js` (sin `tsx`/esbuild). `typecheck` y `build:shared`/`build:server` verificados en verde en todo el monorepo; **`npm test` completo vía `tsx`, `build:web` y E2E/Playwright pendientes de correr en la máquina local** (mismo bloqueo de binarios nativos que Sprints 034/035).
@@ -412,4 +426,4 @@ Sprint 019 completó la integración transaccional full-stack de conjuros.
 
 ## Proxima Tarea Recomendada
 
-Aprobar formalmente el diseño y plan del Sprint 038 (`docs/designs/full-attack-v2-haste-rapid-shot-design.md` + `implementation_plan.md`) con `Proceed`, o solicitar ajustes al re-acotamiento propuesto (en particular la corrección obligatoria de `attackCommands.ts` y la decisión de extender `Buff` en vez de migrar Haste a `ActiveEffects`). Hasta entonces no se modifican archivos ejecutables. Pendiente en paralelo: confirmar en la máquina Windows local, para los Sprints 034-037, `npm test` (suite completa), `npm run build` (incluye `build:web` con Vite), `node scripts/e2e-websocket.mjs` y Playwright (`npm run test:ui`) — este sandbox no puede ejecutar ninguno de los cuatro por un mismatch de binarios nativos multiplataforma; `typecheck` y `build:shared`/`build:server` sí están verificados en verde para los cuatro, y los Sprints 036 y 037 además lograron ejecutar realmente sus tests nuevos (`node --test` puro contra `dist/*.js`, sin `tsx`).
+Auditoría final de Sprint 042: el código de Cover está listo, pero el dictamen global permanece condicionado por los siete casos preexistentes de otros subsistemas y por el bloqueo ambiental de Playwright (`spawn EPERM`). No iniciar Concealment desde este estado.

@@ -345,7 +345,7 @@ function handleCharge(room: CombatRoom, snapshot: CombatRulesSnapshot<import("@d
     for (const opportunity of opportunities) room.log.unshift(makeLog("opportunity", opportunity.reason + " Resolver ataque de oportunidad con tirada manual."));
   }
   const tactical = getAttackContextModifiers(snapshot, combatant, target).byAttackType.melee;
-  const result = resolveAttack(snapshot, combatant, target, command.d20Roll, command.damage, "carga", 2 + tactical.attackBonus, { source: resolveWeaponAttackSource(combatant, "melee") });
+  const result = resolveAttack(snapshot, combatant, target, command.d20Roll, command.damage, "carga", 2 + tactical.attackBonus, { source: resolveWeaponAttackSource(combatant, "melee"), cover: tactical.cover });
   result.attackParts.push("carga +2");
   result.attackParts.push(...tactical.labelParts);
   

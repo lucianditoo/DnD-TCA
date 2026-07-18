@@ -103,7 +103,7 @@ function handleResolveAttackDraft(room: CombatRoom, command: Extract<ClientComma
   const context = getAttackContextModifiers(snapshot, attacker, target);
   const tactical = context.byAttackType[attackType];
   const finalModifier = (fightingDefensively ? -4 : 0) + tactical.attackBonus + currentAttack.penalty;
-  const result = resolveAttack(snapshot, attacker, target, rolls.d20Roll, rolls.damage, attackLabel, finalModifier, { source, diceRoller: roller });
+  const result = resolveAttack(snapshot, attacker, target, rolls.d20Roll, rolls.damage, attackLabel, finalModifier, { source, diceRoller: roller, cover: tactical.cover });
   if (ammunition.value.required && ammunition.value.selectedItemId) {
     const nextAttacker = consumeInventoryQuantity(attacker, ammunition.value.selectedItemId, 1);
     attacker.inventory = nextAttacker.inventory;
@@ -314,7 +314,8 @@ export function handleResolveOpportunityAttack(room: CombatRoom, command: Extrac
       source,
       diceRoller: roller,
       isOpportunityAttack: true,
-      isMovementProvoked: opportunity.movementCostFeet !== undefined
+      isMovementProvoked: opportunity.movementCostFeet !== undefined,
+      cover: tactical.cover
     });
     
     if (tactical.labelParts.length > 0) {
