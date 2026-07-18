@@ -45,6 +45,12 @@ Desktop.ini
 .idea/
 *.swp
 
-# ── Documentos de trabajo por-sprint (decisión previa del proyecto, preservada) ──
+# ── Documentos de trabajo por-sprint ──────────────────────────
+# walkthrough.md: bitácora global/efímera — propuesta pendiente de aprobación
+# definitiva (ver docs/designs/document-architecture-cleanup.md §3). Se
+# mantiene ignorado en esta fase, sin cambios.
 walkthrough.md
-implementation_plan.md
+# implementation_plan.md: NO se ignora. Corrección de gobernanza (Sprint 040,
+# Lote A) — los planes de implementación son documentación versionada por
+# política oficial (docs/designs/document-architecture-cleanup.md §1). La
+# línea que lo ignoraba era un error, no una decisión aprobada.

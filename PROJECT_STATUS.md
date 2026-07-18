@@ -190,7 +190,7 @@ Todo cambio requiere:
 ### FASE ACTUAL: Sprint MOVE-WITHDRAW completado (validación Windows pendiente); Sprint 038 en gate; Sprint 039 congelado
 
   **Sprint completado: MOVE-WITHDRAW (Retirada)**
-  - Sub-acción `withdraw` de `use-tactical-action` (NDD Rev. 3, `docs/designs/withdraw-design.md`) — `movementCommands.ts` intocado, patrón Charge.
+  - Sub-acción `withdraw` de `use-tactical-action` (NDD Rev. 3, `docs/designs/withdraw/design.md`) — `movementCommands.ts` intocado, patrón Charge.
   - Normal: asalto completo, presupuesto 2× vía `validateMovePath` paramétrico, mutaciones mínimas `movementUsedFeet`+`usedFullAttack` (contrato real verificado). Disabled: retirada limitada RAW a 1× como acción estándar (`usedStandardAction` + esfuerzo existente).
   - AdO: parámetro puro `exemptDepartureCellKeys` en `findTriggeredOpportunityAttacksForPath` (default neutro, cero impacto en call sites) — solo el disparo por abandonar la huella inicial completa (Large+ incluido) queda exento; resto de la ruta provoca con AOO-03/Reflejos intactos. Secuencia real: AdO calculadas sobre snapshot previo, transición confirmada completa, pendientes después.
   - V1: sin Acrobacias, sin atravesar enemigos, invisibles también exentos (deuda pro-defensor), Cegado sin validar.

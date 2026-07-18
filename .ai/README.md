@@ -36,6 +36,8 @@ Opcionales según tarea:
 
 - [LOCAL_LLM_GUIDE.md](LOCAL_LLM_GUIDE.md) — si usás Cline + LM Studio + Qwen.
 - [PROMPT_TEMPLATES.md](PROMPT_TEMPLATES.md) — prompts listos para copiar.
+- [coverage/](coverage/) — checklists de cobertura total PHB 3.5 (reglas, dotes, conjuros, equipo) y el manifiesto de gobernanza `coverage/V1_LAUNCH_MANIFESTO.md`.
+- [patterns/](patterns/) — patrones arquitectónicos reutilizables documentados a partir de una vertical slice ya implementada (ej. `patterns/conditions-pattern.md`).
 
 ## Mantenimiento
 

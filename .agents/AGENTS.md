@@ -2,6 +2,8 @@
 
 Este archivo contiene las reglas y el flujo de desarrollo no negociables para cualquier agente de IA o desarrollador que trabaje en este monorrepósito.
 
+> Reparto de autoridades (Sprint 040): [`GOVERNANCE.md`](../GOVERNANCE.md) define los principios y políticas documentales/técnicas (Single Source of Truth, Zero Orphan Policy, Minimal Documentation, Migration First). Este archivo (`AGENTS.md`) es la autoridad del **flujo operativo y la Definition of Done**. `.ai/WORKFLOW.md` es un resumen navegable de ambos, sin duplicar su contenido.
+
 ## 1. Filosofía de Trabajo
 * **Diseño Primero**: Nunca implementar funcionalidades de inmediato. Primero se deben diseñar y evaluar arquitectónicamente.
 * **Prioridades Técnicas**: Priorizar la claridad, mantenibilidad, escalabilidad, separación de responsabilidades, funciones puras, servidor autoritativo, catálogo único de datos, Rule Engine desacoplado y CombatSnapshot por encima de soluciones o hacks rápidos.
@@ -26,8 +28,9 @@ Cualquier cambio o funcionalidad nueva solicitada por el usuario debe realizarse
 * NO escribir código.
 
 ### FASE 3: Plan de Implementación
-* Generar un `implementation_plan.md` en el directorio de artifacts de la conversación.
+* Generar un `implementation_plan.md` en la raíz del repositorio. **Se versiona en Git** (Sprint 040: nunca fue política aprobada que fuera efímero o ignorado por `.gitignore`).
 * Debe detallar archivos afectados, cambios propuestos, orden de implementación, riesgos y plan de verificación.
+* Ubicación final tras el cierre del sprint: `docs/designs/<feature-slug>/implementation-plan.md` si la feature tiene 2+ documentos persistentes; si tiene uno solo, se resume como sección `## Plan de implementación` dentro de su `design.md` en vez de un archivo aparte.
 
 ### FASE 4: Espera de Aprobación
 * DETENER la ejecución y esperar la aprobación explícita del usuario.
@@ -55,6 +58,9 @@ Cualquier cambio o funcionalidad nueva solicitada por el usuario debe realizarse
   * `ARCHITECTURE.md`
   * `RULES_ENGINE.md`
   * `TODO.md`
+  * `docs/technical-debt.md`
+  * `docs/rules/registry.md`
+  * `.ai/coverage/*_PHB_CHECKLIST.md` (si la funcionalidad cubre una regla del Master Plan de Cobertura Total)
   * ADRs correspondientes.
 * Mantener la cultura de testing: todas las nuevas funcionalidades deben contar con pruebas unitarias y E2E (si corresponde).
 * Cualquier bug encontrado durante el desarrollo se convierte en un caso de test de regresión.
@@ -87,7 +93,8 @@ Toda la documentación afectada debe quedar sincronizada. Revisar automáticamen
 * `PROJECT_STATUS.md`
 * `TODO.md`
 * `docs/technical-debt.md`
-* `docs/rules-coverage-checklist.md`
+* `docs/rules/registry.md` (reemplaza la ruta obsoleta `docs/rules-coverage-checklist.md`, ya archivada en `docs/archive/`)
+* `.ai/coverage/*_PHB_CHECKLIST.md` (si aplica)
 * Carpeta `.ai/` (si el modelo mental cambió).
 * Documentos de diseño afectados y `walkthrough.md`.
 

@@ -1,7 +1,9 @@
 # WORKFLOW — Flujo obligatorio de trabajo
 
-> Fuente completa y autoritativa: [`.agents/AGENTS.md`](../.agents/AGENTS.md)
-> Este archivo es un resumen operativo. En caso de conflicto, `AGENTS.md` prevalece.
+> Este archivo es un **resumen navegable**, no una autoridad por sí mismo. Reparto de autoridades (Sprint 040):
+> - [`GOVERNANCE.md`](../GOVERNANCE.md) — principios y políticas documentales/técnicas (SSOT, Zero Orphan, Minimal Documentation, Migration First).
+> - [`.agents/AGENTS.md`](../.agents/AGENTS.md) — flujo operativo y Definition of Done.
+> - Este archivo enlaza a ambas sin duplicar su contenido. En caso de conflicto, prevalece la autoridad específica (`GOVERNANCE.md` para principios, `AGENTS.md` para flujo/DoD).
 
 ---
 
@@ -27,7 +29,8 @@
 
 ### FASE 3 — Plan de implementación
 
-- Crear `implementation_plan.md` en el directorio de artifacts de la conversación.
+- Crear `implementation_plan.md` en la raíz del repo. **Se versiona en Git** (corrección de Sprint 040 — nunca fue una política aprobada que fuera efímero/ignorado).
+- Si la feature tiene 2+ documentos persistentes, su ubicación final es `docs/designs/<feature-slug>/implementation-plan.md`. Si tiene un único documento, el plan se resume como sección `## Plan de implementación` dentro de su `design.md`.
 - Detallar: archivos afectados, cambios por archivo, orden de implementación, plan de verificación.
 - **No escribir código todavía.**
 
@@ -77,7 +80,8 @@ node scripts/e2e-websocket.mjs
 - `PROJECT_STATUS.md` — estado actual.
 - `TODO.md` — tareas completadas y pendientes.
 - `docs/technical-debt.md` — deuda resuelta o nueva.
-- `docs/rules-coverage-checklist.md` — si se implementó una regla de D&D.
+- `docs/rules/registry.md` — índice maestro de Rule IDs (reemplaza la ruta obsoleta `docs/rules-coverage-checklist.md`, ya archivada).
+- `.ai/coverage/*_PHB_CHECKLIST.md` — si se implementó una regla, dote, conjuro o pieza de equipo cubierta por el Master Plan de Cobertura Total.
 - ADR correspondiente en `docs/adr/` si se tomó una decisión arquitectónica.
 - `.ai/PROJECT_MEMORY.md` — si cambió algo fundamental del sistema.
 

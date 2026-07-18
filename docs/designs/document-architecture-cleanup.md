@@ -188,6 +188,25 @@ Cada lote es reversible de forma independiente (`git revert` del commit del lote
 
 ---
 
+## 11. Lote A — EJECUTADO (Sprint 040)
+
+**Observación de auditoría de gobernanza sobre el commit `fb9b6e0`**: ese commit incluyó, además del documento de diseño Rev. 2, los 7 archivos de `.ai/coverage/` producidos en sprints anteriores de esta misma conversación (checklists FEATS/SPELLS/EQUIPMENT y sus variantes PHB, más `V1_LAUNCH_MANIFESTO.md`). Verificado ahora: son documentos legítimos (cabeceras propias, sin secretos — barrido de `api_key|secret|password|token|BEGIN PRIVATE` sin coincidencias reales), no son temporales ni generados por error, y corresponden al estado real del Master Plan de Cobertura Total ya documentado en `PROJECT_STATUS.md`/`TODO.md`. **Permanecen versionados**; no se revierten. Se registra como desviación de alcance del commit anterior, sin ameritar un sprint separado.
+
+Cambios aplicados en este lote:
+
+- **`.gitignore`**: eliminada la línea `implementation_plan.md`. Confirmado con `git check-ignore -v` que ni `implementation_plan.md` (raíz) ni `docs/designs/withdraw/implementation-plan.md` quedan ignorados; `walkthrough.md` sigue ignorado sin cambios.
+- **Migración de Withdraw**: `docs/designs/withdraw-design.md` → `docs/designs/withdraw/design.md` (git mv, historial preservado), `docs/designs/withdraw-analysis.md` → `docs/designs/withdraw/analysis.md` (git mv), `implementation_plan.md` (raíz, no trackeado por estar gitignored) → `docs/designs/withdraw/implementation-plan.md` (movimiento de filesystem + `git add`, ya que `git mv` no admite un origen no trackeado). Contenido verificado como perteneciente a MOVE-WITHDRAW antes de mover (título propio del archivo). Referencia interna al NDD corregida a la nueva ruta, con nota de migración agregada sin alterar el resto del contenido histórico.
+- **Referencias entrantes corregidas**: `PROJECT_STATUS.md` y `docs/rules/registry.md` (única mención de la ruta vieja de Withdraw fuera de este propio documento y del archivo migrado).
+- **Autoridades documentales**: `.agents/AGENTS.md` (cross-link a `GOVERNANCE.md`, ruta de implementation plan corregida, `docs/rules-coverage-checklist.md` → `docs/rules/registry.md`/`.ai/coverage/`), `.ai/WORKFLOW.md` (cross-link a `GOVERNANCE.md` y `AGENTS.md`, misma corrección de rutas), `.ai/README.md` (agregadas `coverage/` y `patterns/` al índice de la carpeta, antes omitidas), `INDEX.md` (§8 completado con los 11 archivos/subcarpetas reales de `.ai/`, antes solo listaba 2; §4 anotado con la convención híbrida de designs).
+- **Huérfanos eliminados** (`git rm`, re-confirmados sin referencias justo antes de eliminar): `output.txt`, `fix.js`, `fix2.js`, `fix_rules.js`, `fix-rules2.js`, `fix-rules4.js`, `rewrite-rules.js`.
+- **Desviación técnica registrada**: `fix-rules2.js` y `rewrite-rules.js` tenían modificaciones locales no comiteadas (ruido de fin de línea CRLF/LF preexistente, confirmado con `git diff -w` = 0 diferencias reales desde antes de este sprint) que impidieron el `git rm` normal; se usó `git rm -f` tras reconfirmar que el contenido real era idéntico al commiteado. También se detectó que `.ai/README.md` y `.ai/WORKFLOW.md` tenían el mismo ruido CRLF preexistente en el working tree; se normalizaron a LF antes de stagear para que el diff de este commit muestre únicamente el contenido nuevo, no una reescritura fantasma del archivo completo.
+- **No se tocó código de producción ni tests**: `CODEX_GUIDE.md`, `apps/server/src/combat/chargeResolver.ts`, `apps/server/src/combat/opportunityAttackResolver.ts` y `tests/conditions-v3-formal.test.mjs` tienen el mismo ruido CRLF preexistente pero se dejaron intencionalmente fuera de este commit (no forman parte del Lote A).
+- **Fuera de alcance de este lote (correctamente no tocado)**: `docs/audits/migration-report-001.md`, `docs/designs/combat-documentation-integration.md` y `docs/archive/testing-coverage-report.md` también mencionan la ruta obsoleta `docs/rules-coverage-checklist.md`, pero no estaban en la lista autorizada de 4 archivos de autoridades para este lote — quedan pendientes para un lote futuro o corrección puntual separada.
+
+**Lotes B, C y D siguen pendientes, sin ejecutar.** El Sprint 040 no se declara cerrado.
+
+---
+
 ## 10. Entregables de esta fase
 
 1. Corrección de la política de implementation plans — §1.
@@ -199,8 +218,4 @@ Cada lote es reversible de forma independiente (`git revert` del commit del lote
 7. Plan de migración por lotes — §9.
 8. Lista exacta de archivos que cambiaría cada lote — §7 y §9.
 
-Solo se actualizó este documento de diseño. No se modificó ningún otro documento, código, test ni regla.
-
-**Ejecución detenida. No se emite PROCEED. Esperando revisión.**
-
-**Estado: READY FOR MIGRATION REVIEW**
+**Estado tras Lote A: ejecutado (ver §11). Lotes B, C, D pendientes — Sprint 040 no cerrado.**
