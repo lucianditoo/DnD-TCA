@@ -198,6 +198,7 @@ Todo cambio requiere:
   - Consumidores migrados: armas, conjuros/aptitudes con ataque, touch ranged, AdO, Carga, toque de maniobras y preview React. `resolveAttack` ya no recalcula geometría.
   - Cover permanece efímero: no se persiste en `CombatRoom`, combatientes ni efectos.
   - Validación 2026-07-18: focalizadas **58/58**, typecheck completo verde, build completo verde, WebSocket **87/87**. Suite global: **429 tests, 420 pass, 9 fail** (7 casos reales: 5 Environmental Hazards, 1 Ray of Frost legado, 1 Withdraw W22; todos preexistentes y fuera de Sprint 042). Playwright: 5 escenarios no ejecutables por `browserType.launch: spawn EPERM`; bloqueo ambiental, no fallo de Cover.
+  - Gate de infraestructura preparado en `.github/workflows/windows-ci.yml`: Windows/Node 22, `npm ci`, validaciones secuenciales completas, espera activa del puerto `3333`, cierre garantizado del servidor y artefactos de fallo. GitHub Actions pasa a ser el gate canónico para validaciones no ejecutables en sandboxes locales. **Sprint 042 continúa abierto hasta observar la primera ejecución real del workflow.**
 
 ### Historial inmediato y gates paralelos
 

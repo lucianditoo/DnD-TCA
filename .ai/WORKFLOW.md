@@ -67,6 +67,15 @@ node scripts/e2e-websocket.mjs
 
 > **Nota PowerShell**: usar `;` en lugar de `&&` para encadenar comandos, o ejecutarlos de a uno.
 
+#### Gate canónico en Windows
+
+El workflow `.github/workflows/windows-ci.yml` es el gate canónico para las validaciones que los sandboxes locales no pueden ejecutar de forma fiable. Corre en `windows-latest` sobre `push`/`pull_request` de `master` y por despacho manual; valida typecheck, build, suite global, pruebas focalizadas, WebSocket E2E y Playwright.
+
+- La suite global conserva su resultado real: los fallos conocidos permanecen visibles y no usan `continue-on-error`.
+- Los gates posteriores usan ejecución incondicional para separar la salud de cada subsistema sin ocultar el fallo global del job.
+- Los E2E esperan activamente el puerto `3333` y detienen siempre el proceso del servidor.
+- Ningún sprint se declara cerrado por la mera existencia del workflow: debe observarse una ejecución real del gate aplicable.
+
 ### FASE 7 — Walkthrough
 
 - Generar `walkthrough.md` en el directorio de artifacts.

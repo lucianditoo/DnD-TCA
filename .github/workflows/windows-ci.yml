@@ -1,0 +1,137 @@
+name: Windows CI
+
+on:
+  push:
+    branches:
+      - master
+  pull_request:
+    branches:
+      - master
+  workflow_dispatch:
+
+jobs:
+  validate:
+    name: Validate on Windows
+    runs-on: windows-latest
+    timeout-minutes: 30
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Use Node.js 22
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Typecheck
+        if: ${{ always() }}
+        run: npm run typecheck
+
+      - name: Build
+        if: ${{ always() }}
+        run: npm run build
+
+      - name: Global test suite (known regressions remain visible)
+        if: ${{ always() }}
+        run: npm test
+
+      - name: Cover focal tests
+        if: ${{ always() }}
+        run: npx tsx --test tests/cover-reach.test.mjs tests/flanking.test.mjs tests/large-footprints.test.mjs tests/ranged-into-melee.test.mjs
+
+      - name: WebSocket E2E
+        if: ${{ always() }}
+        shell: pwsh
+        run: |
+          New-Item -ItemType Directory -Force -Path logs | Out-Null
+          $stdoutLog = Join-Path $PWD "logs/server.stdout.log"
+          $stderrLog = Join-Path $PWD "logs/server.stderr.log"
+          $server = $null
+          $failure = $null
+          $e2eExitCode = 1
+
+          try {
+            $server = Start-Process `
+              -FilePath "npx.cmd" `
+              -ArgumentList "--no-install", "tsx", "apps/server/src/index.ts" `
+              -WorkingDirectory $PWD `
+              -RedirectStandardOutput $stdoutLog `
+              -RedirectStandardError $stderrLog `
+              -PassThru `
+              -NoNewWindow
+
+            $deadline = (Get-Date).AddSeconds(30)
+            $ready = $false
+
+            do {
+              if ($server.HasExited) {
+                throw "El servidor terminó antes de abrir el puerto 3333."
+              }
+
+              $client = [System.Net.Sockets.TcpClient]::new()
+              try {
+                $connection = $client.ConnectAsync("127.0.0.1", 3333)
+                if ($connection.Wait(500) -and $client.Connected) {
+                  $ready = $true
+                }
+              } catch {
+                # El puerto todavía no está listo; el bucle vuelve a comprobarlo.
+              } finally {
+                $client.Dispose()
+              }
+
+              if (-not $ready) {
+                Start-Sleep -Milliseconds 200
+              }
+            } while (-not $ready -and (Get-Date) -lt $deadline)
+
+            if (-not $ready) {
+              throw "Timeout esperando activamente el puerto 3333."
+            }
+
+            & node scripts/e2e-websocket.mjs
+            $e2eExitCode = $LASTEXITCODE
+          } catch {
+            $failure = $_
+          } finally {
+            if ($server -and -not $server.HasExited) {
+              & taskkill.exe /PID $server.Id /T /F | Out-Null
+            }
+          }
+
+          if (Test-Path $stdoutLog) {
+            Get-Content $stdoutLog
+          }
+          if (Test-Path $stderrLog) {
+            Get-Content $stderrLog
+          }
+          if ($failure) {
+            throw $failure
+          }
+          if ($e2eExitCode -ne 0) {
+            exit $e2eExitCode
+          }
+
+      - name: Install Playwright Chromium
+        if: ${{ always() }}
+        run: npx playwright install chromium
+
+      - name: Playwright UI tests
+        if: ${{ always() }}
+        run: npm run test:ui
+
+      - name: Upload failure artifacts
+        if: ${{ failure() }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: windows-ci-failure-artifacts
+          if-no-files-found: ignore
+          path: |
+            playwright-report/
+            test-results/
+            logs/
