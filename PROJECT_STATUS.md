@@ -187,7 +187,17 @@ Todo cambio requiere:
   - Implementación de `Fatigued`, `Prone`, `Dazed` y `Paralyzed` con lógica de sobrescritura de características.
   - Integración de `getEffectiveAbilityScore` y nuevas pruebas de regresión.
 
-### FASE ACTUAL: Sprint ATK-RANGED-INTO-MELEE completado; Sprint 038 en gate; Sprint 039 congelado
+### FASE ACTUAL: Sprint MOVE-WITHDRAW completado (validación Windows pendiente); Sprint 038 en gate; Sprint 039 congelado
+
+  **Sprint completado: MOVE-WITHDRAW (Retirada)**
+  - Sub-acción `withdraw` de `use-tactical-action` (NDD Rev. 3, `docs/designs/withdraw-design.md`) — `movementCommands.ts` intocado, patrón Charge.
+  - Normal: asalto completo, presupuesto 2× vía `validateMovePath` paramétrico, mutaciones mínimas `movementUsedFeet`+`usedFullAttack` (contrato real verificado). Disabled: retirada limitada RAW a 1× como acción estándar (`usedStandardAction` + esfuerzo existente).
+  - AdO: parámetro puro `exemptDepartureCellKeys` en `findTriggeredOpportunityAttacksForPath` (default neutro, cero impacto en call sites) — solo el disparo por abandonar la huella inicial completa (Large+ incluido) queda exento; resto de la ruta provoca con AOO-03/Reflejos intactos. Secuencia real: AdO calculadas sobre snapshot previo, transición confirmada completa, pendientes después.
+  - V1: sin Acrobacias, sin atravesar enemigos, invisibles también exentos (deuda pro-defensor), Cegado sin validar.
+  - UI: botón "Retirarse (×2)" en el panel de movimiento, preview con presupuesto ×2 (1× Disabled), confirmación reutiliza la ruta dibujada; cero lógica de reglas en cliente.
+  - Tests: `withdraw.test.mjs` 8/8 puros en verde real (`node --test` contra `dist/`) + `withdraw-server.test.mjs` (13 casos servidor, vía `tsx` en Windows) + regresión previa 40/40. Typecheck y `build:shared`/`build:server` en verde. `npm test` completo/`build:web`/E2E/Playwright: limitación pre-existente del sandbox, **pendientes de Windows — DoD NO declarado completo**.
+  - Cobertura oficial: Combat Rules 62/96 = 65%; overall 42%.
+
 
   **Sprint completado: ATK-RANGED-INTO-MELEE (Penalizador -4 por disparar a combate cuerpo a cuerpo)**
   - Vertical slice aprobada por el pivot de saneamiento (`docs/designs/core-rules-consolidation.md` Rev. 2; NDD: `docs/designs/ranged-into-melee-penalty.md`).

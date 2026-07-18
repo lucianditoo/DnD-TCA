@@ -54,6 +54,8 @@ export function ActionsPanel(props: {
   onClearMovementPath: () => void;
   onConfirmMovementPath: () => void;
   onFiveFootStep: () => void;
+  withdrawArmed: boolean;
+  onToggleWithdraw: () => void;
   onTargetChange: (id: string) => void;
   onD20Change: (value: string) => void;
   onAutoD20Change: (value: boolean) => void;
@@ -162,7 +164,18 @@ export function ActionsPanel(props: {
           <button onClick={props.onUndoMovementStep} disabled={props.movementPathLength === 0}>Deshacer paso</button>
           <button onClick={props.onClearMovementPath} disabled={props.movementPathLength === 0}>Limpiar ruta</button>
         </div>}
-        {room.phase === "active" && <button className="primary move-confirm" onClick={props.onConfirmMovementPath} disabled={actionDisabled || props.movementPathLength === 0 || props.hasPendingOpportunities || props.isMoveDestinationOccupied}><Footprints size={18} /> Confirmar movimiento</button>}
+        {room.phase === "active" && <button className="primary move-confirm" onClick={props.onConfirmMovementPath} disabled={actionDisabled || props.movementPathLength === 0 || props.hasPendingOpportunities || props.isMoveDestinationOccupied}><Footprints size={18} /> {props.withdrawArmed ? "Confirmar Retirada" : "Confirmar movimiento"}</button>}
+        {room.phase === "active" && (() => {
+          // MOVE-WITHDRAW: disponibilidad presentacional (el servidor decide la legalidad final).
+          const turnVirgin = room.currentTurn.movementUsedFeet === 0 && !room.currentTurn.usedMoveAction && !room.currentTurn.usedStandardAction && !room.currentTurn.usedFullAttack && !room.currentTurn.usedFiveFootStep && !room.currentTurn.usedTotalDefense && room.currentTurn.attacksMade === 0 && room.currentTurn.attackMode === "none";
+          return <>
+            <div className="rules-box" style={{ marginTop: "0.75rem", borderTop: "1px solid var(--border)", paddingTop: "0.75rem" }}>
+              <strong>Retirada (Withdraw)</strong> — acción de asalto completo: hasta 2× velocidad y tu posición inicial no provoca ataques de oportunidad. El resto de la ruta provoca normalmente.<br />
+              {props.withdrawArmed ? "✓ Armada: dibuja la ruta (presupuesto ×2) y confirma." : turnVirgin ? "✓ Disponible con el turno sin usar." : "✗ No disponible: la Retirada exige el turno completo sin acciones previas."}
+            </div>
+            <button className={props.withdrawArmed ? "primary move-confirm" : "move-confirm"} onClick={props.onToggleWithdraw} disabled={actionDisabled || (!props.withdrawArmed && !turnVirgin) || props.hasPendingOpportunities}><Footprints size={18} /> {props.withdrawArmed ? "Cancelar Retirada" : "Retirarse (×2 velocidad)"}</button>
+          </>;
+        })()}
         {room.phase === "active" && (() => {
           const canStep = !room.currentTurn.usedFiveFootStep && room.currentTurn.movementUsedFeet === 0 && !room.currentTurn.usedMoveAction && !room.currentTurn.usedTotalDefense;
           return <>

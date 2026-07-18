@@ -2,7 +2,7 @@ import { useMemo } from "react";
 import { distanceBetweenFootprintsFeet, lifeStatus, calculatePathCostFeet, calculatePathStepCostsFeet, createCombatRulesSnapshot, validateSpecialManeuver, type CombatRoom, type Combatant, type Participant, type Position } from "@dnd-tactical/shared";
 import { getAbilityTargets, getActiveCombatant, getChargePreviewPath, getGmMoveHighlightedCells, getHighlightedCells, getRangePreview, type ActionMode, type TacticMode } from "../viewModel";
 
-export function useBoardSelection({ room, snapshot, selectedId, participant, actionMode, tacticMode, selectedAbilityId, movementPath, gmMoveMode, gmMoveTargetId, targetId }: { room: CombatRoom | null; snapshot: import("@dnd-tactical/shared").CombatRulesSnapshot<import("@dnd-tactical/shared").ProductionEffectId> | null; selectedId: string | null; participant: Participant | null; actionMode: ActionMode; tacticMode: TacticMode; selectedAbilityId: string; movementPath: Position[]; gmMoveMode: boolean; gmMoveTargetId: string; targetId: string }) {
+export function useBoardSelection({ room, snapshot, selectedId, participant, actionMode, tacticMode, selectedAbilityId, movementPath, gmMoveMode, gmMoveTargetId, targetId, withdrawArmed = false }: { room: CombatRoom | null; snapshot: import("@dnd-tactical/shared").CombatRulesSnapshot<import("@dnd-tactical/shared").ProductionEffectId> | null; selectedId: string | null; participant: Participant | null; actionMode: ActionMode; tacticMode: TacticMode; selectedAbilityId: string; movementPath: Position[]; gmMoveMode: boolean; gmMoveTargetId: string; targetId: string; withdrawArmed?: boolean }) {
   const active = useMemo(() => getActiveCombatant(room), [room]);
   const effectiveSelectedId = room?.phase === "active" ? active?.id ?? selectedId : selectedId;
   const selected = room?.combatants.find((combatant) => combatant.id === effectiveSelectedId) ?? active ?? room?.combatants[0] ?? null;
@@ -28,7 +28,7 @@ export function useBoardSelection({ room, snapshot, selectedId, participant, act
   const activeSnapshot = snapshot ?? (room ? createCombatRulesSnapshot(room) : null);
   const movementPathCost = activeSnapshot && selected ? calculatePathCostFeet(selected.position, movementPath, activeSnapshot) : 0;
   const displayedPathCosts = activeSnapshot && selected ? calculatePathStepCostsFeet(selected.position, displayedPath, activeSnapshot) : [];
-  const highlightedCells = useMemo(() => gmMoveMode && participant?.role === "gm" ? getGmMoveHighlightedCells(room, snapshot, gmMoveTarget) : getHighlightedCells(room, snapshot, selected, actionMode, selectedAbilityId, movementPath), [room, snapshot, selected, actionMode, selectedAbilityId, movementPath, gmMoveMode, gmMoveTarget, participant?.role]);
+  const highlightedCells = useMemo(() => gmMoveMode && participant?.role === "gm" ? getGmMoveHighlightedCells(room, snapshot, gmMoveTarget) : getHighlightedCells(room, snapshot, selected, actionMode, selectedAbilityId, movementPath, withdrawArmed), [room, snapshot, selected, actionMode, selectedAbilityId, movementPath, withdrawArmed, gmMoveMode, gmMoveTarget, participant?.role]);
 
   return { active, selected, targets, enemyTargets, aidAllies, pendingAidBuffs, gmMoveTarget, selectedAbility, abilityTargets, targetDistanceFeet, rangePreview, pendingOpportunities, hasPendingOpportunities, chargePreviewPath, bullRushPreviewPath, displayedPath, movementPathCost, displayedPathCosts, highlightedCells };
 }

@@ -42,6 +42,15 @@ Documento vivo de tareas pendientes. El backlog está organizado en Sprints. Par
 
 ## Sprint Activo
 
+  **Sprint MOVE-WITHDRAW — COMPLETADO (validación Windows pendiente)**
+  - [x] NDD Rev. 3 aprobado con PROCEED; contrato real de economía verificado (matriz en NDD §2).
+  - [x] Shared: variante `withdraw` (types+Zod) + `exemptDepartureCellKeys` en `findTriggeredOpportunityAttacksForPath` (default neutro).
+  - [x] Servidor: `handleWithdraw` en `tacticalCommands.ts` (2×/1× Disabled, huella inicial exenta, patrón Charge; `movementCommands.ts` intocado).
+  - [x] UI: botón Retirada + preview ×2/×1 presentacional.
+  - [x] Tests: 8 puros en verde real + 13 de servidor (tsx/Windows); regresión 40/40.
+  - [x] Docs: NDD (secuencia real de AdO), registry `MOVE-WITHDRAW`, checklist 62/96=65%, dashboard, memoria (incl. deuda `usedFullAttack`).
+  - [ ] Windows: `npm test` completo, `build:web`, E2E WebSocket, Playwright (W21/W22) — **DoD no declarado completo hasta entonces**.
+
   **Sprint ATK-RANGED-INTO-MELEE — COMPLETADO**
   - [x] NDD `docs/designs/ranged-into-melee-penalty.md` con contrato RAW corregido (revisión "either threatens", excepción 10 ft por footprints, distinción Precise/Point Blank Shot).
   - [x] `featCatalog.ts`: `rangedAttackRules` + fold `rangedAttackContribution` + `srd_precise_shot`.

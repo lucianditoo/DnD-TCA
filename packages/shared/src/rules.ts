@@ -823,13 +823,23 @@ export function findTriggeredOpportunityAttacks(
   return findTriggeredOpportunityAttacksForPath(room, mover, [destination], distanceMovedFeet, canMakeAoO);
 }
 
+const NO_EXEMPT_DEPARTURE_CELLS: ReadonlySet<string> = new Set();
+
 export function findTriggeredOpportunityAttacksForPath(
   room: CombatRulesSnapshot<ProductionEffectId>,
   mover: Combatant,
   path: Position[],
   distanceMovedFeet: number,
   canMakeAoO: (combatant: Combatant) => boolean,
-  isAcrobatic: boolean = false
+  isAcrobatic: boolean = false,
+  /**
+   * MOVE-WITHDRAW: celdas (claves `footprintCellKey`) cuya salida NO dispara AdO.
+   * Uso: la huella inicial completa de una Retirada. Default neutro (conjunto vacío):
+   * los call sites existentes conservan su comportamiento exacto. La exención filtra
+   * únicamente el evento de provocación; jamás toca la capacidad del reactor
+   * (`canMakeAoO` / AOO-03 / Reflejos de Combate siguen decidiendo).
+   */
+  exemptDepartureCellKeys: ReadonlySet<string> = NO_EXEMPT_DEPARTURE_CELLS
 ): OpportunityAttack[] {
   if (distanceMovedFeet <= room.board.cellSizeFeet || path.length === 0) return [];
   if (lifeStatus(mover) === "dead" || lifeStatus(mover) === "dying" || lifeStatus(mover) === "stable") return [];
@@ -855,7 +865,10 @@ export function findTriggeredOpportunityAttacksForPath(
     const stepCost = dx === 1 && dy === 1 ? (++diagonalSteps % 2 === 1 ? room.board.cellSizeFeet : room.board.cellSizeFeet * 2) : room.board.cellSizeFeet;
     const originCells = getCombatantOccupiedCellsAt(mover, room, origin);
     const stepCellKeys = new Set(getCombatantOccupiedCellsAt(mover, room, step).map(footprintCellKey));
-    const abandonedCells = originCells.filter((cell) => !stepCellKeys.has(footprintCellKey(cell)));
+    const abandonedCells = originCells.filter((cell) => {
+      const key = footprintCellKey(cell);
+      return !stepCellKeys.has(key) && !exemptDepartureCellKeys.has(key);
+    });
     for (const reactor of reactors) {
       const other = reactor.combatant;
       if (triggeredAttackerIds.has(other.id)) continue;

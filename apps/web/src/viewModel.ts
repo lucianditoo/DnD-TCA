@@ -68,16 +68,19 @@ function isFootprintPreviewLegal(
   return !isCombatantDestinationOccupied(room, snapshot, combatant, position);
 }
 
-export function getHighlightedCells(room: CombatRoom | null, snapshot: import("@dnd-tactical/shared").CombatRulesSnapshot<import("@dnd-tactical/shared").ProductionEffectId> | null, selected: Combatant | null, mode: ActionMode, abilityId: string, movementPath: Position[]): Map<string, string> {
+export function getHighlightedCells(room: CombatRoom | null, snapshot: import("@dnd-tactical/shared").CombatRulesSnapshot<import("@dnd-tactical/shared").ProductionEffectId> | null, selected: Combatant | null, mode: ActionMode, abilityId: string, movementPath: Position[], withdrawArmed: boolean = false): Map<string, string> {
   const cells = new Map<string, string>();
   if (!room || !selected || mode === "inspect" || mode === "tactics") return cells;
   const activeSnapshot = snapshot ?? createCombatRulesSnapshot(room);
 
   const selectedAbility = selected.abilities.find((ability) => ability.id === abilityId) ?? selected.abilities[0] ?? null;
   const weapon = resolveEquippedWeaponProfile(selected).profile;
+  // MOVE-WITHDRAW: preview presentacional con presupuesto 2x (1x si Disabled — retirada
+  // limitada RAW). La legalidad final la decide siempre el servidor autoritativo.
+  const withdrawFactor = withdrawArmed && room.phase === "active" ? (lifeStatus(selected) === "disabled" ? 1 : 2) : 1;
   const maxDistance =
     mode === "move"
-      ? room.phase === "preparation" ? Number.POSITIVE_INFINITY : Math.max(0, Rules.totalSpeedFeet(snapshot!, selected) - room.currentTurn.movementUsedFeet)
+      ? room.phase === "preparation" ? Number.POSITIVE_INFINITY : Math.max(0, Rules.totalSpeedFeet(snapshot!, selected) * withdrawFactor - room.currentTurn.movementUsedFeet)
       : mode === "attack"
         ? weapon.maxRangeFeet || room.board.cellSizeFeet
         : selectedAbility?.rangeFeet ?? 0;

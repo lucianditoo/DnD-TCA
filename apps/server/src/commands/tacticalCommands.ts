@@ -1,4 +1,4 @@
-import { applyDamage, canStandardAttack, canUseFiveFootStep, findTriggeredOpportunityAttacksForPath, getAttackContextModifiers, isAdjacent, lifeStatus, makeLog, Rules, threatensTarget, createCombatRulesSnapshot, validateMovePath, validateStandUp, getEffectiveAbilityModifier, hasEffectTrait, FeatCatalog, type ClientCommand, type CombatRoom, type CombatRulesSnapshot } from "@dnd-tactical/shared";
+import { applyDamage, canStandardAttack, canUseFiveFootStep, canUseMoveAction, canDisabledCombatantTakeAction, findTriggeredOpportunityAttacksForPath, getAttackContextModifiers, getCombatantOccupiedCells, footprintCellKey, isAdjacent, lifeStatus, makeLog, Rules, threatensTarget, createCombatRulesSnapshot, validateMovePath, validateStandUp, getEffectiveAbilityModifier, hasEffectTrait, FeatCatalog, type ClientCommand, type CombatRoom, type CombatRulesSnapshot } from "@dnd-tactical/shared";
 import { requireCombatantControl } from "../auth/control.js";
 import { resolveAttack, resolveWeaponAttackSource } from "../combat/attackResolver.js";
 import { applyStartOfNextTurnBuff } from "../combat/buffRules.js";
@@ -28,6 +28,109 @@ export function handleUseTacticalAction(room: CombatRoom, command: Extract<Clien
   if (command.action === "aid-another") return handleAidAnother(room, snapshot, command, combatant);
   if (command.action === "five-foot-step") return handleFiveFootStep(room, snapshot, command, combatant);
   if (command.action === "stand-up") return handleStandUp(room, snapshot, command, combatant);
+  if (command.action === "withdraw") return handleWithdraw(room, snapshot, command, combatant);
+}
+
+/**
+ * MOVE-WITHDRAW (NDD Rev. 3): Retirada como acción de asalto completo (o estándar a 1x
+ * para Disabled — "retirada limitada" RAW). Toda la validación ocurre antes de cualquier
+ * mutación; el commit (posición + economía + log + AdO pendientes) es un solo paso
+ * síncrono, patrón handleCharge. Las AdO se calculan sobre el snapshot previo al
+ * movimiento y se resuelven DESPUÉS de confirmar la transición (semántica vigente del
+ * pipeline — no existe interrupción a mitad de ruta en este comando).
+ */
+function handleWithdraw(room: CombatRoom, snapshot: CombatRulesSnapshot<import("@dnd-tactical/shared").ProductionEffectId>, command: Extract<ClientCommand, { type: "use-tactical-action"; action: "withdraw" }>, combatant: ReturnType<typeof findCombatant>): void {
+  // ── Validación (cero mutaciones hasta completarla) ─────────────────────────
+  if (room.pendingOpportunityAttacks && room.pendingOpportunityAttacks.length > 0) {
+    throw new Error("Hay ataques de oportunidad pendientes. Resuelvelos antes de continuar.");
+  }
+  // Gate base reutilizado: amenaza de critico pendiente, canTakeTurn, CANNOT_MOVE,
+  // Defensa total, economia Disabled ("move"), usedFullAttack/usedMoveAction.
+  const baseGate = canUseMoveAction(snapshot, combatant);
+  if (!baseGate.ok) throw new Error(baseGate.error);
+
+  if (room.currentTurn.attackMode !== "none") throw new Error("No puede retirarse con un modo de ataque preparado. Cancele la preparacion primero.");
+  if (room.currentTurn.usedStandardAction) throw new Error("Ya uso su accion estandar este turno; no puede retirarse (la Retirada consume el asalto completo).");
+  if (room.currentTurn.usedFiveFootStep) throw new Error("Ya uso el paso de 5 pies este turno; no puede retirarse.");
+  if (room.currentTurn.attacksMade > 0) throw new Error("Ya ataco este turno; no puede retirarse.");
+  if (room.currentTurn.movementUsedFeet > 0) throw new Error("Ya se movio este turno; la Retirada exige el turno completo.");
+
+  // Rama limitada RAW: Disabled se retira como accion estandar a 1x velocidad.
+  const fullRoundCheck = canDisabledCombatantTakeAction(snapshot, combatant, "full-round");
+  const isLimitedWithdraw = !fullRoundCheck.ok;
+  if (isLimitedWithdraw) {
+    const standardCheck = canDisabledCombatantTakeAction(snapshot, combatant, "standard");
+    if (!standardCheck.ok) throw new Error(standardCheck.error);
+  }
+
+  const speedFeet = Rules.totalSpeedFeet(snapshot, combatant);
+  const budgetFeet = isLimitedWithdraw ? speedFeet : speedFeet * 2;
+  const movePath = command.path && command.path.length > 0 ? command.path : [command.to];
+  const validation = validateMovePath(snapshot, combatant, movePath, budgetFeet, false, false);
+  if (!validation.ok || !validation.value) throw new Error(validation.error);
+
+  // V1: sin Acrobacias y sin atravesar enemigos (NDD Rev. 3 §5); destino sin solapar a nadie.
+  const finalStep = validation.value.path[validation.value.path.length - 1];
+  for (let stepIndex = 0; stepIndex < validation.value.path.length; stepIndex++) {
+    const step = validation.value.path[stepIndex];
+    const projectedStep = validation.value.steps[stepIndex];
+    const stepKeys = new Set((projectedStep?.occupiedCells ?? getCombatantOccupiedCells({ ...combatant, position: { ...step } }, snapshot)).map(footprintCellKey));
+    const isFinal = stepIndex === validation.value.path.length - 1;
+    const blocker = snapshot.combatants.find((other) =>
+      other.id !== combatant.id &&
+      lifeStatus(other as Parameters<typeof lifeStatus>[0]) !== "dead" &&
+      (isFinal || other.type !== combatant.type) &&
+      getCombatantOccupiedCells(other, snapshot).some((cell) => stepKeys.has(footprintCellKey(cell)))
+    );
+    if (blocker) {
+      throw new Error(isFinal
+        ? "No puede terminar la Retirada sobre la casilla de " + blocker.name + "."
+        : "No puede retirarse a traves de " + blocker.name + " (la Retirada V1 no admite Acrobacias).");
+    }
+  }
+
+  // Huella inicial completa (todas las celdas para Large+): exenta del disparo de AdO.
+  const exemptDepartureCellKeys = new Set(getCombatantOccupiedCells(combatant, snapshot).map(footprintCellKey));
+  const distanceFeet = validation.value.distanceFeet;
+  const opportunities = findTriggeredOpportunityAttacksForPath(
+    snapshot,
+    combatant,
+    validation.value.path,
+    distanceFeet,
+    (reactor) => Rules.canMakeOpportunityAttack(snapshot, reactor, combatant.id),
+    false,
+    exemptDepartureCellKeys
+  );
+
+  // ── Commit atomico (patrón handleCharge) ───────────────────────────────────
+  const wasDisabledAtActionStart = lifeStatus(combatant) === "disabled";
+  const spatialTransition = commitSpatialTransition(room, combatant, finalStep, validation.value.finalSpatialMode);
+  combatant.stats.distanceMovedFeet += distanceFeet;
+  room.currentTurn.movementUsedFeet += distanceFeet;
+  if (isLimitedWithdraw) {
+    room.currentTurn.usedStandardAction = true; // retirada limitada: accion estandar, NO asalto completo
+  } else {
+    room.currentTurn.usedFullAttack = true; // marcador vigente de "accion de asalto completo consumida"
+  }
+  room.log.unshift(makeLog("movement", combatant.name + " se retira del combate: " + distanceFeet + " pies" + (isLimitedWithdraw ? " (retirada limitada: accion estandar)" : " (accion de asalto completo)") + ". Su posicion inicial no provoca ataques de oportunidad."));
+  if (spatialTransition.previousMode !== spatialTransition.currentMode) {
+    room.log.unshift(makeLog("movement", spatialTransition.currentMode === "squeezing"
+      ? combatant.name + " entra en compresion espacial."
+      : combatant.name + " recupera su huella natural."));
+  }
+  if (opportunities.length > 0) {
+    room.pendingOpportunityAttacks.push(...opportunities);
+    for (const opportunity of opportunities) room.log.unshift(makeLog("opportunity", opportunity.reason + " Resolver ataque de oportunidad con tirada manual."));
+  }
+
+  const exertion = applyDisabledExertion(combatant, { wasDisabledAtActionStart, actionKind: isLimitedWithdraw ? "standard" : "full-round", actionWasExerting: true });
+  if (exertion.applied) {
+    room.log.unshift(makeLog("status", combatant.name + " actua incapacitado con " + exertion.previousHp + " HP y pierde 1 HP por esfuerzo. HP: " + exertion.currentHp + "/" + combatant.hpMax + "."));
+    logStatusChange(room, combatant, exertion.statusBefore, exertion.statusAfter);
+    checkCombatOutcome(room);
+  }
+
+  broadcast(room);
 }
 
 export function handleChooseAidBonus(room: CombatRoom, command: Extract<ClientCommand, { type: "choose-aid-bonus" }>): void {

@@ -44,6 +44,15 @@ export const useTacticalActionSchema = z.discriminatedUnion("action", [
     roomCode: z.string().min(1),
     actorId: z.string().min(1),
     combatantId: z.string().min(1),
+    action: z.literal("withdraw"),
+    to: positionSchema,
+    path: z.array(positionSchema).optional()
+  }),
+  z.object({
+    type: z.literal("use-tactical-action"),
+    roomCode: z.string().min(1),
+    actorId: z.string().min(1),
+    combatantId: z.string().min(1),
     action: z.literal("stand-up"),
     isAutoRoll: z.boolean().optional()
   })

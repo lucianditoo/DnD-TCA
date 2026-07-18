@@ -4,7 +4,8 @@ node_modules/
 # ── Builds y artefactos generados ────────────────────────────
 dist/
 build/
-coverage/
+# Solo la carpeta de cobertura de tests en la raíz — NO .ai/coverage/ (docs canónicas)
+/coverage/
 *.tsbuildinfo
 
 # ── Temporales de sincronizadores de nube (Google Drive/OneDrive) ──
