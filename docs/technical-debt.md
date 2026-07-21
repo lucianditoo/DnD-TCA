@@ -136,17 +136,17 @@ Estas deudas generan riesgo de regresión o complican implementaciones futuras p
 
 ---
 
-### DT-011: Ataque completo sin ataques iterativos reales
+### ~~DT-011: Ataque completo sin ataques iterativos reales~~ ✅ RESUELTO (verificado en Sprint 044)
 
-**Descripción**: El sistema marca el turno como "ataque completo" pero no genera ataques iterativos por BAB (BAB 6/1, 11/6/1, etc.). El ataque completo es solo un marcador de acción.
+**Descripción histórica**: El sistema marcaba el turno como "ataque completo" pero no generaba ataques iterativos por BAB (BAB 6/1, 11/6/1, etc.). El ataque completo era solo un marcador de acción.
 
-**Riesgo**: Personajes de nivel alto (BAB ≥ 6) no tienen mecánica correcta de ataques iterativos.
+**Resolución (Sprint 036, verificada por código y tests en Sprint 044)**: `packages/shared/src/rules.ts` implementa `getAttackRoutine` y `getEffectiveAttackRoutine` (read-model puro que compone `getAttackRoutine` + `Rules.totalAttackBonus`), con progresión real de ataques iterativos por umbral de BAB. Confirmado en uso activo desde `attackCommands.ts` y `ActionsPanel.tsx`. Tests: `iterative-attacks-effective-routine.test.mjs` (5/5), `full-attack.test.mjs`. Ver Rule ID `ATTACK-FULL` en `docs/rules/registry.md` (Completo).
 
-**Módulo afectado**: `apps/server/src/commands/attackCommands.ts`
+**Alcance pendiente, no confundir con esta deuda**: Disparo Rápido (Rapid Shot) y Aceleración (Haste) real como *fuentes adicionales* de ataque extra siguen sin implementar — eso es el Rule ID `ATTACK-FULL-V2` (Sprint 038, NDD aprobado, esperando `Proceed`), una funcionalidad nueva, no la deuda original de DT-011 (que era "sin iterativos reales en absoluto").
 
-**Recomendación**: Diseñar el flujo de ataques iterativos antes de implementar personajes de nivel 6+. El diseño debe respetar las tiradas manuales del proyecto.
+**Módulo afectado**: `packages/shared/src/rules.ts`, `apps/server/src/commands/attackCommands.ts`.
 
-**Bloquea MVP**: No para personajes de nivel bajo.
+**Bloquea MVP**: No — deuda cerrada.
 
 ---
 
@@ -182,15 +182,15 @@ Estas deudas no generan riesgo activo pero conviene resolverlas antes de las fas
 
 ---
 
-### DT-014: Pérdida automática de 1 HP por ronda (combatiente moribundo) sin implementar
+### ~~DT-014: Pérdida automática de 1 HP por ronda (combatiente moribundo) sin implementar~~ ✅ RESUELTO (verificado en Sprint 044)
 
-**Descripción**: Un combatiente moribundo debería perder 1 HP automáticamente al inicio de cada turno. Actualmente esto no ocurre.
+**Descripción histórica**: Un combatiente moribundo debería perder 1 HP automáticamente al inicio de cada turno. Esto no ocurría.
 
-**Módulo afectado**: `apps/server/src/combat/turnManager.ts`
+**Resolución (Sprint 021, verificada por código y tests en Sprint 044)**: `apps/server/src/combat/turnManager.ts` implementa `roundTickListener`, que desangra pasivamente a los combatientes moribundos en cada ronda mediante el Tick Layer del Event Bus. Confirmado también en el Apéndice A de `docs/audits/combat-rules-deviations.md` (fila `COND-02`, "Resuelta"). Tests: `global-round-tracker.test.mjs`. Ver Rule IDs `ROUND-TRACKER`/`EFFECT-DYING-BLEED` en `docs/rules/registry.md` (ambos Completo).
 
-**Recomendación**: Agregar tick de HP en `turnManager.ts` para combatientes en estado `dying`.
+**Módulo afectado**: `apps/server/src/combat/turnManager.ts`.
 
-**Bloquea MVP**: No para la demo, pero es regla importante para tensión narrativa.
+**Bloquea MVP**: No — deuda cerrada.
 
 ---
 
