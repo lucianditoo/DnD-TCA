@@ -242,6 +242,7 @@ test("Touch ranged consume el mismo Cover y el resolver lo aplica exactamente un
   enemy.position = { x: 2, y: 0, zFeet: 0 };
   room.board = { ...room.board, impassableCells: ["1,0"] };
   const cover = getAttackContextModifiers(room, hero, enemy).byAttackType.ranged.cover;
+  const concealment = getAttackContextModifiers(room, hero, enemy).byAttackType.ranged.concealment;
   const source = {
     name: "rayo de prueba",
     attackType: "ranged",
@@ -253,14 +254,14 @@ test("Touch ranged consume el mismo Cover y el resolver lo aplica exactamente un
     defaultDamage: 1
   };
 
-  const withoutCover = resolveAttack(room, hero, enemy, 10, 1, source.name, 0, { source });
-  const withCover = resolveAttack(room, hero, enemy, 10, 1, source.name, 0, { source, cover });
+  const withoutCover = resolveAttack(room, hero, enemy, 10, 1, source.name, 0, { source, concealment });
+  const withCover = resolveAttack(room, hero, enemy, 10, 1, source.name, 0, { source, cover, concealment });
   assert.equal(withCover.targetArmorClass, withoutCover.targetArmorClass + 4);
   assert.equal(withCover.acParts.filter((part) => part === "cobertura +4").length, 1);
 
   const weaponSource = { ...source, name: "arco de prueba", targetAcType: "normal" };
-  const weaponWithoutCover = resolveAttack(room, hero, enemy, 10, 1, weaponSource.name, 0, { source: weaponSource });
-  const weaponWithCover = resolveAttack(room, hero, enemy, 10, 1, weaponSource.name, 0, { source: weaponSource, cover });
+  const weaponWithoutCover = resolveAttack(room, hero, enemy, 10, 1, weaponSource.name, 0, { source: weaponSource, concealment });
+  const weaponWithCover = resolveAttack(room, hero, enemy, 10, 1, weaponSource.name, 0, { source: weaponSource, cover, concealment });
   assert.equal(weaponWithCover.targetArmorClass, weaponWithoutCover.targetArmorClass + 4, "El ataque de arma ranged consume el mismo Cover.");
   assert.equal(weaponWithCover.acParts.filter((part) => part === "cobertura +4").length, 1);
   assert.deepEqual(getAttackContextModifiers(room, hero, enemy).byAttackType.ranged.cover, cover, "Preview y resolución comparten el mismo assessment.");

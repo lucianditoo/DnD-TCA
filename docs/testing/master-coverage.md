@@ -18,8 +18,9 @@ Reglas cubiertas obligatoriamente en E2E:
 - Huellas Large: spawn 2×2 y rechazo autoritativo de movimiento ante solapamiento parcial.
 - Diehard/Prone Eschewal: estabilización en negativos, conservación de turno, Stand Up por 0 pies sin AdO y ausencia de sangrado en la ronda siguiente.
 - Entangled Core: fuente declarativa en snapshot, velocidad efectiva 30→15 y bloqueos autoritativos de Run/Charge.
+- DEFENSE-CONCEALMENT: el esquema WebSocket rechaza porcentaje o d100 suministrados por el cliente; los recorridos productivos sin fuentes conservan assessment `none` y el servidor mantiene autoridad exclusiva.
 
-Último cierre validado (Sprint 025-R): **87/87** verificaciones WebSocket.
+Último cierre validado (Sprint 046): **91/91** verificaciones WebSocket.
 
 ## Cobertura Unitaria
 Los test unitarios (ej. `tests/*.test.mjs`) evalúan casos límite aislados sin necesidad del servidor WS.
@@ -42,6 +43,8 @@ Sprint 030 eleva la cobertura a **303/303** pruebas e incorpora vínculo estrict
 
 **Sprint 045**: **440/440 pruebas, 0 fallos** (53 archivos). `entangled-condition.test.mjs` cubre ataque, DEX, CA/Reflejos derivados, velocidades 30→15/20→10/15→7, stacking/deduplicación, armadura, terreno, Run, Charge, paso de 5 pies y snapshot. WebSocket asciende a **91/91** y Playwright a **6/6**.
 
+**Sprint 046**: **450/450 pruebas, 0 fallos**. `concealment-core.test.mjs` cubre perspectivas atacante/objetivo, 20%/50%, partial/total, deduplicación y precedencia por `stackingKey`, trazas deterministas, validación de contratos, orden CA→d100, 20 natural, ausencia de segunda tirada en crítico, supresión de daño/consecuencias y bloqueo de Sneak Attack aun con d100 exitoso. No se crea una fuente productiva ni un API de test en red.
+
 ## Cobertura UI
 
 Sprint 011 cierra con **2/2** escenarios Playwright: el recorrido crítico de movimiento/AdO y el preview de flanqueo que diferencia arma melee, Shocking Grasp y Ray of Frost.
@@ -55,5 +58,7 @@ Sprint 030 amplía la cobertura a **5/5** escenarios Playwright con restricción
 **Sprint 042.5**: **5/5** escenarios Playwright confirmados en verde real en esta máquina Windows (Chromium ya instalado localmente, 20.3s) — primera ejecución real de Playwright registrada en este documento fuera de un sandbox bloqueado. E2E WebSocket confirmado de nuevo en **87/87**, exit 0.
 
 **Sprint 045**: **6/6** escenarios Playwright. El nuevo caso verifica el preview compartido `Velocidad efectiva: 15 ft (Entangled ×1/2)`, Run deshabilitado y paso de 5 pies disponible cuando la velocidad efectiva supera una casilla.
+
+**Sprint 046**: **6/6** escenarios Playwright preservados. React consume el mismo `ConcealmentAssessment` que el servidor; por alcance aprobado no existe una fuente productiva que active el indicador, y los casos deterministas 20%/50% se cubren en la suite unitaria sin introducir flags de prueba ni RNG de cliente.
 
 **Referencia a ADR**: `ADR-0006-testing-culture.md`

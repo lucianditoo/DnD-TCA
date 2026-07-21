@@ -1,6 +1,7 @@
 import type { EffectInstance } from "./effects/index.js";
 import type { ProductionEffectId } from "./effects/catalog.js";
 import type { Trait } from "./effects/contracts.js";
+import type { ConcealmentTrace } from "./effects/reducer.js";
 
 export type ParticipantRole = "gm" | "player";
 export type CombatantType = "player" | "enemy";
@@ -85,12 +86,24 @@ export interface CoverAssessment {
   readonly blockedCellKeys: readonly string[];
 }
 
+export type ConcealmentKind = "none" | "partial" | "total";
+export interface ConcealmentAssessment {
+  readonly applies: boolean;
+  readonly kind: ConcealmentKind;
+  readonly missChancePercent: number;
+  readonly directTargetingAllowed: boolean;
+  readonly requiresTargetSquare: boolean;
+  readonly opportunityAttackAllowed: boolean;
+  readonly labelParts: readonly string[];
+  readonly traces: readonly ConcealmentTrace[];
+}
+
 export interface Ability { id: string; name: string; description: string; actionType: ActionType; rangeFeet: number; target: "self" | "ally" | "enemy" | "creature" | "area"; aoe?: AoEShape; resolution: AbilityResolution; }
 
 export interface AbilityScores { strength: number; dexterity: number; constitution: number; intelligence: number; wisdom: number; charisma: number; }
 export interface WeaponProfile { name: string; handedness: "one-handed" | "two-handed" | "light" | "ranged" | "thrown"; damageDice: string; critical: string; abilityForAttack: "strength" | "dexterity"; abilityForDamage: "strength" | "dexterity" | "none"; damageAbilityMultiplier: number; meleeReachFeet: number; rangeIncrementFeet?: number; maxRangeIncrements?: number; maxRangeFeet: number; notes: string; criticalThreatFrom?: number; criticalMultiplier?: number; }
 export interface MeleeThreatSource { sourceId: string; kind: "weapon" | "natural" | "unarmed" | "effect"; minReachFeet: number; maxReachFeet: number; }
-export interface TacticalModifierSummary { attackBonus: number; labelParts: string[]; cover: CoverAssessment; }
+export interface TacticalModifierSummary { attackBonus: number; labelParts: string[]; cover: CoverAssessment; concealment: ConcealmentAssessment; }
 export interface AttackContextModifiers {
   flanking: boolean;
   byAttackType: Record<"melee" | "ranged", TacticalModifierSummary>;

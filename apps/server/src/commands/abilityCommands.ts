@@ -40,7 +40,7 @@ export function handleUseAbility(room: CombatRoom, command: Extract<ClientComman
   broadcast(room);
 }
 
-export function handleResolveAbilityAttack(room: CombatRoom, command: Extract<ClientCommand, { type: "resolve-ability-attack" }>): void {
+export function handleResolveAbilityAttack(room: CombatRoom, command: Extract<ClientCommand, { type: "resolve-ability-attack" }>, options: CastSpellExecutionOptions = {}): void {
   if (room.phase !== "active") throw new Error("Esta accion solo esta disponible con el combate en curso.");
   const caster = findCombatant(room, command.casterId);
   const target = findCombatant(room, command.targetId);
@@ -70,7 +70,7 @@ export function handleResolveAbilityAttack(room: CombatRoom, command: Extract<Cl
     defaultDamage: Math.max(1, Math.floor(averageDiceDamage(resolution.damageExpression)))
   };
   const tactical = getAttackContextModifiers(snapshot, caster, target).byAttackType[resolution.attackType];
-  const result = resolveAttack(snapshot, caster, target, command.d20Roll, command.damage, ability.name, tactical.attackBonus, { source, cover: tactical.cover });
+  const result = resolveAttack(snapshot, caster, target, command.d20Roll, command.damage, ability.name, tactical.attackBonus, { source, diceRoller: options.diceRoller ?? rollDice, cover: tactical.cover, concealment: tactical.concealment });
   result.attackParts.push(...tactical.labelParts);
   const distance = attackRangeFeet(snapshot, caster, target);
   room.currentTurn.usedStandardAction = true;
@@ -273,7 +273,7 @@ export function handleCastSpell(
         defaultDamage: Math.max(1, Math.floor(averageDiceDamage(resolution.damageExpression)))
       };
       const tactical = getAttackContextModifiers(snapshot, caster, target).byAttackType[resolution.attackType];
-      const result = resolveAttack(snapshot, caster, target, command.d20Roll!, command.amount, spell.name, tactical.attackBonus, { source, cover: tactical.cover });
+      const result = resolveAttack(snapshot, caster, target, command.d20Roll!, command.amount, spell.name, tactical.attackBonus, { source, diceRoller, cover: tactical.cover, concealment: tactical.concealment });
       result.attackParts.push(...tactical.labelParts);
       const distance = attackRangeFeet(snapshot, caster, target);
 

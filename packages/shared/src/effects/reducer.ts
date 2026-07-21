@@ -1,4 +1,4 @@
-import type { EffectDefinition, EffectStat, Modifier, RuleOverride, StackingPolicy, Trait } from "./contracts.js";
+import type { ConcealmentContribution, EffectDefinition, EffectSource, EffectStat, Modifier, RuleOverride, StackingPolicy, Trait } from "./contracts.js";
 import type { EffectInstance } from "./types.js";
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -66,6 +66,37 @@ export interface ReducedMovementRate {
   readonly traces: readonly MovementRateTrace[];
 }
 
+export interface ConcealmentTrace {
+  readonly effectId: string;
+  readonly effectInstanceId: string;
+  readonly contributionId: string;
+  readonly sourceType: EffectSource["type"];
+  readonly sourceId?: string;
+  readonly label: string;
+  readonly stackingKey: string;
+  readonly kind: ConcealmentContribution["kind"];
+  readonly missChancePercent: number;
+  readonly status: "applied" | "suppressed";
+  readonly reason?: "duplicate" | "lower_precedence";
+}
+
+export interface ConcealmentReductionTarget {
+  readonly targetId: string;
+  readonly perspective: ConcealmentContribution["perspective"];
+}
+
+export interface ConcealmentReductionInput<TCatalog extends Record<string, EffectDefinition>> {
+  readonly effectInstances: readonly EffectInstance<keyof TCatalog & string>[];
+  readonly targets: readonly ConcealmentReductionTarget[];
+  readonly catalog: TCatalog;
+}
+
+export interface ReducedConcealment {
+  readonly kind: "none" | ConcealmentContribution["kind"];
+  readonly missChancePercent: number;
+  readonly traces: readonly ConcealmentTrace[];
+}
+
 // ─────────────────────────────────────────────────────────────────────────────
 // Entrada del Reducer
 // ─────────────────────────────────────────────────────────────────────────────
@@ -99,6 +130,15 @@ function validateMovementRateContribution(
     !Number.isInteger(contribution.denominator) || contribution.denominator <= 0
   ) {
     throw new Error(`[EffectReducer] Contribución de velocidad inválida "${contribution.id}" en "${effectId}": la razón debe usar enteros positivos.`);
+  }
+}
+
+function validateConcealmentContribution(effectId: string, contribution: ConcealmentContribution): void {
+  if (!contribution.id.trim() || !contribution.label.trim() || !contribution.stackingKey.trim()) {
+    throw new Error(`[EffectReducer] Contribucion de ocultacion invalida en "${effectId}": id, label y stackingKey son obligatorios.`);
+  }
+  if (!Number.isInteger(contribution.missChancePercent) || contribution.missChancePercent < 1 || contribution.missChancePercent > 100) {
+    throw new Error(`[EffectReducer] Contribucion de ocultacion invalida "${contribution.id}" en "${effectId}": missChancePercent debe ser un entero entre 1 y 100.`);
   }
 }
 
@@ -235,6 +275,85 @@ function applyPolicy(
 // ─────────────────────────────────────────────────────────────────────────────
 
 export const EffectReducer = {
+  /**
+   * Compone las contribuciones de ocultacion aplicables a las perspectivas indicadas.
+   * Una misma stackingKey representa una semantica identica; las claves distintas no
+   * se suman y solo sobrevive la probabilidad mas alta (total vence a partial en empate).
+   */
+  reduceConcealmentContributions<TCatalog extends Record<string, EffectDefinition>>(
+    input: ConcealmentReductionInput<TCatalog>
+  ): ReducedConcealment {
+    const requested = new Map(input.targets.map((target) => [target.targetId, target.perspective] as const));
+    const pending: Array<Omit<ConcealmentTrace, "status" | "reason">> = [];
+    const applicable = input.effectInstances
+      .filter((instance) => (instance.targets ?? []).some((targetId) => requested.has(targetId)))
+      .sort((left, right) => String(left.effectId).localeCompare(String(right.effectId)) || left.instanceId.localeCompare(right.instanceId));
+
+    for (const instance of applicable) {
+      const definition = input.catalog[instance.effectId];
+      if (!definition) {
+        throw new Error(`[EffectReducer] Unknown ActiveEffect: effectId="${instance.effectId}", instanceId="${instance.instanceId}".`);
+      }
+      const perspectives = new Set((instance.targets ?? []).map((targetId) => requested.get(targetId)).filter((value): value is ConcealmentContribution["perspective"] => value !== undefined));
+      for (const contribution of definition.concealmentContributions ?? []) {
+        validateConcealmentContribution(String(instance.effectId), contribution);
+        if (!perspectives.has(contribution.perspective)) continue;
+        pending.push({
+          effectId: String(instance.effectId),
+          effectInstanceId: instance.instanceId,
+          contributionId: contribution.id,
+          sourceType: instance.source.type,
+          ...(instance.source.id ? { sourceId: instance.source.id } : {}),
+          label: contribution.label,
+          stackingKey: contribution.stackingKey,
+          kind: contribution.kind,
+          missChancePercent: contribution.missChancePercent
+        });
+      }
+    }
+
+    pending.sort((left, right) =>
+      left.stackingKey.localeCompare(right.stackingKey) ||
+      left.contributionId.localeCompare(right.contributionId) ||
+      left.effectId.localeCompare(right.effectId) ||
+      left.effectInstanceId.localeCompare(right.effectInstanceId)
+    );
+
+    const representativeByKey = new Map<string, (typeof pending)[number]>();
+    const duplicateKeys = new Set<string>();
+    for (const contribution of pending) {
+      const representative = representativeByKey.get(contribution.stackingKey);
+      if (!representative) {
+        representativeByKey.set(contribution.stackingKey, contribution);
+        continue;
+      }
+      if (representative.kind !== contribution.kind || representative.missChancePercent !== contribution.missChancePercent) {
+        throw new Error(`[EffectReducer] Contribuciones de ocultacion contradictorias para stackingKey "${contribution.stackingKey}".`);
+      }
+      duplicateKeys.add(`${contribution.effectInstanceId}:${contribution.contributionId}`);
+    }
+
+    const representatives = [...representativeByKey.values()].sort((left, right) =>
+      right.missChancePercent - left.missChancePercent ||
+      (left.kind === right.kind ? 0 : left.kind === "total" ? -1 : 1) ||
+      left.stackingKey.localeCompare(right.stackingKey) ||
+      left.effectInstanceId.localeCompare(right.effectInstanceId)
+    );
+    const winner = representatives[0];
+    const winnerIdentity = winner ? `${winner.effectInstanceId}:${winner.contributionId}` : null;
+    const representativeIdentities = new Set(representatives.map((item) => `${item.effectInstanceId}:${item.contributionId}`));
+    const traces: ConcealmentTrace[] = pending.map((contribution) => {
+      const identity = `${contribution.effectInstanceId}:${contribution.contributionId}`;
+      if (duplicateKeys.has(identity)) return { ...contribution, status: "suppressed", reason: "duplicate" };
+      if (representativeIdentities.has(identity) && identity !== winnerIdentity) return { ...contribution, status: "suppressed", reason: "lower_precedence" };
+      return { ...contribution, status: "applied" };
+    });
+
+    return winner
+      ? { kind: winner.kind, missChancePercent: winner.missChancePercent, traces }
+      : { kind: "none", missChancePercent: 0, traces };
+  },
+
   /**
    * Reduce únicamente contribuciones de tasa de movimiento.
    * Una contribución por `stackingKey` se aplica; duplicados equivalentes se

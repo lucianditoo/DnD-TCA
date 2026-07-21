@@ -1,6 +1,6 @@
 import { describe, it } from 'node:test';
 import assert from 'node:assert';
-import { Rules, EffectReducer, effectsCatalog } from '@dnd-tactical/shared';
+import { Rules, EffectReducer, effectsCatalog, getAttackContextModifiers } from '@dnd-tactical/shared';
 import { resolveAttack } from '../apps/server/src/combat/attackResolver.js';
 import { inventoryEquipment } from './test-utils.mjs';
 
@@ -81,7 +81,8 @@ describe('Sprint 014 - Condiciones V3 Formales', () => {
       defaultDamage: 8
     };
 
-    const res = resolveAttack(context, attacker, target, 10, null, 'Ataque Test', 0, { source: attackSource });
+    const concealment = getAttackContextModifiers(context, attacker, target).byAttackType.melee.concealment;
+    const res = resolveAttack(context, attacker, target, 10, null, 'Ataque Test', 0, { source: attackSource, concealment });
     assert.strictEqual(res.attackBonusTotal, 9, 'El bono total debe incluir el +4 circunstancial por HELPLESS');
     assert.strictEqual(res.attackParts.some(p => p.includes('indefenso +4')), true, 'Debe mostrar el label de indefenso');
   });

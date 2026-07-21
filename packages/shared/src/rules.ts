@@ -1,7 +1,7 @@
-import type { ArmorClassBonusType, ArmorClassBreakdown, AttackContextModifiers, AttackDeliveryContext, CombatLogEntry, CombatRoom, CombatRulesSnapshot, Combatant, CombatantSnapshot, CoverAssessment, CoverKind, LifeStatus, OpportunityAttack, Position, SavingThrowType, SizeCategory, SpecialManeuverId } from "./types.js";
+import type { ArmorClassBonusType, ArmorClassBreakdown, AttackContextModifiers, AttackDeliveryContext, CombatLogEntry, CombatRoom, CombatRulesSnapshot, Combatant, CombatantSnapshot, ConcealmentAssessment, CoverAssessment, CoverKind, LifeStatus, OpportunityAttack, Position, SavingThrowType, SizeCategory, SpecialManeuverId } from "./types.js";
 import type { ConditionalModifier, EffectDefinition, ModifierCondition, Trait, TraitCondition, EffectStat } from "./effects/contracts.js";
 import type { CatalogEffectId } from "./effects/types.js";
-import { EffectReducer, type MovementRateTrace } from "./effects/reducer.js";
+import { EffectReducer, type MovementRateTrace, type ReducedConcealment } from "./effects/reducer.js";
 import { effectsCatalog, type ProductionEffectId } from "./effects/catalog.js";
 import { EquipmentCatalog } from "./equipmentCatalog.js";
 import { deriveArmorClassBreakdown, deriveMeleeThreatSources, getArmorAdjustedSpeedFeet, getEquippedArmorEntry, getEquippedWeaponEntry, resolveEquippedWeaponProfile } from "./equipmentStats.js";
@@ -1773,6 +1773,42 @@ export function isFlanking(
   return false;
 }
 
+/** Assessment puro y efimero de DEFENSE-CONCEALMENT para un intento concreto. */
+export function getConcealmentAssessment(
+  room: CombatRulesSnapshot<ProductionEffectId>,
+  attacker: Combatant,
+  target: Combatant
+): ConcealmentAssessment {
+  const reduced = EffectReducer.reduceConcealmentContributions({
+    effectInstances: room.effectInstances,
+    catalog: effectsCatalog,
+    targets: [
+      { targetId: target.id, perspective: "attacks_against_target" },
+      { targetId: attacker.id, perspective: "attacks_by_target" }
+    ]
+  });
+  return composeConcealmentAssessment(reduced);
+}
+
+/** Convierte la reduccion especializada en el assessment consumido por servidor y UI. */
+export function composeConcealmentAssessment(reduced: ReducedConcealment): ConcealmentAssessment {
+  const applies = reduced.kind !== "none";
+  const total = reduced.kind === "total";
+  const labels = reduced.traces
+    .filter((trace) => trace.status === "applied")
+    .map((trace) => `${trace.label} (${trace.missChancePercent}%)`);
+  return {
+    applies,
+    kind: reduced.kind,
+    missChancePercent: reduced.missChancePercent,
+    directTargetingAllowed: !total,
+    requiresTargetSquare: total,
+    opportunityAttackAllowed: !total,
+    labelParts: labels,
+    traces: reduced.traces
+  };
+}
+
 // -----------------------------------------------------------------------------
 // Pipeline avanzado de modificadores contextuales y daño de precisión
 // -----------------------------------------------------------------------------
@@ -1799,11 +1835,12 @@ export function getAttackContextModifiers(
   // tipo de ataque. Ningún otro punto del servidor/UI vuelve a llamar getAttackLineInterception.
   const interception = getAttackLineInterception(room, attacker, target);
   const cover = buildCoverAssessment(interception);
+  const concealment = getConcealmentAssessment(room, attacker, target);
   return {
     flanking,
     byAttackType: {
-      melee: { attackBonus: flanking ? 2 : 0, labelParts: flanking ? ["flanqueo +2"] : [], cover },
-      ranged: { attackBonus: rangedIntoMelee.penalty, labelParts: rangedLabelParts, cover }
+      melee: { attackBonus: flanking ? 2 : 0, labelParts: flanking ? ["flanqueo +2"] : [], cover, concealment },
+      ranged: { attackBonus: rangedIntoMelee.penalty, labelParts: rangedLabelParts, cover, concealment }
     }
   };
 }
@@ -1825,7 +1862,8 @@ export function canApplySneakAttack(
   room: CombatRulesSnapshot<ProductionEffectId>,
   attacker: Combatant,
   target: Combatant,
-  delivery?: AttackDeliveryContext
+  delivery?: AttackDeliveryContext,
+  concealment?: ConcealmentAssessment
 ): boolean {
   if (getEffectiveSneakAttackDice(room, attacker) <= 0 || attacker.type === target.type) return false;
   if (target.ruleTraits.includes("IMMUNE_TO_PRECISION_DAMAGE") || target.ruleTraits.includes("IMMUNE_TO_CRITICAL_HITS")) return false;
@@ -1841,6 +1879,8 @@ export function canApplySneakAttack(
   const attackDistance = delivery?.distanceFeet ?? distanceBetweenFootprintsFeet(room, attacker, target);
   if (delivery && (!delivery.requiresAttackRoll || !delivery.dealsDamage)) return false;
   if (attackType === "ranged" && attackDistance > 30) return false;
+  const effectiveConcealment = concealment ?? getConcealmentAssessment(room, attacker, target);
+  if (effectiveConcealment.applies) return false;
   return hasEffectTrait(targetEffects, "NO_DEX_TO_AC") || isFlanking(room, attacker, target);
 }
 
@@ -1885,6 +1925,7 @@ export interface MeleeTouchManeuverProfile {
   readonly maxReachFeet: number;
   readonly flankingBonus: number;
   readonly touchArmorClass: number;
+  readonly concealment: ConcealmentAssessment;
 }
 
 /** Valida alcance y deriva el contexto Touch AC común a maniobras especiales. */
@@ -1914,7 +1955,8 @@ export function validateMeleeTouchManeuver(
       minReachFeet,
       maxReachFeet,
       flankingBonus: tactical.attackBonus,
-      touchArmorClass
+      touchArmorClass,
+      concealment: tactical.concealment
     }
   };
 }
@@ -2146,6 +2188,7 @@ export interface TripManeuverPreview {
   readonly defenderCanMakeOpportunityAttack: boolean;
   readonly flankingBonus: number;
   readonly touchArmorClass: number;
+  readonly concealment: ConcealmentAssessment;
   readonly attackerStrengthModifier: number;
   readonly attackerSizeModifier: number;
   readonly defenderAbility: ManeuverAbility;
@@ -2369,6 +2412,7 @@ export function validateSpecialManeuver(
       defenderCanMakeOpportunityAttack,
       flankingBonus: touchValidation.value.flankingBonus,
       touchArmorClass: touchValidation.value.touchArmorClass,
+      concealment: touchValidation.value.concealment,
       attackerStrengthModifier: getEffectiveAbilityModifier(room, attacker, "strength"),
       attackerSizeModifier: getSpecialManeuverSizeModifier(attacker.sizeCategory),
       defenderAbility,

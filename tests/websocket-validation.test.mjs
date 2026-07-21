@@ -62,6 +62,22 @@ test("comando malicioso/extraño con campos inyectados no llega al handler (se f
   assert.equal(result.data.maliciousField, undefined);
 });
 
+test("el cliente no puede inyectar porcentaje ni d100 de DEFENSE-CONCEALMENT", () => {
+  const result = validateClientCommand({
+    type: "resolve-attack",
+    roomCode: "TEST",
+    actorId: "actor",
+    attackerId: "attacker",
+    targetId: "target",
+    d20Roll: 20,
+    damage: 5,
+    concealmentMissChancePercent: 0,
+    concealmentD100Roll: 100
+  });
+  assert.equal(result.success, false);
+  assert.match(result.error, /Unrecognized key.*concealment/i);
+});
+
 test("resolve-special-maneuver acepta solo la intención y tiradas acotadas", () => {
   const valid = validateClientCommand({
     type: "resolve-special-maneuver",

@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { Rules, createRuleEvaluator } from "../packages/shared/src/index.ts";
+import { Rules, createRuleEvaluator, getAttackContextModifiers } from "../packages/shared/src/index.ts";
 import { resolveAttack } from "../apps/server/src/combat/attackResolver.ts";
 import { inventoryEquipment } from "./test-utils.mjs";
 
@@ -86,8 +86,9 @@ test("resolveAttack usa Touch AC solo cuando el servidor la selecciona", () => {
   const attacker = makeCombatant({ id: "caster", name: "Lanzador", ...inventoryEquipment("quarterstaff"), baseAttackBonus: 2, abilityScores: { strength: 10, dexterity: 10, constitution: 10, intelligence: 14, wisdom: 10, charisma: 10 }, position: { x: 0, y: 0, zFeet: 0 } });
   const defender = makeCombatant();
   const context = makeContext([attacker, defender]);
-  const normal = resolveAttack(context, attacker, defender, 11, 4, "ataque normal");
-  const touch = resolveAttack(context, attacker, defender, 11, 4, "conjuro de toque", 0, { source: { name: "Ray of Frost", attackType: "ranged", targetAcType: "touch", abilityForAttack: "dexterity", maxRangeFeet: 30, criticalThreatFrom: 20, criticalMultiplier: 2, defaultDamage: 1, damageDice: "1d3" } });
+  const tactical = getAttackContextModifiers(context, attacker, defender);
+  const normal = resolveAttack(context, attacker, defender, 11, 4, "ataque normal", 0, { concealment: tactical.byAttackType.melee.concealment });
+  const touch = resolveAttack(context, attacker, defender, 11, 4, "conjuro de toque", 0, { source: { name: "Ray of Frost", attackType: "ranged", targetAcType: "touch", abilityForAttack: "dexterity", maxRangeFeet: 30, criticalThreatFrom: 20, criticalMultiplier: 2, defaultDamage: 1, damageDice: "1d3" }, concealment: tactical.byAttackType.ranged.concealment });
   assert.equal(normal.targetArmorClass, 23);
   assert.equal(normal.hits, false);
   assert.equal(touch.targetArmorClass, 13);

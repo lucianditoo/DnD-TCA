@@ -213,7 +213,12 @@ export function ActionsPanel(props: {
         const attackType = selected && attackTarget ? getWeaponAttackTypeForTarget(snapshot, selected, attackTarget) : "melee";
         const attackContext = selected && attackTarget
           ? getAttackContextModifiers(snapshot, selected, attackTarget).byAttackType[attackType]
-          : { attackBonus: 0, labelParts: [], cover: { applies: false, acBonus: 0, kind: "none" as const, blockerIds: [], blockedCellKeys: [] } };
+          : {
+              attackBonus: 0,
+              labelParts: [],
+              cover: { applies: false, acBonus: 0, kind: "none" as const, blockerIds: [], blockedCellKeys: [] },
+              concealment: { applies: false, kind: "none" as const, missChancePercent: 0, directTargetingAllowed: true, requiresTargetSquare: false, opportunityAttackAllowed: true, labelParts: [], traces: [] }
+            };
         const routine = selected ? getEffectiveAttackRoutine(snapshot, selected, { attackType }) : [];
         const attacksMade = room.currentTurn.attacksMade || 0;
         const currentAttack = routine[attacksMade] || { effectiveAttackBonus: 0 };
@@ -269,7 +274,8 @@ export function ActionsPanel(props: {
               {props.targetDistanceFeet !== null && <div className="rules-box">Distancia al objetivo: {props.targetDistanceFeet} ft.{props.rangePreview ? " " + props.rangePreview : ""}</div>}
               {attackContext.labelParts.length > 0 && <div className="rules-box">Modificadores de posicion: {attackContext.labelParts.join(", ")}</div>}
               {attackContext.cover.applies && <div className="rules-box" style={{ color: "var(--danger)" }}>⚠️ El objetivo tiene cobertura (+{attackContext.cover.acBonus} CA) porque la linea de ataque atraviesa {attackContext.cover.kind === "terrain-cover" ? "un obstaculo" : "otra criatura"}.</div>}
-              {selected && attackTarget && canApplySneakAttack(snapshot, selected, attackTarget) && <div className="rules-box sneak-attack-badge" style={{ backgroundColor: "rgba(16, 185, 129, 0.1)", border: "1px solid var(--success)", color: "var(--success)", fontWeight: "bold", marginTop: "0.5rem" }}><Sparkles size={16} style={{ display: "inline", verticalAlign: "text-bottom", marginRight: "4px" }} />¡Ataque Furtivo disponible! +{getEffectiveSneakAttackDice(snapshot, selected)}d6</div>}
+              {attackContext.concealment.applies && <div className="rules-box" data-testid="concealment-preview" style={{ color: "var(--danger)" }}>⚠️ Ocultacion {attackContext.concealment.kind === "total" ? "total" : "parcial"}: {attackContext.concealment.missChancePercent}% de fallo ({attackContext.concealment.labelParts.join(", ")}).</div>}
+              {selected && attackTarget && canApplySneakAttack(snapshot, selected, attackTarget, undefined, attackContext.concealment) && <div className="rules-box sneak-attack-badge" style={{ backgroundColor: "rgba(16, 185, 129, 0.1)", border: "1px solid var(--success)", color: "var(--success)", fontWeight: "bold", marginTop: "0.5rem" }}><Sparkles size={16} style={{ display: "inline", verticalAlign: "text-bottom", marginRight: "4px" }} />¡Ataque Furtivo disponible! +{getEffectiveSneakAttackDice(snapshot, selected)}d6</div>}
               {(() => {
                 const provokesAoO = attackType === "ranged" && Rules.actionProvokesOpportunityAttack(snapshot, selected, "ranged-attack");
                 return provokesAoO ? (
@@ -418,6 +424,7 @@ export function ActionsPanel(props: {
           {props.selectedAbility?.resolution.kind === "attack-roll" && <RollControls d20={props.d20Roll} autoD20={props.autoD20} damage={props.damage} autoDamage={props.autoDamage} defaultDamage={0} onD20Change={props.onD20Change} onAutoD20Change={props.onAutoD20Change} onDamageChange={props.onDamageChange} onAutoDamageChange={props.onAutoDamageChange} />}
           {abilityTactical && abilityTactical.labelParts.length > 0 && <div className="rules-box">Modificadores de posición: {abilityTactical.labelParts.join(", ")}</div>}
           {abilityTactical?.cover.applies && <div className="rules-box" style={{ color: "var(--danger)" }}>⚠️ El objetivo tiene cobertura (+{abilityTactical.cover.acBonus} CA) porque la línea de ataque atraviesa {abilityTactical.cover.kind === "terrain-cover" ? "un obstáculo" : "otra criatura"}.</div>}
+          {abilityTactical?.concealment.applies && <div className="rules-box" data-testid="ability-concealment-preview" style={{ color: "var(--danger)" }}>⚠️ Ocultacion {abilityTactical.concealment.kind === "total" ? "total" : "parcial"}: {abilityTactical.concealment.missChancePercent}% de fallo ({abilityTactical.concealment.labelParts.join(", ")}).</div>}
           <button className="primary ability-confirm" onClick={() => props.onUseAbility(props.selectedAbilityId || props.selectedAbility?.id || "")} disabled={actionDisabled || room.phase !== "active" || props.hasPendingOpportunities || !props.selectedAbility}><Sparkles size={18} /> Usar habilidad</button>
         </div>}
 
@@ -451,6 +458,7 @@ export function ActionsPanel(props: {
             let isOutOfRange = false;
             let targetDistance = 0;
             let targetSavePreview: { total: number; parts: string[] } | null = null;
+            let spellAttackTactical: ReturnType<typeof getAttackContextModifiers>["byAttackType"]["melee"] | null = null;
             if (props.targetId) {
               const target = room.combatants.find(c => c.id === props.targetId);
               if (target) {
@@ -460,6 +468,9 @@ export function ActionsPanel(props: {
                 }
                 if (spellDef.savingThrowType !== "none") {
                   targetSavePreview = Rules.totalSavingThrow(snapshot, target, spellDef.savingThrowType);
+                }
+                if (spellDef.resolution.kind === "attack-roll") {
+                  spellAttackTactical = getAttackContextModifiers(snapshot, selected, target).byAttackType[spellDef.resolution.attackType];
                 }
               }
             }
@@ -491,6 +502,7 @@ export function ActionsPanel(props: {
                     {isOutOfRange && " (FUERA DE ALCANCE)"}
                   </div>
                 )}
+                {spellAttackTactical?.concealment.applies && <div className="rules-box" data-testid="spell-concealment-preview" style={{ color: "var(--danger)", marginTop: "0.5rem" }}>⚠️ Ocultacion {spellAttackTactical.concealment.kind === "total" ? "total" : "parcial"}: {spellAttackTactical.concealment.missChancePercent}% de fallo ({spellAttackTactical.concealment.labelParts.join(", ")}).</div>}
                 <button 
                   className="primary" 
                   style={{ marginTop: "0.5rem", width: "100%" }}

@@ -82,8 +82,7 @@ export type Modifier =
       readonly value: number;
     }
   | { readonly type: "override"; readonly stat: EffectStat; readonly value: number }
-  | { readonly type: "multiplier"; readonly stat: "CRIT_RANGE" | "CRIT_MULTIPLIER"; readonly value: number }
-  | { readonly type: "mechanic"; readonly rule: "CONCEALMENT"; readonly percentage: number };
+  | { readonly type: "multiplier"; readonly stat: "CRIT_RANGE" | "CRIT_MULTIPLIER"; readonly value: number };
 
 /**
  * Condición de activación de un modificador condicional.
@@ -145,6 +144,19 @@ export interface MovementRateContribution {
 }
 
 /**
+ * Contribucion declarativa especializada para DEFENSE-CONCEALMENT.
+ * Describe una fuente; no persiste el assessment ni ejecuta RNG.
+ */
+export interface ConcealmentContribution {
+  readonly id: string;
+  readonly label: string;
+  readonly stackingKey: string;
+  readonly perspective: "attacks_against_target" | "attacks_by_target";
+  readonly kind: "partial" | "total";
+  readonly missChancePercent: number;
+}
+
+/**
  * Bloque declarativo (Sprint 034) que describe un peligro ambiental persistente (trampa, muro
  * mágico, terreno peligroso) anclado a `targetCells` en vez de a un `targetId` biológico.
  * Es exclusivamente datos: números y strings. No contiene funciones ni callbacks, y no consulta
@@ -181,6 +193,8 @@ export interface EffectDefinition {
   readonly conditionalTraits?: readonly ConditionalTrait[];
   /** Contribuciones multiplicativas a la velocidad; nunca persisten un total derivado. */
   readonly movementRateContributions?: readonly MovementRateContribution[];
+  /** Fuentes de ocultacion; el assessment contextual se compone en la Rule Layer. */
+  readonly concealmentContributions?: readonly ConcealmentContribution[];
   readonly ruleOverrides: readonly RuleOverride[];
   // Reglas de apilamiento de instancias del mismo tipo de efecto
   readonly onStack: "ignore" | "replace" | "upgrade_to" | "accumulate";

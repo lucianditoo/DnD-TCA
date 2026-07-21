@@ -40,12 +40,24 @@ Documento vivo de tareas pendientes. El backlog está organizado en Sprints. Par
 - [x] Sprint 042: Cover — pipeline canónico único, cobertura por criatura/terreno, footprints deterministas, consumidores full-stack y regresiones focalizadas.
 - [x] Sprint 042.5: Recuperación de Baseline — bug real de `cloneEffectInstances` (targetCells) corregido por causa raíz, Snapshot Integrity robustecido, Ray of Frost y Withdraw W22 corregidos, `npm test` 430/430 y los 5 gates del DoD en verde real. Sprint 042 (Cover) cerrado formalmente.
 - [x] Sprint 045: Entangled Core — `MovementRateContribution`, -2 ataque, -4 DEX, velocidad ×1/2, `FORBID_RUN`/`FORBID_CHARGE`, trazabilidad compartida y validación 440/440 + 91/91 + Playwright 6/6. `EFFECT-ENTANGLED` permanece Parcial por Concentration pendiente.
+- [x] Sprint 046: infraestructura `DEFENSE-CONCEALMENT` — contribuciones especializadas, stacking/trazas, assessment compartido, d100 autoritativo post-CA, bloqueo de Sneak Attack y preview UI; validación 450/450 + 91/91 + Playwright 6/6. Estado: **Infraestructura solamente**, sin fuentes productivas.
 
 ## Próximos Sprints
 
-Ver `ROADMAP.md`. Sprint 044.2 fija primero el pipeline transversal para que ninguna vertical futura duplique reglas ni abra rutas nuevas de modificación. El recorte funcional recomendado previamente continúa siendo `DEFENSE-CONCEALMENT` antes de Blinded; requiere un gate propio. Power Attack (039) sigue congelado.
+Ver `ROADMAP.md`. Sprint 044.2 fija el pipeline transversal y Sprint 046 entrega la infraestructura de `DEFENSE-CONCEALMENT`. Las fuentes productivas, Blinded, targeting por casilla de ocultación total y la política efectiva de AdO requieren gates propios. Power Attack (039) sigue congelado.
 
 ## Sprint Activo
+
+**Sprint 046 — DEFENSE-CONCEALMENT. COMPLETADO en su alcance aprobado.** La Rule ID conserva estado global **Infraestructura solamente** porque las fuentes productivas no forman parte de este sprint.
+
+  **Sprint 046 — COMPLETADO**
+  - [x] Eliminar el marker dormido `Modifier.mechanic/CONCEALMENT` y sustituirlo por `ConcealmentContribution` especializado.
+  - [x] Implementar reducción determinista, deduplicación por `stackingKey`, trazas y precedencia máxima sin sumar porcentajes.
+  - [x] Compartir `ConcealmentAssessment` entre servidor y React, separado de Cover y sin estado persistido.
+  - [x] Resolver d100 en servidor después de CA y antes de daño/crítico/consecuencias; impedir Sneak Attack mediante el mismo assessment.
+  - [x] Integrar ataques, AdO, Carga, conjuros/aptitudes, toques de maniobra y preview UI sin RNG de cliente.
+  - [x] Validar 450/450 unitarias, typecheck, build, 91/91 WebSocket y Playwright 6/6.
+  - [ ] Fuentes productivas, targeting por casilla y política efectiva de AdO (fuera de alcance; mantiene la Rule ID en **Infraestructura solamente**).
 
 **Sprint 045 — Entangled Core. COMPLETADO en su alcance aprobado.** La regla conserva estado global **Parcial** porque Concentration no forma parte de este sprint.
 

@@ -54,9 +54,10 @@ Todo cambio requiere:
 - Defensa total.
 - Carga con ruta prevista.
 - Prestar ayuda con buff pendiente de eleccion.
-- **Fase Actual:** Sprint 045, Entangled Core implementado y validado. `EFFECT-ENTANGLED` permanece **Parcial** porque Concentration está expresamente fuera de alcance.
-- **Estado:** ✅ pipeline declarativo · ✅ proyección compartida de velocidad · ✅ 440/440 unitarias · ✅ 91/91 WebSocket · ✅ Playwright 6/6.
+- **Fase Actual:** Sprint 046, infraestructura oficial de `DEFENSE-CONCEALMENT` implementada y validada. La Rule ID permanece **Infraestructura solamente** porque este sprint no incorpora fuentes productivas.
+- **Estado:** ✅ assessment compartido · ✅ d100 autoritativo post-CA · ✅ Sneak Attack bloqueado por ocultación · ✅ 450/450 unitarias · ✅ 91/91 WebSocket · ✅ Playwright 6/6.
 - **Hitos Completados Recientes:**
+  - `Sprint 046`: contrato especializado `ConcealmentContribution`, reducción determinista con stacking/trazas, `ConcealmentAssessment` compartido, resolución porcentual autoritativa y preview UI sin RNG de cliente.
   - `Sprint 045`: `srd_entangled` declarativo (-2 ataque, -4 DEX, velocidad ×1/2, `FORBID_RUN`, `FORBID_CHARGE`), contrato especializado `MovementRateContribution`, deduplicación/trazas y preview isomorfo.
   - `Sprint 042`: Cover canónico en `getAttackContextModifiers`, criaturas y obstáculos de casilla, footprints deterministas y consumo uniforme por armas, touch, AdO, maniobras y UI.
   - `Sprint 030`: Escape de Presa autoritativo, rangos de habilidades V6, restricciones de armas en agarre, penalizador melee etiquetado y preview UI compartido.
@@ -189,7 +190,19 @@ Todo cambio requiere:
   - Implementación de `Fatigued`, `Prone`, `Dazed` y `Paralyzed` con lógica de sobrescritura de características.
   - Integración de `getEffectiveAbilityScore` y nuevas pruebas de regresión.
 
-### FASE ACTUAL: Sprint 045 — Entangled Core validado
+### FASE ACTUAL: Sprint 046 — DEFENSE-CONCEALMENT (infraestructura validada)
+
+  **Sprint 046 — implementación de infraestructura**
+  - `ConcealmentContribution` reemplaza el marker dormido `Modifier.mechanic/CONCEALMENT`; no quedan contratos paralelos.
+  - `EffectReducer.reduceConcealmentContributions` valida, ordena, deduplica por `stackingKey`, conserva trazas y selecciona la probabilidad de mayor precedencia sin sumar porcentajes.
+  - `Rules.getConcealmentAssessment` construye un assessment efímero y compartido. Cover continúa como regla independiente y no participa en esta matemática.
+  - El servidor resuelve el d100 únicamente después de superar la CA, antes del daño, críticos y consecuencias. Cualquier ocultación impide Ataque Furtivo mediante el mismo assessment, incluso si el d100 permite impactar.
+  - Ataques estándar/completos, aptitudes, conjuros, Carga, AdO y toques de maniobra consumen el mismo assessment. React usa la misma proyección y nunca genera RNG.
+  - No se agregaron fuentes productivas, flags de red, estado derivado persistido ni `AttackAttemptProjection`. Los campos futuros de targeting/AdO permanecen informativos y sin consumidor productivo.
+  - Validación local: 450/450 unitarias, typecheck 3/3 workspaces, build 3/3, WebSocket 91/91 y Playwright 6/6.
+  - Registry: `DEFENSE-CONCEALMENT` queda exactamente **Infraestructura solamente**, nunca Completo.
+
+### HISTÓRICO: Sprint 045 — Entangled Core validado
 
   **Sprint 045 — implementación funcional acotada**
   - `srd_entangled` aporta únicamente -2 a ataque, -4 a Destreza, velocidad ×1/2, `FORBID_RUN` y `FORBID_CHARGE`.
@@ -327,8 +340,8 @@ Todo cambio requiere:
 ## Falta
 
 - Expandir uso de CombatSnapshot en mas resolvers.
-- Condiciones: implementar como verticales separadas según `docs/designs/rule-and-modifier-classification.md`; no aprobar un lote único. Dependencias principales: Concealment/visión, movimiento multiplicativo, skills/Concentration, huida obligatoria, objetos caídos y Coup de Grace.
-- Concealment (miss chance %, contrato ya existe en `effects/contracts.ts` sin consumidor) y Ocultación/Cobertura Total (bloqueo de ataque).
+- Condiciones: implementar como verticales separadas según `docs/designs/rule-and-modifier-classification.md`; no aprobar un lote único. Entangled Core y la infraestructura de Concealment ya existen; continúan pendientes sus extensiones aprobables por separado, skills/Concentration, huida obligatoria, objetos caídos y Coup de Grace.
+- Fuentes productivas de Concealment, targeting por casilla para ocultación total y política efectiva de AdO. La miss chance y su assessment ya están implementados en `DEFENSE-CONCEALMENT`.
 - Vision/Línea de Efecto formal (gap G-03 de `docs/audits/combat-rules-deviations.md`).
 - Huellas no cuadradas, rotación y reglas completas de `Squeezing` que alteren temporalmente el espacio.
 - ~~Alcance natural por tamanio.~~ ✅ Implementado (`SizeRulesCatalog.defaultReachFeet`, Sprint 013).

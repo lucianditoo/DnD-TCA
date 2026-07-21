@@ -5,7 +5,8 @@ import {
   canApplySneakAttack,
   createCatalogCombatant,
   createCombatRulesSnapshot,
-  createEmptyRoom
+  createEmptyRoom,
+  getAttackContextModifiers
 } from "../packages/shared/dist/index.js";
 import {
   resolveAttack,
@@ -41,7 +42,7 @@ test("Sprint 012: el crítico multiplica el arma pero nunca los dados de Ataque 
     5,
     "ataque furtivo crítico",
     0,
-    { source: resolveWeaponAttackSource(attacker, "melee"), diceRoller: () => 6 }
+    { source: resolveWeaponAttackSource(attacker, "melee"), diceRoller: () => 6, concealment: getAttackContextModifiers(snapshot, attacker, target).byAttackType.melee.concealment }
   );
 
   assert.equal(attack.threatened, true);
@@ -80,7 +81,8 @@ test("Sprint 012: undead y construct reciben inmunidades raciales inmutables a p
   const snapshot = createCombatRulesSnapshot(room);
   const attack = resolveAttack(snapshot, attacker, target, 20, 5, "ataque contra undead", 0, {
     source: resolveWeaponAttackSource(attacker, "melee"),
-    diceRoller: () => 6
+    diceRoller: () => 6,
+    concealment: getAttackContextModifiers(snapshot, attacker, target).byAttackType.melee.concealment
   });
 
   assert.equal(canApplySneakAttack(snapshot, attacker, target), false);

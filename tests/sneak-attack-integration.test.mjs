@@ -5,6 +5,7 @@ import {
   createCombatRulesSnapshot,
   canApplySneakAttack,
   getEffectiveSneakAttackDice,
+  getAttackContextModifiers,
   effectsCatalog,
   CreatureTypeCatalog
 } from "../packages/shared/dist/index.js";
@@ -64,7 +65,8 @@ test("Sprint 016 - Sneak Attack Integration", async (t) => {
         criticalMultiplier: 2,
         defaultDamage: 4
       },
-      diceRoller: () => 3 // constant 3 per die
+      diceRoller: () => 3, // constant 3 per die
+      concealment: getAttackContextModifiers(snapshot, rogue, flatFootedEnemy).byAttackType.melee.concealment
     };
     const attack = resolveAttack(snapshot, rogue, flatFootedEnemy, 20, 4, "Ataque Base", 0, options);
     assert.equal(attack.hits, true);

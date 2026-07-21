@@ -15,15 +15,24 @@ import {
   type DamageBundle,
   type DamageComponent,
   type CoverAssessment,
+  type ConcealmentAssessment,
   EffectReducer,
   effectsCatalog,
   hasEffectTrait,
   getEffectiveSneakAttackDice,
   resolveEquippedWeaponProfile
 } from "@dnd-tactical/shared";
+import { rollDice } from "./diceRoller.js";
+
+export interface ConcealmentResolution {
+  readonly assessment: ConcealmentAssessment;
+  readonly d100Roll: number | null;
+  readonly missed: boolean;
+}
 
 export interface AttackResult {
   hits: boolean;
+  attackRollHits: boolean;
   damage: number;
   damageBundle: DamageBundle;
   threatened?: boolean;
@@ -39,6 +48,7 @@ export interface AttackResult {
   isNatural20: boolean;
   consumedAttackerAidId?: string;
   consumedTargetAidId?: string;
+  concealment: ConcealmentResolution;
 }
 
 export interface AttackResolutionOptions {
@@ -50,6 +60,8 @@ export interface AttackResolutionOptions {
   isMovementProvoked?: boolean;
   /** Sprint 042: Cover ya resuelto por el caller vía getAttackContextModifiers(...).byAttackType[tipo].cover. */
   cover?: CoverAssessment;
+  /** Assessment contextual compartido. El cliente nunca puede suministrarlo. */
+  concealment: ConcealmentAssessment;
 }
 
 export interface ResolvedAttackSource {
@@ -76,8 +88,9 @@ export function resolveAttack(
   damageInput: number | null,
   _label: string,
   situationalAttackBonus = 0,
-  options: AttackResolutionOptions = {}
+  options: AttackResolutionOptions
 ): AttackResult {
+  if (!options?.concealment) throw new Error("Invariante de ataque violada: falta ConcealmentAssessment autoritativo.");
   if (lifeStatus(attacker) === "dead" || lifeStatus(attacker) === "dying" || lifeStatus(attacker) === "stable") throw new Error(attacker.name + " no puede atacar en su estado actual.");
   if (lifeStatus(target) === "dead") throw new Error(target.name + " ya esta muerto.");
   const source = options.source ?? resolveWeaponAttackSource(attacker);
@@ -112,7 +125,9 @@ export function resolveAttack(
   // Regla fundamental D&D 3.5: 1 natural siempre falla, 20 natural siempre impacta
   const isNatural1 = d20Roll === 1;
   const isNatural20 = d20Roll === 20;
-  const hits = isNatural1 ? false : isNatural20 ? true : total >= targetArmorClass;
+  const attackRollHits = isNatural1 ? false : isNatural20 ? true : total >= targetArmorClass;
+  const concealment = resolveConcealment(attackRollHits, options.concealment, options.diceRoller ?? rollDice);
+  const hits = attackRollHits && !concealment.missed;
   const baseDamage = hits ? Math.max(1, damageInput ?? source.defaultDamage) : 0;
   const damageComponents: DamageComponent[] = hits ? [{
     sourceId: source.name,
@@ -122,8 +137,8 @@ export function resolveAttack(
     neverMultiply: false
   }] : [];
   const delivery = { attackType: source.attackType, distanceFeet: range, requiresAttackRoll: true, dealsDamage: true } as const;
-  if (hits && canApplySneakAttack(context, attacker, target, delivery)) {
-    const roller = options.diceRoller ?? ((sides: number) => Math.floor(Math.random() * sides) + 1);
+  if (hits && canApplySneakAttack(context, attacker, target, delivery, options.concealment)) {
+    const roller = options.diceRoller ?? rollDice;
     let precisionDamage = 0;
     const sneakAttackDice = getEffectiveSneakAttackDice(context, attacker);
     for (let die = 0; die < sneakAttackDice; die += 1) precisionDamage += roller(6);
@@ -149,6 +164,7 @@ export function resolveAttack(
 
   return {
     hits,
+    attackRollHits,
     damage,
     threatened: isThreat,
     damageBundle,
@@ -162,9 +178,25 @@ export function resolveAttack(
     totalAttack: total,
     isNatural1,
     isNatural20,
+    concealment,
     consumedAttackerAidId: attacker.buffs.some((b) => b.aidChoice === "attack" && b.aidTargetId === target.id) ? target.id : undefined,
     consumedTargetAidId: target.buffs.some((b) => b.aidChoice === "ac" && b.aidTargetId === attacker.id) ? attacker.id : undefined
   };
+}
+
+/** Resuelve una unica miss chance server-side despues de superar CA. */
+export function resolveConcealment(
+  attackRollHits: boolean,
+  assessment: ConcealmentAssessment,
+  diceRoller: (sides: number) => number
+): ConcealmentResolution {
+  if (!assessment) throw new Error("Invariante de ocultacion violada: falta ConcealmentAssessment.");
+  if (!attackRollHits || !assessment.applies) return { assessment, d100Roll: null, missed: false };
+  const d100Roll = diceRoller(100);
+  if (!Number.isInteger(d100Roll) || d100Roll < 1 || d100Roll > 100) {
+    throw new Error(`Fuente de dados invalida para ocultacion: ${d100Roll}.`);
+  }
+  return { assessment, d100Roll, missed: d100Roll <= assessment.missChancePercent };
 }
 
 export function resolveCriticalConfirmation(
@@ -257,4 +289,3 @@ function sumAidBonus(buffs: Buff[], opponentId: string, choice: "attack" | "ac")
 function consumeChosenAid(combatant: Combatant, opponentId: string, choice: "attack" | "ac"): void {
   combatant.buffs = combatant.buffs.filter((buff) => !(buff.aidChoice === choice && buff.aidTargetId === opponentId));
 }
-

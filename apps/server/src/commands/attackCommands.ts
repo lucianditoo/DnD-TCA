@@ -10,6 +10,7 @@ import { broadcast } from "../room/roomStore.js";
 import { applyDisabledExertion } from "../combat/lifeStatusEffects.js";
 import { cloneCombatRoom, commitCombatRoomTransaction } from "../room/roomTransaction.js";
 import { commitSpatialTransition } from "../combat/spatialTransition.js";
+import { rollDice } from "../combat/diceRoller.js";
 
 export interface PhysicalAttackExecutionOptions {
   readonly diceRoller?: (sides: number) => number;
@@ -82,7 +83,7 @@ function handleResolveAttackDraft(room: CombatRoom, command: Extract<ClientComma
   const weaponEntry = getEquippedWeaponEntry(attacker);
   const ammunition = attackType === "ranged" ? validateAttackAmmunition(attacker, weaponEntry) : { ok: true as const, value: { required: false, availableQuantity: 0 } };
   if (!ammunition.ok || !ammunition.value) throw new Error(ammunition.error ?? "No hay munición disponible.");
-  const roller = options.diceRoller ?? ((sides: number) => Math.floor(Math.random() * sides) + 1);
+  const roller = options.diceRoller ?? rollDice;
   const rolls = resolveCommandRolls(command, source, roller);
   const rangedOpportunities = findTriggeredRangedOpportunityAttacks(snapshot, attacker, attackDistance);
   if (rangedOpportunities.length > 0) {
@@ -103,7 +104,7 @@ function handleResolveAttackDraft(room: CombatRoom, command: Extract<ClientComma
   const context = getAttackContextModifiers(snapshot, attacker, target);
   const tactical = context.byAttackType[attackType];
   const finalModifier = (fightingDefensively ? -4 : 0) + tactical.attackBonus + currentAttack.penalty;
-  const result = resolveAttack(snapshot, attacker, target, rolls.d20Roll, rolls.damage, attackLabel, finalModifier, { source, diceRoller: roller, cover: tactical.cover });
+  const result = resolveAttack(snapshot, attacker, target, rolls.d20Roll, rolls.damage, attackLabel, finalModifier, { source, diceRoller: roller, cover: tactical.cover, concealment: tactical.concealment });
   if (ammunition.value.required && ammunition.value.selectedItemId) {
     const nextAttacker = consumeInventoryQuantity(attacker, ammunition.value.selectedItemId, 1);
     attacker.inventory = nextAttacker.inventory;
@@ -276,7 +277,7 @@ export function handleResolveAttackConfirmation(room: CombatRoom, command: Extra
   const attacker = findCombatant(room, threat.attackerId);
   requireCombatantControl(command.actorId, attacker);
   const snapshot = createCombatRulesSnapshot(room);
-  const roller = options.diceRoller ?? ((sides: number) => Math.floor(Math.random() * sides) + 1);
+  const roller = options.diceRoller ?? rollDice;
   const d20Roll = command.isAutoRoll ? roller(20) : command.d20Roll;
   if (!Number.isInteger(d20Roll) || d20Roll === null || d20Roll < 1 || d20Roll > 20) throw new Error("La confirmación d20 manual debe ser un entero entre 1 y 20.");
   resolveThreatOutcome(room, snapshot, threat, d20Roll, command.damage);
@@ -301,7 +302,7 @@ export function handleResolveOpportunityAttack(room: CombatRoom, command: Extrac
   const attackerCurrentPosition = { ...attacker.position };
   const targetCurrentPosition = { ...target.position };
   const source = resolveWeaponAttackSource(attacker, "melee");
-  const roller = options.diceRoller ?? ((sides: number) => Math.floor(Math.random() * sides) + 1);
+  const roller = options.diceRoller ?? rollDice;
   const rolls = resolveCommandRolls(command, source, roller);
   let result: ReturnType<typeof resolveAttack>;
   try {
@@ -315,7 +316,8 @@ export function handleResolveOpportunityAttack(room: CombatRoom, command: Extrac
       diceRoller: roller,
       isOpportunityAttack: true,
       isMovementProvoked: opportunity.movementCostFeet !== undefined,
-      cover: tactical.cover
+      cover: tactical.cover,
+      concealment: tactical.concealment
     });
     
     if (tactical.labelParts.length > 0) {
@@ -381,7 +383,9 @@ export function applyAttackMutations(room: CombatRoom, attacker: ReturnType<type
   if (result.hits) attacker.stats.hits += 1;
   else attacker.stats.misses += 1;
 
-  const hitSuffix = result.isNatural20 && result.hits
+  const hitSuffix = result.concealment.missed
+    ? `La tirada alcanza la CA, pero falla por ocultacion ${result.concealment.assessment.kind === "total" ? "total" : "parcial"} (${result.concealment.assessment.missChancePercent}%; d100 ${result.concealment.d100Roll}).`
+    : result.isNatural20 && result.hits
     ? "¡Impacto automático! (20 natural)."
     : result.isNatural1
     ? "Falla automática (1 natural)."

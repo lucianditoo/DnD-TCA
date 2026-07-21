@@ -23,7 +23,7 @@ import {
   type ProductionEffectId
 } from "@dnd-tactical/shared";
 import { requireCombatantControl } from "../auth/control.js";
-import { resolveAttack, resolveCriticalConfirmation, resolveWeaponAttackSource, type AttackResult } from "../combat/attackResolver.js";
+import { resolveAttack, resolveConcealment, resolveCriticalConfirmation, resolveWeaponAttackSource, type AttackResult, type ConcealmentResolution } from "../combat/attackResolver.js";
 import { applyDisabledExertion } from "../combat/lifeStatusEffects.js";
 import { ensureActiveTurn } from "../combat/turnManager.js";
 import { checkCombatOutcome, findCombatant, logStatusChange, syncEncounterPhase } from "../room/roomState.js";
@@ -31,19 +31,37 @@ import { broadcast } from "../room/roomStore.js";
 import { applyAttackMutations } from "./attackCommands.js";
 import { commitSpatialTransition } from "../combat/spatialTransition.js";
 import { cloneCombatRoom, commitCombatRoomTransaction } from "../room/roomTransaction.js";
+import { rollDice } from "../combat/diceRoller.js";
 
 export interface ManeuverDiceSource {
   d20(purpose: "opportunity-attack" | "opportunity-confirmation" | "touch-attacker" | "opposed-attacker" | "opposed-defender" | "opposed-reroll-attacker" | "opposed-reroll-defender"): number;
+  d100?(purpose: "concealment"): number;
 }
 
 const randomDiceSource: ManeuverDiceSource = {
-  d20: () => Math.floor(Math.random() * 20) + 1
+  d20: () => rollDice(20),
+  d100: () => rollDice(100)
 };
 
 function checkedD20(diceSource: ManeuverDiceSource, purpose: Parameters<ManeuverDiceSource["d20"]>[0]): number {
   const roll = diceSource.d20(purpose);
   if (!Number.isInteger(roll) || roll < 1 || roll > 20) throw new Error(`Fuente de dados invalida para ${purpose}: ${roll}.`);
   return roll;
+}
+
+function checkedD100(diceSource: ManeuverDiceSource): number {
+  const roll = diceSource.d100?.("concealment") ?? rollDice(100);
+  if (!Number.isInteger(roll) || roll < 1 || roll > 100) throw new Error(`Fuente de dados invalida para ocultacion: ${roll}.`);
+  return roll;
+}
+
+function applyTouchConcealment<T extends { readonly hits: boolean }>(
+  touch: T,
+  assessment: Parameters<typeof resolveConcealment>[1],
+  diceSource: ManeuverDiceSource
+): T & { readonly attackRollHits: boolean; readonly concealment: ConcealmentResolution } {
+  const concealment = resolveConcealment(touch.hits, assessment, () => checkedD100(diceSource));
+  return { ...touch, attackRollHits: touch.hits, hits: touch.hits && !concealment.missed, concealment };
 }
 
 function resolveInterruptingOpportunityAttack(
@@ -55,7 +73,12 @@ function resolveInterruptingOpportunityAttack(
   const d20Roll = checkedD20(diceSource, "opportunity-attack");
   const tactical = getAttackContextModifiers(snapshot, defender, tripper).byAttackType.melee;
   const source = resolveWeaponAttackSource(defender, "melee");
-  let result = resolveAttack(snapshot, defender, tripper, d20Roll, null, "ataque de oportunidad", tactical.attackBonus, { source, cover: tactical.cover });
+  let result = resolveAttack(snapshot, defender, tripper, d20Roll, null, "ataque de oportunidad", tactical.attackBonus, {
+    source,
+    diceRoller: (sides) => sides === 100 ? checkedD100(diceSource) : rollDice(sides),
+    cover: tactical.cover,
+    concealment: tactical.concealment
+  });
   if (tactical.labelParts.length > 0) result.attackParts.push(...tactical.labelParts);
 
   if (result.threatened) {
@@ -214,11 +237,15 @@ function resolveGrapple(
   const abortedByDamage = Boolean(interrupt?.result.hits && interrupt.result.damage > 0);
   const touch = abortedByDamage
     ? null
-    : resolveGrappleTouchAttack(
-        snapshot,
-        attacker,
-        target,
-        requireManualOrAutoRoll(command.maneuver.d20TouchRoll, command.maneuver.isAutoRoll, "touch-attacker", "Presa", diceSource)
+    : applyTouchConcealment(
+        resolveGrappleTouchAttack(
+          snapshot,
+          attacker,
+          target,
+          requireManualOrAutoRoll(command.maneuver.d20TouchRoll, command.maneuver.isAutoRoll, "touch-attacker", "Presa", diceSource)
+        ),
+        preview.concealment,
+        diceSource
       );
   const opposed = touch?.hits
     ? resolveGrappleContest(
@@ -241,7 +268,10 @@ function resolveGrapple(
   } else if (touch && !touch.hits) {
     attacker.stats.attacksMade += 1;
     attacker.stats.misses += 1;
-    room.log.unshift(makeLog("attack", `${attacker.name} intenta Presa contra ${target.name}: toque melee d20 ${touch.d20Roll} + ${touch.attackBonus} = ${touch.total} contra Touch AC ${touch.targetArmorClass}; falla.`));
+    const reason = touch.concealment.missed
+      ? `alcanza la Touch AC, pero falla por ocultacion (${touch.concealment.assessment.missChancePercent}%; d100 ${touch.concealment.d100Roll})`
+      : "falla";
+    room.log.unshift(makeLog("attack", `${attacker.name} intenta Presa contra ${target.name}: toque melee d20 ${touch.d20Roll} + ${touch.attackBonus} = ${touch.total} contra Touch AC ${touch.targetArmorClass}; ${reason}.`));
   } else if (touch && opposed) {
     attacker.stats.attacksMade += 1;
     attacker.stats.hits += 1;
@@ -375,7 +405,11 @@ export function handleResolveSpecialManeuver(
 
   const touch = abortedByDamage
     ? null
-    : resolveTripTouchAttack(snapshot, attacker, target, command.maneuver.d20TouchRoll);
+    : applyTouchConcealment(
+        resolveTripTouchAttack(snapshot, attacker, target, command.maneuver.d20TouchRoll),
+        preview.concealment,
+        diceSource
+      );
   const opposed = touch?.hits
     ? resolveTripContest(snapshot, attacker, target, command.maneuver.d20OpposedRoll, diceSource)
     : null;
@@ -392,7 +426,10 @@ export function handleResolveSpecialManeuver(
   } else if (touch && !touch.hits) {
     attacker.stats.attacksMade += 1;
     attacker.stats.misses += 1;
-    room.log.unshift(makeLog("attack", `${attacker.name} intenta Derribo contra ${target.name}: toque melee d20 ${touch.d20Roll} + ${touch.attackBonus} = ${touch.total} contra Touch AC ${touch.targetArmorClass}; falla.`));
+    const reason = touch.concealment.missed
+      ? `alcanza la Touch AC, pero falla por ocultacion (${touch.concealment.assessment.missChancePercent}%; d100 ${touch.concealment.d100Roll})`
+      : "falla";
+    room.log.unshift(makeLog("attack", `${attacker.name} intenta Derribo contra ${target.name}: toque melee d20 ${touch.d20Roll} + ${touch.attackBonus} = ${touch.total} contra Touch AC ${touch.targetArmorClass}; ${reason}.`));
   } else if (touch && opposed) {
     attacker.stats.attacksMade += 1;
     attacker.stats.hits += 1;
