@@ -42,7 +42,7 @@ Documento vivo de tareas pendientes. El backlog está organizado en Sprints. Par
 
 ## Próximos Sprints
 
-Ver `ROADMAP.md` (reescrito en Sprint 043). Orden propuesto: Condiciones Restantes (043, recomendado) → Concealment (044) → Vision/Línea de Efecto (045) → Full Attack V2 (046, ya diseñado) → Feats Core lote 1 (047) → Spells Core lote 1 (048) → Two-Weapon Fighting (049) → Saneamiento de deuda arquitectónica (050). Power Attack (039) sigue congelado.
+Ver `ROADMAP.md` (reescrito en Sprint 043, renumerado en Sprint 044.1). Orden propuesto: Condiciones Restantes (045, recomendado) → Concealment (046) → Vision/Línea de Efecto (047) → completar `ATTACK-FULL` (048, incluye Dos Armas/Disparo Rápido/Haste real — no es una regla nueva, ver `docs/rules/registry.md`) → Feats Core (049+) → Spells Core (050+) → Saneamiento de deuda arquitectónica (sin número fijo). Power Attack (039) sigue congelado.
 
 ## Sprint Activo
 

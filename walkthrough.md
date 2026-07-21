@@ -1,59 +1,59 @@
-# Walkthrough — Sprint 044: Consolidación del Registry
+# Walkthrough — Sprint 044.1: Normalización Semántica del Registry
 
 ## Estado final
 
-Sprint puramente documental/de gobernanza — **cero cambios de código de producción, cero cambios de tests**. `docs/rules/registry.md` pasa de 22 a 48 Rule IDs, todos verificados individualmente contra código/tests/documentación reales antes de agregarse. Dos entradas de deuda técnica (DT-011, DT-014) confirmadas resueltas y cerradas. Una contradicción documental real (Tumble/Piruetas) detectada y corregida en `docs/audits/combat-rules-deviations.md`.
+Sprint puramente documental — **cero cambios de código, cero cambios de tests, cero reglas implementadas**. Corrige un error conceptual introducido en Sprint 044: `ATTACK-FULL` y `ATTACK-FULL-V2` habían sido creadas como si fueran dos reglas distintas, cuando "Ataque Completo" es una única regla oficial de D&D 3.5 (`combat/05_acciones.txt:189-192`) con varios componentes que maduran en sprints distintos. Consolidadas en una única fila `ATTACK-FULL`. De paso, se auditaron las 48 filas restantes buscando el mismo patrón y se encontró y corrigió un segundo caso de menor severidad (`EQUIPMENT-INVENTORY-V5` → `EQUIPMENT-INVENTORY`).
 
-## Contexto
+## Fase 0 — Verificación de git
 
-Sprint 043.1 (auditoría de solo lectura) había detectado que `docs/rules/registry.md`, pese a declararse "el índice maestro de todas las reglas del motor", solo representaba 22 Rule IDs — menos de la mitad del motor real. Este sprint ejecuta la reconstrucción, con la restricción explícita de verificar cada fila contra el archivo/función/test citados antes de agregarla, y de no asumir que cada mecánica merece exactamente una fila por haber tenido un sprint propio.
+Confirmado antes de tocar nada: rama `master`, working tree limpio, último commit `2777b0e` (cierre real de Sprint 044), sin cambios ajenos.
 
-## Fase 0 — Cierre formal de Sprint 043
+## Fase 1 — Auditoría de la regla oficial
 
-Commit `45170ff` (`docs(governance): version walkthrough and refresh architectural roadmap`), 5 archivos (`.gitignore`, `PROJECT_STATUS.md`, `ROADMAP.md`, `TODO.md`, `walkthrough.md`), push exitoso a `origin/master`, working tree limpio confirmado antes de empezar Sprint 044.
+`combat/05_acciones.txt:189-192` confirma que "Ataque Completo" es una única acción de asalto completo con varios componentes normativos: progresión de ataques por BAB, Combate con Dos Armas/arma doble, "alguna razón especial (una dote o un objeto mágico)" (cubre Disparo Rápido y Haste), selección de objetivo ataque-por-ataque sin declaración previa, compatibilidad con paso de 5', y la opción de Luchar a la Defensiva dentro del ataque completo.
 
-## Fase 1-2 — Taxonomía y mecánicas huérfanas
+Verificado contra código real, componente por componente:
 
-Se verificó código/tests real (no solo el nombre de la mecánica) para cada una de las ~20 mecánicas huérfanas listadas en el prompt de Sprint 044, más las 3 filas existentes a corregir. Decisiones de granularidad relevantes:
+| Componente | Estado verificado |
+|---|---|
+| Ataques iterativos por BAB | ✅ `getAttackRoutine`/`getEffectiveAttackRoutine` (Sprint 036) |
+| Paso de 5' compatible | ✅ ya integrado en la UI/economía de turno |
+| Bloqueo de movimiento normal | ✅ `attackMode === "full"` bloquea acción de movimiento |
+| Luchar a la Defensiva dentro de ataque completo | ✅ flag `fightingDefensively`, -4/+2 |
+| Selección de objetivo ataque-por-ataque | ✅ cada `resolve-attack` es independiente; nada fuerza declarar objetivos por adelantado |
+| Combate con Dos Armas | ❌ no implementado (confirmado: sin mecánica de mano torpe/off-hand) |
+| Disparo Rápido (dote) | ❌ no implementado (`srd_rapid_shot` no existe en `featCatalog.ts`) |
+| Aceleración (Haste) real como ataque extra | ❌ no implementado (`Buff.grantsExtraAttack` no existe; Haste hoy solo otorga velocidad) |
+| Ataques naturales múltiples (mordisco+garra+garra) en la rutina | ❌ no implementado (`naturalAttackId` es singular en el snapshot) |
+| Hendedura/Gran Hendedura | ❌ no implementado (dote no catalogada) |
 
-- **Conditions V3** (Fatigued/Prone/Dazed/Paralyzed): 4 filas separadas (`EFFECT-FATIGUED`, `EFFECT-PRONE`, `EFFECT-DAZED`, `EFFECT-PARALYZED`), no una sola — cada condición es una capacidad de dominio independiente, mismo patrón que las filas ya existentes `EFFECT-STUNNED`/`EFFECT-FLAT-FOOTED`. Hallazgo: `docs/designs/conditions-v3-fatigued-prone.md` solo cubre Fatigued/Prone pese a que Sprint 014 shippeó las 4 juntas — Dazed/Paralyzed quedan sin NDD dedicado, documentado explícitamente en sus filas en vez de enlazar el documento equivocado.
-- **Global Round Tracker + Bleeding** (Sprint 021): 2 filas (`ROUND-TRACKER`, `EFFECT-DYING-BLEED`) — son conceptualmente distintas (mecanismo de reloj de ronda vs. consecuencia de daño pasivo), aunque comparten sprint y ausencia de NDD dedicado (solo aparecen en el Apéndice A de `combat-rules-deviations.md`).
-- **Grapple V1+V2, Bull Rush+Squeezing dinámico**: 1 fila cada una (`MANEUVER-GRAPPLE`, `MANEUVER-BULL-RUSH`) — V2 extiende V1 sobre la misma regla, no son reglas distintas.
-- **Percentile Roller** (mencionado en el nombre de Sprint 022): verificado por grep — no existe ningún símbolo `percentile`/`Percentile` en el repositorio hoy. No se creó fila; se absorbió en su momento al roller de dados genérico sin dejar rastro nombrado.
-- **Spell AoE Geometry** (Sprint 033): verificado que `geometry/aoe.ts`/`getCellsIntersectedByAoE` no aparecen en **ningún** archivo de `tests/` — cero cobertura directa o indirecta. Clasificado **Parcial**, no Completo, pese a que PROJECT_STATUS.md lo celebra como cerrado — es el hallazgo de mayor severidad de este sprint.
-- **Total de filas**: 22 → **48**. Todos los enlaces `docs/*.md` citados (43 únicos) y archivos de test citados (32 únicos) fueron verificados con `find`/`ls` reales, no de memoria — cero enlaces rotos en la versión nueva (el único "roto" que aparece en el texto es la mención histórica intencional del link previo de `ATTACK-FULL`, dentro de su propia nota de corrección).
+## Fase 2 — Consolidación de la Rule ID
 
-## Fase 3 — Filas existentes corregidas
+`docs/rules/registry.md`: eliminada `ATTACK-FULL-V2` como fila independiente. `ATTACK-FULL` actualizada con estado global **Parcial**, desglose completo de componentes completos/pendientes, código y tests reales, y sprints de origen (`-`, `036`, `038` en gate). El documento de diseño de Rapid Shot/Haste conserva su título "V2" — es documentación de una etapa de diseño, no una Rule ID.
 
-- **`ATTACK-FULL`**: el link a `docs/designs/full-attack.md` (inexistente) se reemplazó por `docs/designs/iterative-attacks-core-design.md` (existe, y es la documentación real de `getAttackRoutine`/`getEffectiveAttackRoutine`). Se separó en dos filas: `ATTACK-FULL` (rutina iterativa base, Completo) y `ATTACK-FULL-V2` (Rapid Shot/Haste real, No iniciado, Sprint 038 en gate) — para no marcar como implementado lo que sigue pendiente.
-- **`DEFENSE-TOTAL`**: se documentó explícitamente por qué sigue "Parcial" (no había justificación inline antes): el núcleo RAW está implementado (`handleTotalDefense`), pero no hay evidencia de la interacción con Pericia en Combate (Combat Expertise) que el manual describe como acumulable, ni test que la ejercite.
-- **`MOVE-RUN`**: se agregó una nota explícita distinguiendo divergencia aprobada (DT-018/DT-019, decisiones deliberadas D-2/D-4 del propio NDD) de deuda real — no se presentan como bugs ocultos.
+## Fase 3 — Auditoría de las 47 filas restantes
 
-## Fase 4 — Deuda técnica actualizada
+Revisadas todas buscando sufijos `V1`/`V2`/`V3`, nombres de sprint o implementación interna:
 
-- **DT-011** ✅ RESUELTO: verificado que `getAttackRoutine`/`getEffectiveAttackRoutine` (Sprint 036) implementan progresión real por BAB. Se distinguió explícitamente del alcance pendiente de Rapid Shot/Haste (`ATTACK-FULL-V2`, Sprint 038), para no confundir "iterativos básicos ya resueltos" con "fuentes de ataque extra todavía pendientes".
-- **DT-014** ✅ RESUELTO: verificado que `turnManager.ts::roundTickListener` (Sprint 021) desangra pasivamente a los moribundos, con test real (`global-round-tracker.test.mjs`) y confirmación cruzada en `combat-rules-deviations.md` (`COND-02`, "Resuelta").
+- **`EQUIPMENT-INVENTORY-V5` → `EQUIPMENT-INVENTORY`** (corregido): "V5" era el número de esquema interno de persistencia (`StoredProfile V5`), no una versión de la regla. Menor severidad que el caso `ATTACK-FULL` — una sola fila con nombre inconsistente, no una duplicación semántica entre dos filas. Renombrada; el detalle V5 se conserva como nota en la columna de implementación.
+- **`ATK-RANGED-INTO-MELEE`** (reportado, sin cambios): usa el prefijo `ATK-` en vez de `ATTACK-` — inconsistencia de estilo, no duplicación semántica. No se corrige ahora: renombrar este ID tocaría referencias cruzadas en otros documentos, fuera del alcance de bajo riesgo de este sprint.
+- **`EFFECTS-SYS-*`** (reportado, sin cambios): conserva "SYS" deliberadamente — son filas de infraestructura del motor, no reglas de D&D, así que nombrar el sistema interno es apropiado.
+- Ninguna otra fila usa sufijos de versión ni nombres derivados de sprint. No se detectó ninguna otra duplicación semántica que ameritara una reorganización amplia.
 
-## Fase 5 — Consistencia entre fuentes
+## Fase 4 — Roadmap
 
-Revisadas `PROJECT_STATUS.md`, `TODO.md`, `ROADMAP.md`, `docs/testing/master-coverage.md` — ninguna contradice el Registry nuevo (miden ejes distintos: estado de regla vs. planificación futura vs. evolución de tests), así que no se modificaron para evitar duplicar tablas. Único hallazgo real de contradicción: **`docs/audits/combat-rules-deviations.md`**, fila `MOVE-02` de su Apéndice A, afirmaba "sigue sin sistema de Habilidades/Tumble" — falso. `apps/server/src/commands/movementCommands.ts:53-95` implementa tiradas reales de Acrobacias (1d20+DES) contra CD 15/25 con logging. Corregida esa fila y agregada una nota aclaratoria en el gap G-02 (que sigue siendo válido, pero se refiere a que el *corpus normativo* no transcribe la regla de la habilidad — no a que el motor no la implemente; son cosas distintas y la redacción original prestaba a confusión).
+`ROADMAP.md` renumerado (Sprint 044 y 044.1 ya consumieron dos números desde la última versión): Condiciones Restantes ahora es **Sprint 045**, Concealment **046**, Vision/Línea de Efecto **047**, y "Full Attack V2" pasa a ser **Sprint 048 — Completar `ATTACK-FULL`** (mismo Rule ID, no una regla nueva). Feats/Spells quedan como lotes abiertos (049+/050+). Two-Weapon Fighting ya no aparece como sprint separado — es uno de los componentes pendientes de `ATTACK-FULL`. `PROJECT_STATUS.md` y `TODO.md` actualizados para no contradecir la nueva terminología.
 
-## Fase 6-7 — Validación documental
+## Fase 5 — Política del Registry
 
-- Todos los enlaces `.md` citados en el registry nuevo: verificados con `find`/existencia real de archivo (43/43 vigentes, salvo la mención histórica intencional).
-- Todos los archivos de test citados: verificados (32/32 existen en `tests/`).
-- Funciones citadas: verificadas por grep directo contra `packages/shared/src` (`getAttackRoutine`, `getEffectiveAttackRoutine`, `isAcrobatic`, `srd_dazed`, `srd_paralyzed`, `getGrappleAttackEligibility`, `validateBullRushManeuver`, `maxAooAllowed`, `getCellsIntersectedByAoE`, etc.) — todas confirmadas presentes.
-- `git status`/`git diff` revisados antes de comitear (ver resumen de cierre de la sesión).
-- No se ejecutó la suite completa de tests — no hubo cambios de código ni de tests en este sprint.
+Agregada sección "Política de identidad de Rule ID" al encabezado de `docs/rules/registry.md`: las Rule IDs representan reglas/capacidades estables, no versiones/sprints/etapas; los componentes pendientes se registran dentro de la misma fila cambiando su estado a Parcial. Documentada como recomendación futura (no aplicada): evaluar organización por dominios si el Registry supera ~100 filas.
 
-## Archivos modificados
+## Fase 6-7 — Documentación afectada y validación
 
-`docs/rules/registry.md` (reconstrucción completa, 22→48 filas), `docs/technical-debt.md` (DT-011, DT-014 cerradas), `docs/audits/combat-rules-deviations.md` (fila `MOVE-02` corregida + nota en G-02), `walkthrough.md`.
+Archivos modificados: `docs/rules/registry.md`, `ROADMAP.md`, `PROJECT_STATUS.md`, `TODO.md`, `walkthrough.md`. No se tocó `combat/`, código ni tests.
 
-## Deuda técnica
+Validación: `ATTACK-FULL-V2` ya no aparece como fila de tabla (solo en prosa explicativa histórica); `ATTACK-FULL` aparece una única vez como fila; los 43 enlaces `.md` y 32 archivos de test citados en el Registry siguen existiendo (verificado con `find`/`ls` reales); funciones citadas verificadas por grep directo. `git diff --check` sin errores. No se ejecutó la suite completa — no hubo cambios de código ni tests.
 
-Ninguna nueva introducida. Se cerraron DT-011 y DT-014. Se documentó (no se corrigió, por ser código) que `SPELL-AOE` (Sprint 033) tiene cero cobertura de test — candidato a deuda técnica nueva si se decide abrir una entrada formal en un sprint futuro (no se hizo en este, por ser puramente documental).
+## Confirmación
 
-## Próximo sprint funcional recomendado
-
-Sin cambios respecto de Sprint 043: **Condiciones Restantes** (Blinded, Entangled, Dazzled, Shaken/Frightened, Exhausted), con Concealment como alternativa fuerte de segundo lugar. No se inicia en este sprint.
+No se implementó ninguna regla de D&D 3.5 en este sprint. No se inicia Sprint 045.

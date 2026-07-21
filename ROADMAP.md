@@ -6,20 +6,20 @@
 
 - 42 sprints numerados completados + Sprint 042.5 (recuperación de baseline). `npm test` 430/430, typecheck/build/E2E/Playwright en verde, CI de GitHub Actions en verde.
 - Cobertura del Master Plan V1.0 (`.ai/coverage/`): Equipment ~86%, Rules (PHB core) ~64%, Feats ~11%, Spells ~10%. Los dos últimos son el hueco más grande antes de poder llamar "V1.0" al proyecto.
-- Infraestructura arquitectónica considerada **completa y no debe reinventarse**: ActiveEffects (`effects/manager.ts`, `effects/catalog.ts`, `effects/reducer.ts`), Tick Layer (`effects/tick.ts` + `events/bus.ts`), sistema de Traits, `CombatRulesSnapshot`/`combatSnapshot.ts`, Rule Engine (`rules.ts`), Cover/flanqueo/amenaza, ataques iterativos por BAB, salvaciones automáticas, AoE de conjuros, huellas multicasilla, Presa/Embestida/Derribo, inventario V5.
+- Infraestructura arquitectónica considerada **completa y no debe reinventarse**: ActiveEffects (`effects/manager.ts`, `effects/catalog.ts`, `effects/reducer.ts`), Tick Layer (`effects/tick.ts` + `events/bus.ts`), sistema de Traits, `CombatRulesSnapshot`/`combatSnapshot.ts`, Rule Engine (`rules.ts`), Cover/flanqueo/amenaza, ataques iterativos por BAB, salvaciones automáticas, AoE de conjuros, huellas multicasilla, Presa/Embestida/Derribo, inventario (`EQUIPMENT-INVENTORY`).
+- 48 Rule IDs documentados en `docs/rules/registry.md` (Sprint 044/044.1) — única fuente de verdad sobre qué reglas existen y en qué estado. Cada Rule ID representa una regla oficial estable, no una versión ni un sprint (política fijada en Sprint 044.1 tras corregir la duplicación `ATTACK-FULL`/`ATTACK-FULL-V2`).
 
 ## Próximos sprints propuestos
 
 Ver el detalle completo (objetivo/dependencias/Rule IDs/deuda/tests/impacto) en el informe de auditoría de Sprint 043 (`walkthrough.md` de ese sprint y el mensaje de cierre correspondiente en el historial de la sesión). Resumen:
 
-1. **Sprint 043 — Condiciones Restantes (V4)**: Blinded, Entangled, Dazzled, Shaken/Frightened, Exhausted; cierre de gaps parciales (Stunned suelta objetos al quedar aturdido, Helpless Combat). Reutiliza ActiveEffects sin cambios arquitectónicos. **Recomendado como próximo sprint — ver justificación en el informe de auditoría.**
-2. **Sprint 044 — Concealment (Ocultación)**: miss chance %, mismo pipeline de `getAttackContextModifiers` que Cover. El contrato `CONCEALMENT` ya existe en el tipo `Modifier` sin consumidor.
-3. **Sprint 045 — Vision/Línea de Efecto (base)**: cierra G-03 de `docs/audits/combat-rules-deviations.md`; habilita validar Cegado en Correr/Retirada (DT-018/DT-019 parcial).
-4. **Sprint 046 — Full Attack V2 (Rapid Shot + Haste real)**: ya diseñado y aprobado en NDD (`docs/designs/full-attack-v2-haste-rapid-shot-design.md`), solo pendiente de `Proceed` explícito.
-5. **Sprint 047 — Feats Core (lote 1)**: primer lote de dotes que dependían de Conditions/Concealment para tener sentido mecánico.
-6. **Sprint 048 — Spells Core (lote 1)**: concentración, componentes, resistencia a conjuros — desbloqueado por Conditions/Concealment.
-7. **Sprint 049 — Combate con Dos Armas (Two-Weapon Fighting)**: aislado, reordenable con lo anterior.
-8. **Sprint 050 — Saneamiento de deuda arquitectónica**: DT-008 (middleware de ownership), DT-012 (buffs dinámicos de equipo), DT-013 (validación de stacking de buffs por tipo). Sin reglas de juego nuevas.
+1. **Sprint 045 — Condiciones Restantes**: Blinded, Entangled, Dazzled, Shaken/Frightened, Exhausted; cierre de gaps parciales (Stunned suelta objetos al quedar aturdido, Helpless Combat). Reutiliza ActiveEffects sin cambios arquitectónicos. **Recomendado como próximo sprint — ver justificación en el informe de auditoría de Sprint 043.**
+2. **Sprint 046 — Concealment (Ocultación)**: miss chance %, mismo pipeline de `getAttackContextModifiers` que Cover. El contrato `CONCEALMENT` ya existe en el tipo `Modifier` sin consumidor.
+3. **Sprint 047 — Vision/Línea de Efecto (base)**: cierra G-03 de `docs/audits/combat-rules-deviations.md`; habilita validar Cegado en Correr/Retirada (DT-018/DT-019 parcial).
+4. **Sprint 048 — Completar `ATTACK-FULL`** (Rule ID única; renombrado en Sprint 044.1 — no es una regla nueva ni una "V2"): cierra los componentes pendientes de la regla oficial de Ataque Completo ya identificados en `docs/rules/registry.md` — ataques adicionales por Disparo Rápido (dote), Aceleración (Haste) real, Combate con Dos Armas, y ataques naturales múltiples integrados a la rutina. NDD ya aprobado para el componente Disparo Rápido/Haste (`docs/designs/full-attack-v2-haste-rapid-shot-design.md`), solo pendiente de `Proceed` explícito; Dos Armas y ataques naturales múltiples requieren diseño propio adicional.
+5. **Sprint 049+ — Feats Core (lotes)**: dotes que dependían de Conditions/Concealment para tener sentido mecánico.
+6. **Sprint 050+ — Spells Core (lotes)**: concentración, componentes, resistencia a conjuros — desbloqueado por Conditions/Concealment.
+7. **Saneamiento de deuda arquitectónica** (sin número fijo, reordenable): DT-008 (middleware de ownership), DT-012 (buffs dinámicos de equipo), DT-013 (validación de stacking de buffs por tipo). Sin reglas de juego nuevas.
 
 Power Attack (Sprint 039) permanece congelado por decreto de producto explícito (`docs/designs/power-attack-v6-declarative.md`) — no se reordena en este roadmap hasta nueva instrucción.
 
