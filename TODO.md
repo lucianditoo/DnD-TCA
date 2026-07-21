@@ -42,9 +42,18 @@ Documento vivo de tareas pendientes. El backlog está organizado en Sprints. Par
 
 ## Próximos Sprints
 
+Ver `ROADMAP.md` (reescrito en Sprint 043). Orden propuesto: Condiciones Restantes (043, recomendado) → Concealment (044) → Vision/Línea de Efecto (045) → Full Attack V2 (046, ya diseñado) → Feats Core lote 1 (047) → Spells Core lote 1 (048) → Two-Weapon Fighting (049) → Saneamiento de deuda arquitectónica (050). Power Attack (039) sigue congelado.
+
 ## Sprint Activo
 
-Ninguno — Sprint 042 (Cover) y Sprint 042.5 (Recuperación de Baseline) cerrados formalmente. Pendiente confirmar el próximo run de GitHub Actions antes de decidir el siguiente sprint funcional.
+Ninguno — Sprint 042 (Cover), Sprint 042.5 (Recuperación de Baseline) y Sprint 043 (Planning & Roadmap) cerrados formalmente. GitHub Actions confirmado en verde (Run #4, commit `d3c02ba`). Pendiente de aprobación explícita para iniciar el siguiente sprint funcional recomendado (Condiciones Restantes).
+
+  **Sprint 043 (Planning & Roadmap) — COMPLETADO**
+  - [x] Gobernanza: `walkthrough.md` quitado de `.gitignore` (aprobación explícita a la propuesta pendiente de Sprint 040 §3).
+  - [x] Auditoría real documentación↔código↔tests↔CI, sin asumir nada.
+  - [x] `ROADMAP.md` reescrito desde cero (el anterior describía fases pre-Sprint-005, ya obsoletas).
+  - [x] Hallazgos de staleness documentados: DT-011 y DT-014 desactualizadas; "Modificadores/alcance por tamaño" ya implementados (corregido en `PROJECT_STATUS.md`).
+  - [x] Recomendación justificada de próximo sprint: Condiciones Restantes (comparado contra Concealment/Vision/Feats/Spells).
 
   **Sprint 042.5 (Recuperación de Baseline) — COMPLETADO**
   - [x] Revisar fuentes obligatorias (PROJECT_STATUS, TODO, docs de cobertura/deviations, walkthrough, tests, combatSnapshot.ts) antes de tocar código.

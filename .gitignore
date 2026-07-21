@@ -46,10 +46,16 @@ Desktop.ini
 *.swp
 
 # ── Documentos de trabajo por-sprint ──────────────────────────
-# walkthrough.md: bitácora global/efímera — propuesta pendiente de aprobación
-# definitiva (ver docs/designs/document-architecture-cleanup.md §3). Se
-# mantiene ignorado en esta fase, sin cambios.
-walkthrough.md
+# walkthrough.md: NO se ignora (Sprint 043, Fase 1). Aprobación explícita del
+# propietario del proyecto a la propuesta que había quedado pendiente en
+# docs/designs/document-architecture-cleanup.md §3 — walkthrough.md pasa de
+# "bitácora global/efímera no versionada" a documentación versionada como
+# cualquier otro archivo del repositorio: cada cierre de sprint que lo
+# sobrescribe queda registrado en el historial de git (mismo régimen que
+# implementation_plan.md, corregido en Sprint 040). Sigue siendo un único
+# archivo que se reemplaza sprint a sprint, no un directorio con un archivo
+# por sprint; la distinción con implementation_plan.md es de contenido
+# (bitácora de cierre vs. plan de implementación), no de política de versionado.
 # implementation_plan.md: NO se ignora. Corrección de gobernanza (Sprint 040,
 # Lote A) — los planes de implementación son documentación versionada por
 # política oficial (docs/designs/document-architecture-cleanup.md §1). La

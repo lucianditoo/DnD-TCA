@@ -1,64 +1,26 @@
 # Roadmap del Motor Táctico (D&D 3.5)
 
-> **Nota de vigencia (2026-07-17, cierre ATK-RANGED-INTO-MELEE):** las "Fases" listadas abajo son históricas (era pre-Sprint 005) y no reflejan la secuencia actual. La hoja de ruta viva es: Master Plan de Cobertura Total PHB 3.5 (`.ai/coverage/`, `V1_LAUNCH_MANIFESTO.md`) + plan de saneamiento del Core (`docs/designs/core-rules-consolidation.md`). Secuencia reciente real: 036 → 037 → ATK-RANGED-INTO-MELEE (completado) · 038 Full Attack V2 (gate `Proceed`) · 039 Power Attack (congelado) · siguiente candidata en análisis. Estado por sprint: `PROJECT_STATUS.md`.
+> **Reescrito en Sprint 043** (2026-07-18). La versión anterior de este documento describía "Fases" pre-Sprint-005 (2026, era temprana del proyecto) y llevaba desde el 2026-07-17 marcada como histórica/no vigente en su propia nota de cabecera. Casi todo su contenido (ActiveEffects, Rule Engine Integration, Conditions V1-V3, AC Split, Cover, Round Tracking/Tick Layer, tamaños/reach, gran parte de Spells) ya está implementado bajo sprints numerados. Este documento es un roadmap nuevo, construido desde el estado real del proyecto (auditoría Sprint 043), no una continuación automática del anterior. La versión anterior queda preservada en el historial de git (ver `git log -- ROADMAP.md`) por si hace falta consultarla.
 
-Este documento define el orden de implementación de las mecánicas futuras, priorizando la resolución de deudas técnicas y dependencias arquitectónicas por sobre el orden lineal del manual de reglas.
+## Estado de base (Sprint 043)
 
-## Fase 6: Sistema Base de Efectos Activos (ActiveEffects) - FINALIZADA (Sprints 002-004)
-- **Capas Afectadas:** `effects/`, `turnManager.ts`, `bus.ts`.
-- **Reglas Desbloqueadas:** Buffs, Debuffs, infraestructura temporal de efectos.
-- **Riesgos:** Ninguno. (Resuelto y sellado en Sprint 004).
+- 42 sprints numerados completados + Sprint 042.5 (recuperación de baseline). `npm test` 430/430, typecheck/build/E2E/Playwright en verde, CI de GitHub Actions en verde.
+- Cobertura del Master Plan V1.0 (`.ai/coverage/`): Equipment ~86%, Rules (PHB core) ~64%, Feats ~11%, Spells ~10%. Los dos últimos son el hueco más grande antes de poder llamar "V1.0" al proyecto.
+- Infraestructura arquitectónica considerada **completa y no debe reinventarse**: ActiveEffects (`effects/manager.ts`, `effects/catalog.ts`, `effects/reducer.ts`), Tick Layer (`effects/tick.ts` + `events/bus.ts`), sistema de Traits, `CombatRulesSnapshot`/`combatSnapshot.ts`, Rule Engine (`rules.ts`), Cover/flanqueo/amenaza, ataques iterativos por BAB, salvaciones automáticas, AoE de conjuros, huellas multicasilla, Presa/Embestida/Derribo, inventario V5.
 
-## Fase 6.5: Rule Engine Integration (Sprint 005 - Próximo)
-- **Capas Afectadas:** `rules/`, `effects/`, `CombatSnapshot`.
-- **Reglas Desbloqueadas:** Extracción automática de modificadores del Rule Registry para su evaluación matemática contra los stats derivados.
-- **Dependencias:** Sistema Base de Efectos Activos.
-- **Riesgos:** Alto. Reducer debe mantenerse performante e inmutable.
+## Próximos sprints propuestos
 
-## Fase 7: Sistema Formal de Condiciones (Pausado)
-- **Capas Afectadas:** `rules.ts` (Validaciones), `types.ts`, `CombatSnapshot`.
-- **Reglas Desbloqueadas:** Stunned, Helpless (Formalizado), Prone, Flat-footed, Blinded, Coup de Grace.
-- **Dependencias:** Integración completa de ActiveEffects (Fase 6.5).
-- **Riesgos:** Acoplamiento temporal con `lifeStatus`.
-- **Valor Visible:** Posibilidad de que criaturas queden aturdidas, pierdan turno, o caigan al piso, viéndose reflejado en el bloqueo real del flujo táctico.
+Ver el detalle completo (objetivo/dependencias/Rule IDs/deuda/tests/impacto) en el informe de auditoría de Sprint 043 (`walkthrough.md` de ese sprint y el mensaje de cierre correspondiente en el historial de la sesión). Resumen:
 
-## Fase 7: Clase de Armadura Desglosada (AC Split)
-- **Capas Afectadas:** `equipmentStats.ts`, `combatSnapshot.ts`.
-- **Reglas Desbloqueadas:** Touch AC, Flat-Footed AC, Ataques Furtivos básicos.
-- **Dependencias:** Requiere Fase 6 (para saber mecánicamente cuándo aplicar Flat-footed).
-- **Riesgos:** Complejidad en la agregación de buffs (+Armor, +Shield, +Deflection, +Natural, +Dodge).
-- **Valor Visible:** Distinción crítica para reglas posteriores como conjuros o emboscadas.
+1. **Sprint 043 — Condiciones Restantes (V4)**: Blinded, Entangled, Dazzled, Shaken/Frightened, Exhausted; cierre de gaps parciales (Stunned suelta objetos al quedar aturdido, Helpless Combat). Reutiliza ActiveEffects sin cambios arquitectónicos. **Recomendado como próximo sprint — ver justificación en el informe de auditoría.**
+2. **Sprint 044 — Concealment (Ocultación)**: miss chance %, mismo pipeline de `getAttackContextModifiers` que Cover. El contrato `CONCEALMENT` ya existe en el tipo `Modifier` sin consumidor.
+3. **Sprint 045 — Vision/Línea de Efecto (base)**: cierra G-03 de `docs/audits/combat-rules-deviations.md`; habilita validar Cegado en Correr/Retirada (DT-018/DT-019 parcial).
+4. **Sprint 046 — Full Attack V2 (Rapid Shot + Haste real)**: ya diseñado y aprobado en NDD (`docs/designs/full-attack-v2-haste-rapid-shot-design.md`), solo pendiente de `Proceed` explícito.
+5. **Sprint 047 — Feats Core (lote 1)**: primer lote de dotes que dependían de Conditions/Concealment para tener sentido mecánico.
+6. **Sprint 048 — Spells Core (lote 1)**: concentración, componentes, resistencia a conjuros — desbloqueado por Conditions/Concealment.
+7. **Sprint 049 — Combate con Dos Armas (Two-Weapon Fighting)**: aislado, reordenable con lo anterior.
+8. **Sprint 050 — Saneamiento de deuda arquitectónica**: DT-008 (middleware de ownership), DT-012 (buffs dinámicos de equipo), DT-013 (validación de stacking de buffs por tipo). Sin reglas de juego nuevas.
 
-## Fase 8: Cobertura, Línea de Visión y Geometría Espacial
-- **Capas Afectadas:** `board.ts`, `rules.ts`, Motor de Raycasting.
-- **Reglas Desbloqueadas:** +4 CA por Cover, 20% Miss Chance por Concealment, bloqueos de ruta efectivos, Carga (Charge) estricta, Ataques a distancia bloqueados.
-- **Dependencias:** Refactor de la matriz del tablero para aceptar paredes/obstáculos.
-- **Riesgos:** Alto riesgo de impacto en performance si el algoritmo de Bresenham o raycasting es costoso al evaluar amenazas de N a M combatientes.
-- **Valor Visible:** Mapas tácticos reales, no solo recintos vacíos.
+Power Attack (Sprint 039) permanece congelado por decreto de producto explícito (`docs/designs/power-attack-v6-declarative.md`) — no se reordena en este roadmap hasta nueva instrucción.
 
-## Fase 9: Tracking de Ronda e Iniciativa Especial
-- **Capas Afectadas:** `turnManager.ts`, `roomState.ts`.
-- **Reglas Desbloqueadas:** Límite de 1 AdO por combatiente por ronda, Expiración precisa de Buffs/Condiciones (Tick Layer), Retrasar Turno, Preparar Acción.
-- **Dependencias:** Refactor del iterador de iniciativa actual para reconocer el ciclo completo del "Round".
-- **Riesgos:** Corrupción del estado si se cambia el orden de la cola en pleno ciclo de oportunidades.
-- **Valor Visible:** Duración de conjuros (ej. "dura 1 ronda") y control estricto de la economía de acciones (AdOs limitados).
-
-## Fase 10: Tamaños de Criatura y Reach Dinámico
-- **Capas Afectadas:** `rules.ts (isAdjacent, distanceFeet, threatensTarget)`, Rendering UI.
-- **Reglas Desbloqueadas:** Amenaza a 10ft+, Ocupación de 2x2, Squeezing, Penalizadores/Bonificadores por Tamaño, Armas con Reach.
-- **Dependencias:** Ninguna mayor que el modelo de datos, pero impacta masivamente las matemáticas espaciales.
-- **Riesgos:** Colisiones 2x2. Resolver si las rutas consideran "bounding boxes" o centros.
-- **Valor Visible:** Integración de monstruos icónicos (Dragones, Ogros) con su comportamiento táctico real (golpear de lejos).
-
-## Fase 11: Combate con Dos Armas y Manos (Dual Wield)
-- **Capas Afectadas:** `equipmentCatalog.ts`, `Combatant`, `getAttackRoutine`.
-- **Reglas Desbloqueadas:** Ataque con mano torpe, Penalizadores de Two-Weapon Fighting.
-- **Dependencias:** UI de inventario (designación de main-hand / off-hand) y Fase 5 (Rutinas de asalto completo).
-- **Riesgos:** Complicar el catálogo.
-- **Valor Visible:** Arquetipos de pícaros y exploradores viables.
-
-## Fase 12: Conjuros y Sistema de Concentración
-- **Capas Afectadas:** `tacticalCommands.ts`, `skills.ts`, `spellCatalog`.
-- **Reglas Desbloqueadas:** Castear conjuros de toque (aprovechando Fase 7), áreas de efecto (aprovechando Fase 8), AdO por conjurar (Fase 9), Concentración.
-- **Dependencias:** Requiere casi todas las fases de infraestructura anteriores para funcionar bajo las reglas estrictas (Touch AC, LOS, AdO, Conditions).
-- **Valor Visible:** Magia táctica real (Bolas de fuego con LOS, misiles mágicos precisos, curaciones).
+Este roadmap no es orden lineal obligatorio: cada sprint requiere su propio NDD, Design Review Checklist y `Proceed` explícito antes de implementarse, igual que todos los anteriores.
