@@ -310,4 +310,60 @@ test.describe('Smoke Test Táctico Visual', () => {
     await page.getByRole('button', { name: 'Maniobra: Escapar de Presa' }).click();
     await expect(page.locator('.log-panel')).toContainText('Escape de Presa');
   });
+
+  test('Entangled comparte velocidad efectiva y bloqueos de Run con la UI', async ({ page }) => {
+    await page.goto('/');
+    await page.locator('input[type="text"], input:not([type])').first().fill('EntangledGM');
+    await page.getByRole('button', { name: 'Crear sala' }).click();
+
+    await page.locator('label').filter({ hasText: 'Heroes' }).locator('select').selectOption({ label: 'Bane' });
+    await page.getByRole('button', { name: 'Agregar heroe' }).click();
+    await page.locator('label').filter({ hasText: 'Enemigos' }).locator('select').selectOption({ label: 'Canocrock' });
+    await page.getByRole('button', { name: 'Agregar enemigo' }).click();
+
+    for (const [index, cell] of [[0, 'cell-2-2'], [1, 'cell-8-6']] as const) {
+      await page.locator('.combatant-list button').nth(index).click();
+      await page.getByRole('button', { name: 'Mover' }).click();
+      await page.locator(`[data-testid="${cell}"]`).click();
+    }
+    await page.getByText('Iniciativa manual').click();
+    await page.locator('.initiative-list input').nth(0).fill('20');
+    await page.locator('.initiative-list input').nth(1).fill('1');
+    await page.locator('.initiative-list input').nth(1).press('Tab');
+    await page.getByRole('button', { name: 'Iniciar combate' }).click();
+
+    const roomLabel = await page.locator('.eyebrow').textContent();
+    const roomCode = /Sala\s+([A-Z0-9]+)/.exec(roomLabel ?? '')?.[1];
+    expect(roomCode).toBeTruthy();
+    await page.evaluate(async (code) => {
+      await new Promise<void>((resolve, reject) => {
+        const socket = new WebSocket('ws://localhost:3333');
+        const timer = window.setTimeout(() => reject(new Error('Timeout aplicando Entangled')), 5000);
+        let actorId = '';
+        let targetId = '';
+        socket.onopen = () => socket.send(JSON.stringify({ type: 'join-room', roomCode: code, name: 'EntangledRulesGM', role: 'gm' }));
+        socket.onerror = () => reject(new Error('Fallo WebSocket de prueba'));
+        socket.onmessage = (event) => {
+          const message = JSON.parse(String(event.data));
+          if (message.type === 'hello') {
+            actorId = message.participant.id;
+            targetId = message.room.combatants.find((combatant: { name: string; id: string }) => combatant.name === 'Bane')?.id ?? '';
+            socket.send(JSON.stringify({ type: 'gm-apply-effect', roomCode: code, actorId, targetId, effectId: 'srd_entangled' }));
+          } else if (message.type === 'room-update' && message.room.effectInstances.some((activeEffect: { effectId: string; targets?: string[] }) => activeEffect.effectId === 'srd_entangled' && activeEffect.targets?.includes(targetId))) {
+            window.clearTimeout(timer);
+            socket.close();
+            resolve();
+          }
+        };
+      });
+    }, roomCode!);
+
+    await page.locator('[data-testid="cell-2-2"]').click();
+    await page.getByRole('button', { name: 'Mover' }).click();
+    await expect(page.getByTestId('movement-speed-preview')).toContainText('Velocidad efectiva: 15 ft');
+    await expect(page.getByTestId('movement-speed-preview')).toContainText('Entangled ×1/2');
+    await expect(page.getByRole('button', { name: 'Correr (×4/×3 velocidad)' })).toBeDisabled();
+    await page.locator('[data-testid="cell-2-3"]').click();
+    await expect(page.getByRole('button', { name: 'Confirmar paso de 5 pies' })).toBeEnabled();
+  });
 });

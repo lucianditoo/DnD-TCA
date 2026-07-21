@@ -54,9 +54,10 @@ Todo cambio requiere:
 - Defensa total.
 - Carga con ruta prevista.
 - Prestar ayuda con buff pendiente de eleccion.
-- **Fase Actual:** Sprint 044.2, arquitectura del pipeline de modificadores completada y en revisión. El pipeline oficial queda documentado en `docs/designs/modifier-pipeline-architecture.md`; no se implementó código, no se modificaron tests y no se abrieron Rule IDs.
-- **Estado:** ✅ baseline funcional previo preservado · ✅ auditoría documental/código · ✅ diseño del pipeline · ⏸️ implementación detenida por gate arquitectónico.
+- **Fase Actual:** Sprint 045, Entangled Core implementado y validado. `EFFECT-ENTANGLED` permanece **Parcial** porque Concentration está expresamente fuera de alcance.
+- **Estado:** ✅ pipeline declarativo · ✅ proyección compartida de velocidad · ✅ 440/440 unitarias · ✅ 91/91 WebSocket · ✅ Playwright 6/6.
 - **Hitos Completados Recientes:**
+  - `Sprint 045`: `srd_entangled` declarativo (-2 ataque, -4 DEX, velocidad ×1/2, `FORBID_RUN`, `FORBID_CHARGE`), contrato especializado `MovementRateContribution`, deduplicación/trazas y preview isomorfo.
   - `Sprint 042`: Cover canónico en `getAttackContextModifiers`, criaturas y obstáculos de casilla, footprints deterministas y consumo uniforme por armas, touch, AdO, maniobras y UI.
   - `Sprint 030`: Escape de Presa autoritativo, rangos de habilidades V6, restricciones de armas en agarre, penalizador melee etiquetado y preview UI compartido.
   - `Sprint 029`: primitivas genéricas de toque/oposición, vínculo contextual `srd_grappling`, Presa transaccional y preview UI de modificadores.
@@ -188,7 +189,18 @@ Todo cambio requiere:
   - Implementación de `Fatigued`, `Prone`, `Dazed` y `Paralyzed` con lógica de sobrescritura de características.
   - Integración de `getEffectiveAbilityScore` y nuevas pruebas de regresión.
 
-### FASE ACTUAL: Sprint 044.2 — Arquitectura del Pipeline de Modificadores en revisión
+### FASE ACTUAL: Sprint 045 — Entangled Core validado
+
+  **Sprint 045 — implementación funcional acotada**
+  - `srd_entangled` aporta únicamente -2 a ataque, -4 a Destreza, velocidad ×1/2, `FORBID_RUN` y `FORBID_CHARGE`.
+  - `MovementRateContribution` modela razones multiplicativas con enteros positivos, `stackingKey`, deduplicación determinista, conflicto explícito y trazas applied/suppressed.
+  - `Rules.getMovementSpeedProjection` es la proyección compartida por servidor y React; `totalSpeedFeet` no persiste ni duplica la matemática.
+  - El paso de 5 pies usa el gate general velocidad efectiva > tamaño de casilla; terreno difícil continúa en `validateMovePath`.
+  - No existe branching productivo por `srd_entangled`; el ID solo aparece en catálogo y pruebas/integraciones.
+  - Validación: 440/440 unitarias, typecheck 3/3 workspaces, build 3/3, WebSocket 91/91 y Playwright 6/6.
+  - Registry: `EFFECT-ENTANGLED` queda **Parcial — falta Concentration**.
+
+### HISTÓRICO: Sprint 044.2 — Arquitectura del Pipeline de Modificadores
 
   **Sprint 044.2 — Análisis y diseño exclusivamente documental**
   - Auditoría completa de las rutas reales por las que una regla altera otra: derivación source-first, ActiveEffects estáticos/contextuales, folds de dotes, contexto táctico, handlers, resolvers, `Buff`, restricciones, daño y consecuencias.

@@ -21,6 +21,7 @@ function setupRoom() {
   const room = createEmptyRoom("test");
   const combatant = {
     id: "hero1", name: "Cedrick", type: "hero", hpCurrent: 10, hpMax: 10, isStable: false,
+    buffs: [],
     position: { x: 0, y: 0, zFeet: 0 },
     ...structuredSnapshotFields(10)
   };

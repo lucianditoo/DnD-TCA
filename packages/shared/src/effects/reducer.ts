@@ -47,6 +47,25 @@ export interface ReducedEffects {
   readonly ruleOverrides: readonly RuleOverride[];
 }
 
+export interface MovementRateTrace {
+  readonly effectId: string;
+  readonly effectInstanceId: string;
+  readonly contributionId: string;
+  readonly label: string;
+  readonly stackingKey: string;
+  readonly numerator: number;
+  readonly denominator: number;
+  readonly status: "applied" | "suppressed";
+  readonly reason?: "stacking";
+}
+
+/** Proyección multiplicativa reducida; la regla base decide cuándo aplicarla. */
+export interface ReducedMovementRate {
+  readonly numerator: number;
+  readonly denominator: number;
+  readonly traces: readonly MovementRateTrace[];
+}
+
 // ─────────────────────────────────────────────────────────────────────────────
 // Entrada del Reducer
 // ─────────────────────────────────────────────────────────────────────────────
@@ -55,6 +74,32 @@ export interface EffectReductionInput<TCatalog extends Record<string, EffectDefi
   readonly effectInstances: readonly EffectInstance<keyof TCatalog & string>[];
   readonly targetId: string;
   readonly catalog: TCatalog;
+}
+
+function greatestCommonDivisor(a: number, b: number): number {
+  let left = Math.abs(a);
+  let right = Math.abs(b);
+  while (right !== 0) {
+    const remainder = left % right;
+    left = right;
+    right = remainder;
+  }
+  return left || 1;
+}
+
+function validateMovementRateContribution(
+  effectId: string,
+  contribution: NonNullable<EffectDefinition["movementRateContributions"]>[number]
+): void {
+  if (!contribution.id.trim() || !contribution.label.trim() || !contribution.stackingKey.trim()) {
+    throw new Error(`[EffectReducer] Contribución de velocidad inválida en "${effectId}": id, label y stackingKey son obligatorios.`);
+  }
+  if (
+    !Number.isInteger(contribution.numerator) || contribution.numerator <= 0 ||
+    !Number.isInteger(contribution.denominator) || contribution.denominator <= 0
+  ) {
+    throw new Error(`[EffectReducer] Contribución de velocidad inválida "${contribution.id}" en "${effectId}": la razón debe usar enteros positivos.`);
+  }
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -190,6 +235,73 @@ function applyPolicy(
 // ─────────────────────────────────────────────────────────────────────────────
 
 export const EffectReducer = {
+  /**
+   * Reduce únicamente contribuciones de tasa de movimiento.
+   * Una contribución por `stackingKey` se aplica; duplicados equivalentes se
+   * suprimen y razones contradictorias bajo la misma clave fallan en voz alta.
+   */
+  reduceMovementRateContributions<TCatalog extends Record<string, EffectDefinition>>(
+    input: EffectReductionInput<TCatalog>
+  ): ReducedMovementRate {
+    const applicable = input.effectInstances
+      .filter((instance) => instance.targets?.includes(input.targetId))
+      .sort((left, right) => {
+        const effectOrder = String(left.effectId).localeCompare(String(right.effectId));
+        return effectOrder !== 0 ? effectOrder : left.instanceId.localeCompare(right.instanceId);
+      });
+
+    const pending: Array<Omit<MovementRateTrace, "status" | "reason">> = [];
+    for (const instance of applicable) {
+      const definition = input.catalog[instance.effectId];
+      if (!definition) {
+        throw new Error(`[EffectReducer] Unknown ActiveEffect: effectId="${instance.effectId}", instanceId="${instance.instanceId}", targetId="${input.targetId}".`);
+      }
+      for (const contribution of definition.movementRateContributions ?? []) {
+        validateMovementRateContribution(String(instance.effectId), contribution);
+        pending.push({
+          effectId: String(instance.effectId),
+          effectInstanceId: instance.instanceId,
+          contributionId: contribution.id,
+          label: contribution.label,
+          stackingKey: contribution.stackingKey,
+          numerator: contribution.numerator,
+          denominator: contribution.denominator
+        });
+      }
+    }
+
+    pending.sort((left, right) =>
+      left.stackingKey.localeCompare(right.stackingKey) ||
+      left.contributionId.localeCompare(right.contributionId) ||
+      left.effectId.localeCompare(right.effectId) ||
+      left.effectInstanceId.localeCompare(right.effectInstanceId)
+    );
+
+    let numerator = 1;
+    let denominator = 1;
+    const traces: MovementRateTrace[] = [];
+    const appliedByKey = new Map<string, (typeof pending)[number]>();
+    for (const contribution of pending) {
+      const applied = appliedByKey.get(contribution.stackingKey);
+      if (applied) {
+        if (applied.numerator * contribution.denominator !== contribution.numerator * applied.denominator) {
+          throw new Error(`[EffectReducer] Razones de velocidad contradictorias para stackingKey "${contribution.stackingKey}".`);
+        }
+        traces.push({ ...contribution, status: "suppressed", reason: "stacking" });
+        continue;
+      }
+      appliedByKey.set(contribution.stackingKey, contribution);
+      numerator *= contribution.numerator;
+      denominator *= contribution.denominator;
+      const divisor = greatestCommonDivisor(numerator, denominator);
+      numerator /= divisor;
+      denominator /= divisor;
+      traces.push({ ...contribution, status: "applied" });
+    }
+
+    return { numerator, denominator, traces };
+  },
+
   /**
    * Reduce todos los efectos que aplican a un objetivo en un punto en el tiempo.
    * - Genera únicamente DELTAS numéricos (no estadísticas finales).

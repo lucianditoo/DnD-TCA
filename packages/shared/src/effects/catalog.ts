@@ -57,6 +57,20 @@ export const effectsCatalog = {
     ruleOverrides: ["FORBID_RUN", "FORBID_CHARGE"],
     onStack: "ignore"
   },
+  "srd_entangled": {
+    name: "Enmarañado",
+    description: "-2 a ataques, -4 a Destreza y velocidad a la mitad. No puede correr ni cargar. La Concentración queda pendiente.",
+    traits: [],
+    modifiers: [
+      { type: "numeric", id: "entangled_attack", stat: "ATTACK", stackingGroup: "condition:entangled", stackingPolicy: "lowest_value", value: -2 },
+      { type: "numeric", id: "entangled_dex", stat: "DEXTERITY", stackingGroup: "condition:entangled", stackingPolicy: "lowest_value", value: -4 }
+    ],
+    movementRateContributions: [
+      { id: "entangled_half_speed", label: "Entangled ×1/2", stackingKey: "condition:entangled:half-speed", numerator: 1, denominator: 2 }
+    ],
+    ruleOverrides: ["FORBID_RUN", "FORBID_CHARGE"],
+    onStack: "ignore"
+  },
   "srd_squeezing": {
     name: "Apretujarse",
     description: "El personaje se esta moviendo por una casilla estrecha. -4 a la CA y -4 a tiradas de ataque cuerpo a cuerpo.",

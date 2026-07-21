@@ -1,5 +1,5 @@
 import { Footprints, HeartPulse, MousePointer2, Shield, SkipForward, Sparkles, Swords } from "lucide-react";
-import { averageWeaponDamageForCombatant, EquipmentCatalog, getAmmunitionState, getEquippedWeaponEntry, getGrappleAttackEligibility, getGrappleEscapePreview, lifeStatus, Rules, calculatePathCostFeet, getAttackContextModifiers, getEffectiveAttackRoutine, getWeaponAttackTypeForTarget, createCombatRulesSnapshot, canApplySneakAttack, getEffectiveSneakAttackDice, validateSpecialManeuver, validateStandUp, SpellsCatalog, type Buff, type CombatOutcome, type CombatRoom, type Combatant, type GrappleEscapeType, type LifeStatus } from "@dnd-tactical/shared";
+import { averageWeaponDamageForCombatant, EquipmentCatalog, getAmmunitionState, getEquippedWeaponEntry, getGrappleAttackEligibility, getGrappleEscapePreview, lifeStatus, Rules, calculatePathCostFeet, getAttackContextModifiers, getEffectiveAttackRoutine, getWeaponAttackTypeForTarget, createCombatRulesSnapshot, canApplySneakAttack, canRun, canUseFiveFootStep, getEffectiveSneakAttackDice, validateSpecialManeuver, validateStandUp, SpellsCatalog, type Buff, type CombatOutcome, type CombatRoom, type Combatant, type GrappleEscapeType, type LifeStatus } from "@dnd-tactical/shared";
 import { type ActionMode, type TacticMode } from "../../viewModel";
 import { Collapsible, D20Control, RollControls } from "../common";
 import { GmPanel } from "../GmPanel/GmPanel";
@@ -139,6 +139,9 @@ export function ActionsPanel(props: {
     [snapshot, selected]
   );
   const grappleAttackBlocked = grappleAttackEligibility?.ok === false;
+  const movementProjection = selected ? Rules.getMovementSpeedProjection(snapshot, selected) : null;
+  const runAvailability = selected ? canRun(snapshot, selected) : null;
+  const fiveFootStepAvailability = selected ? canUseFiveFootStep(snapshot, selected) : null;
   return <aside className="panel actions">
     <div className="panel-title"><Swords size={18} /> Acciones</div>
     {selected ? <>
@@ -160,7 +163,8 @@ export function ActionsPanel(props: {
       {props.actionMode === "move" && <div className="action-panel move-panel">
         <div className="panel-title"><Footprints size={18} /> Movimiento</div>
         <div className="rules-box">{room.phase === "preparation" ? "Click en una casilla verde para colocar al combatiente seleccionado." : "Click en casillas verdes adyacentes para dibujar la ruta. Luego confirma el movimiento."}</div>
-        <div className="rules-box">Movimiento usado: {room.currentTurn.movementUsedFeet} ft - Disponible: {Math.max(0, Rules.totalSpeedFeet(snapshot, selected) - room.currentTurn.movementUsedFeet)} ft - Ruta: {props.movementPathCost} ft - Paso 5 ft: {room.currentTurn.usedFiveFootStep ? "si" : "no"}</div>
+        <div className="rules-box">Movimiento usado: {room.currentTurn.movementUsedFeet} ft - Disponible: {Math.max(0, (movementProjection?.total ?? 0) - room.currentTurn.movementUsedFeet)} ft - Ruta: {props.movementPathCost} ft - Paso 5 ft: {room.currentTurn.usedFiveFootStep ? "si" : "no"}</div>
+        {movementProjection && movementProjection.rateTraces.length > 0 && <div className="rules-box" data-testid="movement-speed-preview">Velocidad efectiva: {movementProjection.total} ft ({movementProjection.parts.join(", ")})</div>}
         {props.isMoveDestinationOccupied && <div className="rules-box error-text">No puedes terminar tu movimiento en una casilla ocupada.</div>}
         {room.phase === "active" && <div className="button-row">
           <button onClick={props.onUndoMovementStep} disabled={props.movementPathLength === 0}>Deshacer paso</button>
@@ -184,21 +188,21 @@ export function ActionsPanel(props: {
           // variante limitada para Disabled — sin turno virgen o Incapacitado, sin via legal.
           const turnVirgin = room.currentTurn.movementUsedFeet === 0 && !room.currentTurn.usedMoveAction && !room.currentTurn.usedStandardAction && !room.currentTurn.usedFullAttack && !room.currentTurn.usedFiveFootStep && !room.currentTurn.usedTotalDefense && room.currentTurn.attacksMade === 0 && room.currentTurn.attackMode === "none";
           const isDisabled = lifeStatus(selected) === "disabled";
-          const runAvailable = turnVirgin && !isDisabled;
+          const runAvailable = turnVirgin && !isDisabled && runAvailability?.ok === true;
           return <>
             <div className="rules-box" style={{ marginTop: "0.75rem", borderTop: "1px solid var(--border)", paddingTop: "0.75rem" }}>
               <strong>Correr (Run)</strong> — acción de asalto completo: movimiento en línea recta hasta ×4 velocidad (×3 con armadura pesada). No hay paso de 5' este turno; el terreno difícil lo bloquea por completo. Sin la dote de Correr, pierdes Destreza (y Esquiva) a la CA hasta tu próximo turno.<br />
-              {props.runArmed ? "✓ Armado: dibuja el destino en línea recta y confirma." : isDisabled ? "✗ No disponible: un combatiente Incapacitado no puede correr." : runAvailable ? "✓ Disponible con el turno sin usar." : "✗ No disponible: Correr exige el turno completo sin acciones previas."}
+              {props.runArmed ? "✓ Armado: dibuja el destino en línea recta y confirma." : runAvailable ? "✓ Disponible con el turno sin usar." : `✗ No disponible: ${runAvailability?.error ?? "Correr exige el turno completo sin acciones previas."}`}
             </div>
             <button className={props.runArmed ? "primary move-confirm" : "move-confirm"} onClick={props.onToggleRun} disabled={actionDisabled || (!props.runArmed && !runAvailable) || props.hasPendingOpportunities}><Footprints size={18} /> {props.runArmed ? "Cancelar Correr" : "Correr (×4/×3 velocidad)"}</button>
           </>;
         })()}
         {room.phase === "active" && (() => {
-          const canStep = !room.currentTurn.usedFiveFootStep && room.currentTurn.movementUsedFeet === 0 && !room.currentTurn.usedMoveAction && !room.currentTurn.usedTotalDefense;
+          const canStep = fiveFootStepAvailability?.ok === true;
           return <>
             <div className="rules-box" style={{ marginTop: "0.75rem", borderTop: "1px solid var(--border)", paddingTop: "0.75rem" }}>
               <strong>Paso de 5 pies</strong> — posicionamiento libre sin ataque de oportunidad.<br />
-              {room.currentTurn.usedFiveFootStep ? "✗ Ya usado este turno." : room.currentTurn.movementUsedFeet > 0 ? "✗ No disponible: ya usó movimiento." : room.currentTurn.usedMoveAction ? "✗ No disponible: ya usó acción de movimiento." : "✓ Disponible. Dibuja 1 casilla y confirma."}
+              {canStep ? "✓ Disponible. Dibuja 1 casilla y confirma." : `✗ No disponible: ${fiveFootStepAvailability?.error ?? "acción no permitida."}`}
             </div>
             <button className="primary move-confirm" onClick={props.onFiveFootStep} disabled={actionDisabled || !canStep || props.movementPathLength !== 1 || props.hasPendingOpportunities || props.isMoveDestinationOccupied}><Footprints size={18} /> Confirmar paso de 5 pies</button>
           </>;

@@ -39,6 +39,7 @@ Documento vivo de tareas pendientes. El backlog está organizado en Sprints. Par
 - [x] Sprint 033: Spell Areas of Effect & Polygonal Templates — geometría `cone`/`line`/`burst`, intersección con huellas multiposición y overlays de área en React.
 - [x] Sprint 042: Cover — pipeline canónico único, cobertura por criatura/terreno, footprints deterministas, consumidores full-stack y regresiones focalizadas.
 - [x] Sprint 042.5: Recuperación de Baseline — bug real de `cloneEffectInstances` (targetCells) corregido por causa raíz, Snapshot Integrity robustecido, Ray of Frost y Withdraw W22 corregidos, `npm test` 430/430 y los 5 gates del DoD en verde real. Sprint 042 (Cover) cerrado formalmente.
+- [x] Sprint 045: Entangled Core — `MovementRateContribution`, -2 ataque, -4 DEX, velocidad ×1/2, `FORBID_RUN`/`FORBID_CHARGE`, trazabilidad compartida y validación 440/440 + 91/91 + Playwright 6/6. `EFFECT-ENTANGLED` permanece Parcial por Concentration pendiente.
 
 ## Próximos Sprints
 
@@ -46,7 +47,18 @@ Ver `ROADMAP.md`. Sprint 044.2 fija primero el pipeline transversal para que nin
 
 ## Sprint Activo
 
-**Sprint 044.2 — Arquitectura del Pipeline de Modificadores.** Auditoría y diseño documentados en `docs/designs/modifier-pipeline-architecture.md`. Sprint exclusivamente documental: sin código, tests, Rule IDs ni implementation plan.
+**Sprint 045 — Entangled Core. COMPLETADO en su alcance aprobado.** La regla conserva estado global **Parcial** porque Concentration no forma parte de este sprint.
+
+  **Sprint 045 — COMPLETADO**
+  - [x] Implementar `MovementRateContribution` especializado, sin modificador universal.
+  - [x] Registrar -2 Attack, -4 Dexterity, velocidad ×1/2, `FORBID_RUN` y `FORBID_CHARGE` solo como contribuciones.
+  - [x] Compartir proyección y trazas entre servidor y React.
+  - [x] Aplicar el gate general de paso de 5 pies por velocidad efectiva/casilla y conservar terreno difícil en la ruta.
+  - [x] Cubrir stacking, deduplicación, Fatigued, Prone, armadura, terreno, snapshot, WebSocket y UI.
+  - [x] Validar 440/440 unitarias, typecheck, build, 91/91 WebSocket y Playwright 6/6.
+  - [ ] Concentration (fuera de alcance; mantiene `EFFECT-ENTANGLED` en Parcial).
+
+**Sprint 044.2 — Arquitectura del Pipeline de Modificadores.** Auditoría y diseño documentados en `docs/designs/modifier-pipeline-architecture.md`.
 
   **Sprint 044.2 — EN REVISIÓN**
   - [x] Verificar rama, HEAD, sincronización con `origin/master` y cambios locales.

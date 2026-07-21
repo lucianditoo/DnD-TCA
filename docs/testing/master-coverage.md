@@ -17,6 +17,7 @@ Reglas cubiertas obligatoriamente en E2E:
 - Lanzamientos con salvación automática: el servidor deriva DC/tipo, reduce o niega el resultado y gasta el slot en el mismo `room-update`.
 - Huellas Large: spawn 2×2 y rechazo autoritativo de movimiento ante solapamiento parcial.
 - Diehard/Prone Eschewal: estabilización en negativos, conservación de turno, Stand Up por 0 pies sin AdO y ausencia de sangrado en la ronda siguiente.
+- Entangled Core: fuente declarativa en snapshot, velocidad efectiva 30→15 y bloqueos autoritativos de Run/Charge.
 
 Último cierre validado (Sprint 025-R): **87/87** verificaciones WebSocket.
 
@@ -39,6 +40,8 @@ Sprint 030 eleva la cobertura a **303/303** pruebas e incorpora vínculo estrict
 
 **Sprint 042.5 (Recuperación de Baseline, 2026-07-18)**: primera vez que la suite completa corre de verdad en esta máquina Windows sin bloqueos ambientales. Baseline recuperado a **430/430 pruebas, 0 fallos** (52 archivos de test). Se investigaron y corrigieron por causa raíz los 9 fallos previos (429 total, 420 pass, 7 casos reales): un bug real de producción en `cloneEffectInstances` (`targetCells` no propagado, ver DT-021) que dejaba inoperantes los hazards ambientales, un test de Sprint 011 (Ray of Frost) desactualizado frente a la regla posterior `ATK-RANGED-INTO-MELEE`, y un regex mal escrito en el test W22 de Retirada. `tests/dt-006-snapshot-integrity.test.mjs` se amplió con un caso de comportamiento (no de implementación) que detecta cualquier campo futuro no propagado por un clon de `EffectInstance`.
 
+**Sprint 045**: **440/440 pruebas, 0 fallos** (53 archivos). `entangled-condition.test.mjs` cubre ataque, DEX, CA/Reflejos derivados, velocidades 30→15/20→10/15→7, stacking/deduplicación, armadura, terreno, Run, Charge, paso de 5 pies y snapshot. WebSocket asciende a **91/91** y Playwright a **6/6**.
+
 ## Cobertura UI
 
 Sprint 011 cierra con **2/2** escenarios Playwright: el recorrido crítico de movimiento/AdO y el preview de flanqueo que diferencia arma melee, Shocking Grasp y Ray of Frost.
@@ -50,5 +53,7 @@ Sprint 025-R amplía la cobertura a **3/3** con el preview `0 pies · SEGURO (Si
 Sprint 030 amplía la cobertura a **5/5** escenarios Playwright con restricción visible de arma pesada y Escape de Presa en modo AUTO. La regresión WebSocket permanece en **87/87**.
 
 **Sprint 042.5**: **5/5** escenarios Playwright confirmados en verde real en esta máquina Windows (Chromium ya instalado localmente, 20.3s) — primera ejecución real de Playwright registrada en este documento fuera de un sandbox bloqueado. E2E WebSocket confirmado de nuevo en **87/87**, exit 0.
+
+**Sprint 045**: **6/6** escenarios Playwright. El nuevo caso verifica el preview compartido `Velocidad efectiva: 15 ft (Entangled ×1/2)`, Run deshabilitado y paso de 5 pies disponible cuando la velocidad efectiva supera una casilla.
 
 **Referencia a ADR**: `ADR-0006-testing-culture.md`

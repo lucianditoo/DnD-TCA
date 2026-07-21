@@ -584,6 +584,33 @@ record('Stunned: el efecto expira al terminar el turno de Bane', !gmStun.room.ef
 await send(gmStun, { type: 'move-combatant', roomCode: stunCode, actorId: stunGmId, combatantId: stunBane.id, to: { x: 5, y: 4, zFeet: 0 } });
 record('Stunned: recupera acciones tras expirar', gmStun.room.combatants.find(c => c.id === stunBane.id).position.y === 4, gmStun.errors.join(' | '));
 
-gm.ws.close(); ownershipGm.ws.close(); ownerA.ws.close(); ownerB.ws.close(); stabilizationGm.ws.close(); profileGm.ws.close(); profilePlayer.ws.close(); largeGm.ws.close(); diehardGm.ws.close(); gmTouch.ws.close(); player.ws.close(); gmHaste.ws.close(); gmAoo.ws.close(); gmDiagonalAoo.ws.close(); gmMultiAoo.ws.close(); gmDiagonalMelee.ws.close(); gmCharge.ws.close(); gmAid.ws.close(); gmPassThrough.ws.close(); gmFlanking.ws.close(); gmFfs.ws.close(); gmFa.ws.close(); gmDef.ws.close(); gmDisabled.ws.close(); gmStun.ws.close();
+// ─────────────────────────────────────────────────────────────────────────────
+// E2E: Entangled Core (pipeline declarativo compartido)
+// ─────────────────────────────────────────────────────────────────────────────
+const gmEntangled = await connectAndSend({ type: 'create-room', name: 'GM Entangled Test' });
+const entangledCode = gmEntangled.room.code; const entangledGmId = gmEntangled.participant.id;
+await send(gmEntangled, { type: 'add-catalog-combatant', roomCode: entangledCode, actorId: entangledGmId, category: 'heroes', templateId: 'bane' });
+await send(gmEntangled, { type: 'add-catalog-combatant', roomCode: entangledCode, actorId: entangledGmId, category: 'enemies', templateId: 'canocrock' });
+const entangledBane = gmEntangled.room.combatants.find(c => c.name === 'Bane');
+const entangledEnemy = gmEntangled.room.combatants.find(c => c.type === 'enemy');
+await send(gmEntangled, { type: 'gm-move-combatant', roomCode: entangledCode, actorId: entangledGmId, combatantId: entangledBane.id, to: { x: 1, y: 1, zFeet: 0 } });
+await send(gmEntangled, { type: 'gm-move-combatant', roomCode: entangledCode, actorId: entangledGmId, combatantId: entangledEnemy.id, to: { x: 4, y: 1, zFeet: 0 } });
+await send(gmEntangled, { type: 'set-initiative', roomCode: entangledCode, actorId: entangledGmId, combatantId: entangledBane.id, initiative: 20 });
+await send(gmEntangled, { type: 'set-initiative', roomCode: entangledCode, actorId: entangledGmId, combatantId: entangledEnemy.id, initiative: 1 });
+await send(gmEntangled, { type: 'sort-initiative', roomCode: entangledCode, actorId: entangledGmId });
+await send(gmEntangled, { type: 'gm-apply-effect', roomCode: entangledCode, actorId: entangledGmId, targetId: entangledBane.id, effectId: 'srd_entangled' });
+record('Entangled: snapshot de red conserva la fuente declarativa', gmEntangled.room.effectInstances.some(e => e.effectId === 'srd_entangled' && e.targets.includes(entangledBane.id)), JSON.stringify(gmEntangled.room.effectInstances));
+
+const entangledLongPath = [{ x: 1, y: 2, zFeet: 0 }, { x: 1, y: 3, zFeet: 0 }, { x: 1, y: 4, zFeet: 0 }, { x: 1, y: 5, zFeet: 0 }];
+await send(gmEntangled, { type: 'move-combatant', roomCode: entangledCode, actorId: entangledGmId, combatantId: entangledBane.id, to: entangledLongPath.at(-1), path: entangledLongPath });
+const entangledAfterMove = gmEntangled.room.combatants.find(c => c.id === entangledBane.id);
+record('Entangled: servidor limita movimiento de Bane a 15 pies', entangledAfterMove.position.x === 1 && entangledAfterMove.position.y === 1 && gmEntangled.errors.some(e => /solo tiene 15 pies disponibles/i.test(e)), 'pos=' + JSON.stringify(entangledAfterMove.position) + ' errors=' + gmEntangled.errors.join(' | '));
+
+await send(gmEntangled, { type: 'use-tactical-action', roomCode: entangledCode, actorId: entangledGmId, combatantId: entangledBane.id, action: 'run', to: { x: 1, y: 6, zFeet: 0 } });
+record('Entangled: FORBID_RUN bloquea Correr en el servidor', gmEntangled.errors.some(e => /no puede correr en su estado actual/i.test(e)), gmEntangled.errors.join(' | '));
+await send(gmEntangled, { type: 'use-tactical-action', roomCode: entangledCode, actorId: entangledGmId, combatantId: entangledBane.id, action: 'charge', targetId: entangledEnemy.id, d20Roll: 18, damage: 1 });
+record('Entangled: FORBID_CHARGE bloquea Carga en el servidor', gmEntangled.errors.some(e => /no puede cargar en su estado actual/i.test(e)), gmEntangled.errors.join(' | '));
+
+gm.ws.close(); ownershipGm.ws.close(); ownerA.ws.close(); ownerB.ws.close(); stabilizationGm.ws.close(); profileGm.ws.close(); profilePlayer.ws.close(); largeGm.ws.close(); diehardGm.ws.close(); gmTouch.ws.close(); player.ws.close(); gmHaste.ws.close(); gmAoo.ws.close(); gmDiagonalAoo.ws.close(); gmMultiAoo.ws.close(); gmDiagonalMelee.ws.close(); gmCharge.ws.close(); gmAid.ws.close(); gmPassThrough.ws.close(); gmFlanking.ws.close(); gmFfs.ws.close(); gmFa.ws.close(); gmDef.ws.close(); gmDisabled.ws.close(); gmStun.ws.close(); gmEntangled.ws.close();
 console.log(JSON.stringify(results, null, 2));
 if (results.some(r => !r.ok)) process.exitCode = 1;

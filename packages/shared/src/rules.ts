@@ -1,7 +1,7 @@
 import type { ArmorClassBonusType, ArmorClassBreakdown, AttackContextModifiers, AttackDeliveryContext, CombatLogEntry, CombatRoom, CombatRulesSnapshot, Combatant, CombatantSnapshot, CoverAssessment, CoverKind, LifeStatus, OpportunityAttack, Position, SavingThrowType, SizeCategory, SpecialManeuverId } from "./types.js";
 import type { ConditionalModifier, EffectDefinition, ModifierCondition, Trait, TraitCondition, EffectStat } from "./effects/contracts.js";
 import type { CatalogEffectId } from "./effects/types.js";
-import { EffectReducer } from "./effects/reducer.js";
+import { EffectReducer, type MovementRateTrace } from "./effects/reducer.js";
 import { effectsCatalog, type ProductionEffectId } from "./effects/catalog.js";
 import { EquipmentCatalog } from "./equipmentCatalog.js";
 import { deriveArmorClassBreakdown, deriveMeleeThreatSources, getArmorAdjustedSpeedFeet, getEquippedArmorEntry, getEquippedWeaponEntry, resolveEquippedWeaponProfile } from "./equipmentStats.js";
@@ -319,6 +319,50 @@ export function getEffectiveAbilityScore(
 
 export type ManeuverAbility = "strength" | "dexterity";
 
+export interface MovementSpeedProjection {
+  readonly total: number;
+  readonly beforeRate: number;
+  readonly rateNumerator: number;
+  readonly rateDenominator: number;
+  readonly parts: readonly string[];
+  readonly rateTraces: readonly MovementRateTrace[];
+}
+
+function projectMovementSpeed<TCatalog extends Record<string, EffectDefinition>>(
+  context: CombatRulesSnapshot<CatalogEffectId<TCatalog>>,
+  combatant: Combatant,
+  catalog: TCatalog
+): MovementSpeedProjection {
+  const reductionInput = { effectInstances: context.effectInstances, targetId: combatant.id, catalog };
+  const reduced = EffectReducer.reduceEffectsForTarget(reductionInput);
+  const rate = EffectReducer.reduceMovementRateContributions(reductionInput);
+  const deltaSpeed = reduced.numericModifiers["SPEED"]?.total ?? 0;
+  const legacyBuffBonus = combatant.buffs.reduce((sum, buff) => sum + (buff.speedBonusFeet ?? 0), 0);
+  const armorAdjustedSpeed = getArmorAdjustedSpeedFeet(combatant);
+  const beforeRate = Math.max(0, armorAdjustedSpeed + legacyBuffBonus + deltaSpeed);
+  const parts = [
+    `base/equipo ${armorAdjustedSpeed} ft`,
+    ...(legacyBuffBonus !== 0 ? [`buffs ${legacyBuffBonus >= 0 ? "+" : ""}${legacyBuffBonus} ft`] : []),
+    ...(deltaSpeed !== 0 ? [`efectos ${deltaSpeed >= 0 ? "+" : ""}${deltaSpeed} ft`] : []),
+    ...rate.traces.filter((trace) => trace.status === "applied").map((trace) => trace.label)
+  ];
+  const common = {
+    beforeRate,
+    rateNumerator: rate.numerator,
+    rateDenominator: rate.denominator,
+    rateTraces: Object.freeze([...rate.traces])
+  };
+
+  if (hasEffectTrait(reduced, "CANNOT_MOVE")) {
+    return { ...common, total: 0, parts: Object.freeze([...parts, "CANNOT_MOVE → 0 ft"]) };
+  }
+  return {
+    ...common,
+    total: Math.floor(beforeRate * rate.numerator / rate.denominator),
+    parts: Object.freeze(parts)
+  };
+}
+
 export function createRuleEvaluator<TCatalog extends Record<string, EffectDefinition>>(catalog: TCatalog) {
   type TEffectId = keyof TCatalog & string;
 
@@ -470,21 +514,18 @@ export function createRuleEvaluator<TCatalog extends Record<string, EffectDefini
       return { total, parts };
     },
 
+    getMovementSpeedProjection(
+      context: CombatRulesSnapshot<TEffectId>,
+      combatant: Combatant
+    ): MovementSpeedProjection {
+      return projectMovementSpeed(context, combatant, catalog);
+    },
+
     totalSpeedFeet(
       context: CombatRulesSnapshot<TEffectId>,
       combatant: Combatant
     ): number {
-      const reduced = EffectReducer.reduceEffectsForTarget({
-        effectInstances: context.effectInstances,
-        targetId: combatant.id,
-        catalog
-      });
-      if (hasEffectTrait(reduced, "CANNOT_MOVE")) return 0;
-      
-      const deltaSpeed = reduced.numericModifiers["SPEED"]?.total ?? 0;
-      const legacyBuffBonus = combatant.buffs.reduce((sum, buff) => sum + (buff.speedBonusFeet ?? 0), 0);
-      const armorAdjustedSpeed = getArmorAdjustedSpeedFeet(combatant);
-      return armorAdjustedSpeed + legacyBuffBonus + deltaSpeed;
+      return projectMovementSpeed(context, combatant, catalog).total;
     },
 
     evaluateActionAvailability(
@@ -2458,6 +2499,9 @@ export function canUseFiveFootStep(
   if (!turnCheck.ok) return turnCheck;
   if (hasActiveTrait(room, combatant, "CANNOT_MOVE")) {
     return { ok: false, error: combatant.name + " no puede dar un paso de 5 pies mientras esté paralizado o en presa." };
+  }
+  if (Rules.totalSpeedFeet(room, combatant) <= room.board.cellSizeFeet) {
+    return { ok: false, error: combatant.name + " no puede dar un paso de 5 pies porque su velocidad efectiva no supera una casilla." };
   }
   if (room.currentTurn.usedTotalDefense) {
     return { ok: false, error: combatant.name + " ya uso Defensa total y renuncio al resto de acciones del turno." };

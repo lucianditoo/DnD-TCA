@@ -17,6 +17,7 @@ export function SelectedInfo({ combatant, room, snapshot: context, attackerId, c
   const hasDodgeFeat = combatant.featIds.includes("srd_dodge");
   const isCombatantsTurn = room.currentTurn.combatantId === combatant.id;
   const canDeclareDodge = hasDodgeFeat && isCombatantsTurn && canControlSelected && room.phase === "active";
+  const movementProjection = useMemo(() => Rules.getMovementSpeedProjection(context, combatant), [context, combatant]);
   
   const saves = useMemo(() => {
     return {
@@ -37,7 +38,7 @@ export function SelectedInfo({ combatant, room, snapshot: context, attackerId, c
       <Stat icon={<Shield size={16} />} label="Fortaleza" value={"+" + saves.fortitude.total} title={saves.fortitude.parts.join(", ")} />
       <Stat icon={<Shield size={16} />} label="Reflejos" value={"+" + saves.reflex.total} title={saves.reflex.parts.join(", ")} />
       <Stat icon={<Shield size={16} />} label="Voluntad" value={"+" + saves.will.total} title={saves.will.parts.join(", ")} />
-      <Stat icon={<Footprints size={16} />} label="Vel." value={Rules.totalSpeedFeet(context, combatant) + " ft"} />
+      <Stat icon={<Footprints size={16} />} label="Vel." value={movementProjection.total + " ft"} title={movementProjection.parts.join(", ")} />
       <Stat icon={<Swords size={16} />} label="Ataque total" value={"+" + Rules.totalAttackBonus(context, combatant).total} />
 
       <Stat icon={<Swords size={16} />} label="Arma" value={weapon.name + " " + weapon.damageDice} />

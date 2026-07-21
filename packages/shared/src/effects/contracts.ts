@@ -130,6 +130,21 @@ export interface ConditionalTrait {
 export type RuleOverride = "FORBID_CHARGE" | "FORBID_RUN" | "FORBID_AOO";
 
 /**
+ * Contribución multiplicativa especializada para la velocidad efectiva.
+ *
+ * Se mantiene fuera de `Modifier.numeric`: una razón representa una tasa, no
+ * un delta plano. `stackingKey` identifica aportes mecánicamente equivalentes
+ * para que el reducer aplique uno solo con trazabilidad determinista.
+ */
+export interface MovementRateContribution {
+  readonly id: string;
+  readonly label: string;
+  readonly stackingKey: string;
+  readonly numerator: number;
+  readonly denominator: number;
+}
+
+/**
  * Bloque declarativo (Sprint 034) que describe un peligro ambiental persistente (trampa, muro
  * mágico, terreno peligroso) anclado a `targetCells` en vez de a un `targetId` biológico.
  * Es exclusivamente datos: números y strings. No contiene funciones ni callbacks, y no consulta
@@ -164,6 +179,8 @@ export interface EffectDefinition {
   readonly conditionalModifiers?: readonly ConditionalModifier[];
   /** Traits proyectados únicamente cuando el contexto satisface la condición de la instancia. */
   readonly conditionalTraits?: readonly ConditionalTrait[];
+  /** Contribuciones multiplicativas a la velocidad; nunca persisten un total derivado. */
+  readonly movementRateContributions?: readonly MovementRateContribution[];
   readonly ruleOverrides: readonly RuleOverride[];
   // Reglas de apilamiento de instancias del mismo tipo de efecto
   readonly onStack: "ignore" | "replace" | "upgrade_to" | "accumulate";
