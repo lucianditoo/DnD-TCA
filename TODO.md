@@ -38,12 +38,24 @@ Documento vivo de tareas pendientes. El backlog está organizado en Sprints. Par
 - [x] Sprint 032: Advanced AoO Limits & Reaction Triggers — oráculo puro de provocación, límites elásticos y alertas predictivas en React.
 - [x] Sprint 033: Spell Areas of Effect & Polygonal Templates — geometría `cone`/`line`/`burst`, intersección con huellas multiposición y overlays de área en React.
 - [x] Sprint 042: Cover — pipeline canónico único, cobertura por criatura/terreno, footprints deterministas, consumidores full-stack y regresiones focalizadas.
+- [x] Sprint 042.5: Recuperación de Baseline — bug real de `cloneEffectInstances` (targetCells) corregido por causa raíz, Snapshot Integrity robustecido, Ray of Frost y Withdraw W22 corregidos, `npm test` 430/430 y los 5 gates del DoD en verde real. Sprint 042 (Cover) cerrado formalmente.
 
 ## Próximos Sprints
 
 ## Sprint Activo
 
-  **Sprint 042 (COVER) — IMPLEMENTACIÓN TERMINADA; AUDITORÍA GLOBAL CON BLOQUEOS AJENOS**
+Ninguno — Sprint 042 (Cover) y Sprint 042.5 (Recuperación de Baseline) cerrados formalmente. Pendiente confirmar el próximo run de GitHub Actions antes de decidir el siguiente sprint funcional.
+
+  **Sprint 042.5 (Recuperación de Baseline) — COMPLETADO**
+  - [x] Revisar fuentes obligatorias (PROJECT_STATUS, TODO, docs de cobertura/deviations, walkthrough, tests, combatSnapshot.ts) antes de tocar código.
+  - [x] Auditar `cloneEffectInstances` y todos los helpers de clonado equivalentes del monorepo (`cloneCombatRoom`, `structuredClone`, bloques internos de `createCombatRulesSnapshot`).
+  - [x] Corregir la causa raíz: agregar `targetCells` a `cloneEffectInstances`, en paridad con `EffectManager.add`. Ver DT-021.
+  - [x] Robustecer `dt-006-snapshot-integrity.test.mjs` con un caso de comportamiento (deepStrictEqual genérico) que hubiera detectado el bug original.
+  - [x] Ray of Frost: trazabilidad completa Manual → corpus → Rule ID → registry → implementación confirmada correcta; test de Sprint 011 actualizado, motor intocado.
+  - [x] Withdraw W22: regex corregido; revisados todos los `assert.throws`/`match` de la suite sin encontrar otro caso similar.
+  - [x] `npm test` 430/430, typecheck 0 errores, build 3/3 workspaces, E2E WebSocket 87/87, Playwright 5/5 — los 5 gates del DoD verdes en la misma corrida.
+
+  **Sprint 042 (COVER) — COMPLETADO (cerrado formalmente en Sprint 042.5)**
   - [x] Auditar y conservar el trabajo local iniciado por Claude.
   - [x] Consolidar Cover exclusivamente en `getAttackContextModifiers`.
   - [x] Preservar cobertura por criatura +4 e incorporar obstáculos completos +4 sin apilamiento.
@@ -52,8 +64,8 @@ Documento vivo de tareas pendientes. El backlog está organizado en Sprints. Par
   - [x] Añadir determinismo por footprints, orden de snapshot, inmutabilidad y no doble aplicación.
   - [x] Tests focalizados: 58/58.
   - [x] Typecheck, build y E2E WebSocket 87/87.
-  - [ ] Suite global completamente verde: 420/429; permanecen 7 casos reales preexistentes fuera de Cover.
-  - [ ] Playwright: bloqueado por `browserType.launch: spawn EPERM` y dependencias derivadas inaccesibles en OneDrive.
+  - [x] Suite global completamente verde: 430/430 (ver Sprint 042.5).
+  - [x] Playwright: 5/5 (Chromium ya instalado en esta máquina).
 
   **Sprint 041 (MOVE-RUN) — COMPLETADO (validación Windows pendiente)**
   - [x] NDD aprobado con PROCEED; decisiones D-1 a D-5 cerradas (§1/§8 de `docs/designs/run-design.md`).

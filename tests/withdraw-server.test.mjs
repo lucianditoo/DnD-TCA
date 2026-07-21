@@ -160,7 +160,7 @@ test("MOVE-WITHDRAW servidor", async (t) => {
     const enemyInPath = makeEnemy({ position: { x: 4, y: 2, zFeet: 0 } });
     const room2 = makeRoom([mover2, enemyInPath]);
     const path2 = straightPath(2, 6, 2);
-    assert.throws(() => handleUseTacticalAction(room2, withdrawCommand(room2, path2[path2.length - 1], path2)), /a traves de/);
+    assert.throws(() => handleUseTacticalAction(room2, withdrawCommand(room2, path2[path2.length - 1], path2)), /atravesar/);
   });
 
   await t.test("W23: ownership — otro participante no puede retirar un combatiente ajeno", () => {
