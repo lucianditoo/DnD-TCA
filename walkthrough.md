@@ -1,51 +1,61 @@
-# Walkthrough — Sprint 045 (Pre-diseño arquitectónico)
+# Walkthrough — Sprint 044.2 (Arquitectura del Pipeline de Modificadores)
 
 ## Resultado
 
-Se completó una auditoría documental y de código, sin implementación funcional. El diseño está en `docs/designs/rule-and-modifier-classification.md`.
+Se completó la auditoría documental y del código real sin modificar producción, tests, schemas, catálogos ni Rule IDs. El diseño canónico está en `docs/designs/modifier-pipeline-architecture.md`.
 
 ## Estado Git inicial
 
 - Rama: `master`.
-- HEAD auditado: `40e90d29cd8ba509c5d98c16eb5a294601e4f3b9`.
-- Sin commits locales pendientes respecto de `origin/master` al iniciar.
-- Única excepción local autorizada: `.claude/settings.local.json`, archivo no seguido y expresamente fuera de alcance. No se leyó, modificó, staged ni incluyó en la auditoría.
+- HEAD auditado: `8d1c042a827613327187849e1e55d8e9a6d1d004`.
+- Último commit: `8d1c042 docs(architecture): classify base rules and composable modifiers`.
+- Sin commits locales pendientes respecto de `origin/master` al iniciar (`0/0`).
+- Única excepción local autorizada: `.claude/settings.local.json`, archivo no seguido y expresamente fuera de alcance. No se leyó, modificó, agregó a staging ni incluyó en la auditoría.
+
+## Auditoría
+
+Se revisaron:
+
+- `docs/designs/`, `docs/architecture/` y `docs/rules/`;
+- `PROJECT_STATUS.md`, `ROADMAP.md`, `TODO.md`, `AGENTS.md` y `CODEX_GUIDE.md`;
+- Attack Resolver, Movement, ActiveEffects/Reducer/Manager/Tick, `DamageBundle`, Cover, snapshot, threat, opportunities, catálogos, handlers y previews React.
 
 ## Hallazgos principales
 
-1. `ATTACK-FULL` es una regla base única. Rapid Shot, Haste, Two-Weapon Fighting, ataques naturales múltiples y Cleave/Great Cleave son reglas independientes que modifican o reaccionan al ataque; necesitan Rule IDs separadas.
-2. `getEffectiveAttackRoutine` no compone contribuciones: solo proyecta la rutina BAB y el bonus efectivo. El servidor continúa gateando con `getAttackRoutine`, de modo que hoy ninguna fuente productiva puede añadir ataques de forma end-to-end.
-3. El modelo de modificadores está repartido entre ActiveEffects, `Buff`, contexto táctico, handlers y resolver. `EffectReducer` tiene stacking y traza sólidos para modificadores numéricos, pero no cubre buffs, traits, mechanics, condicionales ni entradas de rutina.
-4. “Condiciones Restantes” no puede implementarse fielmente como un solo lote:
-   - Blinded necesita Concealment, visión y media velocidad.
-   - Entangled necesita media velocidad y Concentration.
-   - Dazzled/Shaken necesitan skills/checks para cierre completo.
-   - Frightened/Panicked necesitan huida obligatoria, escalado de miedo y, para Panicked, caída real de objetos.
-   - Exhausted necesita media velocidad y transición de descanso/stacking.
-   - Stunned solo carece del drop, pero el repositorio no representa objetos en el suelo.
-   - Helpless tiene parte de la defensa/ataque, pero falta Sneak Attack por helplessness y todo Coup de Grace.
-5. `srd_paralyzed` fuerza DEX 0 pero no STR 0, pese a la definición oficial; la fila `EFFECT-PARALYZED` debe reauditarse antes de conservar estado Completo.
+1. El proyecto no tiene un solo pipeline de modificadores: conviven derivación source-first, ActiveEffects estáticos/contextuales, folds de dotes, assessments, sumas locales, lógica de resolver y `Buff`.
+2. `EffectReducer` es una base sólida para deltas estáticos, pero no procesa stacking contextual, mechanics ni multiplicadores.
+3. `getAttackContextModifiers` + `CoverAssessment` es el patrón compartido más maduro para reglas contextuales.
+4. `DamageBundle` ya resuelve correctamente contribuciones de daño y multiplicación selectiva.
+5. `Buff` duplica stacking, trazas y lifecycle; debe retirarse como bus general, regla por regla.
+6. El servidor usa la rutina BAB cruda mientras la UI usa la rutina efectiva; esto debe consolidarse antes de ataques estructurales extra.
+7. Persisten consultas directas por ID y números anónimos en fronteras handler/resolver.
 
-## Recorte recomendado
+## Decisiones
 
-Opción F: `DEFENSE-CONCEALMENT` como vertical única antes de Blinded.
+- Pipeline oficial: **Intención → Preflight → Operación base → Contribuciones estructurales → Contexto → Proyección efectiva → Resolver → Consecuencias → Commit**.
+- Una regla base mantiene identidad única; un modificador aporta contribuciones especializadas.
+- No se crea `RuleModifier`, `UniversalModifier` ni `GameModifier`.
+- Se reutilizan snapshot, ActiveEffects, reducer, traits/overrides, catálogos, folds, assessments, `DamageBundle`, resolvers y transacciones.
+- Se justifica una futura `AttackAttemptProjection` especializada; `AttackRoutineContribution` debe extenderse, no duplicarse.
+- Concealment, tasa de movimiento y consecuencias one-shot conservan contratos especializados y NDD propios.
+- Resolver sin conocimiento de board, IDs concretos o estado mutable; UI y servidor consumen la misma proyección.
 
-Motivos:
+## Decisiones postergadas
 
-- es una regla oficial concreta, no infraestructura especulativa;
-- el contrato mechanic `CONCEALMENT` ya existe sin consumidor;
-- desbloquea Blinded, Invisible, oscuridad y niebla;
-- puede seguir el patrón compartido de `CoverAssessment` y mantener la tirada autoritativa en servidor.
-
-Fuera de alcance hasta otro gate: condiciones, visión, Blind-Fight, Total Cover, compositor de Full Attack y migración global de Buffs.
+- forma TypeScript exacta de la proyección de ataque;
+- reducción contextual y trazas runtime;
+- orden de migración de Haste/Aid/Fighting Defensively/Total Defense/Charge fuera de `Buff`;
+- composición exacta de Rapid Shot/Haste/TWF/naturales;
+- `ConcealmentAssessment`, tasa racional de movimiento y consecuencias one-shot;
+- posible partición futura de `rules.ts`.
 
 ## Documentación
 
-- Creado: `docs/designs/rule-and-modifier-classification.md`.
-- Actualizados: `ROADMAP.md`, `PROJECT_STATUS.md`, `TODO.md`, `walkthrough.md`.
-- No se creó `implementation_plan.md`: el recorte recomendado aún requiere una NDD específica antes de planificar código.
-- No se modificó `docs/rules/registry.md`; primero se entrega la recomendación exacta, como exigía el gate.
+- Creado: `docs/designs/modifier-pipeline-architecture.md`.
+- Actualizados: `PROJECT_STATUS.md`, `ROADMAP.md`, `TODO.md`, `walkthrough.md`.
+- No se creó `implementation_plan.md`.
+- No se modificó `docs/rules/registry.md`.
 
-## Gate
+## Validación
 
-La ejecución se detiene después del commit/push documental. Se requiere `Proceed` explícito antes de modificar producción o tests.
+Solo se realizan verificaciones documentales, enlaces, referencias cruzadas y revisión de diff. No se ejecuta la suite porque no existen cambios de código o tests.

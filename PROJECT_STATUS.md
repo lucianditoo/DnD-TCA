@@ -54,8 +54,8 @@ Todo cambio requiere:
 - Defensa total.
 - Carga con ruta prevista.
 - Prestar ayuda con buff pendiente de eleccion.
-- **Fase Actual:** Sprint 045, pre-diseño arquitectónico completado y en revisión. La auditoría rechazó “Condiciones Restantes” como lote único y recomienda `DEFENSE-CONCEALMENT` como vertical previa a Blinded. Pendiente de `Proceed`; no hay implementación funcional.
-- **Estado:** ✅ baseline funcional previo preservado · ✅ auditoría normativa/arquitectónica · ⏸️ implementación detenida por gate de diseño.
+- **Fase Actual:** Sprint 044.2, arquitectura del pipeline de modificadores completada y en revisión. El pipeline oficial queda documentado en `docs/designs/modifier-pipeline-architecture.md`; no se implementó código, no se modificaron tests y no se abrieron Rule IDs.
+- **Estado:** ✅ baseline funcional previo preservado · ✅ auditoría documental/código · ✅ diseño del pipeline · ⏸️ implementación detenida por gate arquitectónico.
 - **Hitos Completados Recientes:**
   - `Sprint 042`: Cover canónico en `getAttackContextModifiers`, criaturas y obstáculos de casilla, footprints deterministas y consumo uniforme por armas, touch, AdO, maniobras y UI.
   - `Sprint 030`: Escape de Presa autoritativo, rangos de habilidades V6, restricciones de armas en agarre, penalizador melee etiquetado y preview UI compartido.
@@ -188,7 +188,18 @@ Todo cambio requiere:
   - Implementación de `Fatigued`, `Prone`, `Dazed` y `Paralyzed` con lógica de sobrescritura de características.
   - Integración de `getEffectiveAbilityScore` y nuevas pruebas de regresión.
 
-### FASE ACTUAL: Sprint 045 — Pre-diseño arquitectónico en revisión
+### FASE ACTUAL: Sprint 044.2 — Arquitectura del Pipeline de Modificadores en revisión
+
+  **Sprint 044.2 — Análisis y diseño exclusivamente documental**
+  - Auditoría completa de las rutas reales por las que una regla altera otra: derivación source-first, ActiveEffects estáticos/contextuales, folds de dotes, contexto táctico, handlers, resolvers, `Buff`, restricciones, daño y consecuencias.
+  - Pipeline oficial: Intención → Preflight → Operación base → Contribuciones estructurales → Contexto → Proyección efectiva → Resolver → Consecuencias → Commit.
+  - Decisión central: una regla base conserva una identidad única; feats, spells, conditions, equipment y size aportan contribuciones especializadas y nunca crean una variante de la regla.
+  - Se reutilizan snapshot, reducer, traits/overrides, catálogos, folds, assessments, `DamageBundle`, resolvers y transacciones existentes.
+  - Contrato nuevo estrictamente justificado para trabajo futuro: proyección especializada del intento de ataque; el resto son extensiones acotadas de contratos existentes o assessments por dominio.
+  - `Buff` queda identificado como ruta general legacy a retirar incrementalmente, no mediante migración masiva.
+  - Documento: `docs/designs/modifier-pipeline-architecture.md`. Sin `implementation_plan.md`, código, tests o cambios al Registry.
+
+### ANTECEDENTE: Sprint 045 — Clasificación y recorte arquitectónico
 
   **Sprint 045 — Reglas Base, Modificadores y Condiciones Restantes**
   - Clasificación formal: regla base, modificador de regla, infraestructura, fuente normativa y estado runtime.
@@ -394,7 +405,7 @@ docs/
 
 **La documentación oficial normativa del motor de reglas (D&D 3.5 Capítulo 8) está en la carpeta: `combat/`**
 - **Política de Integración:** [docs/architecture/combat-documentation-integration.md](docs/architecture/combat-documentation-integration.md)
-- **Matriz de Cobertura:** [docs/designs/combat-rules-coverage.md](docs/designs/combat-rules-coverage.md)
+- **Matriz de Cobertura:** [docs/testing/master-coverage.md](docs/testing/master-coverage.md)
 - **Divergencias (Bugs/Simplificaciones):** [docs/audits/combat-rules-deviations.md](docs/audits/combat-rules-deviations.md)
 - **Roadmap Dependencias:** [ROADMAP.md](ROADMAP.md)
 - **Documento Arquitectónico Central:** [docs/architecture/combat-engine.md](docs/architecture/combat-engine.md)
@@ -458,3 +469,5 @@ Auditoría final de Sprint 042: el código de Cover está listo, pero el dictame
 **Cierre (Sprint 042.5, 2026-07-18):** la duda quedó resuelta — los 9 fallos (7 reales) fueron investigados uno por uno, clasificados y corregidos por causa raíz (no un parche): 5 Environmental Hazards eran un bug real de producción (`cloneEffectInstances` no propagaba `targetCells`, ver DT-021), 1 Ray of Frost era un test desactualizado frente a una regla posterior correcta (`ATK-RANGED-INTO-MELEE`), y 1 Withdraw W22 era un regex mal escrito en el propio test. `npm test` queda **430/430**; typecheck, build, E2E WebSocket (87/87) y Playwright (5/5) también en verde real en esta máquina. **Sprint 042 (Cover) queda cerrado formalmente.** GitHub Actions confirmado en verde tras el push (Run #4, commit `d3c02ba`, conclusión `success`, verificado por API pública).
 
 **Sprint 043 (Planning & Roadmap, 2026-07-18):** con el baseline verde, se auditó el proyecto completo (documentación, código, tests, CI) y se reescribió `ROADMAP.md` desde cero. Ver detalle completo en el `walkthrough.md` de este sprint. **Recomendación**: el próximo sprint funcional debería ser **Condiciones Restantes** (Blinded, Entangled, Dazzled, Shaken/Frightened, Exhausted, más el cierre de los gaps parciales de Stunned y Helpless Combat) — reutiliza la infraestructura ActiveEffects ya madura (mismo patrón exitoso de Sprints 006/007/014, riesgo bajo) y desbloquea simultáneamente el trabajo futuro de Feats y Spells, que referencian estas condiciones constantemente. Concealment quedó como alternativa fuerte de segundo lugar. Pendiente de aprobación explícita antes de iniciar cualquiera de los dos.
+
+**Actualización Sprint 044.2 (2026-07-21):** la arquitectura transversal previa a esos sprints queda fijada en `docs/designs/modifier-pipeline-architecture.md`. Ninguna vertical funcional debe sumar modificadores por una ruta nueva: debe reutilizar el pipeline oficial y justificar cualquier contrato especializado faltante en su propio NDD. Concealment continúa como candidato funcional recomendado por la auditoría anterior, pero este sprint no lo abre ni lo implementa.

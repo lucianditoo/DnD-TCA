@@ -42,19 +42,30 @@ Documento vivo de tareas pendientes. El backlog está organizado en Sprints. Par
 
 ## Próximos Sprints
 
-Ver `ROADMAP.md`. Sprint 045 reaudita el orden: “Condiciones Restantes” no es un lote aprobable. Recorte recomendado: `DEFENSE-CONCEALMENT` como vertical única antes de Blinded; luego condiciones separadas por dependencia. Rapid Shot, Haste, Two-Weapon Fighting, ataques naturales y Cleave/Great Cleave requieren Rule IDs independientes y no deben seguir tratándose como componentes absorbidos por `ATTACK-FULL`. Power Attack (039) sigue congelado.
+Ver `ROADMAP.md`. Sprint 044.2 fija primero el pipeline transversal para que ninguna vertical futura duplique reglas ni abra rutas nuevas de modificación. El recorte funcional recomendado previamente continúa siendo `DEFENSE-CONCEALMENT` antes de Blinded; requiere un gate propio. Power Attack (039) sigue congelado.
 
 ## Sprint Activo
 
-**Sprint 045 — Pre-diseño arquitectónico, Fase 2.** Auditoría y clasificación documentadas en `docs/designs/rule-and-modifier-classification.md`. Recorte recomendado: `DEFENSE-CONCEALMENT` antes de Blinded. Pendiente de aprobación explícita `Proceed`; no se inició código ni tests.
+**Sprint 044.2 — Arquitectura del Pipeline de Modificadores.** Auditoría y diseño documentados en `docs/designs/modifier-pipeline-architecture.md`. Sprint exclusivamente documental: sin código, tests, Rule IDs ni implementation plan.
 
-  **Sprint 045 (Pre-diseño) — EN REVISIÓN**
+  **Sprint 044.2 — EN REVISIÓN**
+  - [x] Verificar rama, HEAD, sincronización con `origin/master` y cambios locales.
+  - [x] Preservar `.claude/settings.local.json` fuera de auditoría, staging y commit.
+  - [x] Revisar documentación de diseños, arquitectura, reglas y control del proyecto.
+  - [x] Auditar código real de ataque, movimiento, efectos, daño, Cover, snapshot, amenaza y AdO.
+  - [x] Clasificar todas las rutas actuales de modificación.
+  - [x] Decidir rutas a conservar, retirar y consolidar.
+  - [x] Fijar el pipeline oficial y contratos reutilizados/faltantes.
+  - [x] Documentar impactos, riesgos, alternativas y decisiones abiertas.
+  - [ ] Revisión arquitectónica; ningún trabajo funcional queda autorizado por este documento.
+
+  **Sprint 045 (Pre-diseño previo) — DOCUMENTADO**
   - [x] Reconstruir estado real y sincronización Git desde `master`.
   - [x] Clasificar regla base, modificador, infraestructura, fuente normativa y estado runtime.
   - [x] Auditar `ATTACK-FULL` y separar fuentes independientes.
   - [x] Auditar individualmente Blinded, Entangled, Dazzled, Shaken, Frightened, Panicked, Exhausted, Stunned y Helpless Combat.
   - [x] Comparar recortes A–F y recomendar `DEFENSE-CONCEALMENT`.
-  - [ ] Esperar `Proceed` antes de redactar/confirmar la NDD específica o modificar TypeScript/tests.
+  - [x] Entregar como antecedente de Sprint 044.2; cualquier vertical específica mantiene su propio gate antes de TypeScript/tests.
 
   **Sprint 043 (Planning & Roadmap) — COMPLETADO**
   - [x] Gobernanza: `walkthrough.md` quitado de `.gitignore` (aprobación explícita a la propuesta pendiente de Sprint 040 §3).
