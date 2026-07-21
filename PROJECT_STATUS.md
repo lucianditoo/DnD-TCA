@@ -54,8 +54,8 @@ Todo cambio requiere:
 - Defensa total.
 - Carga con ruta prevista.
 - Prestar ayuda con buff pendiente de eleccion.
-- **Fase Actual:** Sprint 043 (Planning & Roadmap) completado — auditoría real de baseline/deuda/Rule IDs, `ROADMAP.md` reescrito desde cero, `walkthrough.md` deja de ser efímero (versionado en git). Recomendado como próximo sprint funcional: Condiciones Restantes (Blinded/Entangled/Dazzled/Shaken/Exhausted). Pendiente de aprobación explícita antes de iniciarlo.
-- **Estado:** ✅ pipeline de Cover y pruebas focalizadas · ✅ typecheck/build/E2E · 🟠 suite global con casos preexistentes fallando · ⚪ Playwright bloqueado por `spawn EPERM`.
+- **Fase Actual:** Sprint 045, pre-diseño arquitectónico completado y en revisión. La auditoría rechazó “Condiciones Restantes” como lote único y recomienda `DEFENSE-CONCEALMENT` como vertical previa a Blinded. Pendiente de `Proceed`; no hay implementación funcional.
+- **Estado:** ✅ baseline funcional previo preservado · ✅ auditoría normativa/arquitectónica · ⏸️ implementación detenida por gate de diseño.
 - **Hitos Completados Recientes:**
   - `Sprint 042`: Cover canónico en `getAttackContextModifiers`, criaturas y obstáculos de casilla, footprints deterministas y consumo uniforme por armas, touch, AdO, maniobras y UI.
   - `Sprint 030`: Escape de Presa autoritativo, rangos de habilidades V6, restricciones de armas en agarre, penalizador melee etiquetado y preview UI compartido.
@@ -188,7 +188,16 @@ Todo cambio requiere:
   - Implementación de `Fatigued`, `Prone`, `Dazed` y `Paralyzed` con lógica de sobrescritura de características.
   - Integración de `getEffectiveAbilityScore` y nuevas pruebas de regresión.
 
-### FASE ACTUAL: Sprint 042.5 — Recuperación de Baseline completada; Sprint 042 (Cover) cerrado formalmente
+### FASE ACTUAL: Sprint 045 — Pre-diseño arquitectónico en revisión
+
+  **Sprint 045 — Reglas Base, Modificadores y Condiciones Restantes**
+  - Clasificación formal: regla base, modificador de regla, infraestructura, fuente normativa y estado runtime.
+  - `ATTACK-FULL` queda como regla base; Rapid Shot, Haste, Two-Weapon Fighting, ataques naturales y Cleave/Great Cleave se recomiendan como Rule IDs independientes que reutilizan o reaccionan a esa base.
+  - El lote “Condiciones Restantes” se descompone por dependencias reales: Concealment/visión, velocidad multiplicativa, skills/Concentration, movimiento obligatorio, caída de objetos y Coup de Grace.
+  - Recorte recomendado para implementación: `DEFENSE-CONCEALMENT` como vertical única. Documento: `docs/designs/rule-and-modifier-classification.md`.
+  - No se creó `implementation_plan.md`: la vertical recomendada requiere primero una NDD específica y aprobación `Proceed`.
+
+### HISTÓRICO: Sprint 042.5 — Recuperación de Baseline completada; Sprint 042 (Cover) cerrado formalmente
 
   **Sprint 042.5 — Recuperación del Baseline y Cierre Formal de Sprint 042**
   - Origen: auditoría de baseline Sprint 042-R (2026-07-18) detectó que `npm test` fallaba con 9 casos (7 reales) y que Sprint 042 no podía cerrarse formalmente por ese motivo, además de un gate de CI (`.github/workflows/windows-ci.yml`, agregado fuera del alcance literal de Sprint 042) con conclusión Failure en su primera ejecución real.
@@ -295,7 +304,7 @@ Todo cambio requiere:
 ## Falta
 
 - Expandir uso de CombatSnapshot en mas resolvers.
-- Condiciones: Exhausted, Blinded, Entangled, Dazzled, Shaken/Frightened (ver recomendación de Sprint 043 en `ROADMAP.md`); Stunned suelta objetos sostenidos (gap parcial); Helpless Combat.
+- Condiciones: implementar como verticales separadas según `docs/designs/rule-and-modifier-classification.md`; no aprobar un lote único. Dependencias principales: Concealment/visión, movimiento multiplicativo, skills/Concentration, huida obligatoria, objetos caídos y Coup de Grace.
 - Concealment (miss chance %, contrato ya existe en `effects/contracts.ts` sin consumidor) y Ocultación/Cobertura Total (bloqueo de ataque).
 - Vision/Línea de Efecto formal (gap G-03 de `docs/audits/combat-rules-deviations.md`).
 - Huellas no cuadradas, rotación y reglas completas de `Squeezing` que alteren temporalmente el espacio.

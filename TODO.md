@@ -42,11 +42,19 @@ Documento vivo de tareas pendientes. El backlog está organizado en Sprints. Par
 
 ## Próximos Sprints
 
-Ver `ROADMAP.md` (reescrito en Sprint 043, renumerado en Sprint 044.1). Orden propuesto: Condiciones Restantes (045, recomendado) → Concealment (046) → Vision/Línea de Efecto (047) → completar `ATTACK-FULL` (048, incluye Dos Armas/Disparo Rápido/Haste real — no es una regla nueva, ver `docs/rules/registry.md`) → Feats Core (049+) → Spells Core (050+) → Saneamiento de deuda arquitectónica (sin número fijo). Power Attack (039) sigue congelado.
+Ver `ROADMAP.md`. Sprint 045 reaudita el orden: “Condiciones Restantes” no es un lote aprobable. Recorte recomendado: `DEFENSE-CONCEALMENT` como vertical única antes de Blinded; luego condiciones separadas por dependencia. Rapid Shot, Haste, Two-Weapon Fighting, ataques naturales y Cleave/Great Cleave requieren Rule IDs independientes y no deben seguir tratándose como componentes absorbidos por `ATTACK-FULL`. Power Attack (039) sigue congelado.
 
 ## Sprint Activo
 
-Ninguno — Sprint 042 (Cover), Sprint 042.5 (Recuperación de Baseline) y Sprint 043 (Planning & Roadmap) cerrados formalmente. GitHub Actions confirmado en verde (Run #4, commit `d3c02ba`). Pendiente de aprobación explícita para iniciar el siguiente sprint funcional recomendado (Condiciones Restantes).
+**Sprint 045 — Pre-diseño arquitectónico, Fase 2.** Auditoría y clasificación documentadas en `docs/designs/rule-and-modifier-classification.md`. Recorte recomendado: `DEFENSE-CONCEALMENT` antes de Blinded. Pendiente de aprobación explícita `Proceed`; no se inició código ni tests.
+
+  **Sprint 045 (Pre-diseño) — EN REVISIÓN**
+  - [x] Reconstruir estado real y sincronización Git desde `master`.
+  - [x] Clasificar regla base, modificador, infraestructura, fuente normativa y estado runtime.
+  - [x] Auditar `ATTACK-FULL` y separar fuentes independientes.
+  - [x] Auditar individualmente Blinded, Entangled, Dazzled, Shaken, Frightened, Panicked, Exhausted, Stunned y Helpless Combat.
+  - [x] Comparar recortes A–F y recomendar `DEFENSE-CONCEALMENT`.
+  - [ ] Esperar `Proceed` antes de redactar/confirmar la NDD específica o modificar TypeScript/tests.
 
   **Sprint 043 (Planning & Roadmap) — COMPLETADO**
   - [x] Gobernanza: `walkthrough.md` quitado de `.gitignore` (aprobación explícita a la propuesta pendiente de Sprint 040 §3).
