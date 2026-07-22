@@ -1,52 +1,50 @@
-# Plan de Implementación: Sprint 048 — Helpless Combat
+# Plan de Implementación: Sprint 048.1 — Helpless Combat (Patch)
 
 ## Meta y Resumen
-Implementar la resolución defensiva estandarizada para oponentes Indefensos (Helpless) y la acción de asalto completo Coup de Grace. 
-Esto abarca: pérdida de la bonificación de Destreza a la CA (-5 de modificador neto al tener DEX 0), viabilidad de ataque furtivo, la acción táctica completa, daño crítico automático y muerte por falla en salvación de Fortaleza.
-
-## Open Questions
-- **Interfaz de Usuario**: ¿Deseas que agregue el botón "Coup de Grace" directamente a `ActionsPanel.tsx` o me enfoco únicamente en el motor backend para este sprint (ya que los tests lo validarán a nivel de API)?
-
-## User Review Required
-> [!IMPORTANT]
-> **AdO para Coup de Grace**: El motor usa un patrón de interrupción estricto (como en spellcasting o movement). Si un Coup de Grace provoca AdO y hay enemigos amenazando, el comando poblará `pendingOpportunityAttacks` y retornará, sin realizar la acción. El usuario deberá sobrepasar los ataques y luego volver a enviar el comando. Esto es una consecuencia intencional y conocida del diseño del motor. ¿Estás de acuerdo con aplicar este mismo patrón?
-
-> [!NOTE]
-> **Discrepancia sobre Críticos y Golems**: Hemos constatado que no hay discrepancia en las reglas. La fuente `10_modificadores_de_combate.txt` y el SRD concuerdan en que un constructo es inmune al Coup de Grace. Por tanto, el pre-flight validation de `Coup de Grace` impedirá por completo la acción contra targets con `IMMUNE_TO_CRITICAL_HITS`.
+Implementar la resolución defensiva estandarizada para oponentes Indefensos (Helpless) y la acción de asalto completo Coup de Grace.
+Este rediseño corrige deudas de la arquitectura: establece una proyección defensiva canónica compartida (tratando la Destreza como 0), modela la acción Coup de Grace como suspendible ante AdO sin requerir re-declaraciones del usuario, calcula el crítico automáticamente sin fabricar tiradas de dados y delega la muerte por Fortaleza a un flujo canónico.
 
 ## Cambios Propuestos
 
 ### 1. `packages/shared/src/rules.ts`
 - **[MODIFY]** `rules.ts`
-  - En `totalArmorClass`: Detectar `hasEffectTrait(reduced, "HELPLESS")`. Si aplica, forzar `suppressDexAndDodge = true` e incorporar un diferencial que asuma Destreza 0 (-5 mod) independiente de la destreza actual del blanco.
+  - Crear o extender una proyección defensiva (ej. `getDefensiveAbilityProjection` o similar) que estandarice la recepción del estado `HELPLESS`. Esta proyección devolverá explícitamente: modificador -5 (DEX tratada como 0) y supresión de bonos de Dodge.
+  - En `totalArmorClass` y `armorClassBreakdown`: Consumir la nueva proyección en lugar de alterar aritmética localmente.
   - En `canApplySneakAttack`: Agregar verificación explícita `hasEffectTrait(targetEffects, "HELPLESS")` a la condición de éxito.
+  - Crear un validador semántico explícito: `isValidCoupDeGraceTarget(target)`, que verifique que el objetivo sea `HELPLESS` y se encuentre con un `lifeStatus` válido para el combate (rechazando a objetivos ya `dead`).
 
 ### 2. `apps/server/src/commands/tacticalCommands.ts`
 - **[MODIFY]** `tacticalCommands.ts`
   - Agregar `handleCoupDeGrace(room, snapshot, command, combatant)`.
-  - Validaciones: Turno activo, `HELPLESS` en el target, arma (melee o alcance = adyacente para ranged), inmunidad a crítico.
-  - Generación de AdO: Verificar `actionProvokesOpportunityAttack(snapshot, combatant, "coup-de-grace")`.
-  - Resolución: Invocar `resolveAttack` puenteando la tirada y forzando crítico o aplicando un DamageBundle que incorpore la lógica, y posteriormente hacer la tirada de salvación de Fortaleza (DC = 10 + Daño final).
-  - Si falla Fortaleza: Invocar `logStatusChange` cambiando `hpCurrent` y estado a `dead`.
+  - **Preflight**: Validar turno activo, `isValidCoupDeGraceTarget`, arma melee (o a distancia si adyacente), y que el target NO tenga `IMMUNE_TO_CRITICAL_HITS` (usando el trait puro general).
+  - **Suspensión por AdO**: Verificar `actionProvokesOpportunityAttack`. Si provoca, crear un estado `PendingCoupDeGrace` congelando: actor, objetivo, arma y etapa. Suspender la acción (sin consumo ni daño) hasta que se resuelva la cola de AdO.
+  - Agregar handler para reanudar la acción (bien automático o mediante un sub-comando de resume específico si la infraestructura lo exige), revalidando únicamente las condiciones dinámicas antes de aplicar la resolución.
+  - **Muerte Canónica**: Si el objetivo falla la salvación de Fortaleza (CD = 10 + Daño sufrido post-RD), invocar una operación canónica de transición a muerte (ej. en Mutation Layer o `roomState.ts`) que evite doble transición y loguee la muerte de forma unificada y segura, preservando la causalidad. No asignar `lifeStatus = "dead"` manualmente en el handler.
 
 ### 3. `packages/shared/src/types.ts`
 - **[MODIFY]** `types.ts`
-  - Extender `ClientCommand` en `type UseTacticalActionCommand` añadiendo `action: "coup-de-grace"`.
+  - Extender `ClientCommand` en `type UseTacticalActionCommand` añadiendo `action: "coup-de-grace"`. (Si el sistema de AdO requiere reanudación explícita, prever el tipo de resume).
   - En `CombatActionType`, añadir `"coup-de-grace"`.
+  - Definir la interface del estado suspendido (ej. `PendingCoupDeGrace`) para acoplar al estado de combate (room o turno).
 
 ### 4. `apps/server/src/combat/attackResolver.ts`
 - **[MODIFY]** `attackResolver.ts`
-  - Reestructurar el `AttackResolutionOptions` para poder aceptar `isAutomaticCritical: true`, que fuerce un `hit` e invoque `resolveCriticalConfirmation` o directamente aplique el multiplicador sin d20 nativo.
-  - Actualmente, `helplessBonus` (+4 a ataques melee) está, pero podríamos requerir ajustes para que aplique también a las variaciones del Coup de Grace.
+  - Crear una ruta pura, helper o extensión del DamageBundle para procesar el multiplicador de crítico y el daño masivo en modo `"automatic"`. No se usarán tiradas de ataque (`d20Roll = 20`) ni falsas confirmaciones (`confirmD20Roll = 20`), asegurando que el daño de precisión no se multiplique y no se activen efectos vinculados a "sacar un natural 20".
 
-### 5. `tests/helpless-combat.test.mjs`
+### 5. `apps/frontend/src/.../ActionsPanel.tsx` (Ubicación aproximada)
+- **[MODIFY]** Componentes de UI de Acciones
+  - Añadir el botón de "Golpe de gracia" como acción de asalto completo.
+  - Será visible únicamente cuando exista un objetivo seleccionado válido. Proveerá un preview de elegibilidad (arma correcta, no `dead`, no inmune).
+  - Incluir advertencia visual de que provoca AdO y representación visual del estado suspendido durante la resolución del mismo. No se mezclará con el flujo normal de ataque.
+
+### 6. `tests/helpless-combat.test.mjs`
 - **[NEW]** `helpless-combat.test.mjs`
-  - Test: Un objetivo `HELPLESS` tiene DEX=0 y pierde Dodge a la CA.
-  - Test: Ataque cuerpo a cuerpo recibe +4 contra objetivo `HELPLESS`.
-  - Test: Pícaro aplica Sneak Attack contra objetivo `HELPLESS` incluso sin flanquear.
-  - Test: Coup de Grace funciona (full-round action, hit y crit auto).
-  - Test: Salvación de Fortaleza en Coup de Grace (éxito = sobrevive con daño, fallo = estado Dead).
-  - Test: Inmunidad (Constructo/No-muerto) rechaza pre-flight de Coup de Grace.
+  - Implementar la Test Strategy documentada en `helpless-combat.md`, incluyendo:
+    - Verificación matemática del daño crítico automático sin RNG.
+    - Flujo de acción pendiente, congelación, AdO, reanudación y cancelación.
+    - Proyección defensiva (DEX base ignorada y tratada como -5, sin duplicación de supresión).
+    - Muerte canónica post-daño por fallo de Fortaleza.
+    - Rechazo pre-flight de inmunidad a críticos pura y objetivos ya muertos.
 
 ## Verification Plan
 
@@ -59,5 +57,6 @@ node scripts/e2e-websocket.mjs
 ```
 
 ### Manual Verification
-1. Generar mock en `tests/helpless-combat.test.mjs`.
-2. Observar el output exacto y verificar el log de acciones, especialmente el fallo letal a la salvación de Fortaleza que provoca `status = "dead"`.
+1. En UI, preparar a un actor y un blanco `HELPLESS` vivo.
+2. Hacer clic en "Golpe de gracia" y observar la aparición en el log de los AdO provocados.
+3. Resolver los AdO con otro cliente y confirmar que la acción original se reanuda sola (o permite ser continuada), logrando impacto y crítico automático y provocando la salvación o muerte limpia sin crashes ni falsos RNG en la consola.
