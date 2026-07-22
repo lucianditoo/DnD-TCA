@@ -14,8 +14,8 @@ Un personaje cegado no puede ver. Recibe las siguientes penalizaciones:
 - Pierde su bonificador de Destreza a la CA (si tiene alguno).
 - Su velocidad se reduce a la mitad. No puede usar las acciones de Correr (Run) ni Cargar (Charge) sin fallar o requerir un chequeo de Equilibrio (DC 10).
 - Todos los oponentes tienen **Ocultación Total** (50% de probabilidad de fallo) contra el personaje cegado.
-- (Fuera de alcance temporal) -4 en pruebas de Buscar y Habilidades basadas en Fue/Des; falla automática en pruebas de Avistar y lectura.
-- Al no poder ver, el personaje cegado no amenaza ningún área a su alrededor, perdiendo la capacidad de flanquear o de realizar Ataques de Oportunidad (AoO).
+- (Fuera de alcance temporal) Todas las consecuencias relacionadas con: habilidades afectadas por la visión, la mayoría de skills STR/DEX afectadas por la condición, actividades que fallan automáticamente por requerir visión, localización de objetivos, y adaptación a la ceguera prolongada.
+- Todos los oponentes poseen Ocultación Total respecto del personaje cegado, por lo que el personaje no puede realizar Ataques de Oportunidad contra ellos.
 
 ## 4. Estado actual
 - **¿Existe `srd_blinded` en catálogo?** No.
@@ -31,7 +31,7 @@ Un personaje cegado no puede ver. Recibe las siguientes penalizaciones:
 
 ## 7. Consecuencias oficiales y 8. Mapeo al pipeline
 La entrada del catálogo se mapeará de la siguiente manera:
-- **`traits`**: `["NO_DEX_TO_AC", "NO_THREAT", "CANNOT_MAKE_AOO"]`
+- **`traits`**: `["NO_DEX_TO_AC", "CANNOT_MAKE_AOO"]`
 - **`modifiers`**: `[{ type: "numeric", stat: "AC", value: -2, stackingGroup: "condition", stackingPolicy: "lowest_value" }]`
 - **`movementRateContributions`**: `[{ numerator: 1, denominator: 2, stackingKey: "condition:blinded:half-speed" }]`
 - **`concealmentContributions`**: `[{ perspective: "attacks_by_target", kind: "total", missChancePercent: 50, stackingKey: "condition:blinded" }]`
@@ -48,13 +48,13 @@ Utiliza el modificador numérico estándar para reducir la CA en 2, y el trait e
 El ataque se penaliza exclusivamente a través del 50% de probabilidad de fallo introducido por la ocultación total. El Sneak Attack del atacante se deshabilita automáticamente por la arquitectura existente, ya que `canApplySneakAttack` deniega el bonus cuando el objetivo tiene ocultación efectiva.
 
 ## 12. Movimiento
-La velocidad se limita matemáticamente a través de `movementRateContributions`. Dado que no se admiten tiradas de Balance durante el movimiento en la fase actual del motor, se previene directamente cualquier intento de `RUN` o `CHARGE` con los overrides pertinentes para cumplir con la norma base que asume incapacidad para hacerlo de forma segura.
+La velocidad se limita matemáticamente a través de `movementRateContributions`. Se previene directamente cualquier intento de `RUN` o `CHARGE` con los overrides pertinentes, ya que esto proviene directamente de la regla oficial y NO depende de crear un sistema de Balance.
 
 ## 13. Threat / AdO / Flanking
-El ciego recibe el trait `NO_THREAT`, desactivando su intercepción del mapa (no puede flanquear y no amenaza a otros, bloqueando ataques de oportunidad base de D&D 3.5). Se incluye `CANNOT_MAKE_AOO` para máxima semántica de bloqueo operativo.
+El ciego recibe el trait `CANNOT_MAKE_AOO`, ya que todos los oponentes poseen Ocultación Total respecto del personaje cegado, impidiendo mecánicamente la ejecución de Ataques de Oportunidad. No se incluye `NO_THREAT` por falta de respaldo normativo explícito sobre la pérdida absoluta de amenaza y flanqueo.
 
 ## 14. Skills y Visión
-Fuera de alcance. Las consecuencias no relacionadas a combate directo no se modelarán en este Sprint.
+Fuera de alcance. El Sprint 047 deja fuera TODAS las consecuencias relacionadas con: habilidades afectadas por la visión, la mayoría de skills STR/DEX afectadas por la condición, actividades que fallan automáticamente por requerir visión, localización de objetivos, y adaptación a la ceguera prolongada.
 
 ## 15. Stacking
 - Al acumular múltiples instancias de ceguera temporal, `onStack: "ignore"` es la opción correcta porque los efectos son absolutos, previniendo penalizadores acumulativos.
@@ -70,15 +70,40 @@ La validación `getConcealmentAssessment` y `resolveAttack` mostrará a los juga
 No introduce bloqueos para el código legacy. Se ajusta armónicamente a la arquitectura del modifier pipeline.
 
 ## 19. Alcance fuera del sprint
-La implementación visual de Line of Sight o restricciones per-target por ocultación ambiental. (Opción **B — Blinded Core parcial** seleccionada y recomendada).
+La Opción **B — Blinded Core parcial** seleccionada y recomendada:
+Incluye:
+• AC -2
+• NO_DEX_TO_AC
+• velocidad ×1/2
+• FORBID_RUN
+• FORBID_CHARGE
+• CANNOT_MAKE_AOO
+• ConcealmentContribution
+• Total Concealment (50%)
+• integración con DEFENSE-CONCEALMENT
+
+No incluye:
+• Search
+• Spot
+• resto de skills
+• targeting por casilla
+• localización de enemigos
+• lectura
+• adaptación a la ceguera
+• Blind-Fight
+• sistema completo de visión
+• Line of Sight
+• Line of Effect
+• NO_THREAT
+• cambios en flanqueo
 
 ## 20. Riesgos
-Prácticamente nulos. Se apalanca infraestructura madura del sprint 042 (Concealment Core) y 024 (Efectos Condicionales).
+Prácticamente nulos. Se apalanca infraestructura madura del sprint 046 (Concealment Core) y 024 (Efectos Condicionales).
 
 ## 21. Tests
 - **Unitario**: `srd_blinded` emite total concealment contra los ataques del portador y restringe DEX a la CA.
 - **Unitario**: Ceguera inhabilita la aportación de Ataque Furtivo.
-- **Unitario**: Se bloquea correr, cargar y amenaza de área.
+- **Unitario**: Se bloquea correr, cargar y Ataques de Oportunidad.
 - **Integración**: `resolveAttack` lanza un d100 en ataques emitidos por un personaje con `srd_blinded`, registrando el log.
 
 ## 22. Definition of Done

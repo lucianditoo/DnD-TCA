@@ -13,8 +13,8 @@ El diseño arquitectónico muestra que **todas** las infraestructuras necesarias
     ```typescript
     "srd_blinded": {
       name: "Cegado",
-      description: "La criatura no puede ver. -2 a la CA, pierde su bono de Destreza a la CA, se mueve a media velocidad, otorga ocultación total (50%) a sus oponentes, y no amenaza casillas.",
-      traits: ["NO_DEX_TO_AC", "NO_THREAT", "CANNOT_MAKE_AOO"],
+      description: "La criatura no puede ver. -2 a la CA, pierde su bono de Destreza a la CA, se mueve a media velocidad, otorga ocultación total (50%) a sus oponentes.",
+      traits: ["NO_DEX_TO_AC", "CANNOT_MAKE_AOO"],
       modifiers: [
         {
           type: "numeric",
@@ -73,9 +73,5 @@ El diseño arquitectónico muestra que **todas** las infraestructuras necesarias
 ## Estrategia de Testing (Validación)
 - Ejecutar `npm run test` localmente para las aserciones estáticas de Shared (EffectReducer).
 - Ejecutar `node scripts/e2e-websocket.mjs` invocando `add-effect` de `srd_blinded` en una criatura y luego simular un `resolveAttack`, corroborando el d100 tirado por Concealment y las reducciones en CA.
-
-## Preguntas Abiertas para el Usuario (Design Feedback)
-1. **Opción Recomendada (B)**: ¿Estás de acuerdo en omitir los fallos automáticos en Avistar (Spot)/Buscar (Search) por ahora, priorizando la vertical de combate táctico que ya es mecánicamente soportada al 100%?
-2. **Chequeo de Balance**: Se bloquearán las acciones de Correr y Cargar de plano debido a que no poseemos cheques de habilidades obligatorios (Balance DC 10) on-the-move. ¿Aceptas esta restricción directa vía `FORBID_RUN` y `FORBID_CHARGE`?
 
 **Requiere aprobación (`Proceed`) para comenzar a ejecutar.**
