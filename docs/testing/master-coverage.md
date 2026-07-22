@@ -18,6 +18,7 @@ Reglas cubiertas obligatoriamente en E2E:
 - Huellas Large: spawn 2×2 y rechazo autoritativo de movimiento ante solapamiento parcial.
 - Diehard/Prone Eschewal: estabilización en negativos, conservación de turno, Stand Up por 0 pies sin AdO y ausencia de sangrado en la ronda siguiente.
 - Entangled Core: fuente declarativa en snapshot, velocidad efectiva 30→15 y bloqueos autoritativos de Run/Charge.
+- EFFECT-BLINDED (Core): fuente de Total Concealment perspectivo, pérdida de DEX a CA, -2 AC y mitigaciones mecánicas estáticas validada en Snapshot.
 - DEFENSE-CONCEALMENT: el esquema WebSocket rechaza porcentaje o d100 suministrados por el cliente; los recorridos productivos sin fuentes conservan assessment `none` y el servidor mantiene autoridad exclusiva.
 
 Último cierre validado (Sprint 046): **91/91** verificaciones WebSocket.

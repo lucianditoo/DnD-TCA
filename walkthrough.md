@@ -6,13 +6,23 @@ La infraestructura oficial de `DEFENSE-CONCEALMENT` quedó implementada como reg
 
 ## Gate y revalidación
 
-- Rama inicial: `master`; HEAD inicial: `a31eea850929b8ca9d4c5608a4d1dab9f626a24d`.
-- Sincronización inicial con `origin/master`: 0 commits ahead / 0 behind.
-- Sin cambios tracked o staged al comenzar.
-- `.claude/settings.local.json` permaneció como excepción local no seguida: no se abrió, leyó, modificó, eliminó, auditó ni agregó a staging.
-- Se releyeron el NDD de Concealment, la arquitectura del pipeline, la clasificación de reglas y el plan aprobado; la auditoría confirmó que ningún commit posterior había implementado Concealment parcialmente.
+## Sprint 047 — Blinded Core (IMPLEMENTADO)
+**Objetivo**: Implementar la condición Ceguera (Blinded Core) basándose en las primitivas del Motor de Reglas establecidas en Sprints anteriores, garantizando que emite un modificador de CA, una penalización en destreza, reducción de movimiento a la mitad, bloqueo de las acciones correr y cargar, y la emisión de Ocultamiento Total (Total Concealment) de forma declarativa.
 
-## Arquitectura implementada
+### Cambios realizados
+1. **Catalogación de la Condición**: Se agregó `srd_blinded` al `effectsCatalog` (`packages/shared/src/effects/catalog.ts`), definiéndolo de forma 100% declarativa, emitiendo Traits (NO_DEX_TO_AC, CANNOT_MAKE_AOO), RuleOverrides (FORBID_RUN, FORBID_CHARGE), MovementRate (x1/2), NumericModifiers (-2 AC) y ConcealmentContributions (total concealment *perspective: attacks_by_target*).
+2. **Suite de Pruebas Unitaria (blinded-core.test.mjs)**: Se crearon 6 pruebas unitarias formales para validar todo el scope de Blinded Core. Todas las pruebas pasan verificando reducciones correctas a la CA, la mitad de velocidad (con stacking seguro con Entangled), los override para carga, y el bloqueo al Ataque Furtivo de forma inherente por el sistema de ocultamiento.
+3. **Master Coverage**: Se agregó Blinded a la lista general de condiciones en `master-coverage.md`.
+4. **Docs & Plans**: Se refinó `docs/designs/blinded-condition.md` descartando `NO_THREAT` y habilidades complejas según la auditoría aprobada, actualizando todo el diseño arquitectónico a las capacidades del motor.
+
+### Validaciones Ejecutadas
+Todas las validaciones estipuladas en la DoD terminaron de forma exitosa (tras iterar y reparar el setup de pruebas y los fixtures de la snapshot):
+- `npm test`: **457/457 pruebas superadas** (incluyendo las pruebas de la sprint 047).
+- `npm run typecheck`: Superado sin errores de compilación para todos los workspaces.
+- `npm run build`: Superado.
+
+### Deuda Técnica / Future Work
+- **Sprints futuros (Vision/Spot/Targeting)**: Blinded sentó las bases para el manejo de ocultamiento asimétrico (`attacks_by_target`), pero la mecánica real de Vision (Raycasting, targeting en oscuridad, invisibilidad) está planificada para otra iteración (como el Sprint de Fog of War).
 
 - `ConcealmentContribution` es el único contrato especializado. El marker dormido `Modifier.mechanic/CONCEALMENT` fue eliminado al confirmarse que no tenía productores ni consumidores.
 - `EffectReducer.reduceConcealmentContributions` valida porcentajes, ordena determinísticamente, deduplica semánticas por `stackingKey`, rechaza contradicciones, selecciona la mayor probabilidad sin sumar fuentes y conserva trazas `applied`/`suppressed`.

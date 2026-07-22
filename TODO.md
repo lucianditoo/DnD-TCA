@@ -41,12 +41,22 @@ Documento vivo de tareas pendientes. El backlog está organizado en Sprints. Par
 - [x] Sprint 042.5: Recuperación de Baseline — bug real de `cloneEffectInstances` (targetCells) corregido por causa raíz, Snapshot Integrity robustecido, Ray of Frost y Withdraw W22 corregidos, `npm test` 430/430 y los 5 gates del DoD en verde real. Sprint 042 (Cover) cerrado formalmente.
 - [x] Sprint 045: Entangled Core — `MovementRateContribution`, -2 ataque, -4 DEX, velocidad ×1/2, `FORBID_RUN`/`FORBID_CHARGE`, trazabilidad compartida y validación 440/440 + 91/91 + Playwright 6/6. `EFFECT-ENTANGLED` permanece Parcial por Concentration pendiente.
 - [x] Sprint 046: infraestructura `DEFENSE-CONCEALMENT` — contribuciones especializadas, stacking/trazas, assessment compartido, d100 autoritativo post-CA, bloqueo de Sneak Attack y preview UI; validación 450/450 + 91/91 + Playwright 6/6. Estado: **Infraestructura solamente**, sin fuentes productivas.
+- [x] Sprint 047: implementación funcional de Blinded (Core) — `srd_blinded`, `FORBID_RUN`, `FORBID_CHARGE`, velocidad a la mitad, 50% fallo ataque por Concealment automático, Concealment total (50%) a enemigos. Validación exitosa.
+- [x] Sprint 047.1: Auditoría Final y Cierre Formal de EFFECT-BLINDED. Confirmación arquitectónica terminada.
 
 ## Próximos Sprints
 
 Ver `ROADMAP.md`. Sprint 044.2 fija el pipeline transversal y Sprint 046 entrega la infraestructura de `DEFENSE-CONCEALMENT`. Las fuentes productivas, Blinded, targeting por casilla de ocultación total y la política efectiva de AdO requieren gates propios. Power Attack (039) sigue congelado.
 
 ## Sprint Activo
+
+**Sprint 047.1 — Auditoría Final y Cierre Formal de EFFECT-BLINDED. COMPLETADO.** Confirmación arquitectónica terminada y E2E ajustado exitosamente.
+
+  **Sprint 047.1 — COMPLETADO**
+  - [x] Ejecutar la auditoría técnica completa de la implementación de EFFECT-BLINDED.
+  - [x] Validar que cumple la arquitectura declarativa de modificadores sin introducir lógica en el resolver.
+  - [x] Validar comportamiento del E2E.
+  - [x] Cierre formal.
 
 **Sprint 046 — DEFENSE-CONCEALMENT. COMPLETADO en su alcance aprobado.** La Rule ID conserva estado global **Infraestructura solamente** porque las fuentes productivas no forman parte de este sprint.
 

@@ -21,6 +21,42 @@ export const effectsCatalog = {
   },
 
   // SRD Conditions
+  "srd_blinded": {
+    name: "Cegado",
+    description: "La criatura no puede ver. -2 a la CA, pierde su bono de Destreza a la CA, se mueve a media velocidad, otorga ocultación total (50%) a sus oponentes.",
+    traits: ["NO_DEX_TO_AC", "CANNOT_MAKE_AOO"],
+    modifiers: [
+      {
+        type: "numeric",
+        id: "blinded_ac_penalty",
+        stat: "AC",
+        stackingGroup: "condition",
+        stackingPolicy: "lowest_value",
+        value: -2
+      }
+    ],
+    movementRateContributions: [
+      {
+        id: "blinded_half_speed",
+        label: "Blinded ×1/2",
+        stackingKey: "condition:blinded:half-speed",
+        numerator: 1,
+        denominator: 2
+      }
+    ],
+    concealmentContributions: [
+      {
+        id: "blinded_total_concealment_given",
+        label: "Cegado",
+        stackingKey: "condition:blinded",
+        perspective: "attacks_by_target",
+        kind: "total",
+        missChancePercent: 50
+      }
+    ],
+    ruleOverrides: ["FORBID_RUN", "FORBID_CHARGE"],
+    onStack: "ignore"
+  },
   "srd_stunned": {
     name: "Aturdido",
     description: "La criatura no puede tomar acciones, suelta lo que sostiene, pierde su bono de Destreza a la CA y recibe un penalizador de -2 a la CA.",

@@ -190,19 +190,18 @@ Todo cambio requiere:
   - Implementación de `Fatigued`, `Prone`, `Dazed` y `Paralyzed` con lógica de sobrescritura de características.
   - Integración de `getEffectiveAbilityScore` y nuevas pruebas de regresión.
 
-### FASE ACTUAL: Sprint 046 — DEFENSE-CONCEALMENT (infraestructura validada)
+### FASE ACTUAL: Sprint 047.1 — EFFECT-BLINDED (Core cerrado)
 
-  **Sprint 046 — implementación de infraestructura**
-  - `ConcealmentContribution` reemplaza el marker dormido `Modifier.mechanic/CONCEALMENT`; no quedan contratos paralelos.
-  - `EffectReducer.reduceConcealmentContributions` valida, ordena, deduplica por `stackingKey`, conserva trazas y selecciona la probabilidad de mayor precedencia sin sumar porcentajes.
-  - `Rules.getConcealmentAssessment` construye un assessment efímero y compartido. Cover continúa como regla independiente y no participa en esta matemática.
-  - El servidor resuelve el d100 únicamente después de superar la CA, antes del daño, críticos y consecuencias. Cualquier ocultación impide Ataque Furtivo mediante el mismo assessment, incluso si el d100 permite impactar.
-  - Ataques estándar/completos, aptitudes, conjuros, Carga, AdO y toques de maniobra consumen el mismo assessment. React usa la misma proyección y nunca genera RNG.
-  - No se agregaron fuentes productivas, flags de red, estado derivado persistido ni `AttackAttemptProjection`. Los campos futuros de targeting/AdO permanecen informativos y sin consumidor productivo.
-  - Validación local: 450/450 unitarias, typecheck 3/3 workspaces, build 3/3, WebSocket 91/91 y Playwright 6/6.
-  - Registry: `DEFENSE-CONCEALMENT` queda exactamente **Infraestructura solamente**, nunca Completo.
+  **Sprint 047 — implementación funcional de Blinded (Core)**
+  - `srd_blinded` implementado: -2 AC, pérdida de bono de Destreza a la CA, -4 en interacciones físicas.
+  - Velocidad reducida a 1/2 y prohibición de correr y cargar (FORBID_RUN, FORBID_CHARGE).
+  - Los ataques propios fallan un 50% de las veces por Concealment automático (Total Concealment del blanco).
+  - La ceguera otorga Ocultamiento Total (Concealment 50%) a los enemigos.
+  - Validación local: typecheck 3/3 workspaces, build 3/3, unitarias verdes, E2E verdes.
+  - Sprint 047.1 ejecutó la auditoría y cierre formal garantizando la sincronización arquitectónica de `ConcealmentAssessment`.
+  - Registry: `EFFECT-BLINDED` queda **Parcial — falta Vision/Targeting**.
 
-### HISTÓRICO: Sprint 045 — Entangled Core validado
+### HISTÓRICO: Sprint 046 — DEFENSE-CONCEALMENT (infraestructura validada)
 
   **Sprint 045 — implementación funcional acotada**
   - `srd_entangled` aporta únicamente -2 a ataque, -4 a Destreza, velocidad ×1/2, `FORBID_RUN` y `FORBID_CHARGE`.

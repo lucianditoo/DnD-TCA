@@ -597,7 +597,29 @@ await send(gmEntangled, { type: 'gm-move-combatant', roomCode: entangledCode, ac
 await send(gmEntangled, { type: 'gm-move-combatant', roomCode: entangledCode, actorId: entangledGmId, combatantId: entangledEnemy.id, to: { x: 4, y: 1, zFeet: 0 } });
 await send(gmEntangled, { type: 'set-initiative', roomCode: entangledCode, actorId: entangledGmId, combatantId: entangledBane.id, initiative: 20 });
 await send(gmEntangled, { type: 'set-initiative', roomCode: entangledCode, actorId: entangledGmId, combatantId: entangledEnemy.id, initiative: 1 });
-await send(gmEntangled, { type: 'sort-initiative', roomCode: entangledCode, actorId: entangledGmId });
+await send(gmEntangled, { type: 'sort-initiative', roomCode: entangledCode, actorId: entangledGmId });  const gmBlinded = await connectAndSend({ type: 'create-room', name: 'BlindedRoom' });
+  const blindedCode = gmBlinded.room.code;
+  const blindedGmId = gmBlinded.participant.id;
+  await send(gmBlinded, { type: 'add-catalog-combatant', roomCode: blindedCode, actorId: blindedGmId, category: 'heroes', templateId: 'bane' });
+  await send(gmBlinded, { type: 'add-catalog-combatant', roomCode: blindedCode, actorId: blindedGmId, category: 'enemies', templateId: 'canocrock' });
+  const blindedBane = gmBlinded.room.combatants.find(c => c.name === 'Bane');
+  const blindedEnemy = gmBlinded.room.combatants.find(c => c.type === 'enemy');
+  await send(gmBlinded, { type: 'gm-move-combatant', roomCode: blindedCode, actorId: blindedGmId, combatantId: blindedBane.id, to: { x: 1, y: 1, zFeet: 0 } });
+  await send(gmBlinded, { type: 'gm-move-combatant', roomCode: blindedCode, actorId: blindedGmId, combatantId: blindedEnemy.id, to: { x: 2, y: 1, zFeet: 0 } });
+  await send(gmBlinded, { type: 'set-initiative', roomCode: blindedCode, actorId: blindedGmId, combatantId: blindedBane.id, initiative: 20 });
+  await send(gmBlinded, { type: 'set-initiative', roomCode: blindedCode, actorId: blindedGmId, combatantId: blindedEnemy.id, initiative: 1 });
+  await send(gmBlinded, { type: 'sort-initiative', roomCode: blindedCode, actorId: blindedGmId });
+  await send(gmBlinded, { type: 'gm-apply-effect', roomCode: blindedCode, actorId: blindedGmId, targetId: blindedBane.id, effectId: 'srd_blinded' });
+  
+  gmBlinded.errors = [];
+  await send(gmBlinded, { type: 'declare-attack-mode', roomCode: blindedCode, actorId: blindedGmId, combatantId: blindedBane.id, mode: 'standard' });
+  await send(gmBlinded, { type: 'resolve-attack', roomCode: blindedCode, actorId: blindedGmId, attackerId: blindedBane.id, targetId: blindedEnemy.id, d20Roll: 20, damage: 1 });
+  
+  const blindLog = gmBlinded.room.log.find(l => /Bane.*?ataque/i.test(l.message) || /Bane.*?falla/i.test(l.message) || /Ocultaci/i.test(l.message));
+  record('Blinded: servidor lanza d100 de Concealment (50%) en ataques del portador', !!blindLog && /falla|d100|ocultaci/i.test(blindLog.message), blindLog?.message || 'No log found');
+  
+  await send(gmBlinded, { type: 'use-tactical-action', roomCode: blindedCode, actorId: blindedGmId, combatantId: blindedBane.id, action: 'charge', targetId: blindedEnemy.id, d20Roll: 18, damage: 1 });
+  record('Blinded: FORBID_CHARGE bloquea Carga en el servidor', gmBlinded.errors.some(e => /no puede cargar/i.test(e)), gmBlinded.errors.join(' | '));
 await send(gmEntangled, { type: 'gm-apply-effect', roomCode: entangledCode, actorId: entangledGmId, targetId: entangledBane.id, effectId: 'srd_entangled' });
 record('Entangled: snapshot de red conserva la fuente declarativa', gmEntangled.room.effectInstances.some(e => e.effectId === 'srd_entangled' && e.targets.includes(entangledBane.id)), JSON.stringify(gmEntangled.room.effectInstances));
 
@@ -611,6 +633,6 @@ record('Entangled: FORBID_RUN bloquea Correr en el servidor', gmEntangled.errors
 await send(gmEntangled, { type: 'use-tactical-action', roomCode: entangledCode, actorId: entangledGmId, combatantId: entangledBane.id, action: 'charge', targetId: entangledEnemy.id, d20Roll: 18, damage: 1 });
 record('Entangled: FORBID_CHARGE bloquea Carga en el servidor', gmEntangled.errors.some(e => /no puede cargar en su estado actual/i.test(e)), gmEntangled.errors.join(' | '));
 
-gm.ws.close(); ownershipGm.ws.close(); ownerA.ws.close(); ownerB.ws.close(); stabilizationGm.ws.close(); profileGm.ws.close(); profilePlayer.ws.close(); largeGm.ws.close(); diehardGm.ws.close(); gmTouch.ws.close(); player.ws.close(); gmHaste.ws.close(); gmAoo.ws.close(); gmDiagonalAoo.ws.close(); gmMultiAoo.ws.close(); gmDiagonalMelee.ws.close(); gmCharge.ws.close(); gmAid.ws.close(); gmPassThrough.ws.close(); gmFlanking.ws.close(); gmFfs.ws.close(); gmFa.ws.close(); gmDef.ws.close(); gmDisabled.ws.close(); gmStun.ws.close(); gmEntangled.ws.close();
+gm.ws.close(); ownershipGm.ws.close(); ownerA.ws.close(); ownerB.ws.close(); stabilizationGm.ws.close(); profileGm.ws.close(); profilePlayer.ws.close(); largeGm.ws.close(); diehardGm.ws.close(); gmTouch.ws.close(); player.ws.close(); gmHaste.ws.close(); gmAoo.ws.close(); gmDiagonalAoo.ws.close(); gmMultiAoo.ws.close(); gmDiagonalMelee.ws.close(); gmCharge.ws.close(); gmAid.ws.close(); gmPassThrough.ws.close(); gmFlanking.ws.close(); gmFfs.ws.close(); gmFa.ws.close(); gmDef.ws.close(); gmDisabled.ws.close(); gmStun.ws.close(); gmEntangled.ws.close(); gmBlinded.ws.close();
 console.log(JSON.stringify(results, null, 2));
 if (results.some(r => !r.ok)) process.exitCode = 1;
