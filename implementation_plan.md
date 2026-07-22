@@ -1,77 +1,63 @@
-# Plan de Implementación: Sprint 047 — Blinded Core
+# Plan de Implementación: Sprint 048 — Helpless Combat
 
-## Resumen del Plan
-El objetivo de este Sprint es implementar la vertical oficial `Blinded` según el diseño aprobado en `docs/designs/blinded-condition.md`. Al adoptar la **Opción B (Blinded Core parcial)**, nos restringiremos exclusivamente al combate táctico.
+## Meta y Resumen
+Implementar la resolución defensiva estandarizada para oponentes Indefensos (Helpless) y la acción de asalto completo Coup de Grace. 
+Esto abarca: pérdida de la bonificación de Destreza a la CA (-5 de modificador neto al tener DEX 0), viabilidad de ataque furtivo, la acción táctica completa, daño crítico automático y muerte por falla en salvación de Fortaleza.
 
-El diseño arquitectónico muestra que **todas** las infraestructuras necesarias ya existen (Concealment 50% perspectivo, bloqueo de AdO, supresión de DEX, modificadores numéricos negativos y reducción multiplicativa de velocidad). Por lo tanto, la implementación será puramente declarativa en el catálogo y los tests verificarán el pipeline.
+## Open Questions
+- **Interfaz de Usuario**: ¿Deseas que agregue el botón "Coup de Grace" directamente a `ActionsPanel.tsx` o me enfoco únicamente en el motor backend para este sprint (ya que los tests lo validarán a nivel de API)?
 
-## Archivos a Modificar
+## User Review Required
+> [!IMPORTANT]
+> **AdO para Coup de Grace**: El motor usa un patrón de interrupción estricto (como en spellcasting o movement). Si un Coup de Grace provoca AdO y hay enemigos amenazando, el comando poblará `pendingOpportunityAttacks` y retornará, sin realizar la acción. El usuario deberá sobrepasar los ataques y luego volver a enviar el comando. Esto es una consecuencia intencional y conocida del diseño del motor. ¿Estás de acuerdo con aplicar este mismo patrón?
 
-### 1. `packages/shared/src/effects/catalog.ts`
-- **[MODIFICAR]**
-  - Agregar la nueva entrada `srd_blinded` con el siguiente esquema:
-    ```typescript
-    "srd_blinded": {
-      name: "Cegado",
-      description: "La criatura no puede ver. -2 a la CA, pierde su bono de Destreza a la CA, se mueve a media velocidad, otorga ocultación total (50%) a sus oponentes.",
-      traits: ["NO_DEX_TO_AC", "CANNOT_MAKE_AOO"],
-      modifiers: [
-        {
-          type: "numeric",
-          id: "blinded_ac_penalty",
-          stat: "AC",
-          stackingGroup: "condition",
-          stackingPolicy: "lowest_value",
-          value: -2
-        }
-      ],
-      movementRateContributions: [
-        {
-          id: "blinded_half_speed",
-          label: "Blinded ×1/2",
-          stackingKey: "condition:blinded:half-speed",
-          numerator: 1,
-          denominator: 2
-        }
-      ],
-      concealmentContributions: [
-        {
-          id: "blinded_total_concealment_given",
-          label: "Cegado",
-          stackingKey: "condition:blinded",
-          perspective: "attacks_by_target",
-          kind: "total",
-          missChancePercent: 50
-        }
-      ],
-      ruleOverrides: ["FORBID_RUN", "FORBID_CHARGE"],
-      onStack: "ignore"
-    }
-    ```
+> [!NOTE]
+> **Discrepancia sobre Críticos y Golems**: Hemos constatado que no hay discrepancia en las reglas. La fuente `10_modificadores_de_combate.txt` y el SRD concuerdan en que un constructo es inmune al Coup de Grace. Por tanto, el pre-flight validation de `Coup de Grace` impedirá por completo la acción contra targets con `IMMUNE_TO_CRITICAL_HITS`.
 
-### 2. Pruebas Unitarias
-- **[NUEVO]** `packages/shared/src/rules/__tests__/blinded.test.ts`
-  - *Test 1:* Verifica que `srd_blinded` emita `total concealment` (50% prob fallo) a cualquier ataque del portador y que NO aplique ocultación total a los ataques CONTRA él mismo.
-  - *Test 2:* Verifica que la CA baje -2 y la destreza no aplique.
-  - *Test 3:* Verifica que el movimiento se reduzca a la mitad.
-  - *Test 4:* Verifica que no pueda correr ni cargar (chequeo de rule overrides sobre el reducer).
-  - *Test 5:* Verifica que el Sneak Attack se inactive para los ataques producidos por el ciego (delegado en `canApplySneakAttack` con concealment efectivo).
-  - *Test 6:* Verificación de stacking seguro con Entangled (velocidades un cuarto, etc).
+## Cambios Propuestos
 
-### 3. `docs/rules/registry.md`
-- **[MODIFICAR]**
-  - Añadir la entrada `EFFECT-BLINDED` con su mapeo a la implementación en el catálogo de efectos.
+### 1. `packages/shared/src/rules.ts`
+- **[MODIFY]** `rules.ts`
+  - En `totalArmorClass`: Detectar `hasEffectTrait(reduced, "HELPLESS")`. Si aplica, forzar `suppressDexAndDodge = true` e incorporar un diferencial que asuma Destreza 0 (-5 mod) independiente de la destreza actual del blanco.
+  - En `canApplySneakAttack`: Agregar verificación explícita `hasEffectTrait(targetEffects, "HELPLESS")` a la condición de éxito.
 
-### 4. `docs/testing/master-coverage.md`
-- **[MODIFICAR]**
-  - Marcar `Blinded` como cubierto mediante la Opción B (Core Táctico).
+### 2. `apps/server/src/commands/tacticalCommands.ts`
+- **[MODIFY]** `tacticalCommands.ts`
+  - Agregar `handleCoupDeGrace(room, snapshot, command, combatant)`.
+  - Validaciones: Turno activo, `HELPLESS` en el target, arma (melee o alcance = adyacente para ranged), inmunidad a crítico.
+  - Generación de AdO: Verificar `actionProvokesOpportunityAttack(snapshot, combatant, "coup-de-grace")`.
+  - Resolución: Invocar `resolveAttack` puenteando la tirada y forzando crítico o aplicando un DamageBundle que incorpore la lógica, y posteriormente hacer la tirada de salvación de Fortaleza (DC = 10 + Daño final).
+  - Si falla Fortaleza: Invocar `logStatusChange` cambiando `hpCurrent` y estado a `dead`.
 
-### 5. `docs/audits/combat-rules-deviations.md`
-- **[MODIFICAR]**
-  - Registrar la desviación de la omisión del Chequeo de Equilibrio DC 10 para movimiento acelerado, y la inhabilitación del chequeo de Spot/Search ya que dependen de infraestructura no desarrollada en el Sprint 047.
+### 3. `packages/shared/src/types.ts`
+- **[MODIFY]** `types.ts`
+  - Extender `ClientCommand` en `type UseTacticalActionCommand` añadiendo `action: "coup-de-grace"`.
+  - En `CombatActionType`, añadir `"coup-de-grace"`.
 
-## Estrategia de Testing (Validación)
-- Ejecutar `npm run test` localmente para las aserciones estáticas de Shared (EffectReducer).
-- Ejecutar `node scripts/e2e-websocket.mjs` invocando `add-effect` de `srd_blinded` en una criatura y luego simular un `resolveAttack`, corroborando el d100 tirado por Concealment y las reducciones en CA.
+### 4. `apps/server/src/combat/attackResolver.ts`
+- **[MODIFY]** `attackResolver.ts`
+  - Reestructurar el `AttackResolutionOptions` para poder aceptar `isAutomaticCritical: true`, que fuerce un `hit` e invoque `resolveCriticalConfirmation` o directamente aplique el multiplicador sin d20 nativo.
+  - Actualmente, `helplessBonus` (+4 a ataques melee) está, pero podríamos requerir ajustes para que aplique también a las variaciones del Coup de Grace.
 
-**Requiere aprobación (`Proceed`) para comenzar a ejecutar.**
+### 5. `tests/helpless-combat.test.mjs`
+- **[NEW]** `helpless-combat.test.mjs`
+  - Test: Un objetivo `HELPLESS` tiene DEX=0 y pierde Dodge a la CA.
+  - Test: Ataque cuerpo a cuerpo recibe +4 contra objetivo `HELPLESS`.
+  - Test: Pícaro aplica Sneak Attack contra objetivo `HELPLESS` incluso sin flanquear.
+  - Test: Coup de Grace funciona (full-round action, hit y crit auto).
+  - Test: Salvación de Fortaleza en Coup de Grace (éxito = sobrevive con daño, fallo = estado Dead).
+  - Test: Inmunidad (Constructo/No-muerto) rechaza pre-flight de Coup de Grace.
+
+## Verification Plan
+
+### Automated Tests
+```powershell
+npm run build
+npm test -- tests/helpless-combat.test.mjs
+npm run typecheck
+node scripts/e2e-websocket.mjs
+```
+
+### Manual Verification
+1. Generar mock en `tests/helpless-combat.test.mjs`.
+2. Observar el output exacto y verificar el log de acciones, especialmente el fallo letal a la salvación de Fortaleza que provoca `status = "dead"`.
