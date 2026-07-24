@@ -108,6 +108,27 @@ export function handleGmApplyEffect(room: CombatRoom, command: Extract<ClientCom
   broadcast(room);
 }
 
+export function handleGmRemoveEffect(room: CombatRoom, command: Extract<ClientCommand, { type: "gm-remove-effect" }>): void {
+  requireGM(command.actorId);
+
+  const instance = room.effectInstances.find((effect) => effect.instanceId === command.instanceId);
+  if (!instance) {
+    throw new Error(`Validación de comando fallida: no existe un efecto activo con instanceId '${command.instanceId}'.`);
+  }
+
+  const definitionName = effectsCatalog[instance.effectId].name;
+  const targetNames = (instance.targets ?? [])
+    .map((id) => room.combatants.find((combatant) => combatant.id === id)?.name ?? id)
+    .join(", ");
+  const targetDescription = targetNames || (instance.targetCells ? instance.targetCells.length + " celda(s)" : "objetivo desconocido");
+
+  const nextRoom = EffectManager.removeMany(room, [command.instanceId]);
+  Object.assign(room, nextRoom);
+
+  room.log.unshift(makeLog("status", "GM remueve el efecto " + definitionName + " de " + targetDescription + " (anulación administrativa)."));
+  broadcast(room);
+}
+
 export function handleGmApplyEnvironmentalHazard(room: CombatRoom, command: Extract<ClientCommand, { type: "gm-apply-environmental-hazard" }>): void {
   requireGM(command.actorId);
 

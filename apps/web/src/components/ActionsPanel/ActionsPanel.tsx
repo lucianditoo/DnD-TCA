@@ -1,6 +1,6 @@
 import { Footprints, HeartPulse, MousePointer2, Shield, SkipForward, Sparkles, Swords } from "lucide-react";
 import { averageWeaponDamageForCombatant, EquipmentCatalog, getAmmunitionState, getEquippedWeaponEntry, getGrappleAttackEligibility, getGrappleEscapePreview, lifeStatus, Rules, calculatePathCostFeet, getAttackContextModifiers, getEffectiveAttackRoutine, getWeaponAttackTypeForTarget, createCombatRulesSnapshot, canApplySneakAttack, canRun, canUseFiveFootStep, getEffectiveSneakAttackDice, validateSpecialManeuver, validateStandUp, SpellsCatalog, type Buff, type CombatOutcome, type CombatRoom, type Combatant, type GrappleEscapeType, type LifeStatus } from "@dnd-tactical/shared";
-import { type ActionMode, type TacticMode } from "../../viewModel";
+import { type ActionMode, type ActiveEffectView, type ApplicableEffectOption, type TacticMode } from "../../viewModel";
 import { Collapsible, D20Control, RollControls } from "../common";
 import { GmPanel } from "../GmPanel/GmPanel";
 import { useMemo, useState } from "react";
@@ -96,6 +96,14 @@ export function ActionsPanel(props: {
   onGmNoteChange: (value: string) => void;
   onGmAddNote: () => void;
   onResolveOpportunity: (id: string) => void;
+  activeEffects: ActiveEffectView[];
+  applicableEffects: ApplicableEffectOption[];
+  effectToApplyId: string;
+  effectDurationPreset: "permanent" | "until_target_turn_end";
+  onEffectToApplyChange: (effectId: string) => void;
+  onEffectDurationPresetChange: (preset: "permanent" | "until_target_turn_end") => void;
+  onApplyEffect: () => void;
+  onRemoveEffect: (instanceId: string) => void;
 }) {
   const { room, selected, snapshot } = props;
   const [selectedSpellSlotId, setSelectedSpellSlotId] = useState<string | null>(null);
@@ -521,7 +529,7 @@ export function ActionsPanel(props: {
         )}
       </div>}
       {room.phase === "active" && <button onClick={props.onEndTurn} disabled={!props.canEndCurrentTurn || props.hasPendingOpportunities}><SkipForward size={18} /> Terminar turno</button>}
-      {props.participantRole === "gm" && <GmPanel room={room} selected={selected} gmMoveTarget={props.gmMoveTarget} gmMoveMode={props.gmMoveMode} healAmount={props.healAmount} hpOverride={props.hpOverride} hpMaxOverride={props.hpMaxOverride} gmNote={props.gmNote} onGmMoveTargetChange={props.onGmMoveTargetChange} onToggleGmMoveMode={props.onToggleGmMoveMode} onHealAmountChange={props.onHealAmountChange} onHealSelected={props.onHealSelected} onHpOverrideChange={props.onHpOverrideChange} onHpMaxOverrideChange={props.onHpMaxOverrideChange} onGmSetHp={props.onGmSetHp} onGmSetStatus={props.onGmSetStatus} onGmClearOpportunities={props.onGmClearOpportunities} onGmForceOutcome={props.onGmForceOutcome} onGmNoteChange={props.onGmNoteChange} onGmAddNote={props.onGmAddNote} />}
+      {props.participantRole === "gm" && <GmPanel room={room} selected={selected} gmMoveTarget={props.gmMoveTarget} gmMoveMode={props.gmMoveMode} healAmount={props.healAmount} hpOverride={props.hpOverride} hpMaxOverride={props.hpMaxOverride} gmNote={props.gmNote} activeEffects={props.activeEffects} applicableEffects={props.applicableEffects} effectToApplyId={props.effectToApplyId} effectDurationPreset={props.effectDurationPreset} onGmMoveTargetChange={props.onGmMoveTargetChange} onToggleGmMoveMode={props.onToggleGmMoveMode} onHealAmountChange={props.onHealAmountChange} onHealSelected={props.onHealSelected} onHpOverrideChange={props.onHpOverrideChange} onHpMaxOverrideChange={props.onHpMaxOverrideChange} onGmSetHp={props.onGmSetHp} onGmSetStatus={props.onGmSetStatus} onGmClearOpportunities={props.onGmClearOpportunities} onGmForceOutcome={props.onGmForceOutcome} onGmNoteChange={props.onGmNoteChange} onGmAddNote={props.onGmAddNote} onEffectToApplyChange={props.onEffectToApplyChange} onEffectDurationPresetChange={props.onEffectDurationPresetChange} onApplyEffect={props.onApplyEffect} onRemoveEffect={props.onRemoveEffect} />}
       {props.pendingOpportunities.length > 0 && <Collapsible title="Ataques de oportunidad" defaultOpen><div className="opportunity-list">
         {props.pendingOpportunities.map((opportunity) => {
           const attacker = room.combatants.find((combatant) => combatant.id === opportunity.attackerId);

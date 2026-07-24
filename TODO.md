@@ -45,22 +45,25 @@ Documento vivo de tareas pendientes. El backlog está organizado en Sprints. Par
 - [x] Sprint 047.1: Auditoría Final y Cierre Formal de EFFECT-BLINDED. Confirmación arquitectónica terminada.
 - [x] Sprint 048: Helpless Combat & Coup de Grace — `MANEUVER-COUP-DE-GRACE` (Registry), `getDefensiveAbilityProjection`, `pendingCoupDeGrace`. Cerrado formalmente con validación real: `npm test` 457/457, typecheck/build en verde, E2E 93/93, Playwright 6/6.
 - [x] Sprint 049: EFFECT-EXHAUSTED + corrección de `onStack` (DT-022) — `srd_exhausted`, `srd_fatigued.onStack:"upgrade_to"`, `EffectManager.add` consume `onStack`/`severityChain` por primera vez. Validación real: `npm test` 467/467, typecheck/build en verde, E2E 93/93, Playwright 6/6.
+- [x] Sprint 050: Panel de Estados del GM (diseño y auditoría) — `docs/designs/gm-condition-panel.md`. Sin código.
+- [x] Sprint 050.1: Panel de Estados del GM (implementación) — `gm-remove-effect` nuevo (por `instanceId`), `gm-apply-effect` reutilizado sin cambios, UI en `GmPanel.tsx`/`ActionsPanel.tsx`. Validación real: `npm test` 478/478, typecheck/build en verde, E2E 98/98, Playwright 7/7. Sin Rule ID nueva.
 
 ## Próximos Sprints
 
-Ver `ROADMAP.md`. Sprint 044.2 fija el pipeline transversal y Sprint 046 entrega la infraestructura de `DEFENSE-CONCEALMENT`. Las fuentes productivas, targeting por casilla de ocultación total y la política efectiva de AdO requieren gates propios. Power Attack (039) sigue congelado. `EFFECT-EXHAUSTED` (049) cerrado; próximo candidato funcional pendiente de nueva auditoría/recomendación.
+Ver `ROADMAP.md`. Sprint 044.2 fija el pipeline transversal y Sprint 046 entrega la infraestructura de `DEFENSE-CONCEALMENT`. Las fuentes productivas, targeting por casilla de ocultación total y la política efectiva de AdO requieren gates propios. Power Attack (039) sigue congelado. `EFFECT-EXHAUSTED` (049) y el Panel de Estados del GM (050/050.1) cerrados; próximo candidato funcional pendiente de nueva auditoría/recomendación.
 
 ## Sprint Activo
 
-Ninguno — Sprint 049 (EFFECT-EXHAUSTED) cerrado formalmente con DoD completo y ejecución real.
+Ninguno — Sprint 050.1 (Panel de Estados del GM) cerrado formalmente con DoD completo y ejecución real.
 
-  **Sprint 049 — COMPLETADO**
-  - [x] Auditoría normativa SRD de Fatigued/Exhausted (fuentes oficiales, transiciones, casos límite).
-  - [x] Auditar si el dominio necesita más valores de `onStack` que `ignore`/`upgrade_to` — angostado el tipo a esos dos.
-  - [x] Implementar consumo de `onStack` exclusivamente en `EffectManager.add` (`severityChain`), sin lógica en fuentes/handlers/hazards.
-  - [x] `srd_fatigued.onStack:"upgrade_to"` → `srd_exhausted`; `srd_exhausted.onStack:"ignore"`.
-  - [x] Corregir el bug de acumulación existente (Prone, Fatigued vía gas venenoso) como fix de infraestructura (DT-022), no feature nueva.
-  - [x] `docs/designs/exhausted-condition.md`, Registry (`EFFECT-EXHAUSTED`), `docs/technical-debt.md` (DT-022).
+  **Sprint 050.1 — COMPLETADO**
+  - [x] Auditar comandos GM/EffectManager existentes antes de implementar (sin rediseñar lo ya aprobado en Sprint 050).
+  - [x] Comando nuevo `gm-remove-effect` (por `instanceId`, nunca por `effectId`), schema Zod, dispatcher, handler simétrico a `handleGmApplyEffect`.
+  - [x] Reutilizar `gm-apply-effect` sin cambios de semántica.
+  - [x] UI: lista de condiciones activas (`EffectQueries.getByTarget` + `effectsCatalog`) y selector de aplicación filtrado por ausencia de `hazard` (sin blacklist por ID), duraciones limitadas a presets reales.
+  - [x] Verificar que el panel/handler no implementa `onStack`/`severityChain` (auditoría estática + tests end-to-end: Fatigued→Exhausted, Prone duplicado ignorado).
+  - [x] Tests: 11 casos nuevos (`gm-condition-panel.test.mjs`), 5 aserciones E2E WebSocket nuevas, 1 escenario Playwright nuevo.
+  - [x] Documentación: `PROJECT_STATUS.md`, `TODO.md`, `ROADMAP.md` (corregida staleness de Blinded/Exhausted/Helpless), `docs/testing/master-coverage.md`, `walkthrough.md`. Sin cambios en `docs/rules/registry.md` (no aplica Rule ID nueva) ni en `docs/technical-debt.md` (no apareció deuda nueva).
   - [x] Validación real: `npm test` 467/467, typecheck 0 errores, build 3/3, E2E 93/93, Playwright 6/6.
 
   **Sprint 048 — COMPLETADO**

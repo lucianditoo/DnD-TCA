@@ -178,6 +178,12 @@ h1 { margin: 0; font-size: clamp(1.35rem, 3vw, 2rem); letter-spacing: 0; }
   .status-row, .gm-panel .button-row { grid-template-columns: 1fr; }
 }
 
+.active-effects-list { display: grid; gap: 8px; list-style: none; margin: 0; padding: 0; }
+.active-effect-row { display: grid; grid-template-columns: 1fr auto; align-items: center; gap: 8px; border: 1px solid #3d4037; border-radius: 8px; background: #171a15; padding: 8px 10px; }
+.active-effect-info { display: grid; gap: 2px; }
+.active-effect-info small { color: #bdb6a6; line-height: 1.35; }
+.icon-button { display: inline-flex; align-items: center; justify-content: center; min-width: 32px; min-height: 32px; padding: 0; }
+
 .ability-list { display: grid; gap: 8px; border: 1px solid #3d4037; border-radius: 8px; background: #171a15; padding: 10px; }
 .ability-row { display: grid; gap: 3px; border-top: 1px solid #30342b; padding-top: 8px; }
 .ability-row:first-of-type { border-top: 0; padding-top: 0; }

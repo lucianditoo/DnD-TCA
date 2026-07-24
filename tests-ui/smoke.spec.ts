@@ -366,4 +366,27 @@ test.describe('Smoke Test Táctico Visual', () => {
     await page.locator('[data-testid="cell-2-3"]').click();
     await expect(page.getByRole('button', { name: 'Confirmar paso de 5 pies' })).toBeEnabled();
   });
+
+  test('Panel de Estados del GM: aplicar y remover una condicion (Sprint 050.1)', async ({ page }) => {
+    await page.goto('/');
+    await page.locator('input[type="text"], input:not([type])').first().fill('ConditionPanelGM');
+    await page.getByRole('button', { name: 'Crear sala' }).click();
+
+    await page.locator('label').filter({ hasText: 'Heroes' }).locator('select').selectOption({ label: 'Bane' });
+    await page.getByRole('button', { name: 'Agregar heroe' }).click();
+    await page.locator('.combatant-list button').nth(0).click();
+
+    await page.getByText('Panel GM').click();
+    await expect(page.getByText('Bane no tiene efectos activos.')).toBeVisible();
+
+    await page.locator('label').filter({ hasText: 'Aplicar efecto' }).locator('select').selectOption({ label: 'Fatigado' });
+    await page.getByRole('button', { name: 'Aplicar a Bane' }).click();
+
+    const activeEffectRow = page.locator('.active-effect-row').first();
+    await expect(activeEffectRow).toContainText('Fatigado');
+    await expect(activeEffectRow).toContainText('Permanente');
+
+    await activeEffectRow.locator('.icon-button').click();
+    await expect(page.getByText('Bane no tiene efectos activos.')).toBeVisible();
+  });
 });

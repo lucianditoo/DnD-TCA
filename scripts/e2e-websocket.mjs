@@ -633,6 +633,27 @@ record('Entangled: FORBID_RUN bloquea Correr en el servidor', gmEntangled.errors
 await send(gmEntangled, { type: 'use-tactical-action', roomCode: entangledCode, actorId: entangledGmId, combatantId: entangledBane.id, action: 'charge', targetId: entangledEnemy.id, d20Roll: 18, damage: 1 });
 record('Entangled: FORBID_CHARGE bloquea Carga en el servidor', gmEntangled.errors.some(e => /no puede cargar en su estado actual/i.test(e)), gmEntangled.errors.join(' | '));
 
-gm.ws.close(); ownershipGm.ws.close(); ownerA.ws.close(); ownerB.ws.close(); stabilizationGm.ws.close(); profileGm.ws.close(); profilePlayer.ws.close(); largeGm.ws.close(); diehardGm.ws.close(); gmTouch.ws.close(); player.ws.close(); gmHaste.ws.close(); gmAoo.ws.close(); gmDiagonalAoo.ws.close(); gmMultiAoo.ws.close(); gmDiagonalMelee.ws.close(); gmCharge.ws.close(); gmAid.ws.close(); gmPassThrough.ws.close(); gmFlanking.ws.close(); gmFfs.ws.close(); gmFa.ws.close(); gmDef.ws.close(); gmDisabled.ws.close(); gmStun.ws.close(); gmEntangled.ws.close(); gmBlinded.ws.close();
+// Sprint 050.1 - Panel de Estados del GM: gm-apply-effect (reutilizado) + gm-remove-effect (nuevo).
+const gmConditionPanel = await connectAndSend({ type: 'create-room', name: 'GM Condition Panel Test' });
+const conditionPanelCode = gmConditionPanel.room.code; const conditionPanelGmId = gmConditionPanel.participant.id;
+const conditionPanelPlayer = await connectAndSend({ type: 'join-room', roomCode: conditionPanelCode, name: 'Condition Panel Player', role: 'player' });
+await send(gmConditionPanel, { type: 'add-catalog-combatant', roomCode: conditionPanelCode, actorId: conditionPanelGmId, category: 'heroes', templateId: 'bane' });
+const conditionPanelBane = gmConditionPanel.room.combatants.find(c => c.name === 'Bane');
+
+await send(gmConditionPanel, { type: 'gm-apply-effect', roomCode: conditionPanelCode, actorId: conditionPanelGmId, targetId: conditionPanelBane.id, effectId: 'srd_fatigued' });
+record('Panel GM: aplicar Fatigued vía gm-apply-effect reutilizado', gmConditionPanel.room.effectInstances.some(e => e.effectId === 'srd_fatigued' && e.targets?.includes(conditionPanelBane.id)), JSON.stringify(gmConditionPanel.room.effectInstances));
+
+await send(gmConditionPanel, { type: 'gm-apply-effect', roomCode: conditionPanelCode, actorId: conditionPanelGmId, targetId: conditionPanelBane.id, effectId: 'srd_fatigued' });
+record('Panel GM: reaplicar Fatigued produce Exhausted (no dos Fatigued) vía EffectManager', gmConditionPanel.room.effectInstances.length === 1 && gmConditionPanel.room.effectInstances[0].effectId === 'srd_exhausted', JSON.stringify(gmConditionPanel.room.effectInstances));
+
+const exhaustedInstanceId = gmConditionPanel.room.effectInstances[0].instanceId;
+await send(conditionPanelPlayer, { type: 'gm-remove-effect', roomCode: conditionPanelCode, actorId: conditionPanelPlayer.participant.id, instanceId: exhaustedInstanceId });
+record('Panel GM: no-GM no puede remover efectos', conditionPanelPlayer.errors.some(e => /solo el GM/i.test(e)) && gmConditionPanel.room.effectInstances.length === 1, conditionPanelPlayer.errors.join(' | '));
+
+await send(gmConditionPanel, { type: 'gm-remove-effect', roomCode: conditionPanelCode, actorId: conditionPanelGmId, instanceId: exhaustedInstanceId });
+record('Panel GM: remover por instanceId refleja ausencia en el siguiente room-update', gmConditionPanel.room.effectInstances.length === 0, JSON.stringify(gmConditionPanel.room.effectInstances));
+record('Panel GM: la sala continua consistente tras aplicar/reaplicar/remover', gmConditionPanel.room.combatants.some(c => c.id === conditionPanelBane.id) && gmConditionPanel.room.code === conditionPanelCode, JSON.stringify(gmConditionPanel.room.combatants.map(c => c.id)));
+
+gm.ws.close(); ownershipGm.ws.close(); ownerA.ws.close(); ownerB.ws.close(); stabilizationGm.ws.close(); profileGm.ws.close(); profilePlayer.ws.close(); largeGm.ws.close(); diehardGm.ws.close(); gmTouch.ws.close(); player.ws.close(); gmHaste.ws.close(); gmAoo.ws.close(); gmDiagonalAoo.ws.close(); gmMultiAoo.ws.close(); gmDiagonalMelee.ws.close(); gmCharge.ws.close(); gmAid.ws.close(); gmPassThrough.ws.close(); gmFlanking.ws.close(); gmFfs.ws.close(); gmFa.ws.close(); gmDef.ws.close(); gmDisabled.ws.close(); gmStun.ws.close(); gmEntangled.ws.close(); gmBlinded.ws.close(); gmConditionPanel.ws.close(); conditionPanelPlayer.ws.close();
 console.log(JSON.stringify(results, null, 2));
 if (results.some(r => !r.ok)) process.exitCode = 1;

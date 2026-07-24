@@ -3,7 +3,7 @@ import type { ClientCommand, CombatRoom } from "@dnd-tactical/shared";
 import { handleResolveAttack, handleResolveOpportunityAttack, handleResolveAttackConfirmation, handleCancelAttackThreat } from "./attackCommands.js";
 import { handleResolveAbilityAttack, handleRollStabilization, handleUseAbility, handleCastSpell } from "./abilityCommands.js";
 import { handleAddCatalogCombatant, handleAddDemoCombatant, handleAddProfileCombatant } from "./combatantCommands.js";
-import { handleGmAddLog, handleGmApplyEffect, handleGmApplyEnvironmentalHazard, handleGmClearOpportunities, handleGmForceOutcome, handleGmMoveCombatant, handleGmSetHp, handleGmSetStatus, handleHealCombatant } from "./gmCommands.js";
+import { handleGmAddLog, handleGmApplyEffect, handleGmApplyEnvironmentalHazard, handleGmRemoveEffect, handleGmClearOpportunities, handleGmForceOutcome, handleGmMoveCombatant, handleGmSetHp, handleGmSetStatus, handleHealCombatant } from "./gmCommands.js";
 import { handleEndTurn, handleSetInitiative, handleSortInitiative } from "./initiativeCommands.js";
 import { handleMoveCombatant } from "./movementCommands.js";
 import { handleCreateRoom, handleJoinRoom } from "./roomCommands.js";
@@ -72,6 +72,7 @@ export function dispatchCommand(socket: WebSocket, command: ClientCommand): void
     case "gm-add-log": handleGmAddLog(room, command); return;
     case "gm-apply-effect": handleGmApplyEffect(room, command); return;
     case "gm-apply-environmental-hazard": handleGmApplyEnvironmentalHazard(room, command); return;
+    case "gm-remove-effect": handleGmRemoveEffect(room, command); return;
     case "gm-force-outcome": handleGmForceOutcome(room, command); return;
     case "end-turn": handleEndTurn(room, command); return;
   }

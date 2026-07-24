@@ -4,7 +4,10 @@ import {
   createCombatRulesSnapshot,
   distanceBetweenFootprintsFeet,
   distanceFeet,
+  effectsCatalog,
+  EffectQueries,
   getCombatantOccupiedCells,
+  isProductionEffectId,
   lifeStatus,
   Rules,
   runSpeedMultiplier,
@@ -15,6 +18,9 @@ import {
   type CombatRoom,
   type CombatRulesSnapshot,
   type Combatant,
+  type EffectDefinition,
+  type EffectInstance,
+  type EffectSource,
   type Participant,
   type Position,
   type ProductionEffectId
@@ -218,6 +224,87 @@ export function formatBuff(buff: Buff): string {
 export function signedNumber(value: number): string {
   return (value >= 0 ? "+" : "") + value;
 }
+
+/**
+ * Sprint 050.1 (Panel de Estados del GM): vista de solo lectura de una ActiveEffect.
+ * Nunca deriva reglas — solo relee campos ya existentes de EffectInstance/EffectDefinition
+ * para mostrarlos legibles. `EffectQueries.getByTarget` sigue siendo la única vía autorizada
+ * para listar efectos de un objetivo (ver docs/designs/gm-condition-panel.md).
+ */
+export interface ActiveEffectView {
+  readonly instanceId: string;
+  readonly name: string;
+  readonly description: string;
+  readonly durationLabel: string;
+  readonly sourceLabel: string;
+}
+
+export function getActiveEffectViews(room: CombatRoom, targetId: string): ActiveEffectView[] {
+  return EffectQueries.getByTarget(room, targetId).map((instance) => describeActiveEffect(instance, room));
+}
+
+function describeActiveEffect(instance: EffectInstance, room: CombatRoom): ActiveEffectView {
+  const definition = isProductionEffectId(instance.effectId) ? effectsCatalog[instance.effectId] : null;
+  return {
+    instanceId: instance.instanceId,
+    name: definition?.name ?? instance.effectId,
+    description: definition?.description ?? "",
+    durationLabel: formatEffectDuration(instance.duration, room),
+    sourceLabel: formatEffectSource(instance.source, room)
+  };
+}
+
+function formatEffectDuration(duration: EffectInstance["duration"], room: CombatRoom): string {
+  if (!duration) return "Permanente";
+  switch (duration.type) {
+    case "permanent": return "Permanente";
+    case "until_rest": return "Hasta descansar";
+    case "until_dispelled": return "Hasta ser disipado";
+    case "until_save_success": return "Hasta salvación (" + duration.saveType + " CD " + duration.dc + ")";
+    case "until_turn": {
+      const anchor = room.combatants.find((combatant) => combatant.id === duration.anchorCombatantId);
+      return "Hasta el " + (duration.phase === "start" ? "inicio" : "fin") + " del turno de " + (anchor?.name ?? "objetivo");
+    }
+    case "rounds": {
+      const anchor = room.combatants.find((combatant) => combatant.id === duration.anchorCombatantId);
+      return duration.count + " ronda(s) desde la ronda " + duration.appliedRound + " (" + (anchor?.name ?? "objetivo") + ")";
+    }
+  }
+}
+
+const EFFECT_SOURCE_LABELS: Record<EffectSource["type"], string> = {
+  creature: "Criatura",
+  object: "Objeto",
+  spell: "Conjuro",
+  aura: "Aura",
+  terrain: "Terreno",
+  environment: "Ambiente",
+  system: "GM/Sistema"
+};
+
+function formatEffectSource(source: EffectSource, room: CombatRoom): string {
+  const label = EFFECT_SOURCE_LABELS[source.type];
+  if (!source.id) return label;
+  const named = room.combatants.find((combatant) => combatant.id === source.id);
+  return label + " (" + (named?.name ?? source.id) + ")";
+}
+
+/**
+ * Efectos del catálogo que el GM puede aplicar directamente a un combatiente desde el panel.
+ * Filtro puramente declarativo (bloque `hazard` presente = anclado a celdas, no a criaturas) —
+ * sin blacklist manual por ID. Calculado una sola vez: el catálogo es estático en runtime.
+ */
+export interface ApplicableEffectOption {
+  readonly effectId: ProductionEffectId;
+  readonly name: string;
+  readonly description: string;
+}
+
+export const applicableEffectOptions: ApplicableEffectOption[] = (
+  Object.entries(effectsCatalog) as [ProductionEffectId, EffectDefinition][]
+)
+  .filter(([, definition]) => !definition.hazard)
+  .map(([effectId, definition]) => ({ effectId, name: definition.name, description: definition.description }));
 
 
 /**

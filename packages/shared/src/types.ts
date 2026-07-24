@@ -388,6 +388,7 @@ export type ClientCommand =
   | { type: "gm-add-log"; roomCode: string; actorId: string; message: string }
   | { type: "gm-apply-effect"; roomCode: string; actorId: string; targetId: string; effectId: string; durationPreset?: "until_target_turn_end" }
   | { type: "gm-apply-environmental-hazard"; roomCode: string; actorId: string; effectId: string; targetCells: string[] }
+  | { type: "gm-remove-effect"; roomCode: string; actorId: string; instanceId: string }
   | { type: "declare-dodge-target"; roomCode: string; actorId: string; combatantId: string; targetId: string | null }
   | { type: "gm-force-outcome"; roomCode: string; actorId: string; outcome: CombatOutcome }
   | { type: "end-turn"; roomCode: string; actorId: string };

@@ -54,8 +54,8 @@ Todo cambio requiere:
 - Defensa total.
 - Carga con ruta prevista.
 - Prestar ayuda con buff pendiente de eleccion.
-- **Fase Actual:** Sprint 049, `EFFECT-EXHAUSTED` implementado y validado, más corrección de infraestructura (DT-022: `onStack` sin consumidor real desde Sprint 003, ahora consumido en `EffectManager.add`).
-- **Estado:** ✅ Fatigued→Exhausted vía `onStack:"upgrade_to"` · ✅ `EFFECT-EXHAUSTED` Completo · ✅ 467/467 unitarias · ✅ 93/93 WebSocket · ✅ Playwright 6/6.
+- **Fase Actual:** Sprint 050.1, Panel de Estados del GM implementado — `gm-remove-effect` nuevo (remoción por `instanceId`), `gm-apply-effect` reutilizado sin cambios, UI en `GmPanel.tsx` sin lógica de reglas propia.
+- **Estado:** ✅ Aplicar/remover condiciones desde la UI real · ✅ onStack delegado íntegramente a `EffectManager` · ✅ 478/478 unitarias · ✅ 98/98 WebSocket · ✅ Playwright 7/7.
 - **Hitos Completados Recientes:**
   - `Sprint 046`: contrato especializado `ConcealmentContribution`, reducción determinista con stacking/trazas, `ConcealmentAssessment` compartido, resolución porcentual autoritativa y preview UI sin RNG de cliente.
   - `Sprint 045`: `srd_entangled` declarativo (-2 ataque, -4 DEX, velocidad ×1/2, `FORBID_RUN`, `FORBID_CHARGE`), contrato especializado `MovementRateContribution`, deduplicación/trazas y preview isomorfo.
@@ -195,7 +195,19 @@ Todo cambio requiere:
   - Implementación de `Fatigued`, `Prone`, `Dazed` y `Paralyzed` con lógica de sobrescritura de características.
   - Integración de `getEffectiveAbilityScore` y nuevas pruebas de regresión.
 
-### FASE ACTUAL: Sprint 049 — EFFECT-EXHAUSTED + corrección de `onStack` (DT-022)
+### FASE ACTUAL: Sprint 050.1 — Panel de Estados del GM
+
+  **Sprint 050 (diseño/auditoría) + Sprint 050.1 (implementación) — panel administrativo de ActiveEffects**
+  - Diseño y auditoría (`docs/designs/gm-condition-panel.md`, Sprint 050): confirmó que `gm-apply-effect` ya era genérico y ya delegaba el 100% del stacking a `EffectManager`/`severityChain` (Sprint 049) — no requería cambios. Única pieza de infraestructura faltante identificada: un comando simétrico de remoción por `instanceId`.
+  - **Comando nuevo**: `gm-remove-effect { roomCode, actorId, instanceId }` (`types.ts`, `schemas/commands/gmCommands.ts`, `dispatcher.ts`, `handleGmRemoveEffect` en `gmCommands.ts`). Remoción exclusivamente por `instanceId` — nunca por `effectId` (ambiguo ante múltiples instancias) ni por `sourceId` (no siempre poblado).
+  - **`gm-apply-effect` reutilizado sin ningún cambio de semántica.**
+  - UI: nueva sección "Condiciones de {combatiente}" dentro de `GmPanel.tsx` (ya gateado por `participantRole === "gm"` en `ActionsPanel.tsx`, igual que el resto del panel). Lista vía `EffectQueries.getByTarget` + `effectsCatalog` (sin reimplementar filtros), selector de aplicación filtrado únicamente por ausencia de bloque `hazard` (sin blacklist manual por ID — incluye 13 de los 15 efectos del catálogo), duraciones limitadas a los presets reales (`Permanente`/`until_target_turn_end`).
+  - La UI nunca decide stacking: envía el `effectId` solicitado y refleja el `room-update` resultante — auditado que ningún archivo nuevo contiene `effectId ===`, `onStack`, `upgradeTo` ni `severityChain`.
+  - Fuera de alcance (sin cambios): descanso/1h, Lesser Restoration/Restoration, clima, viajes, conjuros, condiciones nuevas, edición manual de `duration`/`source`/`stacks`, remoción masiva o por `effectId`.
+  - **Validación real ejecutada (2026-07-24)**: `npm test` **478/478**, `npm run typecheck` 0 errores (3 workspaces), `npm run build` los 3 en verde, `node scripts/e2e-websocket.mjs` **98/98** aserciones exit 0, `npm run test:ui` **7/7** escenarios Playwright (nuevo: aplicar/remover una condición desde el Panel GM real).
+  - Sin Rule ID nueva (tooling administrativo, no regla de D&D) y sin cambios en `docs/rules/registry.md`.
+
+### HISTÓRICO: Sprint 049 — EFFECT-EXHAUSTED + corrección de `onStack` (DT-022)
 
   **Sprint 049 — implementación funcional de Exhausted y consumo real de `onStack`**
   - Nueva condición `srd_exhausted` (`effects/catalog.ts`): -6 STR/-6 DEX, velocidad ×1/2, `FORBID_RUN`/`FORBID_CHARGE` — mismo patrón declarativo que Fatigued/Entangled/Blinded.

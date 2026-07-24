@@ -1,124 +1,100 @@
-# Walkthrough — Sprint 049 (EFFECT-EXHAUSTED + corrección de `onStack`)
+# Walkthrough — Sprint 050.1 (Panel de Estados del GM, implementación)
 
 ## Objetivo
 
-Implementar Exhausted (SRD 3.5) y, condición explícita del usuario antes de aprobar
-la implementación, corregir de raíz un gap de infraestructura descubierto durante
-la auditoría normativa: `EffectDefinition.onStack` estaba declarado desde el
-diseño original de ActiveEffects (Sprint 003) pero ningún consumidor lo leía nunca.
+Implementar exactamente lo aprobado en `docs/designs/gm-condition-panel.md` e
+`implementation_plan.md` (Sprint 050, diseño/auditoría): una superficie
+administrativa para que el GM pueda ver, aplicar y remover ActiveEffects sobre
+un combatiente, sin que la UI implemente ninguna regla de juego.
 
-## Auditoría normativa (Fase 1)
+## Qué se reutilizó exactamente
 
-Sin acceso directo a d20srd.org/dandwiki.com (403/402 al hacer fetch), se
-trianguló con múltiples fuentes secundarias independientes convergentes:
+`gm-apply-effect` no se tocó — ya era genérico, ya validaba GM, ya delegaba el
+100% de la decisión de stacking a `EffectManager.add`/`severityChain` (Sprint
+049). `EffectQueries.getByTarget` y `effectsCatalog` ya eran la única vía
+autorizada para leer condiciones activas. No se reescribió ningún filtro ya
+existente.
 
-- **Fatigued**: -2 STR/-2 DEX, no corre ni carga. La regla de escalado ("hacer
-  algo que causaría fatiga vuelve Exhausted a un Fatigado") vive en la definición
-  de la condición misma, no en cada fuente — confirmado comparando la regla
-  general contra el texto de *Ray of Exhaustion* (que la reafirma, no la inventa).
-- **Exhausted**: -6 STR/-6 DEX, mitad de velocidad, no corre ni carga.
-- Ninguna fuente oficial (Marcha Forzada, Inanición, Sed, *Ray of Exhaustion*) está
-  implementada hoy en el motor. La única fuente real y ya existente que aplica
-  Fatigued es `srd_poison_gas_hazard` (`onFailEffectId:"srd_fatigued"`).
+## Comando nuevo: `gm-remove-effect`
 
-Detalle completo en `docs/designs/exhausted-condition.md`.
+Único comando agregado, simétrico a `gm-apply-effect` pero remueve **por
+`instanceId` exclusivamente** (nunca por `effectId`, que sería ambiguo con
+múltiples instancias del mismo efecto, ni por `sourceId`, que no siempre está
+poblado — ver auditoría en `docs/designs/gm-condition-panel.md`, §5).
 
-## El hallazgo que amplió el alcance (DT-022)
+- `packages/shared/src/types.ts`: nueva variante en `ClientCommand`.
+- `packages/shared/src/schemas/commands/gmCommands.ts` + `index.ts`: `gmRemoveEffectSchema`, registrado en el mapa.
+- `apps/server/src/commands/gmCommands.ts`: `handleGmRemoveEffect` — `requireGM`, busca la instancia exacta, rechaza si no existe, `EffectManager.removeMany`, un único log administrativo, `broadcast`. Cero ramas por `effectId`.
+- `apps/server/src/commands/dispatcher.ts`: un solo `case` nuevo.
 
-Al leer `packages/shared/src/effects/manager.ts` y `reducer.ts` completos se
-confirmó: `EffectManager.add` era puramente aditivo (nunca comparaba contra
-instancias existentes) y `EffectReducer` solo resuelve `stackingGroup`/
-`stackingPolicy` (un mecanismo distinto, a nivel de modificador numérico).
-`tests/conditions-v3.test.mjs` ya documentaba el síntoma para `srd_prone` con un
-comentario que afirmaba —incorrectamente— que `onStack:"ignore"` bloqueaba el
-stacking "en el EffectManager"; en la práctica dos instancias sumaban el
-penalizador dos veces (14-4-4=6).
+## UI: `GmPanel.tsx`
 
-Peor: `srd_poison_gas_hazard` reaplica `srd_fatigued` cada ronda que el objetivo
-falla su salvación mientras permanece en la nube. Sin consumo de `onStack`, tres
-fallos consecutivos producían -6 STR/-6 DEX (tres instancias sumadas), no la
-transición a Exhausted que exige el RAW.
+Nueva sección "Condiciones de {combatiente}" dentro del panel ya existente
+(`Panel GM`), gateado por el mismo `participantRole === "gm"` que ya oculta
+todo el resto del panel en `ActionsPanel.tsx` — sin permisos nuevos por
+ownership de combatiente, tal como pedía el alcance.
 
-El usuario aprobó ampliar el alcance para corregir esto de forma **genérica**
-(beneficia a Prone, Dazed, Paralyzed y cualquier condición futura), documentado
-como corrección de infraestructura existente (DT-022), no como funcionalidad
-nueva.
+- Listado: `EffectQueries.getByTarget(room, targetId)` + `effectsCatalog[instance.effectId]`, formateado por helpers puros nuevos en `viewModel.ts` (`getActiveEffectViews`, `formatEffectDuration`, `formatEffectSource`) — ninguno deriva reglas, solo relee campos ya existentes de `EffectInstance`/`EffectDefinition` para mostrarlos legibles. `instanceId` nunca se muestra como texto (solo se usa internamente para el comando de remoción).
+- Selector de aplicación: `applicableEffectOptions` (`viewModel.ts`) — filtra `effectsCatalog` únicamente por ausencia del bloque `hazard` (13 de 15 entradas visibles; los 2 hazards de celda quedan fuera). Sin blacklist manual por ID: `__INFRASTRUCTURE_SAMPLE__` sigue siendo técnicamente seleccionable porque no hay ningún campo declarativo que lo distinga de una condición real, y excluirlo por nombre habría sido exactamente el patrón de blacklist que el alcance prohibía.
+- Duraciones limitadas a los presets reales que el schema ya soporta: "Permanente" (omite `durationPreset`) y "Hasta fin de turno del objetivo" (`until_target_turn_end`). No se inventó ningún preset nuevo.
+- La UI nunca anticipa el resultado de `onStack`: envía el `effectId` elegido y refleja el `room-update` que responde el servidor, igual que cualquier otro comando.
 
-## Auditoría de valores de `onStack` (condición del usuario antes de implementar)
+## Verificación de que el panel no implementa reglas
 
-Se auditó si el dominio necesita `"replace"`/`"refresh_duration"` además de
-`"ignore"`/`"upgrade_to"`: los 14 entries previos del catálogo usaban solo
-`"ignore"`, ningún efecto con `duration` real modela "recast mientras sigue
-activo", y la investigación SRD de Fatigued/Exhausted tampoco lo requiere. Sin
-casos normativos reales, `EffectDefinition.onStack` se angostó de 4 a 2 valores
-(`"ignore" | "upgrade_to"`) en `contracts.ts`.
-
-## Implementación
-
-- `packages/shared/src/effects/manager.ts`: `EffectManager.add` es ahora el único
-  punto de consumo de `onStack` (cero lógica en fuentes/handlers/hazards). Nueva
-  función `severityChain` resuelve la cadena de severidad de un `effectId`
-  siguiendo sus punteros `upgradeTo`. La colisión se evalúa por cadena completa,
-  no solo por `effectId` exacto: si el objetivo ya tiene un miembro más severo
-  (ej. ya Exhausted cuando el gas venenoso insiste con Fatigued en la ronda 3+),
-  la nueva aplicación es redundante y se descarta; si tiene solo un miembro más
-  débil (ej. se aplica Exhausted directo sobre un objetivo solo Fatigued), la
-  instancia débil se reemplaza. La detección solo compara `targets` (efectos
-  anclados a criaturas) — los hazards anclados a `targetCells` nunca colisionan
-  aquí, preservando el comportamiento ya probado de múltiples hazards
-  solapados sobre la misma celda (`tests/environmental-hazards.test.mjs`).
-- `packages/shared/src/effects/catalog.ts`: `srd_fatigued` ahora declara
-  `onStack:"upgrade_to"` + `upgradeTo:"srd_exhausted"`. Nueva entrada
-  `srd_exhausted` (-6 STR/-6 DEX, velocidad ×1/2, `FORBID_RUN`/`FORBID_CHARGE`,
-  `onStack:"ignore"`) — mismo patrón declarativo que Fatigued/Entangled/Blinded.
-- `packages/shared/src/effects/contracts.ts`: `onStack` angostado a
-  `"ignore" | "upgrade_to"`.
+Auditoría estática antes del commit: cero ocurrencias de `effectId ===`,
+`onStack`, `upgradeTo` o `severityChain` en ningún archivo tocado por este
+sprint (handler, componentes, `viewModel.ts`). Verificado además mediante
+tests reales que ejercitan los handlers dos y tres veces seguidas (reaplicar
+Fatigued, reaplicar Prone, tercera fatiga contra un objetivo ya Exhausted) y
+confirman que el resultado correcto emerge de `EffectManager`, no de ningún
+código nuevo de este sprint.
 
 ## Tests
 
-- `tests/active-effects.test.mjs`: 7 casos nuevos sobre `EffectManager.add`
-  (ignore descarta duplicados intra/inter-objetivo, upgrade_to escala
-  Fatigued→Exhausted, una tercera fatiga contra un objetivo ya Exhausted no lo
-  revierte, ignore en Exhausted descarta duplicado directo, Exhausted directo
-  sobre un Fatigued reemplaza la instancia débil).
-- `tests/exhausted-condition.test.mjs` (nuevo, 4 casos): STR/DEX -6, velocidad
-  ×1/2, FORBID_RUN/FORBID_CHARGE, snapshot — mismo patrón que
-  `entangled-condition.test.mjs`.
-- `tests/conditions-v3.test.mjs`: comentario corregido (ya no afirma que el bug
-  de Prone duplicado sigue abierto; documenta que el test bypasea
-  `EffectManager.add` a propósito para caracterizar que el evaluador en sí mismo
-  no deduplica).
+- `tests/gm-condition-panel.test.mjs` (nuevo, 11 casos): remoción por
+  `instanceId` (rechazo no-GM sin mutación, instanceId inexistente rechazado,
+  remoción no afecta otras instancias del mismo `effectId`, log administrativo
+  único), onStack end-to-end vía los handlers reales (Fatigued→Exhausted,
+  Prone duplicado ignorado, tercera fatiga redundante, remoción de un efecto
+  generado automáticamente por el motor), y schema (`gm-remove-effect` válido,
+  `instanceId` requerido, `effectId` inyectado nunca es autoridad).
+- `scripts/e2e-websocket.mjs`: nuevo flujo de 5 aserciones — aplicar Fatigued,
+  reaplicar y confirmar Exhausted (no dos Fatigued), no-GM rechazado al
+  remover, remover por `instanceId` y confirmar ausencia, sala consistente.
+- `tests-ui/smoke.spec.ts`: nuevo escenario Playwright que aplica y remueve una
+  condición desde el Panel GM real (no bypass por WebSocket crudo, a
+  diferencia de cómo se probó Entangled en Sprint 045 antes de que existiera
+  esta UI).
 
 ## Documentación sincronizada
 
-- `docs/designs/exhausted-condition.md` (nuevo): auditoría normativa completa,
-  hallazgo DT-022, diseño de `severityChain`, límites de alcance documentados.
-- `docs/technical-debt.md`: nueva entrada DT-022, resuelta.
-- `docs/rules/registry.md`: nueva fila `EFFECT-EXHAUSTED` (Completo);
-  `EFFECT-FATIGUED` anotada con la transición.
-- `docs/testing/master-coverage.md`, `PROJECT_STATUS.md`, `TODO.md`: entrada de
-  Sprint 049 con números reales verificados.
+`PROJECT_STATUS.md`, `TODO.md`, `ROADMAP.md` (corregida la staleness que
+todavía presentaba Blinded/Helpless/Exhausted como pendientes — ya cerrados en
+047/048/049), `docs/testing/master-coverage.md`. Sin cambios en
+`docs/rules/registry.md` (tooling administrativo, no regla de D&D — no abre
+Rule ID) ni en `docs/technical-debt.md` (no apareció deuda nueva durante la
+implementación).
 
 ## Validación (DoD completo, ejecutado de verdad)
 
 | Comando | Resultado |
 |---|---|
-| `npm test` | ✅ **467/467**, 0 fallos (53 archivos) |
+| `npm test` | ✅ **478/478**, 0 fallos (54 archivos) |
 | `npm run typecheck` | ✅ 0 errores (3 workspaces) |
 | `npm run build` | ✅ los 3 workspaces en verde (Vite compila 1660 módulos) |
-| `node scripts/e2e-websocket.mjs` | ✅ **93/93** aserciones, exit 0 (sin regresión) |
-| `npm run test:ui` (Playwright) | ✅ **6/6** escenarios |
+| `node scripts/e2e-websocket.mjs` | ✅ **98/98** aserciones, exit 0 |
+| `npm run test:ui` (Playwright) | ✅ **7/7** escenarios |
 
-## Alcance explícitamente excluido
+## Alcance explícitamente excluido (sin cambios)
 
-- Recuperación Exhausted→Fatigued tras 1h de descanso (depende del paso del
-  tiempo, no de aplicación de efectos).
-- Marcha Forzada, Inanición, Sed, Calor/Frío como fuentes activas (ninguna
-  implementada hoy).
-- Frightened, Panicked, Vision, Line of Effect, Concentration.
+Descanso/1h, Lesser Restoration, Restoration, clima, viajes, marcha forzada,
+hambre/sed, conjuros, condiciones nuevas, edición manual de `duration`/
+`source`/`stacks`, remoción por `effectId`, remoción masiva, categorías nuevas
+de efectos, sistema de undo.
 
 ## Estado y próximo paso
 
-Sprint 049 cerrado formalmente. `EFFECT-EXHAUSTED` es Completo en el Registry.
-DT-022 resuelto. Próximo sprint funcional pendiente de nueva auditoría/
-recomendación.
+Sprint 050.1 cerrado formalmente. El Panel de Estados del GM queda como base
+reutilizable para cualquier condición oficial futura (conjuros, trampas,
+efectos narrativos) sin lógica especial en la interfaz. Próximo sprint
+funcional pendiente de nueva auditoría/recomendación.

@@ -77,3 +77,11 @@ export const gmApplyEnvironmentalHazardSchema = z.object({
   effectId: z.string().min(1),
   targetCells: z.array(cellKeySchema).min(1)
 });
+
+/** Sprint 050.1: remoción administrativa por instanceId — nunca por effectId (ver docs/designs/gm-condition-panel.md). */
+export const gmRemoveEffectSchema = z.object({
+  type: z.literal("gm-remove-effect"),
+  roomCode: z.string().min(1),
+  actorId: z.string().min(1),
+  instanceId: z.string().min(1)
+});
