@@ -588,7 +588,7 @@ Regla oficial (SRD 3.5, *Vision and Light*, tabla de niveles de luz):
 - **Low-Light Vision**: duplica la distancia a la que una criatura ve con normalidad bajo luz tenue (trata esa luz como brillante hasta el doble de alcance de la fuente). **No funciona en oscuridad total absoluta** — necesita algo de luz ambiental para duplicar.
 - **Regla normativa central para este sprint** (RAW, *Combat Modifiers*): *"Si tienes Line of Effect a un objetivo pero no Line of Sight, el objetivo tiene ocultación total desde tu perspectiva."* Esto confirma exactamente el flujo que §7.2 de este documento ya boceteaba ("Flujo de Ocultación Total: LoE presente, LoS ausente") — Line of Sight bloqueada es, mecánicamente, un caso más de Ocultación Total, con la misma consecuencia (50%, elegir casilla) que la oscuridad o la invisibilidad.
 - **Targeting directo vs. casilla**: SRD exige elegir una casilla (no un objetivo directo) cuando el atacante no puede ver al objetivo por ningún motivo (oscuridad, niebla, invisibilidad, LoS bloqueada); si la casilla elegida está vacía, el ataque falla automáticamente. Este proyecto **ya** modela esta distinción en `ConcealmentAssessment.directTargetingAllowed`/`requiresTargetSquare` (Sprint 046) — Vision no necesita un contrato de targeting nuevo, solo alimentar los campos ya existentes.
-- **Blinded y condiciones ambientales — independencia deliberada**: la condición Blinded (SRD) impone -2 CA, pérdida de Destreza y ocultación total automática en los ataques que realiza la criatura cegada, **sin importar el nivel de luz** — un ciego no ve mejor en una habitación iluminada. Este proyecto ya implementa `srd_blinded` exactamente así desde Sprint 047: una `ConcealmentContribution` declarativa incondicional (perspectiva `attacks_by_target`), independiente de cualquier cálculo de luz. Vision e iluminación **no deben re-derivar ni sustituir** ese comportamiento — deben coexistir como una fuente de ocultación **adicional e independiente**, compuesta por precedencia de severidad máxima (ver §13.8), no por acoplamiento explícito entre ambos sistemas.
+- **Blinded y condiciones ambientales — independencia deliberada**: la condición Blinded (SRD) impone -2 CA, pérdida de Destreza y ocultación total automática en los ataques que realiza la criatura cegada, **sin importar el nivel de luz** — un ciego no ve mejor en una habitación iluminada. Este proyecto ya implementa `srd_blinded` exactamente así desde Sprint 047: una `ConcealmentContribution` declarativa incondicional (perspectiva `attacks_by_target`), independiente de cualquier cálculo de luz. Vision e iluminación **no deben re-derivar ni sustituir** ese comportamiento — deben coexistir como una fuente de ocultación **adicional e independiente**, compuesta por precedencia de severidad máxima (ver §13.9), no por acoplamiento explícito entre ambos sistemas.
 
 **Decisión de modelado explícita para esta vertical**: se modela únicamente el eje "luz ambiental estática + capacidad de percepción del observador", sin niebla, sin Blindsight/Blindsense, sin Darkvision-en-color-vs-blanco-y-negro (irrelevante mecánicamente), sin facing. Diferido explícitamente a sprints posteriores (no una omisión silenciosa).
 
@@ -600,7 +600,7 @@ Regla oficial (SRD 3.5, *Vision and Light*, tabla de niveles de luz):
 - `SizeRulesCatalog`/`getSizeRule` (`sizeRules.ts`): precedente de "catálogo fuente→proyección" (`Record<EnumCerrado, Regla>` + accessor puro), pero **no aplica** a percepción porque no existe un enum cerrado equivalente a "raza" — la capacidad visual varía por criatura individual, no por una categoría pequeña y cerrada como `SizeCategory`.
 - `ConcealmentContribution`/`ConcealmentTrace` (`effects/contracts.ts:150-157`, `effects/reducer.ts:69-92`): la reducción (`EffectReducer.reduceConcealmentContributions`) opera **exclusivamente sobre `EffectInstance`** — cada `ConcealmentTrace` exige `effectInstanceId`/`contributionId` (`reducer.ts:70-72`). Vision no tiene un `EffectInstance` que la origine (es geometría + luz + capacidad del observador, no un efecto aplicado a un combatiente) — **no puede inyectarse dentro de este reductor tal como existe hoy**.
 - `getConcealmentAssessment`/`composeConcealmentAssessment` (`rules.ts:1936-1969`): capa fina que llama al reductor y arma `ConcealmentAssessment`. Es el punto de extensión natural para Vision — no el reductor mismo.
-- `srd_blinded`: confirmado como `ConcealmentContribution` declarativa, perspectiva `attacks_by_target`, `kind: "total"` incondicional — coexiste con Vision sin acoplamiento (ver §13.1, último punto, y §13.8).
+- `srd_blinded`: confirmado como `ConcealmentContribution` declarativa, perspectiva `attacks_by_target`, `kind: "total"` incondicional — coexiste con Vision sin acoplamiento (ver §13.1, último punto, y §13.9).
 - `Trait` (`effects/contracts.ts:24-43`): union cerrado ya incluye `"BLIND"`; **no existe** ningún trait de percepción/visión (`DARKVISION`, `LOW_LIGHT_VISION`, etc.) — confirma que la capacidad de percepción no vive hoy en ningún lado del sistema de efectos.
 - `EffectInstance.targetCells`: patrón ya usado por `EnvironmentalHazard` (Sprint 034, ej. `srd_wall_of_fire_hazard`) para anclar un efecto a celdas del tablero en vez de a un combatiente. Es el mecanismo correcto para una **futura** niebla/oscuridad mágica dinámica (fuera de alcance de esta vertical), no para iluminación **estática** del mapa.
 - `traversedCellKeysBetween`/`getLineOfEffect` (`rules.ts`, Sprint 052B.1): primitiva de recorrido "supercover" pura, ya probada (29 casos), candidata a reutilización compartida con un futuro `getVisualPath` (ver Sprint 053, §3 arriba) — sin tocarla en este sprint.
@@ -662,7 +662,7 @@ interface IntrinsicPerception {
 ```
 
 Explícitamente **no** se agrega todavía: Blindsight, Blindsense, Tremorsense,
-True Seeing (fuera de alcance de esta vertical, ver §13.8).
+True Seeing (fuera de alcance de esta vertical, ver §13.9).
 
 **Corrección (Sprint 053A.1): Low-Light Vision retirado por completo del
 contrato de 053B**, no solo de su lógica de negocio. La versión anterior de
@@ -717,14 +717,14 @@ interface VisionAssessment {
   readonly canPerceiveVisually: boolean;      // el objetivo puede percibirse visualmente en absoluto
   readonly kind: ConcealmentKind;             // "none" | "partial" | "total" — reutiliza el tipo ya existente
   readonly missChancePercent: number;
-  readonly directTargetingAllowed: boolean;   // mismos nombres que ConcealmentAssessment, a propósito (ver §13.8)
+  readonly directTargetingAllowed: boolean;   // mismos nombres que ConcealmentAssessment, a propósito (ver §13.9)
   readonly requiresTargetSquare: boolean;
   readonly dominantReason: VisionReason;      // motivo dominante — union cerrada, ver más abajo
   readonly traces: readonly VisionTrace[];    // fuente + estado; sin effectInstanceId (Vision no viene de un EffectInstance)
 }
 
 // Corrección (Sprint 053A.1): union cerrada, no un string libre. Se cierra a
-// exactamente las 5 categorías que 053B va a producir de verdad (§13.8, regla
+// exactamente las 5 categorías que 053B va a producir de verdad (§13.9, regla
 // de decisión) — ninguna categoría especulativa sin consumidor real.
 type VisionReason =
   | "clear"                    // sin ninguna restricción de Vision
@@ -751,7 +751,7 @@ Los nombres de campo de `VisionAssessment` (`kind`, `missChancePercent`,
 los de `ConcealmentAssessment` deliberadamente: no por casualidad ni por
 ahorro de diseño, sino porque son la misma pregunta conceptual respondida por
 una fuente distinta, y esa simetría es lo que permite componerlos por
-precedencia de severidad sin lógica especial (§13.8). No se fijan campos
+precedencia de severidad sin lógica especial (§13.9). No se fijan campos
 adicionales sin consumidor real (ej. ningún campo de "distancia de
 Darkvision restante" — eso es un detalle interno de `getVisionAssessment`,
 no algo que el consumidor final necesite ver).
@@ -762,7 +762,7 @@ string libre (máxima flexibilidad, cero seguridad de tipo, mismo patrón que
 tipo, fuerza declarar explícitamente cada categoría nueva) contra
 `labelParts` + trazas tipadas (redundante con `traces`, que ya cumple ese rol
 para trazabilidad detallada). Se elige la union cerrada porque **053B ya
-conoce sus 5 categorías exactas** de antemano (regla de decisión de §13.8) —
+conoce sus 5 categorías exactas** de antemano (regla de decisión de §13.9) —
 a diferencia de `dominantReason` en la versión anterior de este documento,
 que quedaba sin cerrar "por falta de consumidor real" cuando en realidad el
 consumidor (la regla de decisión de Vision) ya estaba completamente
@@ -774,7 +774,7 @@ Blindsight) que 053B no vaya a producir.
 **Declaración explícita**: Sprint 053B implementará únicamente las
 **consecuencias ofensivas** de la visibilidad ambiental — ocultación
 parcial/total, targeting directo versus casilla, y miss chance (todo lo que
-ya especifica `VisionAssessment`/§13.8). **No** implementará todavía todas
+ya especifica `VisionAssessment`/§13.9). **No** implementará todavía todas
 las consecuencias de estar "efectivamente cegado" por oscuridad, que en el
 SRD acompañan a la condición Blinded pero que son conceptualmente
 independientes de "no poder ver a un objetivo específico para atacarlo".
@@ -799,7 +799,7 @@ una condición persistente del combatiente:
   sin ella sí, **en el mismo instante, sobre el mismo objetivo**);
 - depende de la casilla del objetivo (una criatura puede estar en
   `darknessCells` frente a un observador y a plena vista de otro que la mira
-  desde una casilla iluminada, si la regla de decisión de §13.8 así lo
+  desde una casilla iluminada, si la regla de decisión de §13.9 así lo
   determina para cada par observador/objetivo);
 - depende del alcance de Darkvision de cada observador individual;
 - **puede ser distinta para dos observadores simultáneos mirando al mismo
@@ -980,7 +980,187 @@ disponibilidad de acción (ya existente) y la Legalidad de Objetivo/Line of
 Effect (ya existente), y mueve la tirada de ataque a condicional según si hay
 un objetivo real resuelto.
 
-### 13.8. Pipeline funcional
+### 13.8. Blind Targeting y Anti-Metagaming (Sprint 053A.2)
+
+**Contexto**: §13.7 ya cierra el flujo autoritativo, las reglas de servidor
+y el consumo de recursos del ataque a casilla bajo Ocultación Total. Lo que
+esta sección cierra es distinto y complementario: que ese flujo **no filtre
+información al jugador** por ningún canal (payload, log, timing), algo que
+el SRD exige implícitamente al decir que un atacante sin Line of Sight "debe
+elegir una casilla" — la regla pierde todo su sentido si el resultado deja
+adivinar, aunque sea indirectamente, si la casilla estaba vacía, si falló la
+tirada o si falló la ocultación.
+
+#### Blind Targeting: flujo completo
+
+```text
+Jugador
+    ↓
+elige una casilla (no un combatiente)
+    ↓
+servidor recibe la intención ({ kind: "square", position })
+    ↓
+consume el ataque (de la rutina/economía de la ronda)
+    ↓
+consume la acción correspondiente (modo de ataque declarado)
+    ↓
+consume munición si el arma la requiere
+    ↓
+resuelve internamente (ver "Resolución interna" más abajo — casilla vacía,
+    objetivo presente, tirada, miss chance, todo calculado igual
+    internamente, sin ninguna bifurcación observable desde afuera)
+    ↓
+devuelve un resultado seguro (ver "Payload seguro" más abajo — el jugador
+    recibe únicamente "el ataque falla" o "el ataque impacta", nunca el motivo)
+```
+
+Este flujo es una instancia concreta del flujo autoritativo ya definido en
+§13.7 — no lo reemplaza ni le agrega pasos nuevos al pipeline de §13.7; solo
+precisa qué información puede y no puede cruzar la frontera servidor↔cliente
+en cada uno de esos pasos.
+
+#### Estado autoritativo vs. estado observable por el jugador
+
+**Requisito arquitectónico explícito**: el servidor conoce y puede razonar
+internamente sobre información que el jugador **nunca** debe poder
+distinguir. Dos niveles, siempre separados:
+
+- **Estado autoritativo** (conocido íntegramente por el servidor):
+  - si la casilla elegida estaba vacía o tenía un combatiente;
+  - si la tirada de ataque superó la CA del objetivo (cuando hay objetivo);
+  - el `missChancePercent`/`kind` de Ocultación Total;
+  - el `dominantReason`/`VisionReason` que produjo esa Ocultación Total;
+  - cualquier otro campo interno de `VisionAssessment`/`ConcealmentAssessment`
+    (`traces`, `blockedCellKeys` de `VisualPathAssessment`, etc.).
+- **Estado observable por el jugador** (lo único que puede llegar al
+  cliente que controla al atacante): el jugador **no debe poder distinguir**
+  entre estas tres causas de fallo, bajo ninguna circunstancia:
+  1. la casilla elegida estaba vacía;
+  2. había un combatiente real, pero la tirada no superó su CA;
+  3. había un combatiente real, la tirada superó su CA, pero falló por el
+     50% de Ocultación Total (miss chance).
+
+  Las tres deben producir, desde la perspectiva del jugador atacante, un
+  resultado **indistinguible**: "el ataque falla", sin más. (Un ataque que
+  **impacta** sí puede revelar que había un objetivo ahí — en ese punto el
+  atacante ya percibió al combatiente por el resultado mismo del golpe,
+  igual que hoy ocurre con cualquier ataque exitoso contra Ocultación
+  Total — la restricción de indistinguibilidad aplica exclusivamente al
+  caso de fallo.)
+
+#### Payload seguro
+
+**Principio explícito**: el payload enviado al cliente no debe revelar
+información táctica oculta — ninguna de las tres causas de fallo de arriba
+debe ser reconstruible a partir del mensaje, el código de resultado, ni
+ningún campo del payload de respuesta.
+
+Ejemplos **prohibidos** (revelan la causa):
+
+- *"No había nadie en la casilla."*
+- *"Fallaste porque elegiste la casilla equivocada."*
+- *"El objetivo no estaba allí."*
+- cualquier variante que distinga "erraste el hueco" de "erraste la
+  tirada"/"erraste por ocultación".
+
+Ejemplos **aceptables** (no revelan la causa):
+
+- *"El ataque falla."*
+- cualquier formato equivalente, en cualquier idioma o presentación, que
+  comunique únicamente el resultado binario (impacto/fallo) sin exponer el
+  motivo.
+
+**No se define aquí el texto definitivo de UI** — solo el principio de que
+ningún texto, código o campo estructurado del payload puede filtrar la
+causa. La redacción exacta de los mensajes es una decisión de implementación
+de 053B (o de una vertical de UI posterior), siempre que cumpla este
+principio.
+
+#### Logs: interno vs. público
+
+Mismo principio de separación que el estado autoritativo/observable,
+aplicado a logs:
+
+- **Log interno** (servidor, auditoría, replay, GM): puede registrar el
+  detalle completo — `blind-square-empty`, `concealment-miss`,
+  `attack-roll-miss`, `dominantReason`, o cualquier código/campo
+  equivalente que distinga las tres causas de fallo de arriba. Este log
+  **no** se envía al cliente del jugador atacante.
+- **Log público** (lo que efectivamente ve el jugador atacante, ej. el
+  `room.log`/historial de combate ya existente en el motor): **nunca** debe
+  exponer una entrada equivalente a `blind-square-empty` (ni ningún
+  código/mensaje que distinga las tres causas) mientras ese jugador no
+  tenga forma legítima de conocer esa información. El GM, en cambio, sí
+  puede tener acceso al detalle interno — la separación es por
+  **observador**, no por existencia del dato (ver Projection, más abajo).
+
+#### `VisionAssessment` no es el mensaje mostrado al jugador
+
+**Aclaración explícita**: `VisionAssessment` (§13.5) — con sus campos
+`dominantReason`, `traces`, y el `blockedCellKeys` de `VisualPathAssessment`
+que lo alimenta — es un contrato **autoritativo interno**, no un mensaje de
+usuario. Nunca debe serializarse ni exponerse directamente al cliente del
+jugador atacante tal cual — necesita pasar por una **proyección** antes de
+salir del servidor:
+
+```text
+Assessment autoritativo (VisionAssessment, ConcealmentAssessment, etc.)
+    ↓
+Projection (según quién observa)
+    ↓
+    ├─ Jugador  → resultado binario seguro (impacto/fallo, sin motivo — ver Payload seguro)
+    ├─ GM       → puede incluir detalle completo (mismo criterio que el Panel de Condiciones del GM ya expone hoy)
+    ├─ Replay   → no diseñado en este sprint (ver más abajo)
+    └─ Logs     → interno vs. público, ver arriba
+```
+
+**No se diseña Replay en este sprint** — se establece únicamente el
+principio de que existe una capa de proyección entre el assessment
+autoritativo y cualquier consumidor externo; la forma exacta de esa capa
+para Replay queda para cuando exista un consumidor real de Replay (mismo
+criterio ya aplicado repetidamente en este documento: no construir
+infraestructura sin consumidor).
+
+**Principio arquitectónico general — Projection Layer (no exclusivo de
+Vision)**: lo anterior no es una regla especial de `VisionAssessment` — es
+una instancia de un principio más general que aplica a **todo** assessment
+autoritativo de este motor (`CoverAssessment`, `ConcealmentAssessment`,
+`LineOfEffectAssessment`, futuros): el estado autoritativo que calcula el
+servidor y el estado que efectivamente recibe cada consumidor externo son
+capas distintas, unidas por una proyección que decide qué puede ver cada
+observador. Ejemplos de observadores futuros de esta misma capa, más allá de
+Jugador/GM ya mencionados: **espectador** (alguien mirando la partida sin
+controlar un combatiente) e **IA** (un oponente o aliado controlado por
+motor en vez de por jugador humano, que no debería recibir más información
+de la que un jugador humano en su misma posición recibiría). **No se
+implementa esta capa en este sprint** — se documenta únicamente el
+principio, para que ninguna implementación futura (de Vision o de cualquier
+otro assessment) asuma por defecto que "assessment autoritativo" y "lo que
+ve el cliente" son la misma cosa.
+
+#### Resolución interna: propiedad arquitectónica, no mecanismo
+
+**No se decide aquí** si el servidor debe generar siempre una tirada
+ficticia para el caso de casilla vacía, generar una tirada parcial, o usar
+otro mecanismo equivalente — eso es una decisión de implementación de 053B,
+libre de elegir el mecanismo que prefiera.
+
+**Se establece, en cambio, el objetivo arquitectónico que ese mecanismo debe
+cumplir**:
+
+> La resolución interna debe producir un resultado observable indistinguible
+> para el atacante, independientemente de si la casilla estaba ocupada o
+> vacía.
+
+Esto no menciona tiempos de ejecución, milisegundos, ni impone una
+implementación concreta (ej. no exige "siempre tirar un d20 aunque no haga
+falta") — es una propiedad del **resultado observable**, no del código
+interno. Cualquier mecanismo de implementación que cumpla esa propiedad es
+válido; cualquiera que no la cumpla (ej. uno que tome una ruta de código
+detectablemente distinta desde afuera para "vacío" vs. "CA no superada" vs.
+"ocultación") no lo es.
+
+### 13.9. Pipeline funcional
 
 ```text
 Snapshot sources
@@ -1083,7 +1263,7 @@ diferido), Low-Light Vision (§13.4), niebla/oscuridad mágica dinámica
 documentada que ya tiene LoE), facing, y todas las consecuencias no
 ofensivas de oscuridad listadas en §13.6.
 
-### 13.9. Riesgos (Sprint 053A.1, completo)
+### 13.10. Riesgos (Sprint 053A.1 y 053A.2, completo)
 
 **Riesgos identificados en Sprint 053A (conservados):**
 
@@ -1135,9 +1315,28 @@ ofensivas de oscuridad listadas en §13.6.
 9. **Assessment duplicado**: que Vision cree su propio sistema de miss
    chance/resolución en paralelo al de `ConcealmentAssessment`/
    `resolveConcealment`, en vez de alimentar el mismo pipeline existente.
-   Mitigación: §13.8 fija que Vision compone dentro de `ConcealmentAssessment`
+   Mitigación: §13.9 fija que Vision compone dentro de `ConcealmentAssessment`
    (severidad máxima) y que el Attack Resolver sigue tirando una única miss
    chance autoritativa (`resolveConcealment`, sin cambios de firma).
+
+**Riesgo nuevo (Sprint 053A.2, Corrección 7):**
+
+10. **Information Leakage (fuga de información por canales indirectos)**:
+    a diferencia del riesgo 3 (mensajes de texto explícitos), este riesgo
+    cubre fugas **indirectas** por canales que no son el mensaje mismo —
+    ejemplos concretos: payloads de respuesta con forma/campos distintos
+    según la causa del fallo; entradas de log distintas visibles al mismo
+    jugador según la causa; códigos de error distintos; animaciones de
+    cliente distintas disparadas por el resultado; tiempos de respuesta
+    observablemente distintos entre "casilla vacía" y "casilla ocupada,
+    tirada fallida"; o cualquier otro campo estructurado que un cliente
+    astuto pueda inspeccionar para inferir la causa real, aunque el mensaje
+    de texto mostrado sea idéntico. Mitigación: toda información derivada de
+    objetivos ocultos debe pasar por la capa de Projection (§13.8, "no es el
+    mensaje mostrado al jugador") antes de salir del servidor — el payload
+    seguro (§13.8) y la separación de logs interno/público (§13.8) son
+    instancias concretas de esta mitigación general, pero el principio cubre
+    cualquier canal futuro, no solo el mensaje de texto.
 
 **Alternativa descartada (conservada de Sprint 053A)**: inyectar Vision
 directamente dentro de `EffectReducer.reduceConcealmentContributions`
@@ -1147,10 +1346,10 @@ con `effectInstanceId` trazable (`reducer.ts:69-92`), y acoplaría geometría
 de tablero dentro del sistema de ActiveEffects sin necesidad — ver también
 riesgo 9 arriba.
 
-### 13.10. Preguntas abiertas (heredadas o nuevas, Sprint 053A.1)
+### 13.11. Preguntas abiertas (heredadas o nuevas, Sprint 053A.1)
 
 1. ¿La "distancia" para comparar contra `darkvisionFeet` (regla 2/3 de
-   §13.8) usa la misma función de distancia en pies ya existente
+   §13.9) usa la misma función de distancia en pies ya existente
    (`distanceBetweenFootprintsFeet`/`distanceFeet`) o requiere una geometría
    propia? Hipótesis de trabajo: reutilizar la existente, sin auditoría
    adicional — a confirmar en la implementación.
@@ -1170,7 +1369,7 @@ Vision se incluye en 053B (no — excluida por completo, §13.4); si
 `VisionReason`, §13.5); cómo se diseña el targeting por casilla (§13.7,
 diseño completo).
 
-### 13.11. Alcance exacto propuesto para Sprint 053B (implementación) — atómico
+### 13.12. Alcance exacto propuesto para Sprint 053B (implementación) — atómico
 
 **Incluye (17 puntos, ninguno queda a decidir durante la implementación):**
 
@@ -1186,9 +1385,9 @@ diseño completo).
    `board.lineOfEffectBlockingCells` como fuente de bloqueadores (decisión ya
    tomada en Sprint 053 §3 — no se reabre aquí).
 6. `VisionAssessment`/`getVisionAssessment`, implementando la regla de
-   decisión de §13.8 (incluye `VisionReason`/`VisionTrace` de §13.5).
+   decisión de §13.9 (incluye `VisionReason`/`VisionTrace` de §13.5).
 7. Composición final con `ConcealmentAssessment` existente por severidad
-   máxima (§13.8), sin tocar `EffectReducer.reduceConcealmentContributions`.
+   máxima (§13.9), sin tocar `EffectReducer.reduceConcealmentContributions`.
 8. Targeting directo vs. casilla: consumo de
    `directTargetingAllowed`/`requiresTargetSquare` ya existentes en
    `ConcealmentAssessment` — sin contrato de targeting nuevo más allá de la
@@ -1200,19 +1399,20 @@ diseño completo).
     incluyendo footprints multicasilla (cualquier celda ocupada es
     elegible) y las reglas exactas de consumo de tirada/acción/munición ya
     fijadas en §13.7.
-11. Visión normal (caso "clear"/`kind: "none"`, §13.8).
-12. Darkvision (§13.4, §13.8).
+11. Visión normal (caso "clear"/`kind: "none"`, §13.9).
+12. Darkvision (§13.4, §13.9).
 13. Luz brillante (default implícito, §13.3).
-14. Luz tenue (`dimLightCells`, ocultación parcial 20%, §13.8).
+14. Luz tenue (`dimLightCells`, ocultación parcial 20%, §13.9).
 15. Oscuridad total (`darknessCells`, ocultación total 50% + targeting por
-    casilla, §13.8), con el alcance parcial fijado en §13.6 (sin
+    casilla, §13.9), con el alcance parcial fijado en §13.6 (sin
     consecuencias no ofensivas, sin Blinded automático).
 16. Tests: unitarios (`getVisualPath`, `getVisionAssessment`), de
     integración de servidor (targeting por casilla, composición con
-    Blinded, no-bypass de targeting directo), E2E WebSocket para el/los
-    flujo(s) que conecten a un consumidor real, y UI mínima **solo si**
-    053B conecta esta vertical a una interacción real de tablero/ataque (no
-    UI especulativa sin consumidor).
+    Blinded, no-bypass de targeting directo, indistinguibilidad del payload
+    entre casilla vacía/CA no superada/ocultación — §13.8), E2E WebSocket
+    para el/los flujo(s) que conecten a un consumidor real, y UI mínima
+    **solo si** 053B conecta esta vertical a una interacción real de
+    tablero/ataque (no UI especulativa sin consumidor).
 17. Rule ID **Parcial** — ver estado de regla más abajo.
 
 **Excluye explícitamente:**
