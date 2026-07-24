@@ -10,6 +10,13 @@ Este archivo contiene las reglas y el flujo de desarrollo no negociables para cu
 
 ## 2. Flujo de Desarrollo (Obligatorio)
 
+**Governance v2 (Sprint 052)**: el rigor de las fases 2-3 es proporcional al
+**Nivel de cambio** del sprint (`GOVERNANCE.md` §5.2 — A/B/C/D). Nivel A/B
+puede resumir diseño y plan dentro del propio commit/PR sin un NDD dedicado;
+Nivel C/D exige NDD + `implementation_plan.md` completos, tal como se
+describe abajo. Ningún nivel se salta la Fase 4 (aprobación antes de tocar
+código) ni la Fase 6 (validación).
+
 Cualquier cambio o funcionalidad nueva solicitada por el usuario debe realizarse siguiendo estrictamente estas fases:
 
 ### FASE 1: Análisis
@@ -18,19 +25,13 @@ Cualquier cambio o funcionalidad nueva solicitada por el usuario debe realizarse
 * NO escribir código.
 
 ### FASE 2: Documento de Diseño
-* Generar un documento de diseño bajo `docs/designs/<nombre-de-funcionalidad>.md`.
-* Debe incluir:
-  * Objetivo y problema que resuelve.
-  * Arquitectura propuesta y alternativas consideradas (justificando la elección).
-  * Componentes afectados y riesgos.
-  * Compatibilidad e impacto sobre: Rule Engine, CombatSnapshot, EquipmentCatalog, Ownership, WebSocket, UI y Tests.
-  * Estrategia de implementación y testing.
+* Nivel C/D: generar un documento de diseño bajo `docs/designs/<nombre-de-funcionalidad>.md`, incluyendo objetivo, arquitectura propuesta y alternativas consideradas (justificando la elección), componentes afectados y riesgos, compatibilidad e impacto sobre Rule Engine/CombatSnapshot/EquipmentCatalog/Ownership/WebSocket/UI/Tests, y estrategia de implementación y testing.
+* Nivel A/B: puede resumirse en unas pocas líneas dentro del propio sprint (sin archivo dedicado) si no hay decisiones arquitectónicas nuevas que registrar.
 * NO escribir código.
 
 ### FASE 3: Plan de Implementación
-* Generar un `implementation_plan.md` en la raíz del repositorio. **Se versiona en Git** (Sprint 040: nunca fue política aprobada que fuera efímero o ignorado por `.gitignore`).
-* Debe detallar archivos afectados, cambios propuestos, orden de implementación, riesgos y plan de verificación.
-* Ubicación final tras el cierre del sprint: `docs/designs/<feature-slug>/implementation-plan.md` si la feature tiene 2+ documentos persistentes; si tiene uno solo, se resume como sección `## Plan de implementación` dentro de su `design.md` en vez de un archivo aparte.
+* Nivel C/D: generar un `implementation_plan.md` en la raíz del repositorio (se versiona en Git — Sprint 040: nunca fue política aprobada que fuera efímero o ignorado por `.gitignore`), detallando archivos afectados, cambios propuestos, orden de implementación, riesgos y plan de verificación. Ubicación final tras el cierre del sprint: `docs/designs/<feature-slug>/implementation-plan.md` si la feature tiene 2+ documentos persistentes; si tiene uno solo, se resume como sección `## Plan de implementación` dentro de su `design.md`.
+* Nivel A/B: esta fase puede omitirse como archivo separado; el plan va implícito en la Fase 2 resumida.
 
 ### FASE 4: Espera de Aprobación
 * DETENER la ejecución y esperar la aprobación explícita del usuario.
@@ -48,8 +49,11 @@ Cualquier cambio o funcionalidad nueva solicitada por el usuario debe realizarse
   node scripts/e2e-websocket.mjs
   ```
 
-### FASE 7: Walkthrough
-* Generar un `walkthrough.md` resumiendo cambios, motivos, estado final y deuda técnica pendiente.
+### FASE 7: Commit, Push y Architecture Review
+* Generar un `walkthrough.md` resumiendo cambios, motivos, estado final y deuda técnica pendiente (vive en el repositorio, no en el chat).
+* Crear el commit único del sprint y hacer `push` de inmediato (Governance v2 — `GOVERNANCE.md` §5.3 — reemplaza el patrón transitorio de Sprint 051 de esperar aprobación antes de pushear; ese patrón más estricto queda disponible solo si el usuario lo pide explícitamente para un sprint puntual).
+* Esperar CI y reportar con el formato mínimo de `GOVERNANCE.md` §5.5 — nunca pegando diffs ni archivos completos en el chat.
+* El sprint queda "Ready for Architecture Review"; el cierre formal llega con el veredicto del Architecture Gate (aprobar / solicitar cambios / rechazar).
 
 ## 3. Documentación y Tests
 * Cada funcionalidad importante debe actualizar:
@@ -101,12 +105,14 @@ Toda la documentación afectada debe quedar sincronizada. Revisar automáticamen
 ### 4.5 Auditoría
 Antes de cerrar una tarea se debe verificar que el código y la documentación describan exactamente el mismo sistema. No deben existir documentos contradictorios y el backlog debe estar actualizado.
 
-### 4.6 Entrega Final Obligatoria
-Al finalizar cada tarea deberá informarse siempre:
-* Archivos modificados y documentos actualizados.
-* Tests agregados/modificados.
-* Deuda técnica resuelta/nueva.
-* Funcionalidades futuras habilitadas.
-* Resultado exacto de todas las validaciones ejecutadas.
+### 4.6 Entrega Final Obligatoria (Governance v2)
+El detalle completo (archivos modificados, tests agregados/modificados,
+deuda técnica resuelta/nueva, funcionalidades futuras habilitadas, resultado
+exacto de las validaciones) vive en `walkthrough.md` y en la documentación
+afectada del repositorio — **no** se repite en el chat. Al finalizar, el
+chat solo reporta el formato mínimo de `GOVERNANCE.md` §5.5 (Sprint, Commit,
+Push, CI, DoD, "Ready for Architecture Review"). El Architecture Gate
+inspecciona el repositorio directamente sobre el commit reportado; no se
+pegan diffs ni archivos completos como parte de la entrega.
 
 **Regla Fundamental**: Una tarea NO se considera terminada hasta que: **Código + Tests + Documentación representen exactamente el mismo estado del sistema.** Si alguno no está sincronizado, la tarea permanece "En progreso".

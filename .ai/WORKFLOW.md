@@ -1,7 +1,7 @@
 # WORKFLOW — Flujo obligatorio de trabajo
 
 > Este archivo es un **resumen navegable**, no una autoridad por sí mismo. Reparto de autoridades (Sprint 040):
-> - [`GOVERNANCE.md`](../GOVERNANCE.md) — principios y políticas documentales/técnicas (SSOT, Zero Orphan, Minimal Documentation, Migration First).
+> - [`GOVERNANCE.md`](../GOVERNANCE.md) — principios y políticas documentales/técnicas (SSOT, Zero Orphan, Minimal Documentation, Migration First, Nivel de cambio A/B/C/D y Architectural Audit Sprint desde Governance v2 / Sprint 052).
 > - [`.agents/AGENTS.md`](../.agents/AGENTS.md) — flujo operativo y Definition of Done.
 > - Este archivo enlaza a ambas sin duplicar su contenido. En caso de conflicto, prevalece la autoridad específica (`GOVERNANCE.md` para principios, `AGENTS.md` para flujo/DoD).
 
@@ -9,7 +9,9 @@
 
 ## Regla general
 
-**Nunca tocar código antes de tener un diseño aprobado.**
+**Nunca tocar código antes de tener un diseño aprobado.** El rigor exacto de
+las Fases 2-3 depende del **Nivel de cambio** (`GOVERNANCE.md` §5.2): Nivel
+A/B puede resumirlas sin archivos dedicados; Nivel C/D las exige completas.
 
 ---
 
@@ -23,15 +25,14 @@
 
 ### FASE 2 — Documento de diseño
 
-- Crear `docs/designs/<nombre-de-la-feature>.md`.
-- El documento debe incluir: objetivo, arquitectura propuesta, alternativas consideradas, componentes afectados, riesgos, impacto en Rule Engine / CombatSnapshot / Ownership / WebSocket / UI / Tests.
+- Nivel C/D: crear `docs/designs/<nombre-de-la-feature>.md` incluyendo objetivo, arquitectura propuesta, alternativas consideradas, componentes afectados, riesgos, impacto en Rule Engine / CombatSnapshot / Ownership / WebSocket / UI / Tests.
+- Nivel A/B: puede resumirse sin archivo dedicado si no hay decisiones arquitectónicas nuevas.
 - **No escribir código.**
 
 ### FASE 3 — Plan de implementación
 
-- Crear `implementation_plan.md` en la raíz del repo. **Se versiona en Git** (corrección de Sprint 040 — nunca fue una política aprobada que fuera efímero/ignorado).
-- Si la feature tiene 2+ documentos persistentes, su ubicación final es `docs/designs/<feature-slug>/implementation-plan.md`. Si tiene un único documento, el plan se resume como sección `## Plan de implementación` dentro de su `design.md`.
-- Detallar: archivos afectados, cambios por archivo, orden de implementación, plan de verificación.
+- Nivel C/D: crear `implementation_plan.md` en la raíz del repo. **Se versiona en Git** (corrección de Sprint 040 — nunca fue una política aprobada que fuera efímero/ignorado). Si la feature tiene 2+ documentos persistentes, su ubicación final es `docs/designs/<feature-slug>/implementation-plan.md`. Si tiene un único documento, el plan se resume como sección `## Plan de implementación` dentro de su `design.md`. Detallar: archivos afectados, cambios por archivo, orden de implementación, plan de verificación.
+- Nivel A/B: puede omitirse como archivo separado.
 - **No escribir código todavía.**
 
 ### FASE 4 — Espera de aprobación
@@ -76,10 +77,12 @@ El workflow `.github/workflows/windows-ci.yml` es el gate canónico para las val
 - Los E2E esperan activamente el puerto `3333` y detienen siempre el proceso del servidor.
 - Ningún sprint se declara cerrado por la mera existencia del workflow: debe observarse una ejecución real del gate aplicable.
 
-### FASE 7 — Walkthrough
+### FASE 7 — Walkthrough, Commit, Push y Architecture Review
 
-- Generar `walkthrough.md` en el directorio de artifacts.
-- Incluir: qué cambió, por qué, qué se testeó, estado final, deuda técnica pendiente.
+- Generar `walkthrough.md` con el detalle completo (qué cambió, por qué, qué se testeó, estado final, deuda técnica pendiente) — el detalle vive aquí, no se repite en el chat.
+- Commit único del sprint, `push` inmediato tras el DoD (Governance v2, `GOVERNANCE.md` §5.3 — ya no se espera aprobación explícita antes de pushear salvo que el usuario pida ese gate más estricto para un sprint puntual).
+- Esperar CI y reportar con el formato mínimo de `GOVERNANCE.md` §5.5. Nada de diffs ni archivos completos pegados en el chat.
+- El Architecture Gate revisa el repositorio directamente sobre el commit reportado y aprueba, solicita cambios o rechaza.
 
 ---
 
