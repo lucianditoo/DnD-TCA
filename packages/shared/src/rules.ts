@@ -1,4 +1,4 @@
-import type { ArmorClassBonusType, ArmorClassBreakdown, AttackContextModifiers, AttackDeliveryContext, CombatLogEntry, CombatRoom, CombatRulesSnapshot, Combatant, CombatantSnapshot, ConcealmentAssessment, CoverAssessment, CoverKind, LifeStatus, LineOfEffectAssessment, OpportunityAttack, Position, SavingThrowType, SizeCategory, SpecialManeuverId } from "./types.js";
+import type { ArmorClassBonusType, ArmorClassBreakdown, AttackContextModifiers, AttackDeliveryContext, CombatLogEntry, CombatRoom, CombatRulesSnapshot, Combatant, CombatantSnapshot, ConcealmentAssessment, ConcealmentKind, CoverAssessment, CoverKind, LifeStatus, LineOfEffectAssessment, OpportunityAttack, Position, SavingThrowType, SizeCategory, SpecialManeuverId, VisionAssessment, VisionReason, VisionTrace, VisualPathAssessment } from "./types.js";
 import type { ConditionalModifier, EffectDefinition, ModifierCondition, Trait, TraitCondition, EffectStat } from "./effects/contracts.js";
 import type { CatalogEffectId } from "./effects/types.js";
 import { EffectReducer, type MovementRateTrace, type ReducedConcealment, type ReducedEffects } from "./effects/reducer.js";
@@ -1851,11 +1851,20 @@ function traversedCellKeysBetween(ax: number, ay: number, bx: number, by: number
  * `getAttackLineInterception` hace hoy — es una simplificación deliberada y documentada, no un
  * descuido; queda como pregunta abierta para una futura vertical de altura/vuelo.
  */
-export function getLineOfEffect(
+/**
+ * Extracción compartida (Sprint 053B) entre `getLineOfEffect` y `getVisualPathAssessment`: ambas
+ * responden la misma CLASE de pregunta geométrica ("¿al menos un par de celdas ocupadas tiene un
+ * recorrido supercover sin bloqueadores?") sobre una fuente de celdas bloqueadoras distinta —
+ * nunca la misma fuente de datos por fusión conceptual, cada llamador decide su propia fuente
+ * (`blockingCellSource`). Extracción puramente mecánica del cuerpo ya probado de
+ * `getLineOfEffect` (Sprint 052B.1): mismo comportamiento exacto, cero cambios de lógica.
+ */
+function computeSupercoverPathAssessment(
   room: CombatRulesSnapshot<ProductionEffectId>,
   origin: Combatant,
-  target: Combatant
-): LineOfEffectAssessment {
+  target: Combatant,
+  blockingCellSource: ReadonlyArray<string> | undefined
+): { readonly hasClearPath: boolean; readonly blockedCellKeys: readonly string[] } {
   const originCells = getCombatantOccupiedCells(origin, room);
   const destinationCells = getCombatantOccupiedCells(target, room);
   const ownCellKeys = new Set<string>([
@@ -1864,13 +1873,13 @@ export function getLineOfEffect(
   ]);
 
   const blockingCellKeys = new Set(
-    [...new Set(room.board.lineOfEffectBlockingCells ?? [])].filter((key) => {
+    [...new Set(blockingCellSource ?? [])].filter((key) => {
       const [x, y] = key.split(",").map(Number);
       return Number.isInteger(x) && Number.isInteger(y) && `${x},${y}` === key && !ownCellKeys.has(key);
     })
   );
 
-  let hasLineOfEffect = false;
+  let hasClearPath = false;
   const blockedCellKeys = new Set<string>();
 
   for (const a of originCells) {
@@ -1880,7 +1889,7 @@ export function getLineOfEffect(
       visited.delete(`${b.x},${b.y}`);
       const blockersForThisPair = [...visited].filter((key) => blockingCellKeys.has(key));
       if (blockersForThisPair.length === 0) {
-        hasLineOfEffect = true;
+        hasClearPath = true;
       } else {
         for (const key of blockersForThisPair) blockedCellKeys.add(key);
       }
@@ -1888,8 +1897,167 @@ export function getLineOfEffect(
   }
 
   return {
-    hasLineOfEffect,
+    hasClearPath,
     blockedCellKeys: [...blockedCellKeys].sort()
+  };
+}
+
+export function getLineOfEffect(
+  room: CombatRulesSnapshot<ProductionEffectId>,
+  origin: Combatant,
+  target: Combatant
+): LineOfEffectAssessment {
+  const result = computeSupercoverPathAssessment(room, origin, target, room.board.lineOfEffectBlockingCells);
+  return { hasLineOfEffect: result.hasClearPath, blockedCellKeys: result.blockedCellKeys };
+}
+
+/**
+ * Sprint 053B: geometría pura e independiente de Line of Sight (ruta visual) — hermana de
+ * `getLineOfEffect`, nunca su alias. Reutiliza la misma primitiva compartida
+ * (`computeSupercoverPathAssessment`/`traversedCellKeysBetween`) porque responde la misma clase
+ * de pregunta geométrica, pero es una función exportada independiente con su propio contrato
+ * (`VisualPathAssessment`). Fuente de bloqueadores: reutiliza provisionalmente
+ * `board.lineOfEffectBlockingCells` (autorizado por el NDD, Sprint 053 §3) — eso no fusiona LoE y
+ * Visual Path en el mismo assessment; es una reutilización de datos explícitamente provisional,
+ * a separar en un campo dedicado (`lineOfSightBlockingCells`) el día que exista un obstáculo real
+ * que deba bloquear uno sin el otro (cristal, niebla — ver
+ * `docs/designs/vision-and-line-of-effect-architecture.md` §13.4/§3).
+ */
+export function getVisualPathAssessment(
+  room: CombatRulesSnapshot<ProductionEffectId>,
+  observer: Combatant,
+  target: Combatant
+): VisualPathAssessment {
+  const result = computeSupercoverPathAssessment(room, observer, target, room.board.lineOfEffectBlockingCells);
+  return { hasClearVisualPath: result.hasClearPath, blockedCellKeys: result.blockedCellKeys };
+}
+
+/**
+ * Sprint 053B: composición pura de `VisualPathAssessment` + iluminación estática +
+ * `IntrinsicPerception` del observador. No depende de `EffectReducer`, `ConcealmentAssessment`
+ * ni del Attack Resolver — es un assessment independiente que se compone con Concealment en
+ * `getConcealmentAssessment` (severidad máxima), nunca se fusiona con él. Ver
+ * `docs/designs/vision-and-line-of-effect-architecture.md` §13.5/§13.9.
+ *
+ * Precedencia de evaluación (más restrictivo gana, orden fijado por el NDD):
+ * 1. Ruta visual bloqueada → total, 50%, requiere casilla, `blocked-visual-path`.
+ * 2. Objetivo en oscuridad total, observador sin Darkvision → total, 50%, `darkness`.
+ * 3. Objetivo en oscuridad total, observador con Darkvision pero fuera de alcance →
+ *    total, 50%, `darkvision-out-of-range`.
+ * 4. Objetivo en luz tenue, observador sin Darkvision → parcial, 20%, `dim-light`.
+ * 5. Cualquier otro caso (incluida luz tenue/oscuridad con Darkvision suficiente) → `clear`.
+ *
+ * Precedencia de datos: si una celda aparece en `darknessCells` y `dimLightCells` a la vez,
+ * `darkness` domina — se consulta primero.
+ *
+ * Simplificación deliberada y documentada (misma clase que `zFeet` en `getLineOfEffect`): esta
+ * primera vertical consulta únicamente la casilla ancla (`target.position`) del objetivo para
+ * determinar su nivel de luz, no la huella completa — footprints multicasilla con niveles de luz
+ * mixtos entre sus propias celdas quedan como pregunta abierta para una vertical posterior.
+ */
+export function getVisionAssessment(
+  room: CombatRulesSnapshot<ProductionEffectId>,
+  observer: Combatant,
+  target: Combatant
+): VisionAssessment {
+  const visualPath = getVisualPathAssessment(room, observer, target);
+  const traces: VisionTrace[] = [];
+
+  if (!visualPath.hasClearVisualPath) {
+    traces.push({
+      source: "visual-path",
+      label: "Ruta visual bloqueada",
+      kind: "total",
+      missChancePercent: 50,
+      status: "applied"
+    });
+    return {
+      canPerceiveVisually: false,
+      kind: "total",
+      missChancePercent: 50,
+      directTargetingAllowed: false,
+      requiresTargetSquare: true,
+      dominantReason: "blocked-visual-path",
+      traces
+    };
+  }
+
+  const darkvisionFeet = observer.intrinsicPerception?.darkvisionFeet ?? 0;
+  const targetCellKey = `${target.position.x},${target.position.y}`;
+  const inDarkness = (room.board.darknessCells ?? []).includes(targetCellKey);
+  const inDimLight = !inDarkness && (room.board.dimLightCells ?? []).includes(targetCellKey);
+
+  if (inDarkness) {
+    const distanceFeet = distanceBetweenFootprintsFeet(room, observer, target);
+    const withinDarkvisionRange = darkvisionFeet > 0 && distanceFeet <= darkvisionFeet;
+    traces.push({
+      source: "board-light",
+      label: "Oscuridad total",
+      kind: "total",
+      missChancePercent: 50,
+      status: withinDarkvisionRange ? "suppressed" : "applied"
+    });
+    if (darkvisionFeet > 0) {
+      traces.push({
+        source: "intrinsic-perception",
+        label: `Darkvision ${darkvisionFeet} ft` + (withinDarkvisionRange ? " (dentro de alcance)" : " (fuera de alcance)"),
+        kind: withinDarkvisionRange ? "none" : "total",
+        missChancePercent: withinDarkvisionRange ? 0 : 50,
+        status: withinDarkvisionRange ? "applied" : "suppressed"
+      });
+    }
+    if (withinDarkvisionRange) {
+      return { canPerceiveVisually: true, kind: "none", missChancePercent: 0, directTargetingAllowed: true, requiresTargetSquare: false, dominantReason: "clear", traces };
+    }
+    return {
+      canPerceiveVisually: false,
+      kind: "total",
+      missChancePercent: 50,
+      directTargetingAllowed: false,
+      requiresTargetSquare: true,
+      dominantReason: darkvisionFeet > 0 ? "darkvision-out-of-range" : "darkness",
+      traces
+    };
+  }
+
+  if (inDimLight) {
+    const hasDarkvision = darkvisionFeet > 0;
+    traces.push({
+      source: "board-light",
+      label: "Iluminación tenue",
+      kind: "partial",
+      missChancePercent: 20,
+      status: hasDarkvision ? "suppressed" : "applied"
+    });
+    if (hasDarkvision) {
+      traces.push({
+        source: "intrinsic-perception",
+        label: `Darkvision ${darkvisionFeet} ft (anula luz tenue)`,
+        kind: "none",
+        missChancePercent: 0,
+        status: "applied"
+      });
+      return { canPerceiveVisually: true, kind: "none", missChancePercent: 0, directTargetingAllowed: true, requiresTargetSquare: false, dominantReason: "clear", traces };
+    }
+    return {
+      canPerceiveVisually: true,
+      kind: "partial",
+      missChancePercent: 20,
+      directTargetingAllowed: true,
+      requiresTargetSquare: false,
+      dominantReason: "dim-light",
+      traces
+    };
+  }
+
+  return {
+    canPerceiveVisually: true,
+    kind: "none",
+    missChancePercent: 0,
+    directTargetingAllowed: true,
+    requiresTargetSquare: false,
+    dominantReason: "clear",
+    traces
   };
 }
 
@@ -1932,7 +2100,14 @@ export function isFlanking(
   return false;
 }
 
-/** Assessment puro y efimero de DEFENSE-CONCEALMENT para un intento concreto. */
+/**
+ * Assessment puro y efimero de DEFENSE-CONCEALMENT para un intento concreto. Sprint 053B: compone
+ * la reducción declarativa existente (`EffectReducer.reduceConcealmentContributions` — Blinded,
+ * futura niebla mágica) con `VisionAssessment` (fuente contextual independiente: geometría + luz
+ * + percepción). Nunca se sintetiza un `EffectInstance` ficticio para Vision, y Vision nunca se
+ * inyecta dentro del reductor — se componen en `composeConcealmentAssessment` por severidad
+ * máxima. Ver `docs/designs/vision-and-line-of-effect-architecture.md` §13.8/§13.9.
+ */
 export function getConcealmentAssessment(
   room: CombatRulesSnapshot<ProductionEffectId>,
   attacker: Combatant,
@@ -1946,25 +2121,56 @@ export function getConcealmentAssessment(
       { targetId: attacker.id, perspective: "attacks_by_target" }
     ]
   });
-  return composeConcealmentAssessment(reduced);
+  const vision = getVisionAssessment(room, attacker, target);
+  return composeConcealmentAssessment(reduced, vision);
 }
 
-/** Convierte la reduccion especializada en el assessment consumido por servidor y UI. */
-export function composeConcealmentAssessment(reduced: ReducedConcealment): ConcealmentAssessment {
-  const applies = reduced.kind !== "none";
-  const total = reduced.kind === "total";
+/**
+ * Convierte la reduccion especializada en el assessment consumido por servidor y UI. `vision` es
+ * opcional (retrocompatible con llamadores que solo evalúan la reducción declarativa pura, ej.
+ * `tests/concealment-core.test.mjs`) — cuando se provee, se compone por **severidad máxima**
+ * (`total > partial > none`), nunca sumando porcentajes ni fusionando ambos assessments en uno
+ * solo. Si cualquiera de las dos fuentes exige `requiresTargetSquare`/prohíbe
+ * `directTargetingAllowed`, el resultado final hereda esa restricción (la más restrictiva
+ * domina) — esto es lo que permite que Blinded (efecto declarativo, total incondicional) siga
+ * funcionando exactamente igual que hoy sin ninguna rama especial de "si Blinded, ignorar
+ * Vision": su propia severidad ya domina cualquier resultado que Vision produzca para el mismo
+ * ataque.
+ */
+export function composeConcealmentAssessment(reduced: ReducedConcealment, vision?: VisionAssessment): ConcealmentAssessment {
+  const effectTotal = reduced.kind === "total";
+  const effectPartial = reduced.kind === "partial";
+  const visionTotal = vision?.kind === "total";
+  const visionPartial = vision?.kind === "partial";
+
+  const total = effectTotal || visionTotal;
+  const partial = !total && (effectPartial || visionPartial);
+  const kind: ConcealmentKind = total ? "total" : partial ? "partial" : "none";
+  const applies = kind !== "none";
+
+  const missChancePercent = total
+    ? Math.max(effectTotal ? reduced.missChancePercent : 0, visionTotal ? vision!.missChancePercent : 0)
+    : partial
+      ? Math.max(effectPartial ? reduced.missChancePercent : 0, visionPartial ? vision!.missChancePercent : 0)
+      : 0;
+
   const labels = reduced.traces
     .filter((trace) => trace.status === "applied")
     .map((trace) => `${trace.label} (${trace.missChancePercent}%)`);
+  for (const trace of vision?.traces ?? []) {
+    if (trace.status === "applied") labels.push(`${trace.label} (${trace.missChancePercent}%)`);
+  }
+
   return {
     applies,
-    kind: reduced.kind,
-    missChancePercent: reduced.missChancePercent,
+    kind,
+    missChancePercent,
     directTargetingAllowed: !total,
     requiresTargetSquare: total,
     opportunityAttackAllowed: !total,
     labelParts: labels,
-    traces: reduced.traces
+    traces: reduced.traces,
+    visionTraces: vision?.traces ?? []
   };
 }
 

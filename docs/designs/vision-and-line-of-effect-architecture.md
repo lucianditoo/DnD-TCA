@@ -572,11 +572,14 @@ Implementación de código, tests, Rule IDs, cambios a `EffectDefinition`/catál
 
 ## 13. Sprint 053A — Diseño de Vision e iluminación básica
 
-**Estado:** solo diseño, sin código. No autoriza implementación; Sprint 053B
-requiere su propio `Proceed` explícito tras revisar esta sección. Continúa
-directamente el trabajo de Sprint 053 (auditoría LoS vs LoE, sin código,
-integrada en §3 y §7.1 más arriba) hacia la primera vertical funcional real:
-Vision con iluminación básica.
+**Estado:** diseño cerrado e **implementado en Sprint 053B** (`Proceed`
+recibido y ejecutado tras la resolución de una contradicción arquitectónica
+detectada en el precondition gate — ver `walkthrough.md` de ese sprint).
+Continuó directamente el trabajo de Sprint 053 (auditoría LoS vs LoE, sin
+código, integrada en §3 y §7.1 más arriba) hacia la primera vertical
+funcional real: Vision con iluminación básica. Rule ID resultante:
+`DEFENSE-VISION` (Parcial, `docs/rules/registry.md`). El alcance exacto
+cerrado en §13.12 se implementó sin cambios de alcance durante el código.
 
 ### 13.1. Auditoría normativa SRD (Vision e iluminación)
 

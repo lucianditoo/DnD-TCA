@@ -308,7 +308,7 @@ export function resolveAutomaticCritical(
   }];
 
   const delivery = { attackType: source.attackType, distanceFeet: 5, requiresAttackRoll: false, dealsDamage: true } as const;
-  const concealment: ConcealmentAssessment = { applies: false, kind: "none", missChancePercent: 0, directTargetingAllowed: true, requiresTargetSquare: false, opportunityAttackAllowed: true, labelParts: [], traces: [] };
+  const concealment: ConcealmentAssessment = { applies: false, kind: "none", missChancePercent: 0, directTargetingAllowed: true, requiresTargetSquare: false, opportunityAttackAllowed: true, labelParts: [], traces: [], visionTraces: [] };
 
   if (canApplySneakAttack(context, attacker, target, delivery, concealment)) {
     const roller = options.diceRoller ?? rollDice;

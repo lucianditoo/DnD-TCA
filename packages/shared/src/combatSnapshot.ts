@@ -36,6 +36,7 @@ export function createCombatantSnapshotFromProfile(profile: CreatureTemplate, op
     equipmentSlots: { ...profile.equipmentSlots },
     featIds: [...profile.featIds],
     intrinsicDefense: { ...profile.intrinsicDefense },
+    intrinsicPerception: profile.intrinsicPerception ? { ...profile.intrinsicPerception } : undefined,
     abilities: [...profile.abilities],
     preparedSpellLoadout: profile.preparedSpellLoadout?.map((slot) => ({ ...slot })) ?? []
   };
@@ -67,6 +68,7 @@ export function createCombatantSnapshotFromProfile(profile: CreatureTemplate, op
     inventory: normalized.inventory.map((item) => ({ ...item })),
     equipmentSlots: { ...normalized.equipmentSlots },
     intrinsicDefense: { ...normalized.intrinsicDefense },
+    intrinsicPerception: normalized.intrinsicPerception,
     naturalAttackId: normalized.naturalAttackId,
     featIds: [...normalized.featIds],
     initiative: null,
@@ -181,7 +183,9 @@ export function cloneEffectInstances<TId extends string>(
         difficultTerrainCells: room.board.difficultTerrainCells ? [...room.board.difficultTerrainCells] : undefined,
         impassableCells: room.board.impassableCells ? [...room.board.impassableCells] : undefined,
         narrowCells: room.board.narrowCells ? [...room.board.narrowCells] : undefined,
-        lineOfEffectBlockingCells: room.board.lineOfEffectBlockingCells ? [...room.board.lineOfEffectBlockingCells] : undefined
+        lineOfEffectBlockingCells: room.board.lineOfEffectBlockingCells ? [...room.board.lineOfEffectBlockingCells] : undefined,
+        dimLightCells: room.board.dimLightCells ? [...room.board.dimLightCells] : undefined,
+        darknessCells: room.board.darknessCells ? [...room.board.darknessCells] : undefined
       },
     combatants: room.combatants.map((c) => {
       assertDerivedSnapshotIntegrity(c);
@@ -194,6 +198,7 @@ export function cloneEffectInstances<TId extends string>(
         inventory: c.inventory.map((item) => ({ ...item })),
         equipmentSlots: { ...c.equipmentSlots },
         intrinsicDefense: { ...c.intrinsicDefense },
+        intrinsicPerception: c.intrinsicPerception ? { ...c.intrinsicPerception } : undefined,
         featIds: [...c.featIds],
         position: { ...c.position },
         buffs: c.buffs.map((b) => ({ ...b })),

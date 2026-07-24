@@ -225,7 +225,7 @@ export function ActionsPanel(props: {
               attackBonus: 0,
               labelParts: [],
               cover: { applies: false, acBonus: 0, kind: "none" as const, blockerIds: [] },
-              concealment: { applies: false, kind: "none" as const, missChancePercent: 0, directTargetingAllowed: true, requiresTargetSquare: false, opportunityAttackAllowed: true, labelParts: [], traces: [] }
+              concealment: { applies: false, kind: "none" as const, missChancePercent: 0, directTargetingAllowed: true, requiresTargetSquare: false, opportunityAttackAllowed: true, labelParts: [], traces: [], visionTraces: [] }
             };
         const routine = selected ? getEffectiveAttackRoutine(snapshot, selected, { attackType }) : [];
         const attacksMade = room.currentTurn.attacksMade || 0;

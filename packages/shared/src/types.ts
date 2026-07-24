@@ -29,6 +29,8 @@ export interface Board {
   impassableCells?: string[];       // Claves "x,y" O(1) para muros y obstáculos: bloqueo de MOVIMIENTO exclusivamente (Sprint 052A/052B) — nunca implica Cover ni Line of Effect
   narrowCells?: string[];           // Claves "x,y" O(1) para Squeezing
   lineOfEffectBlockingCells?: string[]; // Claves "x,y" O(1): obstrucción física completa para Line of Effect (Sprint 052B). Independiente de impassableCells: no se infiere de un campo al otro.
+  dimLightCells?: string[];  // Claves "x,y" O(1): iluminación tenue (Sprint 053B). Celda ausente de dimLightCells/darknessCells = luz brillante por defecto.
+  darknessCells?: string[];  // Claves "x,y" O(1): oscuridad total (Sprint 053B). Si una celda aparece en ambos campos, darkness domina (ver getVisionAssessment).
 }
 export type ArmorClassBonusType = "armor" | "shield" | "natural_armor" | "dex" | "dodge" | "deflection" | "size" | "misc";
 export interface ArmorClassBreakdown {
@@ -100,6 +102,13 @@ export interface ConcealmentAssessment {
   readonly opportunityAttackAllowed: boolean;
   readonly labelParts: readonly string[];
   readonly traces: readonly ConcealmentTrace[];
+  /**
+   * Sprint 053B: trazas de `VisionAssessment` compuestas en el resultado final (severidad
+   * máxima, ver `composeConcealmentAssessment`). Array separado de `traces` (efectos
+   * declarativos) a propósito — Vision no se origina en un `EffectInstance` y nunca se sintetiza
+   * como uno; ambos conjuntos de trazas se conservan por separado, nunca fusionados.
+   */
+  readonly visionTraces: readonly VisionTrace[];
 }
 
 /**
@@ -113,6 +122,60 @@ export interface ConcealmentAssessment {
 export interface LineOfEffectAssessment {
   readonly hasLineOfEffect: boolean;
   readonly blockedCellKeys: readonly string[];
+}
+
+/**
+ * Sprint 053B: geometría pura e independiente de Line of Sight (ruta visual). Hermana de
+ * `LineOfEffectAssessment` (misma clase de pregunta geométrica, fuente distinta) — nunca su
+ * alias ni un derivado suyo. Responde exclusivamente si existe una ruta visual geométricamente
+ * despejada, sin luz ni percepción. Ver
+ * `docs/designs/vision-and-line-of-effect-architecture.md` §3/§13.5.
+ */
+export interface VisualPathAssessment {
+  readonly hasClearVisualPath: boolean;
+  readonly blockedCellKeys: readonly string[];
+}
+
+/**
+ * Sprint 053B: unión cerrada del motivo dominante de `VisionAssessment` — exactamente las 5
+ * categorías que esta vertical produce, sin especular con categorías futuras (invisibilidad,
+ * niebla, Blindsight). Ver §13.5/§13.9 del NDD.
+ */
+export type VisionReason =
+  | "clear"
+  | "dim-light"
+  | "darkness"
+  | "blocked-visual-path"
+  | "darkvision-out-of-range";
+
+/**
+ * Sprint 053B: traza individual de una fuente de Vision — mismo vocabulario que
+ * `ConcealmentTrace` (fuente + estado) pero sin `effectInstanceId`: Vision no se origina en un
+ * `EffectInstance`.
+ */
+export interface VisionTrace {
+  readonly source: "board-light" | "visual-path" | "intrinsic-perception";
+  readonly label: string;
+  readonly kind: ConcealmentKind;
+  readonly missChancePercent: number;
+  readonly status: "applied" | "suppressed";
+}
+
+/**
+ * Sprint 053B: composición de `VisualPathAssessment` + iluminación estática + capacidad
+ * perceptiva del observador. Assessment independiente — no vive dentro de `ConcealmentAssessment`
+ * ni de `CoverAssessment`; su resultado se compone con `ConcealmentAssessment` por severidad
+ * máxima en `getConcealmentAssessment`, nunca se fusiona con él. Ver
+ * `docs/designs/vision-and-line-of-effect-architecture.md` §13.5/§13.9.
+ */
+export interface VisionAssessment {
+  readonly canPerceiveVisually: boolean;
+  readonly kind: ConcealmentKind;
+  readonly missChancePercent: number;
+  readonly directTargetingAllowed: boolean;
+  readonly requiresTargetSquare: boolean;
+  readonly dominantReason: VisionReason;
+  readonly traces: readonly VisionTrace[];
 }
 
 export interface Ability { id: string; name: string; description: string; actionType: ActionType; rangeFeet: number; target: "self" | "ally" | "enemy" | "creature" | "area"; aoe?: AoEShape; resolution: AbilityResolution; }
@@ -147,6 +210,16 @@ export interface IntrinsicDefense {
   dodgeBonus: number;
   deflectionBonus: number;
   miscArmorClassBonus: number;
+}
+/**
+ * Sprint 053B: rasgo permanente e innato de percepción visual, mismo patrón que
+ * `IntrinsicDefense` — vive directamente en `Combatant`/`CreatureTemplate`, sourced desde
+ * catálogo, no es un `EffectContribution` ni se deriva de `sizeCategory`/`creatureTypeId`. `0`
+ * significa sin Darkvision. No incluye Low-Light Vision ni otros sentidos (Blindsight,
+ * Blindsense) — ver `docs/designs/vision-and-line-of-effect-architecture.md` §13.4.
+ */
+export interface IntrinsicPerception {
+  readonly darkvisionFeet: number;
 }
 /**
  * Entrada en el loadout de conjuros preparados de una criatura/perfil.
@@ -190,6 +263,7 @@ export interface CreatureTemplate {
   equipmentSlots: EquipmentSlots;
   featIds: string[];
   intrinsicDefense: IntrinsicDefense;
+  intrinsicPerception?: IntrinsicPerception;
   naturalAttackId?: string;
   abilities: string[];
   /** Conjuros preparados. Cada entrada representa un slot individual (no una definición). */
@@ -228,6 +302,7 @@ export interface CombatantSnapshot {
   inventory: readonly InventoryItem[];
   equipmentSlots: EquipmentSlots;
   intrinsicDefense: IntrinsicDefense;
+  intrinsicPerception?: IntrinsicPerception;
   naturalAttackId?: string;
   featIds: string[];
   /** Objetivo designado por Esquiva (Dodge). `null`/ausente = sin designación activa. */
@@ -326,6 +401,8 @@ export interface CombatRulesSnapshot<TEffectId extends string = string> {
     readonly impassableCells?: ReadonlyArray<string>;
     readonly narrowCells?: ReadonlyArray<string>;
     readonly lineOfEffectBlockingCells?: ReadonlyArray<string>;
+    readonly dimLightCells?: ReadonlyArray<string>;
+    readonly darknessCells?: ReadonlyArray<string>;
   };
   readonly combatants: ReadonlyArray<Readonly<CombatantSnapshot>>;
   readonly currentTurn: Readonly<TurnState>;
@@ -353,6 +430,15 @@ type _AssertGuard<T extends Record<string, true>> = T;
 type _ValidateExhaustiveGuard = _AssertGuard<_RoomSnapshotExhaustiveGuard>;
 export interface Participant { id: string; role: ParticipantRole; name: string; roomCode: string; }
 
+/**
+ * Sprint 053B: intención genérica de objetivo de ataque — por combatiente (targeting directo) o
+ * por casilla (Ocultación Total / Blind Targeting). Unión discriminada; nunca un comando
+ * paralelo — ver `docs/designs/vision-and-line-of-effect-architecture.md` §13.7.
+ */
+export type AttackTarget =
+  | { readonly kind: "combatant"; readonly combatantId: string }
+  | { readonly kind: "square"; readonly position: Position };
+
 export type ClientCommand =
   | { type: "create-room"; name: string }
   | { type: "join-room"; roomCode: string; name: string; role: ParticipantRole }
@@ -364,7 +450,7 @@ export type ClientCommand =
   | { type: "move-combatant"; roomCode: string; actorId: string; combatantId: string; to: Position; path?: Position[]; isAcrobatic?: boolean }
   | { type: "declare-attack-mode"; roomCode: string; actorId: string; combatantId: string; mode: "standard" | "full"; defensive: boolean }
   | { type: "cancel-attack-mode"; roomCode: string; actorId: string; combatantId: string }
-  | { type: "resolve-attack"; roomCode: string; actorId: string; attackerId: string; targetId: string; d20Roll: number | null; damage: number | null; isAutoRoll?: boolean }
+  | { type: "resolve-attack"; roomCode: string; actorId: string; attackerId: string; targetId?: string; target?: AttackTarget; d20Roll: number | null; damage: number | null; isAutoRoll?: boolean }
   | { type: "resolve-attack-confirmation"; roomCode: string; actorId: string; d20Roll: number | null; damage: number | null; isAutoRoll?: boolean }
   | { type: "cancel-attack-threat"; roomCode: string; actorId: string }
   | { type: "use-tactical-action"; roomCode: string; actorId: string; combatantId: string; action: "total-defense" }

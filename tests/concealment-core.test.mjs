@@ -89,7 +89,8 @@ test("DEFENSE-CONCEALMENT: none produce un assessment neutro y efimero", () => {
     requiresTargetSquare: false,
     opportunityAttackAllowed: true,
     labelParts: [],
-    traces: []
+    traces: [],
+    visionTraces: []
   });
 });
 

@@ -1,4 +1,4 @@
-import { applyDamage, canFullAttack, canStandardAttack, consumeInventoryQuantity, getEquippedWeaponEntry, getLineOfEffect, lifeStatus, makeLog, createCombatRulesSnapshot, validateAttackAmmunition, type ClientCommand, type CombatRoom, type AttackThreatState, type CombatRulesSnapshot, type DamageBundle, type ProductionEffectId } from "@dnd-tactical/shared";
+import { applyDamage, canFullAttack, canStandardAttack, consumeInventoryQuantity, distanceFeet, getCombatantOccupiedCells, getConcealmentAssessment, getEquippedWeaponEntry, getLineOfEffect, lifeStatus, makeLog, createCombatRulesSnapshot, resolveEquippedWeaponProfile, validateAttackAmmunition, type AttackTarget, type ClientCommand, type Combatant, type CombatRoom, type AttackThreatState, type CombatRulesSnapshot, type DamageBundle, type Position, type ProductionEffectId } from "@dnd-tactical/shared";
 import { requireCombatantControl, requireTurnControl } from "../auth/control.js";
 import { attackRangeFeet, resolveAttack, resolveCriticalConfirmation, resolveWeaponAttackSource } from "../combat/attackResolver.js";
 import { applyStartOfNextTurnBuff } from "../combat/buffRules.js";
@@ -41,10 +41,46 @@ export function handleResolveAttack(room: CombatRoom, command: Extract<ClientCom
   broadcast(room);
 }
 
+/**
+ * Sprint 053B: resuelve la intención genérica de objetivo (§13.7 del NDD) — por combatiente
+ * (targeting directo) o por casilla (Blind Targeting bajo Ocultación Total). `targetId` se
+ * conserva como forma legada equivalente a `{ kind: "combatant", combatantId: targetId }`.
+ * Devuelve `target: null` cuando la casilla elegida no tiene ningún combatiente atacable —
+ * el llamador es responsable de resolver ese caso como un fallo automático indistinguible
+ * (nunca reveleando la casilla vacía), nunca como un rechazo. Esta función solo RESUELVE quién es
+ * el objetivo — no valida todavía si el targeting directo está permitido (eso ocurre después de
+ * Line of Effect, ver `handleResolveAttackDraft`: Cobertura Total es un bloqueo más fundamental y
+ * severo que Ocultación Total, y debe evaluarse primero).
+ */
+function resolveAttackIntent(
+  room: CombatRoom,
+  snapshot: CombatRulesSnapshot<ProductionEffectId>,
+  attacker: Combatant,
+  command: Extract<ClientCommand, { type: "resolve-attack" }>
+): { target: Combatant | null; square: Position | null; wasDirectTargeting: boolean } {
+  const intent: AttackTarget | undefined = command.target ?? (command.targetId ? { kind: "combatant", combatantId: command.targetId } : undefined);
+  if (!intent) throw new Error("Debe especificarse un objetivo.");
+
+  if (intent.kind === "combatant") {
+    return { target: findCombatant(room, intent.combatantId), square: null, wasDirectTargeting: true };
+  }
+
+  // Sprint 053B: el servidor resuelve en secreto qué combatiente (si alguno) ocupa la casilla —
+  // el cliente nunca envía ni conoce esa respuesta antes de tiempo. Cualquier celda ocupada por
+  // un footprint multicasilla es una casilla objetivo válida (mismo principio ya usado por Line
+  // of Effect, §1.3.1: "puede elegir cualquier casilla que ocupa").
+  const occupant = room.combatants.find((candidate) => {
+    if (candidate.id === attacker.id) return false;
+    const status = lifeStatus(candidate);
+    if (status !== "active" && status !== "disabled") return false;
+    return getCombatantOccupiedCells(candidate, snapshot).some((cell) => cell.x === intent.position.x && cell.y === intent.position.y);
+  }) ?? null;
+  return { target: occupant, square: intent.position, wasDirectTargeting: false };
+}
+
 function handleResolveAttackDraft(room: CombatRoom, command: Extract<ClientCommand, { type: "resolve-attack" }>, options: PhysicalAttackExecutionOptions): void {
   if (room.phase !== "active") throw new Error("Esta accion solo esta disponible con el combate en curso.");
   const attacker = findCombatant(room, command.attackerId);
-  const target = findCombatant(room, command.targetId);
   requireCombatantControl(command.actorId, attacker);
   ensureActiveTurn(room, attacker.id);
   if (room.currentTurn.attackMode === "none") throw new Error("Debe preparar un modo de ataque (Estandar o Completo) antes de atacar.");
@@ -55,6 +91,37 @@ function handleResolveAttackDraft(room: CombatRoom, command: Extract<ClientComma
   const fightingDefensively = room.currentTurn.defensiveFightingDeclared;
 
   const snapshot = createCombatRulesSnapshot(room);
+  const { target, square, wasDirectTargeting } = resolveAttackIntent(room, snapshot, attacker, command);
+
+  const grappleEligibility = getGrappleAttackEligibility(snapshot, attacker);
+  if (!grappleEligibility.ok) throw new Error(grappleEligibility.error ?? "Fuente de ataque inválida durante la Presa.");
+
+  const availability = Rules.evaluateActionAvailability(snapshot, attacker);
+  if (!availability.ok) throw new Error(availability.error);
+
+  const routine = getAttackRoutine(attacker);
+  if (room.currentTurn.attacksMade >= routine.length) {
+    throw new Error("No le quedan mas ataques en su rutina.");
+  }
+
+  if (room.currentTurn.attackMode === "standard" && room.currentTurn.attacksMade >= 1) {
+    throw new Error("El Ataque Estandar solo permite un (1) ataque.");
+  }
+
+  if (room.currentTurn.attacksMade === 0) {
+    const action = isFullAttack ? canFullAttack(snapshot, attacker) : canStandardAttack(snapshot, attacker);
+    if (!action.ok) throw new Error(action.error);
+  }
+
+  const currentAttack = routine[room.currentTurn.attacksMade];
+
+  if (target === null) {
+    // Sprint 053B (Blind Targeting, NDD §13.7/§13.8): casilla elegida sin ningún combatiente
+    // atacable. Consume el intento de ataque, la acción y la munición exactamente igual que un
+    // ataque fallido contra un objetivo real — nunca revela que la casilla estaba vacía.
+    resolveBlindSquareMiss(room, snapshot, attacker, square!, fightingDefensively, wasDisabledAtActionStart);
+    return;
+  }
 
   // Sprint 052B (DEFENSE-LINE-OF-EFFECT, Parcial): legalidad de objetivo antes de cualquier
   // tirada/consumo/mutación. Ausencia de Line of Effect = Total Cover = el ataque no puede
@@ -66,28 +133,20 @@ function handleResolveAttackDraft(room: CombatRoom, command: Extract<ClientComma
     throw new Error(target.name + " tiene Cobertura Total: " + attacker.name + " no tiene línea de efecto hacia el objetivo.");
   }
 
-  const grappleEligibility = getGrappleAttackEligibility(snapshot, attacker);
-  if (!grappleEligibility.ok) throw new Error(grappleEligibility.error ?? "Fuente de ataque inválida durante la Presa.");
-  
-  const availability = Rules.evaluateActionAvailability(snapshot, attacker);
-  if (!availability.ok) throw new Error(availability.error);
-  
-  const routine = getAttackRoutine(attacker);
-  if (room.currentTurn.attacksMade >= routine.length) {
-    throw new Error("No le quedan mas ataques en su rutina.");
-  }
-  
-  if (room.currentTurn.attackMode === "standard" && room.currentTurn.attacksMade >= 1) {
-    throw new Error("El Ataque Estandar solo permite un (1) ataque.");
-  }
-
-  if (room.currentTurn.attacksMade === 0) {
-    const action = isFullAttack ? canFullAttack(snapshot, attacker) : canStandardAttack(snapshot, attacker);
-    if (!action.ok) throw new Error(action.error);
+  // Sprint 053B (Blind Targeting, NDD §13.7): targeting directo nunca es un bypass. Se evalúa
+  // después de Line of Effect (Cobertura Total es un bloqueo más severo y fundamental que
+  // Ocultación Total: si no hay Line of Effect, el ataque ya es ilegal sin importar Vision). Si
+  // el resultado final de Concealment (Vision + efectos declarativos) exige elegir una casilla,
+  // el intento directo se rechaza aquí, sin mutación ni tirada, sin importar qué combatantId haya
+  // enviado el cliente — no se revela la posición real del objetivo más allá de lo que el propio
+  // cliente ya conocía (fue su combatantId).
+  if (wasDirectTargeting) {
+    const concealment = getConcealmentAssessment(snapshot, attacker, target);
+    if (!concealment.directTargetingAllowed) {
+      throw new Error(target.name + " tiene Ocultación Total: debe elegir una casilla en vez de un objetivo directo.");
+    }
   }
 
-  const currentAttack = routine[room.currentTurn.attacksMade];
-  
   const attackDistance = attackRangeFeet(snapshot, attacker, target);
   const attackType = getWeaponAttackTypeForTarget(snapshot, attacker, target);
   const source = resolveWeaponAttackSource(attacker, attackType);
@@ -423,4 +482,88 @@ export function applyAttackMutations(room: CombatRoom, attacker: ReturnType<type
 
 function describeDamageBundle(bundle: DamageBundle): string {
   return bundle.components.map((component) => `${component.label}: ${component.amount}`).join(", ");
+}
+
+/**
+ * Sprint 053B: mismo criterio que `getWeaponAttackTypeForTarget`, pero contra una `Position`
+ * cruda en vez de un `Combatant` real — necesario para el intento de ataque a una casilla vacía,
+ * donde no existe ningún objetivo con footprint que medir. Réplica exacta de la lógica (arma a
+ * distancia siempre "ranged"; arma arrojadiza cuenta como "melee" solo dentro de su alcance
+ * cuerpo a cuerpo), usando distancia punto a punto en vez de distancia entre footprints.
+ */
+function getWeaponAttackTypeForPosition(attacker: Combatant, distanceToSquareFeet: number): "melee" | "ranged" {
+  const weapon = resolveEquippedWeaponProfile(attacker).profile;
+  if (weapon.handedness !== "ranged" && weapon.handedness !== "thrown") return "melee";
+  if (weapon.handedness === "ranged") return "ranged";
+  return distanceToSquareFeet <= weapon.meleeReachFeet ? "melee" : "ranged";
+}
+
+/**
+ * Sprint 053B (Blind Targeting, NDD §13.7/§13.8): resuelve un intento de ataque contra una
+ * casilla sin ningún combatiente atacable. Consume el intento de ataque, la acción declarada y
+ * la munición exactamente igual que un ataque fallido contra un objetivo real — nunca revela que
+ * la casilla estaba vacía (ni en el mensaje público, ni en el consumo de recursos, ni en si se
+ * tiró o no un dado: el SRD no exige tirada de ataque contra una casilla vacía, así que no se
+ * consume ninguna, igual que el rechazo por Cobertura Total ya no consume tirada — pero a
+ * diferencia de Cobertura Total, aquí SÍ es un objetivo válido que el jugador eligió y falló, por
+ * lo que sí se consume la acción/munición, nunca se trata como intento inválido).
+ */
+function resolveBlindSquareMiss(
+  room: CombatRoom,
+  snapshot: CombatRulesSnapshot<ProductionEffectId>,
+  attacker: Combatant,
+  square: Position,
+  fightingDefensively: boolean,
+  wasDisabledAtActionStart: boolean
+): void {
+  const rangeFeet = distanceFeet(attacker.position, square, room.board.cellSizeFeet);
+  const attackType = getWeaponAttackTypeForPosition(attacker, rangeFeet);
+  const source = resolveWeaponAttackSource(attacker, attackType);
+  if (rangeFeet > source.maxRangeFeet) {
+    throw new Error("La casilla elegida esta fuera del alcance de " + attacker.name + " (maximo " + source.maxRangeFeet + " ft).");
+  }
+  const weaponEntry = getEquippedWeaponEntry(attacker);
+  const ammunition = attackType === "ranged" ? validateAttackAmmunition(attacker, weaponEntry) : { ok: true as const, value: { required: false, availableQuantity: 0 } };
+  if (!ammunition.ok || !ammunition.value) throw new Error(ammunition.error ?? "No hay munición disponible.");
+
+  const rangedOpportunities = findTriggeredRangedOpportunityAttacks(snapshot, attacker, rangeFeet);
+  if (rangedOpportunities.length > 0) {
+    room.pendingOpportunityAttacks.push(...rangedOpportunities);
+    room.log.unshift(makeLog("attack", `${attacker.name} provoca ${rangedOpportunities.length} Ataques de Oportunidad al usar un ataque a distancia.`));
+    syncEncounterPhase(room);
+    return;
+  }
+
+  if (ammunition.value.required && ammunition.value.selectedItemId) {
+    const nextAttacker = consumeInventoryQuantity(attacker, ammunition.value.selectedItemId, 1);
+    attacker.inventory = nextAttacker.inventory;
+    room.log.unshift(makeLog("system", `${attacker.name} consume 1 unidad de munición; quedan ${ammunition.value.availableQuantity - 1}.`));
+  }
+
+  // Log público estructuralmente idéntico a un fallo ordinario (NDD §13.8, Payload seguro): no
+  // menciona ningún nombre de combatiente ni "casilla vacía" — solo el resultado binario.
+  attacker.stats.attacksMade += 1;
+  attacker.stats.misses += 1;
+  room.log.unshift(makeLog("attack", `${attacker.name} ataca a una casilla a ${rangeFeet} ft. El ataque falla.`));
+
+  if (room.currentTurn.attacksMade === 0) {
+    if (room.currentTurn.attackMode === "standard") room.currentTurn.usedStandardAction = true;
+    if (room.currentTurn.attackMode === "full") room.currentTurn.usedFullAttack = true;
+    if (fightingDefensively) {
+      applyStartOfNextTurnBuff(attacker, { name: "Luchar a la defensiva", source: "Ataque", acBonus: 2, acBonusType: "dodge" });
+      room.log.unshift(makeLog("status", attacker.name + " activa Luchar a la Defensiva: -4 al ataque y +2 de esquiva a la CA hasta el inicio de su proximo turno."));
+    }
+  }
+  room.currentTurn.attacksMade += 1;
+
+  const exertion = applyDisabledExertion(attacker, { wasDisabledAtActionStart, actionKind: "standard", actionWasExerting: true });
+  if (exertion.applied) {
+    room.log.unshift(makeLog("status", attacker.name + " actua incapacitado con " + exertion.previousHp + " HP y pierde 1 HP por esfuerzo. HP: " + exertion.currentHp + "/" + attacker.hpMax + "."));
+    logStatusChange(room, attacker, exertion.statusBefore, exertion.statusAfter);
+    checkCombatOutcome(room);
+  }
+
+  checkCombatOutcome(room);
+  pruneInvalidOpportunityAttacks(room);
+  syncEncounterPhase(room);
 }

@@ -12,6 +12,7 @@ export function structuredSnapshotFields(defenseTotal = 10, dexterityScore = 10)
     inventory: [{ itemId: "test-item-longsword", catalogId: "longsword" }],
     equipmentSlots: { mainHandItemId: "test-item-longsword", offHandItemId: null, armorItemId: null },
     intrinsicDefense: { naturalArmorBonus: 0, dodgeBonus: 0, deflectionBonus: 0, miscArmorClassBonus: defenseTotal - 10 - dexterity },
+    intrinsicPerception: { darkvisionFeet: 0 },
     featIds: [],
   };
 }

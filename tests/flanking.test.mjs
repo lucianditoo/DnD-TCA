@@ -180,7 +180,7 @@ test("getAttackContextModifiers separa melee y ranged", () => {
 
   const context = getAttackContextModifiers(room, hero, enemy);
   assert.equal(context.flanking, true);
-  const noConcealment = { applies: false, kind: "none", missChancePercent: 0, directTargetingAllowed: true, requiresTargetSquare: false, opportunityAttackAllowed: true, labelParts: [], traces: [] };
+  const noConcealment = { applies: false, kind: "none", missChancePercent: 0, directTargetingAllowed: true, requiresTargetSquare: false, opportunityAttackAllowed: true, labelParts: [], traces: [], visionTraces: [] };
   assert.deepEqual(context.byAttackType.melee.concealment, noConcealment);
   assert.deepEqual(context.byAttackType.ranged.concealment, noConcealment);
   delete context.byAttackType.melee.concealment;
