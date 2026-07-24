@@ -180,7 +180,8 @@ export function cloneEffectInstances<TId extends string>(
         cellSizeFeet: room.board.cellSizeFeet,
         difficultTerrainCells: room.board.difficultTerrainCells ? [...room.board.difficultTerrainCells] : undefined,
         impassableCells: room.board.impassableCells ? [...room.board.impassableCells] : undefined,
-        narrowCells: room.board.narrowCells ? [...room.board.narrowCells] : undefined
+        narrowCells: room.board.narrowCells ? [...room.board.narrowCells] : undefined,
+        lineOfEffectBlockingCells: room.board.lineOfEffectBlockingCells ? [...room.board.lineOfEffectBlockingCells] : undefined
       },
     combatants: room.combatants.map((c) => {
       assertDerivedSnapshotIntegrity(c);

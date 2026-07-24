@@ -224,7 +224,7 @@ export function ActionsPanel(props: {
           : {
               attackBonus: 0,
               labelParts: [],
-              cover: { applies: false, acBonus: 0, kind: "none" as const, blockerIds: [], blockedCellKeys: [] },
+              cover: { applies: false, acBonus: 0, kind: "none" as const, blockerIds: [] },
               concealment: { applies: false, kind: "none" as const, missChancePercent: 0, directTargetingAllowed: true, requiresTargetSquare: false, opportunityAttackAllowed: true, labelParts: [], traces: [] }
             };
         const routine = selected ? getEffectiveAttackRoutine(snapshot, selected, { attackType }) : [];
@@ -281,7 +281,7 @@ export function ActionsPanel(props: {
               <label>Objetivo<select value={props.targetId} onChange={(event) => props.onTargetChange(event.target.value)}><option value="">Elegir</option>{props.targets.map((target) => <option key={target.id} value={target.id}>{target.name}</option>)}</select></label>
               {props.targetDistanceFeet !== null && <div className="rules-box">Distancia al objetivo: {props.targetDistanceFeet} ft.{props.rangePreview ? " " + props.rangePreview : ""}</div>}
               {attackContext.labelParts.length > 0 && <div className="rules-box">Modificadores de posicion: {attackContext.labelParts.join(", ")}</div>}
-              {attackContext.cover.applies && <div className="rules-box" style={{ color: "var(--danger)" }}>⚠️ El objetivo tiene cobertura (+{attackContext.cover.acBonus} CA) porque la linea de ataque atraviesa {attackContext.cover.kind === "terrain-cover" ? "un obstaculo" : "otra criatura"}.</div>}
+              {attackContext.cover.applies && <div className="rules-box" style={{ color: "var(--danger)" }}>⚠️ El objetivo tiene cobertura (+{attackContext.cover.acBonus} CA) porque la linea de ataque atraviesa otra criatura.</div>}
               {attackContext.concealment.applies && <div className="rules-box" data-testid="concealment-preview" style={{ color: "var(--danger)" }}>⚠️ Ocultacion {attackContext.concealment.kind === "total" ? "total" : "parcial"}: {attackContext.concealment.missChancePercent}% de fallo ({attackContext.concealment.labelParts.join(", ")}).</div>}
               {selected && attackTarget && canApplySneakAttack(snapshot, selected, attackTarget, undefined, attackContext.concealment) && <div className="rules-box sneak-attack-badge" style={{ backgroundColor: "rgba(16, 185, 129, 0.1)", border: "1px solid var(--success)", color: "var(--success)", fontWeight: "bold", marginTop: "0.5rem" }}><Sparkles size={16} style={{ display: "inline", verticalAlign: "text-bottom", marginRight: "4px" }} />¡Ataque Furtivo disponible! +{getEffectiveSneakAttackDice(snapshot, selected)}d6</div>}
               {(() => {
@@ -431,7 +431,7 @@ export function ActionsPanel(props: {
           {props.selectedAbility?.id === "magic-missile" && <label>Daño<input type="number" value={props.damage} onChange={(event) => props.onDamageChange(event.target.value)} /></label>}
           {props.selectedAbility?.resolution.kind === "attack-roll" && <RollControls d20={props.d20Roll} autoD20={props.autoD20} damage={props.damage} autoDamage={props.autoDamage} defaultDamage={0} onD20Change={props.onD20Change} onAutoD20Change={props.onAutoD20Change} onDamageChange={props.onDamageChange} onAutoDamageChange={props.onAutoDamageChange} />}
           {abilityTactical && abilityTactical.labelParts.length > 0 && <div className="rules-box">Modificadores de posición: {abilityTactical.labelParts.join(", ")}</div>}
-          {abilityTactical?.cover.applies && <div className="rules-box" style={{ color: "var(--danger)" }}>⚠️ El objetivo tiene cobertura (+{abilityTactical.cover.acBonus} CA) porque la línea de ataque atraviesa {abilityTactical.cover.kind === "terrain-cover" ? "un obstáculo" : "otra criatura"}.</div>}
+          {abilityTactical?.cover.applies && <div className="rules-box" style={{ color: "var(--danger)" }}>⚠️ El objetivo tiene cobertura (+{abilityTactical.cover.acBonus} CA) porque la línea de ataque atraviesa otra criatura.</div>}
           {abilityTactical?.concealment.applies && <div className="rules-box" data-testid="ability-concealment-preview" style={{ color: "var(--danger)" }}>⚠️ Ocultacion {abilityTactical.concealment.kind === "total" ? "total" : "parcial"}: {abilityTactical.concealment.missChancePercent}% de fallo ({abilityTactical.concealment.labelParts.join(", ")}).</div>}
           <button className="primary ability-confirm" onClick={() => props.onUseAbility(props.selectedAbilityId || props.selectedAbility?.id || "")} disabled={actionDisabled || room.phase !== "active" || props.hasPendingOpportunities || !props.selectedAbility}><Sparkles size={18} /> Usar habilidad</button>
         </div>}

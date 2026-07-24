@@ -1,100 +1,139 @@
-# Walkthrough — Sprint 050.1 (Panel de Estados del GM, implementación)
+# Walkthrough — Sprint 052B (Line of Effect + Cobertura Total)
 
 ## Objetivo
 
-Implementar exactamente lo aprobado en `docs/designs/gm-condition-panel.md` e
-`implementation_plan.md` (Sprint 050, diseño/auditoría): una superficie
-administrativa para que el GM pueda ver, aplicar y remover ActiveEffects sobre
-un combatiente, sin que la UI implemente ninguna regla de juego.
+Corregir la contradicción confirmada en Sprint 052/052A: `getAttackLineInterception`
+(Sprint 042) consultaba `board.impassableCells` y otorgaba Cover (+4 CA) por
+obstáculos de terreno, aunque ese uso nunca tuvo un NDD dedicado (Sprint 013 lo
+excluyó explícitamente) y confundía dos mecánicas independientes del SRD:
+Cover parcial (obstruye parte de la línea, +2 a +4 CA, el ataque igual se
+intenta) y Cobertura Total (ninguna línea llega al objetivo, el ataque no
+puede intentarse en absoluto). Ver
+`docs/designs/terrain-cover-line-of-effect-decision.md` (Sprint 052A) para la
+auditoría y la comparación de alternativas que llevó a la Opción A elegida
+aquí.
 
-## Qué se reutilizó exactamente
+## Qué se separó: `impassableCells` vs `lineOfEffectBlockingCells`
 
-`gm-apply-effect` no se tocó — ya era genérico, ya validaba GM, ya delegaba el
-100% de la decisión de stacking a `EffectManager.add`/`severityChain` (Sprint
-049). `EffectQueries.getByTarget` y `effectsCatalog` ya eran la única vía
-autorizada para leer condiciones activas. No se reescribió ningún filtro ya
-existente.
+`Board.impassableCells` queda restringido exclusivamente a movimiento (Bull
+Rush, corte de esquinas, pathing) — su semántica original. Se agrega un campo
+independiente `Board.lineOfEffectBlockingCells` que representa obstrucción
+física real para Line of Effect/Cobertura Total. No existe inferencia entre
+ambos campos: una celda puede estar en uno, en el otro, en ambos o en
+ninguno, y cada campo se consulta solo por la función que le corresponde. La
+migración no tenía datos de producción que depender: `demoBoard` no declara
+`impassableCells`, no existe editor de tablero en la UI, y los únicos usos
+previos eran ~15 fixtures de test (confirmado en la auditoría de Sprint 052A).
 
-## Comando nuevo: `gm-remove-effect`
+## Corrección de Cover: solo interposición de criaturas
 
-Único comando agregado, simétrico a `gm-apply-effect` pero remueve **por
-`instanceId` exclusivamente** (nunca por `effectId`, que sería ambiguo con
-múltiples instancias del mismo efecto, ni por `sourceId`, que no siempre está
-poblado — ver auditoría en `docs/designs/gm-condition-panel.md`, §5).
+`getAttackLineInterception` ya no consulta `impassableCells`; solo calcula
+`creatureBlockerIds`. `buildCoverAssessment` se simplifica: `kind` es
+`"creature-cover"` o `"none"`, nunca más `"terrain-cover"`. Se retiran por
+completo (no se conservan por compatibilidad hipotética):
+`CoverKind: "terrain-cover"`, `CoverAssessment.blockedCellKeys` y
+`AttackLineInterception.terrainBlockedCellKeys`. `ActionsPanel.tsx` (3 sitios)
+y `tests/cover-reach.test.mjs`/`tests/flanking.test.mjs` se corrigieron para
+reflejar que Cover ya no puede originarse en terreno.
 
-- `packages/shared/src/types.ts`: nueva variante en `ClientCommand`.
-- `packages/shared/src/schemas/commands/gmCommands.ts` + `index.ts`: `gmRemoveEffectSchema`, registrado en el mapa.
-- `apps/server/src/commands/gmCommands.ts`: `handleGmRemoveEffect` — `requireGM`, busca la instancia exacta, rechaza si no existe, `EffectManager.removeMany`, un único log administrativo, `broadcast`. Cero ramas por `effectId`.
-- `apps/server/src/commands/dispatcher.ts`: un solo `case` nuevo.
+## `getLineOfEffect` — implementación independiente
 
-## UI: `GmPanel.tsx`
+Nueva función en `rules.ts`, deliberadamente **sin reutilizar** la geometría de
+`getAttackLineInterception` (son preguntas distintas: Cover pregunta "¿hay un
++4 disponible?", Line of Effect pregunta "¿se puede siquiera intentar el
+ataque?"). Reimplementa el mismo tipo de matemática de colinealidad (producto
+cruzado/punto para detectar un punto interior exacto de un segmento) como un
+closure local separado.
 
-Nueva sección "Condiciones de {combatiente}" dentro del panel ya existente
-(`Panel GM`), gateado por el mismo `participantRole === "gm"` que ya oculta
-todo el resto del panel en `ActionsPanel.tsx` — sin permisos nuevos por
-ownership de combatiente, tal como pedía el alcance.
+Regla de footprints multicasilla (Fase 1, aplicable a huellas Large/Huge):
+**existe Line of Effect si al menos un par de celdas ocupadas (una del
+atacante, una del objetivo) tiene un segmento sin bloqueadores interiores**.
+Solo hay Cobertura Total si **todos** los pares posibles están bloqueados —
+generalización directa del principio SRD "puede elegir cualquier casilla que
+ocupa". Para las criaturas 1×1 del catálogo actual esto colapsa al mismo par
+único que Cover ya usaba. `zFeet`/altura se ignora deliberadamente (misma
+simplificación que ya tenía `getAttackLineInterception`; queda como pregunta
+abierta documentada, no como omisión silenciosa).
 
-- Listado: `EffectQueries.getByTarget(room, targetId)` + `effectsCatalog[instance.effectId]`, formateado por helpers puros nuevos en `viewModel.ts` (`getActiveEffectViews`, `formatEffectDuration`, `formatEffectSource`) — ninguno deriva reglas, solo relee campos ya existentes de `EffectInstance`/`EffectDefinition` para mostrarlos legibles. `instanceId` nunca se muestra como texto (solo se usa internamente para el comando de remoción).
-- Selector de aplicación: `applicableEffectOptions` (`viewModel.ts`) — filtra `effectsCatalog` únicamente por ausencia del bloque `hazard` (13 de 15 entradas visibles; los 2 hazards de celda quedan fuera). Sin blacklist manual por ID: `__INFRASTRUCTURE_SAMPLE__` sigue siendo técnicamente seleccionable porque no hay ningún campo declarativo que lo distinga de una condición real, y excluirlo por nombre habría sido exactamente el patrón de blacklist que el alcance prohibía.
-- Duraciones limitadas a los presets reales que el schema ya soporta: "Permanente" (omite `durationPreset`) y "Hasta fin de turno del objetivo" (`until_target_turn_end`). No se inventó ningún preset nuevo.
-- La UI nunca anticipa el resultado de `onStack`: envía el `effectId` elegido y refleja el `room-update` que responde el servidor, igual que cualquier otro comando.
+`LineOfEffectAssessment` es un contrato mínimo:
+`{ hasLineOfEffect: boolean; blockedCellKeys: readonly string[] }` — sin un
+campo `applies` ambiguo.
 
-## Verificación de que el panel no implementa reglas
+## Legalidad de objetivo en el ataque real
 
-Auditoría estática antes del commit: cero ocurrencias de `effectId ===`,
-`onStack`, `upgradeTo` o `severityChain` en ningún archivo tocado por este
-sprint (handler, componentes, `viewModel.ts`). Verificado además mediante
-tests reales que ejercitan los handlers dos y tres veces seguidas (reaplicar
-Fatigued, reaplicar Prone, tercera fatiga contra un objetivo ya Exhausted) y
-confirman que el resultado correcto emerge de `EffectManager`, no de ningún
-código nuevo de este sprint.
+`handleResolveAttackDraft` (`attackCommands.ts`) gana un chequeo nuevo
+inmediatamente después de `createCombatRulesSnapshot(room)` y antes de
+cualquier tirada, consumo de munición o mutación: si `getLineOfEffect` reporta
+`hasLineOfEffect: false`, se lanza un `Error` (misma convención que el resto
+del archivo, sin inventar un segundo formato de respuesta) y el ataque nunca
+llega a `resolveAttack`. Alcance de este sprint: **solo** el camino ordinario
+de `resolve-attack`; ataques de oportunidad, Cargas, conjuros/aptitudes y
+Coup de Grace quedan fuera — de ahí que `DEFENSE-LINE-OF-EFFECT` se registre
+como **Parcial**.
 
 ## Tests
 
-- `tests/gm-condition-panel.test.mjs` (nuevo, 11 casos): remoción por
-  `instanceId` (rechazo no-GM sin mutación, instanceId inexistente rechazado,
-  remoción no afecta otras instancias del mismo `effectId`, log administrativo
-  único), onStack end-to-end vía los handlers reales (Fatigued→Exhausted,
-  Prone duplicado ignorado, tercera fatiga redundante, remoción de un efecto
-  generado automáticamente por el motor), y schema (`gm-remove-effect` válido,
-  `instanceId` requerido, `effectId` inyectado nunca es autoridad).
-- `scripts/e2e-websocket.mjs`: nuevo flujo de 5 aserciones — aplicar Fatigued,
-  reaplicar y confirmar Exhausted (no dos Fatigued), no-GM rechazado al
-  remover, remover por `instanceId` y confirmar ausencia, sala consistente.
-- `tests-ui/smoke.spec.ts`: nuevo escenario Playwright que aplica y remueve una
-  condición desde el Panel GM real (no bypass por WebSocket crudo, a
-  diferencia de cómo se probó Entangled en Sprint 045 antes de que existiera
-  esta UI).
+- `tests/line-of-effect.test.mjs` (nuevo, 17 casos): línea despejada, un
+  bloqueador, varios bloqueadores, obstáculo fuera del segmento,
+  horizontal/vertical/diagonal, adyacencia (sin punto interior posible),
+  claves inválidas/duplicadas, dos escenarios de footprint multicasilla Large
+  (al menos un par despejado → LoE; todos los pares bloqueados → Cobertura
+  Total, usando un destino calculado por búsqueda numérica de mínimo común
+  divisor para que las 4 esquinas del footprint compartan un punto lattice
+  interior real), independencia de `impassableCells` en ambos sentidos, y
+  transporte correcto del campo por `createCombatRulesSnapshot`.
+- `tests/line-of-effect-server.test.mjs` (nuevo, 4 casos de integración de
+  servidor, mismo patrón que `tests/attack-rules.test.mjs`): ataque con LoE
+  se resuelve normal; ataque sin LoE se rechaza antes de cualquier tirada o
+  mutación (verificado con un `diceRoller` que lanza si llega a invocarse,
+  probando que el RNG nunca se consume); la Cobertura Total no oculta ni
+  reemplaza el control de turno existente (un actor no autorizado sigue
+  siendo rechazado por autorización, con o sin bloqueadores de LoE).
+- `tests/cover-reach.test.mjs`/`tests/flanking.test.mjs`: 9 aserciones que
+  dependían de `impassableCells` produciendo `terrain-cover` se reescribieron
+  (algunas sustituyendo el obstáculo por un aliado interpuesto, para conservar
+  la intención original del test de ejercitar un Cover real no trivial).
+- `scripts/e2e-websocket.mjs`: nuevo bloque que confirma el camino positivo
+  (Line of Effect presente, tablero demo sin obstáculos) resuelve el ataque
+  normalmente. El camino de rechazo **no** se agrega aquí — no existe comando
+  ni editor para fijar `board.lineOfEffectBlockingCells` sobre una sala viva,
+  y construir uno solo para este caso habría sido el "editor de mapas" que
+  este sprint excluye explícitamente. Ese camino queda cubierto con rigor por
+  integración directa de servidor (ver arriba), documentado en el propio
+  script.
 
 ## Documentación sincronizada
 
-`PROJECT_STATUS.md`, `TODO.md`, `ROADMAP.md` (corregida la staleness que
-todavía presentaba Blinded/Helpless/Exhausted como pendientes — ya cerrados en
-047/048/049), `docs/testing/master-coverage.md`. Sin cambios en
-`docs/rules/registry.md` (tooling administrativo, no regla de D&D — no abre
-Rule ID) ni en `docs/technical-debt.md` (no apareció deuda nueva durante la
-implementación).
+`docs/rules/registry.md`: nueva fila `DEFENSE-LINE-OF-EFFECT` (Parcial) y
+corrección de la fila `DEFENSE-COVER` (ya no menciona "obstáculos completos").
+`PROJECT_STATUS.md`, `TODO.md`, `docs/testing/master-coverage.md`: entradas
+nuevas para Sprint 052A/052B y corrección de la afirmación histórica de
+Sprint 042 sobre `impassableCells` y Cover. `docs/designs/vision-and-line-of-effect-architecture.md`
+y `docs/designs/terrain-cover-line-of-effect-decision.md`: contradicción y
+decisión marcadas como resueltas/implementadas. Sin cambios en
+`docs/technical-debt.md` (no apareció deuda nueva ni se cerró ninguna
+existente).
 
 ## Validación (DoD completo, ejecutado de verdad)
 
 | Comando | Resultado |
 |---|---|
-| `npm test` | ✅ **478/478**, 0 fallos (54 archivos) |
+| `npm test` | ✅ **498/498**, 0 fallos (56 archivos) |
 | `npm run typecheck` | ✅ 0 errores (3 workspaces) |
 | `npm run build` | ✅ los 3 workspaces en verde (Vite compila 1660 módulos) |
-| `node scripts/e2e-websocket.mjs` | ✅ **98/98** aserciones, exit 0 |
-| `npm run test:ui` (Playwright) | ✅ **7/7** escenarios |
+| `node scripts/e2e-websocket.mjs` | ✅ **99/99** aserciones, exit 0 |
+| `npm run test:ui` (Playwright) | ✅ **7/7** escenarios (sin cambios: no existe editor de tablero para un escenario visual nuevo de Cobertura Total) |
 
 ## Alcance explícitamente excluido (sin cambios)
 
-Descanso/1h, Lesser Restoration, Restoration, clima, viajes, marcha forzada,
-hambre/sed, conjuros, condiciones nuevas, edición manual de `duration`/
-`source`/`stacks`, remoción por `effectId`, remoción masiva, categorías nuevas
-de efectos, sistema de undo.
+Conjuros/AoE, amenaza de Ataques de Oportunidad, Coup de Grace, Visión y
+Línea de Visión (perspectiva del observador, iluminación, `blindsight`),
+altura/`zFeet` en la geometría de Line of Effect, editor de tablero/mapas,
+persistencia de `lineOfEffectBlockingCells` fuera del `Board` ya existente.
 
 ## Estado y próximo paso
 
-Sprint 050.1 cerrado formalmente. El Panel de Estados del GM queda como base
-reutilizable para cualquier condición oficial futura (conjuros, trampas,
-efectos narrativos) sin lógica especial en la interfaz. Próximo sprint
-funcional pendiente de nueva auditoría/recomendación.
+Sprint 052B cerrado formalmente. `DEFENSE-LINE-OF-EFFECT` queda **Parcial**:
+cubre únicamente ataques físicos ordinarios. Conjuros/AoE, amenaza de AdO y
+la arquitectura completa de Visión (`docs/designs/vision-and-line-of-effect-architecture.md`)
+siguen pendientes de sprints propios.

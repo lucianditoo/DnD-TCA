@@ -39,11 +39,40 @@ Documentado en `docs/designs/cover-and-dynamic-reach-design.md`. Es una función
 
 **Corrección de esta revisión (Sprint 052A) a una afirmación falsa de la versión anterior de este documento**: aquí se afirmaba que `board.impassableCells` "no se consulta en `getAttackLineInterception`". Eso es **incorrecto**, confirmado por lectura directa del código real: `getAttackLineInterception` (`rules.ts:1699-1758`) **sí** consulta `room.board.impassableCells` (línea 1752) y produce `terrainBlockedCellKeys`; `buildCoverAssessment` (línea 1766) lo convierte en `kind: "terrain-cover"`, con exactamente el mismo efecto que `creature-cover`: **+4 CA, el ataque procede con tirada normal**. Esta extensión se introdujo en Sprint 042 (según los propios comentarios de código) ampliando silenciosamente el alcance que Sprint 013 excluía de forma explícita, sin ningún NDD dedicado que la autorice. (`getCellsIntersectedByAoE` sí sigue sin consultar ningún obstáculo — esa parte de la afirmación original era correcta y se mantiene.)
 
-**Lo que sigue siendo cierto**: "Total Cover" (bloqueo completo del ataque por ausencia de Line of Effect) **no existe en ningún punto del motor hoy** — ni como concepto, ni como código, ni como test. `impassableCells` produce Cover parcial (+4), nunca invalidación del ataque.
+**Resuelto en Sprint 052B** (implementación real, ya no pendiente): se adoptó la
+Opción A recomendada en `docs/designs/terrain-cover-line-of-effect-decision.md`
+(Sprint 052A). `impassableCells` quedó restringido exclusivamente a movimiento;
+`getAttackLineInterception` ya **no** consulta `impassableCells` y solo produce
+`creatureBlockerIds` — `CoverKind: "terrain-cover"` y
+`AttackLineInterception.terrainBlockedCellKeys` fueron retirados por completo
+(no se conservaron por compatibilidad hipotética). Un nuevo campo
+independiente, `Board.lineOfEffectBlockingCells`, alimenta exclusivamente
+`getLineOfEffect` (ver §1.3.1 más abajo). "Total Cover" ahora **sí** existe en
+el motor: ausencia de Line of Effect bloquea el intento de ataque antes de
+cualquier tirada, para ataques físicos ordinarios (`DEFENSE-LINE-OF-EFFECT`,
+Parcial — ver Rule Registry). `getAttackLineInterception` no se generalizó ni
+se reescribió para resolver esto, tal como exigía la nota anterior de esta
+sección: se corrigió en su lugar (dejó de hacer algo que nunca debió hacer) y
+`getLineOfEffect` se implementó como función nueva e independiente. Ver
+`walkthrough.md` (Sprint 052B) para el detalle completo de la implementación.
 
-**Contradicción pendiente — Sprint 052 (implementación de `getLineOfEffect`) queda bloqueado**: si `getLineOfEffect` se implementara tal como este documento la describe (una celda de `impassableCells` interpuesta ⇒ Total Cover ⇒ ataque inválido), coexistiría con el comportamiento ya real de Cover (la misma celda ⇒ `terrain-cover` ⇒ +4, ataque válido) para el **mismo par atacante/objetivo**, dando veredictos opuestos sobre el mismo hecho geométrico. La auditoría completa, las alternativas comparadas (mantener `impassableCells` solo como movimiento + campo nuevo dedicado / redefinir `impassableCells` como sólido / clasificación multi-propiedad de obstáculo) y la recomendación viven en `docs/designs/terrain-cover-line-of-effect-decision.md` (Sprint 052A) — no se decide aquí.
+### 1.3.1. Line of Effect (`getLineOfEffect`, Sprint 052B)
 
-`getAttackLineInterception` no debe generalizarse ni reescribirse para resolver esto; la resolución depende de la decisión de semántica de terreno del documento referido arriba, no de una refactorización oportunista de Cover. Ver Corrección C en §3 y §6.
+Función pura nueva en `rules.ts`, deliberadamente **no** una generalización de
+`getAttackLineInterception` (reimplementa su propio closure de colinealidad
+exacta). Consulta únicamente `board.lineOfEffectBlockingCells` — nunca
+`impassableCells`. Para footprints multicasilla (Large+), existe Line of
+Effect si al menos un par de celdas ocupadas (una del atacante, una del
+objetivo) tiene un segmento sin bloqueadores interiores; solo hay Cobertura
+Total si todos los pares posibles están bloqueados — esto responde la
+pregunta 6 de §8 para el caso de esta implementación (queda igual de abierta
+para Line of *Sight*/Vision, que Sprint 052B no toca). `zFeet`/altura se
+ignora deliberadamente (misma simplificación que ya tenía
+`getAttackLineInterception`), respondiendo parcialmente la pregunta 9 de §8:
+`lineOfEffectBlockingCells` reemplaza a `impassableCells` como fuente de
+obstrucción física para este propósito específico, sin resolver la pregunta
+más amplia de "opaco a efectos/percepción" en general (cristal, barrotes),
+que sigue abierta para Vision/Line of Sight.
 
 ### 1.4. Concealment (`getConcealmentAssessment`, `ConcealmentContribution`, Sprint 046)
 
@@ -336,7 +365,7 @@ No attack roll
 
 1. ¿La capacidad de visión (Visión en la Oscuridad/Penumbra) vive en `Combatant` directamente o en un catálogo nuevo análogo a `SizeRulesCatalog`? Ambas opciones reutilizan el patrón fuente→proyección; ninguna se decide aquí.
 2. ¿Granularidad de datos de luz: por celda (`Board.dimLightCells`/`darknessCells`, análogo a `difficultTerrainCells`) o por zona/polígono traducida a celdas en el snapshot?
-3. ¿`getLineOfEffect` debe considerar criaturas como obstrucción parcial, o el bloqueo por criaturas queda exclusivamente en `getAttackLineInterception` (Cover)? La lectura SRD más simple sugiere que Total Cover es sobre terreno/objetos, no sobre criaturas, pero no se cierra aquí.
+3. ¿`getLineOfEffect` debe considerar criaturas como obstrucción parcial, o el bloqueo por criaturas queda exclusivamente en `getAttackLineInterception` (Cover)? La lectura SRD más simple sugiere que Total Cover es sobre terreno/objetos, no sobre criaturas, pero no se cierra aquí. **Resuelto en Sprint 052B**: `getLineOfEffect` consulta únicamente `lineOfEffectBlockingCells` (terreno/objetos); el bloqueo por criaturas interpuestas queda exclusivamente en `getAttackLineInterception`/Cover, sin solapamiento entre ambas mecánicas.
 4. ¿Cómo interactúan `threatensTarget`/AdO con Total Cover? (Ej.: ¿un enemigo detrás de un muro sólido puede amenazar/flanquear?) Fuera de alcance de este documento, pero el diseño de implementación deberá decidir explícitamente si lo deja fuera o lo cierra.
 5. ¿La forma declarativa de "zona de luz reducida" anclada a `targetCells` necesita su propio bloque en `EffectDefinition` (análogo a `hazard`) o basta una extensión mínima de `EnvironmentalHazard`?
 6. **Geometría de Line of Effect / Line of Sight contra footprints multicasilla (gate de diseño previo a implementación, no un detalle a resolver durante el código)**: debe auditarse y decidirse explícitamente, con respaldo normativo y casos de prueba geométricos, antes de que Sprint 052 (o el sprint que implemente LoE) toque código, al menos:
@@ -347,9 +376,15 @@ No attack roll
    - si, para declarar **ausencia total** de Line of Effect, deben estar bloqueados **todos** los segmentos posibles entre ambos footprints, o alguno más laxo;
    - cómo interactúa esto con `zFeet` (altura) cuando los footprints no comparten plano;
    - consistencia con el algoritmo ya existente de `getAttackLineInterception` (Cover, hoy 1×1 centro-a-centro) y con las reglas SRD de criaturas multicasilla, sin asumir que ambas mecánicas deban resolver footprints de la misma manera.
+   **Resuelto en Sprint 052B, solo para Line of Effect** (Line of Sight/Vision
+   sigue abierta): existe Line of Effect si al menos un par de celdas ocupadas
+   (una del atacante, una del objetivo) tiene un segmento sin bloqueadores
+   interiores; Cobertura Total exige que **todos** los pares posibles estén
+   bloqueados. `zFeet` se ignora (misma simplificación que ya tenía Cover).
+   Ver `tests/line-of-effect.test.mjs`.
 7. ¿Orden exacto de fases dentro de "Fase 5 — Contexto efímero" cuando coexistan Cover, Concealment por efecto declarativo y Concealment por Vision — se calculan independientemente y se componen al final, o existe precedencia (ej. Blinded ya implica ocultación total y no necesita evaluar luz)?
 8. ¿Blindsight/Blindsense se modelan como traits (`Trait` ya es un union cerrado) o como capacidad de percepción con alcance, análoga a Visión en la Oscuridad? Ambos existen en el SRD con reglas ligeramente distintas (§2).
-9. ¿`impassableCells` basta como aproximación de obstrucción física para Line of Effect, o se necesita un campo declarativo distinto que distinga "intransitable para movimiento" de "opaco a efectos/percepción" (cristal, barrotes, rejas)? Ver §1.3 y §11.
+9. ¿`impassableCells` basta como aproximación de obstrucción física para Line of Effect, o se necesita un campo declarativo distinto que distinga "intransitable para movimiento" de "opaco a efectos/percepción" (cristal, barrotes, rejas)? Ver §1.3 y §11. **Resuelto en Sprint 052B**: se optó por el campo declarativo distinto — `Board.lineOfEffectBlockingCells`, independiente de `impassableCells` (que queda exclusivamente de movimiento). La distinción más fina "opaco a efectos" vs. "opaco a percepción" (cristal, barrotes) sigue abierta para cuando exista Vision/Line of Sight.
 10. Forma exacta de un futuro `TargetingAssessment` (§4) y si se justifica como contrato propio o como una composición de los assessments ya existentes — no se decide en este documento.
 
 ## 9. Impacto sobre la arquitectura
@@ -360,16 +395,21 @@ No attack roll
 | `packages/shared/src/types.ts` | Nuevos tipos `LineOfEffectAssessment`, `VisionAssessment`; posible extensión de `Board` (luz) y `Combatant` (percepción) — no en este sprint |
 | `packages/shared/src/effects/*` | Reutilización sin cambios conceptuales de `targetCells`/`EffectInstance`/`EffectManager`; posible extensión declarativa análoga a `EnvironmentalHazard`; sin convertir a Vision en un reducer universal |
 | Attack Resolver | **Cero cambios de firma** — sigue consumiendo `ConcealmentAssessment` |
-| Cover (`DEFENSE-COVER`) | Sin cambios — `getAttackLineInterception` se preserva intacta y sin modificar; `getLineOfEffect` es una función nueva y separada |
-| Snapshot | Sin campos derivados nuevos; transporta las mismas fuentes ya existentes más las nuevas fuentes de luz/percepción cuando se implementen |
+| Cover (`DEFENSE-COVER`) | **Actualizado (Sprint 052B)**: `getAttackLineInterception` se corrigió (ya no consulta `impassableCells`, retira `terrain-cover`); `getLineOfEffect` es una función nueva y separada, tal como preveía esta fila |
+| Snapshot | **Actualizado (Sprint 052B)**: nuevo campo transportado, `Board.lineOfEffectBlockingCells` (ver `combatSnapshot.ts`); fuentes de luz/percepción para Vision siguen sin implementar |
 | UI | Futuro preview compartido, mismo patrón que Cover/Concealment — fuera de alcance de este documento |
-| Rule Registry | Sin cambios en este sprint; un sprint de implementación futuro deberá proponer Rule ID(s) siguiendo la política de Sprint 044.1 (una regla oficial estable, no una fila por sprint) |
+| Rule Registry | **Actualizado (Sprint 052B)**: `DEFENSE-LINE-OF-EFFECT` agregada (Parcial, solo ataques físicos ordinarios), siguiendo la política de Sprint 044.1 |
 
-## 10. Alcance canónico de Sprint 052 (tentativo, no autorizado, sujeto a `Proceed` propio)
+## 10. Alcance canónico de Sprint 052 (tentativo, no autorizado, sujeto a `Proceed` propio) — IMPLEMENTADO en Sprint 052B
 
 Esta es la única versión válida del alcance tentativo de Sprint 052 — sustituye
 cualquier mención más amplia en otras secciones de este documento (riesgos,
-etc.), que deben leerse subordinadas a esta lista:
+etc.), que deben leerse subordinadas a esta lista. **Los puntos 1-6 de
+"Incluye" fueron implementados en Sprint 052B** (con un ajuste: el punto 4 usa
+`Board.lineOfEffectBlockingCells`, no `impassableCells`, tras la decisión de
+Sprint 052A — ver `docs/designs/terrain-cover-line-of-effect-decision.md`). La
+lista de "Explícitamente fuera de alcance" permanece vigente sin cambios: sigue
+describiendo trabajo futuro real, no ya completado.
 
 **Incluye:**
 

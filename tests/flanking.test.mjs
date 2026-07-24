@@ -185,7 +185,7 @@ test("getAttackContextModifiers separa melee y ranged", () => {
   assert.deepEqual(context.byAttackType.ranged.concealment, noConcealment);
   delete context.byAttackType.melee.concealment;
   delete context.byAttackType.ranged.concealment;
-  const noCover = { applies: false, acBonus: 0, kind: "none", blockerIds: [], blockedCellKeys: [] };
+  const noCover = { applies: false, acBonus: 0, kind: "none", blockerIds: [] };
   assert.deepEqual(context.byAttackType.melee, { attackBonus: 2, labelParts: ["flanqueo +2"], cover: noCover });
   assert.deepEqual(context.byAttackType.ranged, { attackBonus: -4, labelParts: ["disparo a melé -4"], cover: noCover });
 });

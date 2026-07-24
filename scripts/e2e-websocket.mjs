@@ -654,6 +654,40 @@ await send(gmConditionPanel, { type: 'gm-remove-effect', roomCode: conditionPane
 record('Panel GM: remover por instanceId refleja ausencia en el siguiente room-update', gmConditionPanel.room.effectInstances.length === 0, JSON.stringify(gmConditionPanel.room.effectInstances));
 record('Panel GM: la sala continua consistente tras aplicar/reaplicar/remover', gmConditionPanel.room.combatants.some(c => c.id === conditionPanelBane.id) && gmConditionPanel.room.code === conditionPanelCode, JSON.stringify(gmConditionPanel.room.combatants.map(c => c.id)));
 
-gm.ws.close(); ownershipGm.ws.close(); ownerA.ws.close(); ownerB.ws.close(); stabilizationGm.ws.close(); profileGm.ws.close(); profilePlayer.ws.close(); largeGm.ws.close(); diehardGm.ws.close(); gmTouch.ws.close(); player.ws.close(); gmHaste.ws.close(); gmAoo.ws.close(); gmDiagonalAoo.ws.close(); gmMultiAoo.ws.close(); gmDiagonalMelee.ws.close(); gmCharge.ws.close(); gmAid.ws.close(); gmPassThrough.ws.close(); gmFlanking.ws.close(); gmFfs.ws.close(); gmFa.ws.close(); gmDef.ws.close(); gmDisabled.ws.close(); gmStun.ws.close(); gmEntangled.ws.close(); gmBlinded.ws.close(); gmConditionPanel.ws.close(); conditionPanelPlayer.ws.close();
+// ─────────────────────────────────────────────────────────────────────────────
+// Sprint 052B: Line of Effect / Cobertura Total (DEFENSE-LINE-OF-EFFECT, Parcial)
+//
+// Solo se cubre aqui el camino positivo (ataque ordinario con Line of Effect
+// presente, tablero demo sin obstaculos) porque no existe ningun comando
+// WebSocket ni editor que permita fijar board.lineOfEffectBlockingCells sobre
+// una sala viva (create-room no acepta override de tablero y no hay un
+// endpoint de prueba para mutarlo). Construir uno solo para este escenario
+// equivaldria a introducir el "editor de mapas" que este sprint excluye
+// explicitamente de su alcance. El camino negativo (ataque rechazado por
+// Cobertura Total) queda cubierto de forma rigurosa por integracion directa
+// de servidor en tests/line-of-effect-server.test.mjs, construyendo la
+// CombatRoom con board.lineOfEffectBlockingCells directamente, igual que ya
+// hacen tests/gm-apply-effect.test.mjs y tests/attack-rules.test.mjs para
+// otros escenarios que tampoco son accesibles via comando de cliente.
+// ─────────────────────────────────────────────────────────────────────────────
+// Cedrick (no Sneak Attack) en vez de Bane: evita dano extra no determinista por
+// precision damage contra un objetivo Flat-Footed que aun no actuo.
+const gmLoe = await connectAndSend({ type: 'create-room', name: 'GM Line of Effect Test' });
+const loeCode = gmLoe.room.code; const loeGmId = gmLoe.participant.id;
+await send(gmLoe, { type: 'add-catalog-combatant', roomCode: loeCode, actorId: loeGmId, category: 'heroes', templateId: 'cedrick' });
+await send(gmLoe, { type: 'add-catalog-combatant', roomCode: loeCode, actorId: loeGmId, category: 'enemies', templateId: 'canocrock' });
+const loeCedrick = gmLoe.room.combatants.find(c => c.name === 'Cedrick');
+const loeEnemy = gmLoe.room.combatants.find(c => c.type === 'enemy');
+await send(gmLoe, { type: 'gm-move-combatant', roomCode: loeCode, actorId: loeGmId, combatantId: loeCedrick.id, to: { x: 5, y: 5, zFeet: 0 } });
+await send(gmLoe, { type: 'gm-move-combatant', roomCode: loeCode, actorId: loeGmId, combatantId: loeEnemy.id, to: { x: 6, y: 5, zFeet: 0 } });
+await send(gmLoe, { type: 'set-initiative', roomCode: loeCode, actorId: loeGmId, combatantId: loeCedrick.id, initiative: 20 });
+await send(gmLoe, { type: 'set-initiative', roomCode: loeCode, actorId: loeGmId, combatantId: loeEnemy.id, initiative: 1 });
+await send(gmLoe, { type: 'sort-initiative', roomCode: loeCode, actorId: loeGmId });
+await send(gmLoe, { type: 'declare-attack-mode', roomCode: loeCode, actorId: loeGmId, combatantId: loeCedrick.id, mode: 'standard', defensive: false });
+await send(gmLoe, { type: 'resolve-attack', roomCode: loeCode, actorId: loeGmId, attackerId: loeCedrick.id, targetId: loeEnemy.id, d20Roll: 15, damage: 4 });
+const loeHitEnemy = gmLoe.room.combatants.find(c => c.id === loeEnemy.id);
+record('Line of Effect presente (tablero sin obstaculos) permite resolver el ataque normalmente', loeHitEnemy.hpCurrent === loeEnemy.hpCurrent - 4 && !gmLoe.errors.some(e => /Cobertura Total/i.test(e)), 'hpAntes=' + loeEnemy.hpCurrent + ' hpDespues=' + loeHitEnemy.hpCurrent + ' errors=' + gmLoe.errors.join(' | '));
+
+gm.ws.close(); ownershipGm.ws.close(); ownerA.ws.close(); ownerB.ws.close(); stabilizationGm.ws.close(); profileGm.ws.close(); profilePlayer.ws.close(); largeGm.ws.close(); diehardGm.ws.close(); gmTouch.ws.close(); player.ws.close(); gmHaste.ws.close(); gmAoo.ws.close(); gmDiagonalAoo.ws.close(); gmMultiAoo.ws.close(); gmDiagonalMelee.ws.close(); gmCharge.ws.close(); gmAid.ws.close(); gmPassThrough.ws.close(); gmFlanking.ws.close(); gmFfs.ws.close(); gmFa.ws.close(); gmDef.ws.close(); gmDisabled.ws.close(); gmStun.ws.close(); gmEntangled.ws.close(); gmBlinded.ws.close(); gmConditionPanel.ws.close(); conditionPanelPlayer.ws.close(); gmLoe.ws.close();
 console.log(JSON.stringify(results, null, 2));
 if (results.some(r => !r.ok)) process.exitCode = 1;

@@ -21,13 +21,14 @@ export type SkillId = "escape_artist";
 export type SkillRanks = Readonly<Record<SkillId, number>>;
 
 export interface Position { x: number; y: number; zFeet: number; }
-export interface Board { 
-  width: number; 
-  height: number; 
-  cellSizeFeet: number; 
+export interface Board {
+  width: number;
+  height: number;
+  cellSizeFeet: number;
   difficultTerrainCells?: string[]; // Claves "x,y" O(1)
-  impassableCells?: string[];       // Claves "x,y" O(1) para muros y obstáculos
+  impassableCells?: string[];       // Claves "x,y" O(1) para muros y obstáculos: bloqueo de MOVIMIENTO exclusivamente (Sprint 052A/052B) — nunca implica Cover ni Line of Effect
   narrowCells?: string[];           // Claves "x,y" O(1) para Squeezing
+  lineOfEffectBlockingCells?: string[]; // Claves "x,y" O(1): obstrucción física completa para Line of Effect (Sprint 052B). Independiente de impassableCells: no se infiere de un campo al otro.
 }
 export type ArmorClassBonusType = "armor" | "shield" | "natural_armor" | "dex" | "dodge" | "deflection" | "size" | "misc";
 export interface ArmorClassBreakdown {
@@ -74,16 +75,19 @@ export type AoEShape =
 export type CardinalDirection = "N" | "NE" | "E" | "SE" | "S" | "SW" | "W" | "NW";
 
 /**
- * Sprint 042: única sede de tipos para Cover. `kind` distingue la fuente (criatura interpuesta
- * vs. obstáculo de casilla) para diagnóstico y presentación, sin persistir contexto espacial.
+ * Sprint 042: única sede de tipos para Cover. `kind` distingue la fuente (criatura interpuesta)
+ * para diagnóstico y presentación, sin persistir contexto espacial.
+ * Sprint 052B: se retiró `"terrain-cover"` — `impassableCells` ya no concede Cover; la
+ * obstrucción física completa ahora es responsabilidad exclusiva de `LineOfEffectAssessment`
+ * (Total Cover), una regla distinta con consecuencias distintas. Ver
+ * `docs/designs/terrain-cover-line-of-effect-decision.md`.
  */
-export type CoverKind = "none" | "creature-cover" | "terrain-cover";
+export type CoverKind = "none" | "creature-cover";
 export interface CoverAssessment {
   readonly applies: boolean;
   readonly acBonus: number;
   readonly kind: CoverKind;
   readonly blockerIds: readonly string[];
-  readonly blockedCellKeys: readonly string[];
 }
 
 export type ConcealmentKind = "none" | "partial" | "total";
@@ -96,6 +100,19 @@ export interface ConcealmentAssessment {
   readonly opportunityAttackAllowed: boolean;
   readonly labelParts: readonly string[];
   readonly traces: readonly ConcealmentTrace[];
+}
+
+/**
+ * Sprint 052B: assessment puro e independiente de Line of Effect (obstrucción física completa,
+ * `board.lineOfEffectBlockingCells`). Ausencia de Line of Effect ⇒ Total Cover ⇒ el ataque no
+ * puede intentarse — una regla de legalidad, no de miss chance. Nunca se fusiona con
+ * `CoverAssessment` ni `ConcealmentAssessment`. Ver
+ * `docs/designs/vision-and-line-of-effect-architecture.md` y
+ * `docs/designs/terrain-cover-line-of-effect-decision.md`.
+ */
+export interface LineOfEffectAssessment {
+  readonly hasLineOfEffect: boolean;
+  readonly blockedCellKeys: readonly string[];
 }
 
 export interface Ability { id: string; name: string; description: string; actionType: ActionType; rangeFeet: number; target: "self" | "ally" | "enemy" | "creature" | "area"; aoe?: AoEShape; resolution: AbilityResolution; }
@@ -308,6 +325,7 @@ export interface CombatRulesSnapshot<TEffectId extends string = string> {
     readonly difficultTerrainCells?: ReadonlyArray<string>;
     readonly impassableCells?: ReadonlyArray<string>;
     readonly narrowCells?: ReadonlyArray<string>;
+    readonly lineOfEffectBlockingCells?: ReadonlyArray<string>;
   };
   readonly combatants: ReadonlyArray<Readonly<CombatantSnapshot>>;
   readonly currentTurn: Readonly<TurnState>;

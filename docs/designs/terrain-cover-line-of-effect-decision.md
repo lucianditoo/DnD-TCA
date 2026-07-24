@@ -1,5 +1,21 @@
 # Sprint 052A — Decisión: semántica de terreno (`impassableCells` vs Cover vs Line of Effect)
 
+## Resuelto e implementado en Sprint 052B
+
+Las 5 preguntas de la última sección quedaron respondidas y ejecutadas: (1)
+Opción A aprobada y adoptada; (2) el campo se llama
+`Board.lineOfEffectBlockingCells`, celda por celda, mismo patrón que
+`difficultTerrainCells`; (3) se autorizó retirar `terrain-cover` por completo
+en el mismo sprint (no como fallback documentado — `CoverKind: "terrain-cover"`
+y `AttackLineInterception.terrainBlockedCellKeys` fueron eliminados del código,
+no conservados); (4) se abrió `DEFENSE-LINE-OF-EFFECT` como Rule ID separada de
+`DEFENSE-COVER`, estado Parcial; (5) Sprint 052B implementó el plan completo en
+un único sprint (no quedó pendiente de un sprint posterior). El detalle de la
+implementación vive en `walkthrough.md` (Sprint 052B) y en
+`docs/designs/vision-and-line-of-effect-architecture.md` §1.3/§1.3.1. El resto
+de este documento se conserva sin cambios como registro histórico de la
+auditoría y la comparación de alternativas que fundamentaron la decisión.
+
 ## Estado real (verificado en código, no en documentación)
 
 `impassableCells` es un `string[]` de claves `"x,y"` en `Board` (`types.ts:29`),

@@ -1,4 +1,4 @@
-import type { ArmorClassBonusType, ArmorClassBreakdown, AttackContextModifiers, AttackDeliveryContext, CombatLogEntry, CombatRoom, CombatRulesSnapshot, Combatant, CombatantSnapshot, ConcealmentAssessment, CoverAssessment, CoverKind, LifeStatus, OpportunityAttack, Position, SavingThrowType, SizeCategory, SpecialManeuverId } from "./types.js";
+import type { ArmorClassBonusType, ArmorClassBreakdown, AttackContextModifiers, AttackDeliveryContext, CombatLogEntry, CombatRoom, CombatRulesSnapshot, Combatant, CombatantSnapshot, ConcealmentAssessment, CoverAssessment, CoverKind, LifeStatus, LineOfEffectAssessment, OpportunityAttack, Position, SavingThrowType, SizeCategory, SpecialManeuverId } from "./types.js";
 import type { ConditionalModifier, EffectDefinition, ModifierCondition, Trait, TraitCondition, EffectStat } from "./effects/contracts.js";
 import type { CatalogEffectId } from "./effects/types.js";
 import { EffectReducer, type MovementRateTrace, type ReducedConcealment, type ReducedEffects } from "./effects/reducer.js";
@@ -1685,15 +1685,20 @@ export function projectForcedMovement(
 }
 
 /**
- * Sprint 042: geometría pura de intercepción de línea de ataque. Detecta dos fuentes
- * independientes de Cover (V1, sin raycasting): una criatura viva interpuesta (Sprint 013,
- * `creatureBlockerIds`) y una casilla de obstáculo completo del tablero interpuesta
- * (`board.impassableCells`, `terrainBlockedCellKeys`). Ambas usan la misma prueba de
- * colinealidad exacta entera; `getAttackContextModifiers` decide cuál aplica por tipo de ataque.
+ * Sprint 042: geometría pura de intercepción de línea de ataque. Detecta criaturas vivas
+ * interpuestas (Sprint 013, `creatureBlockerIds`) entre el atacante y el objetivo mediante
+ * colinealidad exacta entera.
+ *
+ * Sprint 052B (corrección de contradicción detectada en Sprint 052A, ver
+ * `docs/designs/terrain-cover-line-of-effect-decision.md`): esta función ya NO consulta
+ * `board.impassableCells`. Esa consulta (introducida en este mismo Sprint 042 sin NDD propio)
+ * hacía que un muro produjera `terrain-cover` (+4 CA, ataque permitido) — un veredicto opuesto
+ * al que produce la nueva `getLineOfEffect` (Total Cover, ataque inválido) para la misma celda.
+ * Cover queda ahora exclusivamente sobre criaturas interpuestas; la obstrucción física completa
+ * es responsabilidad única de `getLineOfEffect`/`LineOfEffectAssessment`.
  */
 export interface AttackLineInterception {
   readonly creatureBlockerIds: readonly string[];
-  readonly terrainBlockedCellKeys: readonly string[];
 }
 
 export function getAttackLineInterception(
@@ -1748,32 +1753,91 @@ export function getAttackLineInterception(
     }
   }
 
-  const terrainBlockedCellKeys: string[] = [];
-  for (const key of [...new Set(room.board.impassableCells ?? [])].sort()) {
-    const [cx, cy] = key.split(",").map(Number);
-    if (Number.isFinite(cx) && Number.isFinite(cy) && isExactInteriorPoint(cx, cy)) terrainBlockedCellKeys.push(key);
-  }
-
-  return { creatureBlockerIds, terrainBlockedCellKeys };
+  return { creatureBlockerIds };
 }
 
 /**
  * Sprint 042: proyecta la geometría de `getAttackLineInterception` a un veredicto de Cover para
- * un intento de ataque. El obstáculo solo aplica cuando ocupa una celda interior real entre los
- * footprints, por lo que un melee adyacente queda naturalmente fuera y un melee con alcance puede
- * recibir Cover. No acumulable: cualquier combinación de bloqueadores otorga exactamente +4.
+ * un intento de ataque. Sprint 052B: exclusivamente criaturas interpuestas — ver nota arriba.
  */
 function buildCoverAssessment(interception: AttackLineInterception): CoverAssessment {
   const creatureApplies = interception.creatureBlockerIds.length > 0;
-  const terrainApplies = interception.terrainBlockedCellKeys.length > 0;
-  const applies = creatureApplies || terrainApplies;
-  const kind: CoverKind = creatureApplies ? "creature-cover" : terrainApplies ? "terrain-cover" : "none";
+  const kind: CoverKind = creatureApplies ? "creature-cover" : "none";
   return {
-    applies,
-    acBonus: applies ? 4 : 0,
+    applies: creatureApplies,
+    acBonus: creatureApplies ? 4 : 0,
     kind,
-    blockerIds: interception.creatureBlockerIds,
-    blockedCellKeys: interception.terrainBlockedCellKeys
+    blockerIds: interception.creatureBlockerIds
+  };
+}
+
+/**
+ * Sprint 052B: geometría pura e independiente de Line of Effect. Responde exclusivamente si
+ * existe obstrucción física completa (`board.lineOfEffectBlockingCells`) entre el atacante y el
+ * objetivo — nunca consulta criaturas ni `impassableCells`. No generaliza ni envuelve
+ * semánticamente `getAttackLineInterception`: comparte únicamente el mismo tipo de prueba
+ * geométrica (colinealidad exacta + pertenencia estricta al segmento), reimplementada aquí como
+ * una utilidad local independiente.
+ *
+ * Footprints multicasilla (Sprint 052A/052B, decisión de Fase 1, ver
+ * `docs/designs/terrain-cover-line-of-effect-decision.md`): existe Line of Effect si **al menos
+ * un** par de celdas ocupadas (una del atacante, una del objetivo) tiene un segmento sin
+ * bloqueadores interiores — análogo a que el SRD permita elegir la esquina más favorable del
+ * propio espacio al trazar líneas hacia las esquinas del objetivo. Hay Total Cover únicamente si
+ * **todos** los pares posibles están bloqueados. Para criaturas 1×1 (todas las del catálogo de
+ * demo actual) esto colapsa a un único par, igual que antes.
+ *
+ * `zFeet` (altura): esta primera versión ignora la diferencia de altura entre celdas, igual que
+ * `getAttackLineInterception` hace hoy — es una simplificación deliberada y documentada, no un
+ * descuido; queda como pregunta abierta para una futura vertical de altura/vuelo.
+ */
+export function getLineOfEffect(
+  room: CombatRulesSnapshot<ProductionEffectId>,
+  origin: Combatant,
+  target: Combatant
+): LineOfEffectAssessment {
+  const blockingCells = [...new Set(room.board.lineOfEffectBlockingCells ?? [])]
+    .map((key) => {
+      const [x, y] = key.split(",").map(Number);
+      return { key, x, y };
+    })
+    .filter((cell) => Number.isFinite(cell.x) && Number.isFinite(cell.y))
+    .sort((left, right) => left.key.localeCompare(right.key));
+
+  const isStrictInteriorPointOfSegment = (ax: number, ay: number, bx: number, by: number, px: number, py: number): boolean => {
+    const dxAB = bx - ax;
+    const dyAB = by - ay;
+    const lengthSquaredAB = dxAB * dxAB + dyAB * dyAB;
+    const dxAC = px - ax;
+    const dyAC = py - ay;
+    const cross = dxAB * dyAC - dyAB * dxAC;
+    if (cross !== 0) return false;
+    const dot = dxAC * dxAB + dyAC * dyAB;
+    return dot > 0 && dot < lengthSquaredAB;
+  };
+
+  const originCells = getCombatantOccupiedCells(origin, room);
+  const destinationCells = getCombatantOccupiedCells(target, room);
+
+  let hasLineOfEffect = false;
+  const blockedCellKeys = new Set<string>();
+
+  for (const a of originCells) {
+    for (const b of destinationCells) {
+      const blockersForThisPair = blockingCells.filter((cell) =>
+        isStrictInteriorPointOfSegment(a.x, a.y, b.x, b.y, cell.x, cell.y)
+      );
+      if (blockersForThisPair.length === 0) {
+        hasLineOfEffect = true;
+      } else {
+        for (const blocker of blockersForThisPair) blockedCellKeys.add(blocker.key);
+      }
+    }
+  }
+
+  return {
+    hasLineOfEffect,
+    blockedCellKeys: [...blockedCellKeys].sort()
   };
 }
 

@@ -1,4 +1,4 @@
-import { applyDamage, canFullAttack, canStandardAttack, consumeInventoryQuantity, getEquippedWeaponEntry, lifeStatus, makeLog, createCombatRulesSnapshot, validateAttackAmmunition, type ClientCommand, type CombatRoom, type AttackThreatState, type CombatRulesSnapshot, type DamageBundle, type ProductionEffectId } from "@dnd-tactical/shared";
+import { applyDamage, canFullAttack, canStandardAttack, consumeInventoryQuantity, getEquippedWeaponEntry, getLineOfEffect, lifeStatus, makeLog, createCombatRulesSnapshot, validateAttackAmmunition, type ClientCommand, type CombatRoom, type AttackThreatState, type CombatRulesSnapshot, type DamageBundle, type ProductionEffectId } from "@dnd-tactical/shared";
 import { requireCombatantControl, requireTurnControl } from "../auth/control.js";
 import { attackRangeFeet, resolveAttack, resolveCriticalConfirmation, resolveWeaponAttackSource } from "../combat/attackResolver.js";
 import { applyStartOfNextTurnBuff } from "../combat/buffRules.js";
@@ -55,6 +55,17 @@ function handleResolveAttackDraft(room: CombatRoom, command: Extract<ClientComma
   const fightingDefensively = room.currentTurn.defensiveFightingDeclared;
 
   const snapshot = createCombatRulesSnapshot(room);
+
+  // Sprint 052B (DEFENSE-LINE-OF-EFFECT, Parcial): legalidad de objetivo antes de cualquier
+  // tirada/consumo/mutación. Ausencia de Line of Effect = Total Cover = el ataque no puede
+  // intentarse en absoluto (distinto de Cover por criatura, que solo aporta +4 CA y no bloquea
+  // el intento). Ver docs/designs/vision-and-line-of-effect-architecture.md y
+  // docs/designs/terrain-cover-line-of-effect-decision.md.
+  const lineOfEffect = getLineOfEffect(snapshot, attacker, target);
+  if (!lineOfEffect.hasLineOfEffect) {
+    throw new Error(target.name + " tiene Cobertura Total: " + attacker.name + " no tiene línea de efecto hacia el objetivo.");
+  }
+
   const grappleEligibility = getGrappleAttackEligibility(snapshot, attacker);
   if (!grappleEligibility.ok) throw new Error(grappleEligibility.error ?? "Fuente de ataque inválida durante la Presa.");
   

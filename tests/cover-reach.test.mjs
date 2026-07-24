@@ -10,7 +10,7 @@ import {
 import { resolveAttack } from "../apps/server/src/combat/attackResolver.ts";
 import { inventoryEquipment } from "./test-utils.mjs";
 
-const NO_COVER = { applies: false, acBonus: 0, kind: "none", blockerIds: [], blockedCellKeys: [] };
+const NO_COVER = { applies: false, acBonus: 0, kind: "none", blockerIds: [] };
 
 function setupRoom() {
   const room = createEmptyRoom("COVER_REACH");
@@ -75,7 +75,6 @@ test("getAttackLineInterception: obstaculo inexistente no produce bloqueadores",
 
   const interception = getAttackLineInterception(room, hero, enemy);
   assert.deepEqual(interception.creatureBlockerIds, []);
-  assert.deepEqual(interception.terrainBlockedCellKeys, []);
 });
 
 test("getAttackLineInterception: criatura interpuesta produce creature-cover (Cobertura Viva, Sprint 013)", () => {
@@ -88,7 +87,6 @@ test("getAttackLineInterception: criatura interpuesta produce creature-cover (Co
 
   const interception = getAttackLineInterception(room, hero, enemy);
   assert.deepEqual(interception.creatureBlockerIds, [ally.id]);
-  assert.deepEqual(interception.terrainBlockedCellKeys, []);
 
   const acWithoutCover = Rules.totalArmorClass(room, enemy, { attackType: "ranged" });
   const cover = getAttackContextModifiers(room, hero, enemy).byAttackType.ranged.cover;
@@ -100,35 +98,25 @@ test("getAttackLineInterception: criatura interpuesta produce creature-cover (Co
   assert.ok(acWithCover.parts.some((p) => p.includes("cobertura +4")), "Debe incluir 'cobertura +4' en las partes");
 });
 
-test("getAttackLineInterception: obstaculo de casilla completa entre atacante y objetivo produce terrain-cover", () => {
+test("getAttackLineInterception: impassableCells YA NO produce ningun bloqueador de Cover (Sprint 052B, corrige la contradiccion de Sprint 052A)", () => {
   const { room, hero, enemy } = setupRoom();
   room.combatants = [hero, enemy];
   hero.position = { x: 0, y: 0, zFeet: 0 };
   enemy.position = { x: 2, y: 0, zFeet: 0 };
+  // "1,0" es geometricamente interior a la linea hero->enemy, pero impassableCells es
+  // exclusivamente bloqueo de MOVIMIENTO desde Sprint 052B: Cover ya no lo consulta.
   room.board = { ...room.board, impassableCells: ["1,0"] };
 
   const interception = getAttackLineInterception(room, hero, enemy);
-  assert.deepEqual(interception.creatureBlockerIds, []);
-  assert.deepEqual(interception.terrainBlockedCellKeys, ["1,0"]);
-});
-
-test("getAttackLineInterception: obstaculo fuera de la linea de ataque no bloquea", () => {
-  const { room, hero, enemy } = setupRoom();
-  room.combatants = [hero, enemy];
-  hero.position = { x: 0, y: 0, zFeet: 0 };
-  enemy.position = { x: 2, y: 0, zFeet: 0 };
-  // "1,5" no es colineal con la linea (0,0)-(2,0).
-  room.board = { ...room.board, impassableCells: ["1,5"] };
-
-  const interception = getAttackLineInterception(room, hero, enemy);
-  assert.deepEqual(interception.terrainBlockedCellKeys, []);
+  assert.deepEqual(interception.creatureBlockerIds, [], "impassableCells no debe aparecer como bloqueador de Cover.");
+  assert.deepEqual(getAttackContextModifiers(room, hero, enemy).byAttackType.ranged.cover, NO_COVER);
 });
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Sprint 042 — Cover consolidado en getAttackContextModifiers (única sede autorizada).
 // ─────────────────────────────────────────────────────────────────────────────
 
-test("Cover por obstaculo aumenta la CA en ataques a distancia", () => {
+test("Obstaculo de casilla completa (impassableCells) ya no aumenta la CA en ataques a distancia (Sprint 052B)", () => {
   const { room, hero, enemy } = setupRoom();
   room.combatants = [hero, enemy];
   hero.position = { x: 0, y: 0, zFeet: 0 };
@@ -137,14 +125,11 @@ test("Cover por obstaculo aumenta la CA en ataques a distancia", () => {
 
   const modifiers = getAttackContextModifiers(room, hero, enemy);
   const rangedCover = modifiers.byAttackType.ranged.cover;
-  assert.equal(rangedCover.applies, true);
-  assert.equal(rangedCover.acBonus, 4);
-  assert.equal(rangedCover.kind, "terrain-cover");
-  assert.deepEqual(rangedCover.blockedCellKeys, ["1,0"]);
+  assert.deepEqual(rangedCover, NO_COVER, "impassableCells ya no produce Cover — esa obstruccion es responsabilidad de Line of Effect/Total Cover.");
 
   const acWithout = Rules.totalArmorClass(room, enemy, { attackType: "ranged" });
   const acWith = Rules.totalArmorClass(room, enemy, { attackType: "ranged", cover: rangedCover });
-  assert.equal(acWith.total, acWithout.total + 4);
+  assert.equal(acWith.total, acWithout.total);
 });
 
 test("Sin bloqueador, Cover no aplica y no cambia la CA", () => {
@@ -162,7 +147,7 @@ test("Sin bloqueador, Cover no aplica y no cambia la CA", () => {
   assert.equal(acWithNoCover.total, acWithout.total);
 });
 
-test("Cover por obstaculo afecta melee con alcance cuando existe una celda realmente interpuesta", () => {
+test("Obstaculo de casilla completa (impassableCells) ya no afecta melee con alcance (Sprint 052B)", () => {
   const { room, hero, enemy } = setupRoom();
   room.combatants = [hero, enemy];
   hero.position = { x: 0, y: 0, zFeet: 0 };
@@ -170,8 +155,7 @@ test("Cover por obstaculo afecta melee con alcance cuando existe una celda realm
   room.board = { ...room.board, impassableCells: ["1,0"] };
 
   const meleeCover = getAttackContextModifiers(room, hero, enemy).byAttackType.melee.cover;
-  assert.equal(meleeCover.applies, true, "Un melee con alcance a través de una celda bloqueada debe conceder cobertura.");
-  assert.equal(meleeCover.acBonus, 4);
+  assert.deepEqual(meleeCover, NO_COVER, "impassableCells ya no concede cobertura a ningun tipo de ataque.");
 });
 
 test("Cover por criatura interpuesta SI afecta ataques cuerpo a cuerpo (preserva comportamiento de Sprint 013)", () => {
@@ -202,17 +186,18 @@ test("Flanqueo sigue funcionando de forma independiente de Cover", () => {
   assert.deepEqual(modifiers.byAttackType.melee.cover, NO_COVER);
 });
 
-test("Criatura y obstaculo simultaneos conservan evidencia pero Cover no apila", () => {
+test("Criatura interpuesta y obstaculo de casilla (irrelevante desde Sprint 052B) conservan evidencia solo de la criatura", () => {
   const { room, hero, ally, enemy } = setupRoom();
   hero.position = { x: 0, y: 0, zFeet: 0 };
   ally.position = { x: 1, y: 0, zFeet: 0 };
   enemy.position = { x: 3, y: 0, zFeet: 0 };
+  // "2,0" ya no aporta nada a Cover (Sprint 052B) — se conserva aqui para probar que su
+  // presencia simultanea con una criatura interpuesta no cambia el resultado.
   room.board = { ...room.board, impassableCells: ["2,0"] };
 
   const cover = getAttackContextModifiers(room, hero, enemy).byAttackType.ranged.cover;
   assert.equal(cover.acBonus, 4, "Dos fuentes de Cover nunca deben sumar +8.");
   assert.deepEqual(cover.blockerIds, [ally.id]);
-  assert.deepEqual(cover.blockedCellKeys, ["2,0"]);
   const base = Rules.totalArmorClass(room, enemy, { attackType: "ranged" });
   const protectedAc = Rules.totalArmorClass(room, enemy, { attackType: "ranged", cover });
   assert.equal(protectedAc.total, base.total + 4);
@@ -225,22 +210,20 @@ test("Footprints Large y orden del snapshot producen la misma intercepcion deter
   ally.position = { x: 1, y: 0, zFeet: 0 };
   enemy.position = { x: 3, y: 0, zFeet: 0 };
   enemy.sizeCategory = "large";
-  room.board = { ...room.board, impassableCells: ["2,0"] };
 
   const first = getAttackLineInterception(room, hero, enemy);
   room.combatants = [enemy, ally, hero];
   const reordered = getAttackLineInterception(room, hero, enemy);
-  assert.deepEqual(first, { creatureBlockerIds: [ally.id], terrainBlockedCellKeys: ["2,0"] });
+  assert.deepEqual(first, { creatureBlockerIds: [ally.id] });
   assert.deepEqual(reordered, first);
   assert.deepEqual(getAttackContextModifiers(room, hero, enemy).byAttackType.ranged.cover.blockerIds, [ally.id]);
 });
 
 test("Touch ranged consume el mismo Cover y el resolver lo aplica exactamente una vez", () => {
-  const { room, hero, enemy } = setupRoom();
-  room.combatants = [hero, enemy];
+  const { room, hero, ally, enemy } = setupRoom();
   hero.position = { x: 0, y: 0, zFeet: 0 };
+  ally.position = { x: 1, y: 0, zFeet: 0 };
   enemy.position = { x: 2, y: 0, zFeet: 0 };
-  room.board = { ...room.board, impassableCells: ["1,0"] };
   const cover = getAttackContextModifiers(room, hero, enemy).byAttackType.ranged.cover;
   const concealment = getAttackContextModifiers(room, hero, enemy).byAttackType.ranged.concealment;
   const source = {
@@ -272,7 +255,6 @@ test("Cover se recalcula bajo demanda: no persiste en CombatRoom ni muta el snap
   hero.position = { x: 0, y: 0, zFeet: 0 };
   ally.position = { x: 1, y: 0, zFeet: 0 };
   enemy.position = { x: 2, y: 0, zFeet: 0 };
-  room.board = { ...room.board, impassableCells: ["1,0"] };
 
   const before = JSON.stringify(room);
   const first = getAttackContextModifiers(room, hero, enemy);

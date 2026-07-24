@@ -47,14 +47,31 @@ Documento vivo de tareas pendientes. El backlog está organizado en Sprints. Par
 - [x] Sprint 049: EFFECT-EXHAUSTED + corrección de `onStack` (DT-022) — `srd_exhausted`, `srd_fatigued.onStack:"upgrade_to"`, `EffectManager.add` consume `onStack`/`severityChain` por primera vez. Validación real: `npm test` 467/467, typecheck/build en verde, E2E 93/93, Playwright 6/6.
 - [x] Sprint 050: Panel de Estados del GM (diseño y auditoría) — `docs/designs/gm-condition-panel.md`. Sin código.
 - [x] Sprint 050.1: Panel de Estados del GM (implementación) — `gm-remove-effect` nuevo (por `instanceId`), `gm-apply-effect` reutilizado sin cambios, UI en `GmPanel.tsx`/`ActionsPanel.tsx`. Validación real: `npm test` 478/478, typecheck/build en verde, E2E 98/98, Playwright 7/7. Sin Rule ID nueva.
+- [x] Sprint 052A: Auditoría focalizada de semántica de terreno — confirmó que la extensión de `impassableCells` a Cover (Sprint 042) nunca tuvo NDD dedicado; comparó 3 alternativas y recomendó separar movimiento de Line of Effect (Opción A). `docs/designs/terrain-cover-line-of-effect-decision.md` creado; corrección quirúrgica de `docs/designs/vision-and-line-of-effect-architecture.md` §1.3.
+- [x] Sprint 052B: Line of Effect + Cobertura Total — `Board.lineOfEffectBlockingCells` independiente de `impassableCells` (movimiento); `getLineOfEffect`/`LineOfEffectAssessment` nuevos; `getAttackLineInterception`/`buildCoverAssessment` corregidos (Cover ahora solo por interposición de criaturas); `terrain-cover`/`terrainBlockedCellKeys` retirados; legalidad de objetivo (`DEFENSE-LINE-OF-EFFECT`, Parcial) en `handleResolveAttackDraft` antes de tirada/mutación. Validación real: `npm test` 498/498, typecheck/build en verde, E2E 99/99, Playwright 7/7.
 
 ## Próximos Sprints
 
-Ver `ROADMAP.md`. Sprint 044.2 fija el pipeline transversal y Sprint 046 entrega la infraestructura de `DEFENSE-CONCEALMENT`. Las fuentes productivas, targeting por casilla de ocultación total y la política efectiva de AdO requieren gates propios. Power Attack (039) sigue congelado. `EFFECT-EXHAUSTED` (049) y el Panel de Estados del GM (050/050.1) cerrados; próximo candidato funcional pendiente de nueva auditoría/recomendación.
+Ver `ROADMAP.md`. Sprint 044.2 fija el pipeline transversal y Sprint 046 entrega la infraestructura de `DEFENSE-CONCEALMENT`. Las fuentes productivas, targeting por casilla de ocultación total y la política efectiva de AdO requieren gates propios. Power Attack (039) sigue congelado. `DEFENSE-LINE-OF-EFFECT` (052B) queda Parcial: conjuros/AoE, amenaza de AdO y Visión/Línea de Visión (ver `docs/designs/vision-and-line-of-effect-architecture.md`) siguen pendientes de sprints propios.
 
 ## Sprint Activo
 
-Ninguno — Sprint 050.1 (Panel de Estados del GM) cerrado formalmente con DoD completo y ejecución real.
+Ninguno — Sprint 052B (Line of Effect + Cobertura Total) cerrado formalmente con DoD completo y ejecución real.
+
+  **Sprint 052B — COMPLETADO**
+  - [x] Separar `impassableCells` (movimiento) de `Board.lineOfEffectBlockingCells` (Line of Effect/Cobertura Total), sin inferencia entre ambos campos.
+  - [x] Corregir `getAttackLineInterception`/`buildCoverAssessment`: Cover ahora depende solo de interposición de criaturas; retirar `CoverKind: "terrain-cover"` y `AttackLineInterception.terrainBlockedCellKeys` (tipos muertos, sin compatibilidad hipotética).
+  - [x] Implementar `getLineOfEffect`/`LineOfEffectAssessment` independientes (sin reutilizar semánticamente `getAttackLineInterception`), con regla de footprints multicasilla ("al menos un par despejado" = LoE; Cobertura Total solo si todos los pares están bloqueados).
+  - [x] Legalidad de objetivo en `handleResolveAttackDraft` (`attackCommands.ts`): rechazo antes de cualquier tirada/consumo/mutación cuando no hay Line of Effect.
+  - [x] Rule Registry: `DEFENSE-LINE-OF-EFFECT` nueva (Parcial) y corrección de `DEFENSE-COVER` (ya no incluye obstáculos de terreno).
+  - [x] Tests: `line-of-effect.test.mjs` (17 casos de geometría), `line-of-effect-server.test.mjs` (4 de integración de servidor), regresiones de `cover-reach.test.mjs`/`flanking.test.mjs` corregidas.
+  - [x] E2E: caso positivo (Line of Effect sin obstáculos) agregado a `scripts/e2e-websocket.mjs`; caso de rechazo documentado como no representable vía WebSocket (sin comando/editor para fijar el tablero de una sala viva) y cubierto por integración directa de servidor en su lugar.
+  - [x] Validación real: `npm test` 498/498, typecheck 0 errores (3 workspaces), build 3/3, E2E 99/99, Playwright 7/7.
+
+  **Sprint 052A — COMPLETADO**
+  - [x] Auditar productores/consumidores de `impassableCells`/`terrainBlockedCellKeys`/`terrain-cover` y confirmar ausencia de NDD dedicado para la extensión de Sprint 042.
+  - [x] Comparar 3 alternativas (A: campo dedicado; B: redefinir `impassableCells`; C: clasificación multi-propiedad) y recomendar Opción A sin elegir automáticamente la más genérica.
+  - [x] Crear `docs/designs/terrain-cover-line-of-effect-decision.md` y corregir quirúrgicamente `docs/designs/vision-and-line-of-effect-architecture.md` §1.3 (sin reescribir todo el NDD).
 
   **Sprint 050.1 — COMPLETADO**
   - [x] Auditar comandos GM/EffectManager existentes antes de implementar (sin rediseñar lo ya aprobado en Sprint 050).

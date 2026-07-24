@@ -54,9 +54,11 @@ Todo cambio requiere:
 - Defensa total.
 - Carga con ruta prevista.
 - Prestar ayuda con buff pendiente de eleccion.
-- **Fase Actual:** Sprint 050.1, Panel de Estados del GM implementado — `gm-remove-effect` nuevo (remoción por `instanceId`), `gm-apply-effect` reutilizado sin cambios, UI en `GmPanel.tsx` sin lógica de reglas propia.
-- **Estado:** ✅ Aplicar/remover condiciones desde la UI real · ✅ onStack delegado íntegramente a `EffectManager` · ✅ 478/478 unitarias · ✅ 98/98 WebSocket · ✅ Playwright 7/7.
+- **Fase Actual:** Sprint 052B, Line of Effect y Cobertura Total — `impassableCells` queda restringido a movimiento; nuevo campo independiente `Board.lineOfEffectBlockingCells` bloquea el intento de ataque (Cobertura Total) sin conceder Cover; `terrain-cover`/`terrainBlockedCellKeys` retirados por ser tipos muertos.
+- **Estado:** ✅ Aplicar/remover condiciones desde la UI real · ✅ onStack delegado íntegramente a `EffectManager` · ✅ Legalidad de objetivo (Line of Effect) antes de tirada/mutación en `resolve-attack` · ✅ 498/498 unitarias · ✅ 99/99 WebSocket · ✅ Playwright 7/7.
 - **Hitos Completados Recientes:**
+  - `Sprint 052B`: `LineOfEffectAssessment`/`getLineOfEffect` independientes de Cover, `DEFENSE-LINE-OF-EFFECT` (Parcial, solo ataques físicos ordinarios), corrección de `getAttackLineInterception`/`buildCoverAssessment` (Cover ahora es solo por interposición de criaturas, no por `impassableCells`).
+  - `Sprint 052A`: auditoría de semántica de terreno — confirmó que la extensión de `impassableCells` a Cover (Sprint 042) nunca tuvo NDD dedicado; recomendó separar movimiento de Line of Effect (Opción A).
   - `Sprint 046`: contrato especializado `ConcealmentContribution`, reducción determinista con stacking/trazas, `ConcealmentAssessment` compartido, resolución porcentual autoritativa y preview UI sin RNG de cliente.
   - `Sprint 045`: `srd_entangled` declarativo (-2 ataque, -4 DEX, velocidad ×1/2, `FORBID_RUN`, `FORBID_CHARGE`), contrato especializado `MovementRateContribution`, deduplicación/trazas y preview isomorfo.
   - `Sprint 042`: Cover canónico en `getAttackContextModifiers`, criaturas y obstáculos de casilla, footprints deterministas y consumo uniforme por armas, touch, AdO, maniobras y UI.
@@ -283,7 +285,7 @@ Todo cambio requiere:
 
   **Sprint 042 — Cover**
   - `getAttackContextModifiers` es la sede canónica única: calcula una sola vez la intercepción y devuelve `CoverAssessment` para melee/ranged.
-  - Cobertura por criatura de Sprint 013 preservada en +4 CA; obstáculos completos de `impassableCells` conceden el mismo +4 cuando ocupan una celda interior real de la línea discreta.
+  - Cobertura por criatura de Sprint 013 preservada en +4 CA; obstáculos completos de `impassableCells` conceden el mismo +4 cuando ocupan una celda interior real de la línea discreta. **Corregido en Sprint 052B**: esta extensión nunca tuvo NDD dedicado (Sprint 013 la excluyó explícitamente) y contradecía la existencia real de Cobertura Total en SRD 3.5; `impassableCells` ahora es exclusivamente de movimiento y ya no concede Cover — ver `docs/designs/terrain-cover-line-of-effect-decision.md` y `DEFENSE-LINE-OF-EFFECT` en el Rule Registry.
   - Geometría determinista por footprints: selecciona el par de celdas ocupadas más cercano, inspecciona todas las celdas de bloqueadores Large y ordena resultados independientemente del orden del snapshot.
   - Criatura + terreno no apilan: se conservan ambas evidencias pero se aplica una sola parte `cobertura +4`.
   - Consumidores migrados: armas, conjuros/aptitudes con ataque, touch ranged, AdO, Carga, toque de maniobras y preview React. `resolveAttack` ya no recalcula geometría.
