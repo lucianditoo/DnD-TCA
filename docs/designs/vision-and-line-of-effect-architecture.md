@@ -182,42 +182,73 @@ Nunca: *"VisionAssessment vive dentro de Concealment"*.
 
 Una comprobación **geométrica y física**: en el modelo actual, ¿existe un camino sin obstrucción sólida entre dos puntos? Ignora luz, niebla, ocultación y capacidad de percepción — pregunta si un obstáculo físico (aproximado hoy por `board.impassableCells`, con la salvedad de la §1.3 sobre superficies parcialmente transparentes) interrumpe el segmento. Es la base para Total Cover, para el objetivo de un conjuro y para futuras áreas de efecto que no deban atravesar muros. Puede compartir primitivas geométricas con Line of Sight, pero es una regla y un assessment independientes (ver Corrección B, §2 y Corrección C más abajo).
 
-### 3. Qué representa Line of Sight
+### 3. Qué representa Line of Sight (y la ruta visual geométrica interna del motor)
 
 **Corrección (Sprint 053)**: la redacción anterior de esta sección describía
 Line of Sight como "Line of Effect más la condición perceptual", fusionando
-en un solo concepto la geometría visual y la capa de luz/percepción. Eso es
-incorrecto y contradecía el propio principio de este documento ("Vision no
-es Cover, y no vive dentro de Concealment") aplicado a LoS: **Line of Sight
-es, igual que Line of Effect, una comprobación puramente geométrica** — ¿hay
-un camino visual sin obstrucción opaca entre el espacio del observador y el
-del objetivo? — sin luz, sin capacidades perceptivas, sin ocultación. Es un
-assessment geométrico hermano de `LineOfEffectAssessment`, no un derivado
-suyo ni una versión "con más cosas". La composición con luz y capacidad
-perceptiva ocurre **después**, en `VisionAssessment`:
+en un solo concepto la geometría visual y la capa de luz/percepción. Eso era
+incorrecto.
+
+**Corrección adicional (Sprint 053A.1)**: la corrección de Sprint 053 se
+había pasado al extremo contrario — afirmaba que "Line of Sight es, igual
+que Line of Effect, una comprobación puramente geométrica", **redefiniendo el
+término normativo del SRD** como si fuera solo geometría. Eso tampoco es
+correcto: **Line of Sight**, como concepto del SRD, es la condición completa
+de "poder ver un punto" — geometría **más** luz **más** capacidad perceptiva
+del observador; es justamente lo que, al fallar, produce Ocultación Total
+(§13.1, cita normativa). Lo que este motor sí necesita, por razones de
+arquitectura interna (evitar que un solo cálculo mezcle geometría con reglas
+de luz/percepción, el mismo principio ya aplicado a Cover/Concealment), es
+**descomponer** esa condición del SRD en una capa puramente geométrica y una
+capa de composición — sin que la capa geométrica interna reclame para sí el
+nombre completo del concepto normativo.
+
+Por eso esa capa geométrica interna se nombra `VisualPathAssessment`
+("¿existe una ruta visual sin obstrucción opaca entre el espacio del
+observador y el del objetivo?" — sin luz, sin capacidades perceptivas, sin
+ocultación), **no** `LineOfSightAssessment`: es un insumo interno del motor
+hacia Line of Sight, no una redefinición de Line of Sight en sí. El concepto
+normativo completo de Line of Sight del SRD corresponde, en este motor, al
+resultado compuesto que produce `VisionAssessment.canPerceiveVisually` — no a
+`VisualPathAssessment` por sí solo. `VisualPathAssessment` es un assessment
+geométrico hermano de `LineOfEffectAssessment` (misma clase de pregunta,
+fuente distinta), no un derivado suyo ni una versión "con más cosas". La
+composición con luz y capacidad perceptiva ocurre **después**, en
+`VisionAssessment`:
 
 ```text
 Geometry
-├─ LineOfEffectAssessment        (obstrucción física sólida — Sprint 052B/052B.1)
-└─ futuro LineOfSightAssessment  (obstrucción visual/opaca — no implementado aún)
+├─ LineOfEffectAssessment    (obstrucción física sólida — Sprint 052B/052B.1)
+└─ futuro VisualPathAssessment  (ruta visual geométrica interna — obstrucción
+                                  visual/opaca; NO equivale por sí solo a
+                                  "Line of Sight" del SRD — no implementado aún)
 
-futuro LineOfSightAssessment + nivel de luz + capacidad perceptiva del observador
+futuro VisualPathAssessment + nivel de luz + capacidad perceptiva del observador
     ↓
-VisionAssessment
+VisionAssessment  (su campo canPerceiveVisually es lo que corresponde a
+                    "tener Line of Sight" en el sentido normativo completo)
 ```
 
-`LineOfEffectAssessment` y el futuro `LineOfSightAssessment` **pueden**
+`LineOfEffectAssessment` y el futuro `VisualPathAssessment` **pueden**
 compartir la misma primitiva geométrica pura (recorrido de celdas por área,
 ver §1.3.1) y, mientras no exista ningún obstáculo real que deba bloquear uno
 sin el otro, **pueden también compartir la misma fuente de datos** de forma
 explícitamente provisional — pero son conceptos y assessments
 independientes, nunca el mismo objeto ni un alias. Sprint 053 (auditoría,
-sin código) confirmó que implementar `LineOfSightAssessment`/`getLineOfSight`
+sin código) confirmó que implementar `VisualPathAssessment`/`getVisualPath`
 hoy sería infraestructura sin consumidor real (usaría la misma fuente y la
 misma geometría que LoE, sin producir ninguna diferencia observable ni
 consecuencia de juego) — se difiere deliberadamente hasta que exista su
 primer consumidor real o una fuente que produzca una diferencia genuina
 respecto de LoE (ver §8, pregunta 9).
+
+**Nombre canónico único (Sprint 053A.1)**: en todo este documento, la capa
+geométrica interna se llama exclusivamente `VisualPathAssessment`
+(campo `hasClearVisualPath`, función `getVisualPath`). No debe aparecer
+`LineOfSightAssessment`, `GeometricLineOfSightAssessment` ni ningún otro
+nombre alternativo para el mismo concepto — cualquier ocurrencia futura de
+esos nombres en este documento es un error a corregir, no una variante
+válida.
 
 ### 4. Qué información debe contener Snapshot
 
@@ -226,7 +257,8 @@ respecto de LoE (ver §8, pregunta 9).
 ### 5. Qué consultas públicas necesitará el motor
 
 - `getLineOfEffect(room, from: Position, to: Position): LineOfEffectAssessment` — geométrica pura, sin percepción. **No es una generalización de `getAttackLineInterception`**: es una función nueva y separada que responde una pregunta normativa distinta (obstrucción física sólida / Total Cover), aunque pueda reutilizar primitivas geométricas puras internas (ej. intersección de segmento con celda, colinealidad) que también usa `getAttackLineInterception`. Ver Corrección C.
-- `getVisionAssessment(room, observer: Combatant, target: Combatant): VisionAssessment` — compone el futuro `LineOfSightAssessment` (geometría visual, **no** `LineOfEffectAssessment` — ver corrección de §3), nivel de luz de la casilla objetivo y capacidad de percepción del observador. Es un assessment independiente (§3, pregunta 1); para el flujo de ataque, su resultado contribuye a la construcción de `ConcealmentAssessment` sin fusionarse conceptualmente con él ni crear un segundo sistema de miss chance.
+- `getVisualPath(room, observer: Combatant, target: Combatant): VisualPathAssessment` — futuro, no implementado (§3). Geométrica pura, sin percepción ni luz. **No es un alias de `getLineOfEffect`**: responde una pregunta normativa distinta (obstrucción visual/opaca, no física completa), aunque pueda reutilizar la misma primitiva `traversedCellKeysBetween`. Es un insumo interno hacia Line of Sight, no el concepto completo (§3).
+- `getVisionAssessment(room, observer: Combatant, target: Combatant): VisionAssessment` — compone el futuro `VisualPathAssessment` (ruta visual geométrica, **no** `LineOfEffectAssessment` — ver corrección de §3), nivel de luz de la casilla objetivo y capacidad de percepción del observador. Es un assessment independiente (§3, pregunta 1); para el flujo de ataque, su resultado contribuye a la construcción de `ConcealmentAssessment` sin fusionarse conceptualmente con él ni crear un segundo sistema de miss chance.
 - Ambas siguen el patrón ya validado de `CoverAssessment`/`ConcealmentAssessment`: puras, snapshot-in/assessment-out, sin mutación, consumidas igual por servidor y UI.
 
 ### 6. Qué consultas utilizará Attack Resolver
@@ -374,9 +406,9 @@ Geometry primitives
     │     ↓
     │   Target legality (ausencia ⇒ Cobertura Total ⇒ ataque invalido)
     │
-    └─ futuro LineOfSightAssessment  (obstrucción visual/opaca; geometría hermana de LoE, no un derivado suyo — NO implementado, ver §3)
+    └─ futuro VisualPathAssessment  (obstrucción visual/opaca; geometría hermana de LoE, no un derivado suyo — NO implementado, ver §3)
           ↓
-        futuro LineOfSightAssessment + nivel de luz + capacidad perceptiva
+        futuro VisualPathAssessment + nivel de luz + capacidad perceptiva
           ↓
         VisionAssessment (no implementado)
           ↓
@@ -395,7 +427,7 @@ Attack Resolver
 **Corrección (Sprint 053)**: la versión anterior de este diagrama mostraba
 `LineOfEffectAssessment → VisionAssessment` como una dependencia directa,
 sugiriendo que Vision se construye a partir de LoE. Eso es incorrecto: Vision
-se construye a partir de un futuro `LineOfSightAssessment` geométricamente
+se construye a partir de un futuro `VisualPathAssessment` geométricamente
 independiente (aunque hoy inexistente), no de LoE. `LineOfEffectAssessment`
 solo alimenta la legalidad de objetivo (Cobertura Total), como ya implementa
 Sprint 052B — nunca a Vision/Concealment. Ver §3 para el detalle completo de
@@ -458,7 +490,7 @@ No attack roll
    Sprint 052B.1** — ver §1.3.1 arriba. Ver `tests/line-of-effect.test.mjs`.
 7. ¿Orden exacto de fases dentro de "Fase 5 — Contexto efímero" cuando coexistan Cover, Concealment por efecto declarativo y Concealment por Vision — se calculan independientemente y se componen al final, o existe precedencia (ej. Blinded ya implica ocultación total y no necesita evaluar luz)?
 8. ¿Blindsight/Blindsense se modelan como traits (`Trait` ya es un union cerrado) o como capacidad de percepción con alcance, análoga a Visión en la Oscuridad? Ambos existen en el SRD con reglas ligeramente distintas (§2).
-9. ¿`impassableCells` basta como aproximación de obstrucción física para Line of Effect, o se necesita un campo declarativo distinto que distinga "intransitable para movimiento" de "opaco a efectos/percepción" (cristal, barrotes, rejas)? Ver §1.3 y §11. **Resuelto en Sprint 052B**: se optó por el campo declarativo distinto — `Board.lineOfEffectBlockingCells`, independiente de `impassableCells` (que queda exclusivamente de movimiento). La distinción más fina "opaco a efectos" vs. "opaco a percepción" (cristal, barrotes) sigue abierta para cuando exista Vision/Line of Sight. **Auditado en Sprint 053 (sin código)**: se confirmó que hoy no existe ningún obstáculo real en el catálogo que deba bloquear Line of Sight sin bloquear Line of Effect (o viceversa) — casos SRD reales existen (cristal/pared transparente bloquea LoE no LoS; niebla/humo bloquea LoS no LoE) pero ninguno está implementado. Se decidió explícitamente NO crear `LineOfSightAssessment`/`getLineOfSight`/un campo `lineOfSightBlockingCells` todavía, para evitar infraestructura sin consumidor real; queda diferido hasta que exista una vertical de Vision con luz básica o una fuente concreta de obstrucción visual (ej. niebla) que justifique la separación. Ver §3.
+9. ¿`impassableCells` basta como aproximación de obstrucción física para Line of Effect, o se necesita un campo declarativo distinto que distinga "intransitable para movimiento" de "opaco a efectos/percepción" (cristal, barrotes, rejas)? Ver §1.3 y §11. **Resuelto en Sprint 052B**: se optó por el campo declarativo distinto — `Board.lineOfEffectBlockingCells`, independiente de `impassableCells` (que queda exclusivamente de movimiento). La distinción más fina "opaco a efectos" vs. "opaco a percepción" (cristal, barrotes) sigue abierta para cuando exista Vision/Line of Sight. **Auditado en Sprint 053 (sin código)**: se confirmó que hoy no existe ningún obstáculo real en el catálogo que deba bloquear Line of Sight sin bloquear Line of Effect (o viceversa) — casos SRD reales existen (cristal/pared transparente bloquea LoE no LoS; niebla/humo bloquea LoS no LoE) pero ninguno está implementado. Se decidió explícitamente NO crear `VisualPathAssessment`/`getVisualPath`/un campo `lineOfSightBlockingCells` todavía, para evitar infraestructura sin consumidor real; queda diferido hasta que exista una vertical de Vision con luz básica o una fuente concreta de obstrucción visual (ej. niebla) que justifique la separación. Ver §3.
 10. Forma exacta de un futuro `TargetingAssessment` (§4) y si se justifica como contrato propio o como una composición de los assessments ya existentes — no se decide en este documento.
 
 ## 9. Impacto sobre la arquitectura
@@ -556,7 +588,7 @@ Regla oficial (SRD 3.5, *Vision and Light*, tabla de niveles de luz):
 - **Low-Light Vision**: duplica la distancia a la que una criatura ve con normalidad bajo luz tenue (trata esa luz como brillante hasta el doble de alcance de la fuente). **No funciona en oscuridad total absoluta** — necesita algo de luz ambiental para duplicar.
 - **Regla normativa central para este sprint** (RAW, *Combat Modifiers*): *"Si tienes Line of Effect a un objetivo pero no Line of Sight, el objetivo tiene ocultación total desde tu perspectiva."* Esto confirma exactamente el flujo que §7.2 de este documento ya boceteaba ("Flujo de Ocultación Total: LoE presente, LoS ausente") — Line of Sight bloqueada es, mecánicamente, un caso más de Ocultación Total, con la misma consecuencia (50%, elegir casilla) que la oscuridad o la invisibilidad.
 - **Targeting directo vs. casilla**: SRD exige elegir una casilla (no un objetivo directo) cuando el atacante no puede ver al objetivo por ningún motivo (oscuridad, niebla, invisibilidad, LoS bloqueada); si la casilla elegida está vacía, el ataque falla automáticamente. Este proyecto **ya** modela esta distinción en `ConcealmentAssessment.directTargetingAllowed`/`requiresTargetSquare` (Sprint 046) — Vision no necesita un contrato de targeting nuevo, solo alimentar los campos ya existentes.
-- **Blinded y condiciones ambientales — independencia deliberada**: la condición Blinded (SRD) impone -2 CA, pérdida de Destreza y ocultación total automática en los ataques que realiza la criatura cegada, **sin importar el nivel de luz** — un ciego no ve mejor en una habitación iluminada. Este proyecto ya implementa `srd_blinded` exactamente así desde Sprint 047: una `ConcealmentContribution` declarativa incondicional (perspectiva `attacks_by_target`), independiente de cualquier cálculo de luz. Vision e iluminación **no deben re-derivar ni sustituir** ese comportamiento — deben coexistir como una fuente de ocultación **adicional e independiente**, compuesta por precedencia de severidad máxima (ver §13.6), no por acoplamiento explícito entre ambos sistemas.
+- **Blinded y condiciones ambientales — independencia deliberada**: la condición Blinded (SRD) impone -2 CA, pérdida de Destreza y ocultación total automática en los ataques que realiza la criatura cegada, **sin importar el nivel de luz** — un ciego no ve mejor en una habitación iluminada. Este proyecto ya implementa `srd_blinded` exactamente así desde Sprint 047: una `ConcealmentContribution` declarativa incondicional (perspectiva `attacks_by_target`), independiente de cualquier cálculo de luz. Vision e iluminación **no deben re-derivar ni sustituir** ese comportamiento — deben coexistir como una fuente de ocultación **adicional e independiente**, compuesta por precedencia de severidad máxima (ver §13.8), no por acoplamiento explícito entre ambos sistemas.
 
 **Decisión de modelado explícita para esta vertical**: se modela únicamente el eje "luz ambiental estática + capacidad de percepción del observador", sin niebla, sin Blindsight/Blindsense, sin Darkvision-en-color-vs-blanco-y-negro (irrelevante mecánicamente), sin facing. Diferido explícitamente a sprints posteriores (no una omisión silenciosa).
 
@@ -568,10 +600,10 @@ Regla oficial (SRD 3.5, *Vision and Light*, tabla de niveles de luz):
 - `SizeRulesCatalog`/`getSizeRule` (`sizeRules.ts`): precedente de "catálogo fuente→proyección" (`Record<EnumCerrado, Regla>` + accessor puro), pero **no aplica** a percepción porque no existe un enum cerrado equivalente a "raza" — la capacidad visual varía por criatura individual, no por una categoría pequeña y cerrada como `SizeCategory`.
 - `ConcealmentContribution`/`ConcealmentTrace` (`effects/contracts.ts:150-157`, `effects/reducer.ts:69-92`): la reducción (`EffectReducer.reduceConcealmentContributions`) opera **exclusivamente sobre `EffectInstance`** — cada `ConcealmentTrace` exige `effectInstanceId`/`contributionId` (`reducer.ts:70-72`). Vision no tiene un `EffectInstance` que la origine (es geometría + luz + capacidad del observador, no un efecto aplicado a un combatiente) — **no puede inyectarse dentro de este reductor tal como existe hoy**.
 - `getConcealmentAssessment`/`composeConcealmentAssessment` (`rules.ts:1936-1969`): capa fina que llama al reductor y arma `ConcealmentAssessment`. Es el punto de extensión natural para Vision — no el reductor mismo.
-- `srd_blinded`: confirmado como `ConcealmentContribution` declarativa, perspectiva `attacks_by_target`, `kind: "total"` incondicional — coexiste con Vision sin acoplamiento (ver §13.1, último punto, y §13.6).
+- `srd_blinded`: confirmado como `ConcealmentContribution` declarativa, perspectiva `attacks_by_target`, `kind: "total"` incondicional — coexiste con Vision sin acoplamiento (ver §13.1, último punto, y §13.8).
 - `Trait` (`effects/contracts.ts:24-43`): union cerrado ya incluye `"BLIND"`; **no existe** ningún trait de percepción/visión (`DARKVISION`, `LOW_LIGHT_VISION`, etc.) — confirma que la capacidad de percepción no vive hoy en ningún lado del sistema de efectos.
 - `EffectInstance.targetCells`: patrón ya usado por `EnvironmentalHazard` (Sprint 034, ej. `srd_wall_of_fire_hazard`) para anclar un efecto a celdas del tablero en vez de a un combatiente. Es el mecanismo correcto para una **futura** niebla/oscuridad mágica dinámica (fuera de alcance de esta vertical), no para iluminación **estática** del mapa.
-- `traversedCellKeysBetween`/`getLineOfEffect` (`rules.ts`, Sprint 052B.1): primitiva de recorrido "supercover" pura, ya probada (29 casos), candidata a reutilización compartida con un futuro `getLineOfSight` (ver Sprint 053, §3 arriba) — sin tocarla en este sprint.
+- `traversedCellKeysBetween`/`getLineOfEffect` (`rules.ts`, Sprint 052B.1): primitiva de recorrido "supercover" pura, ya probada (29 casos), candidata a reutilización compartida con un futuro `getVisualPath` (ver Sprint 053, §3 arriba) — sin tocarla en este sprint.
 
 **Respuestas a las 7 preguntas de la Fase 3:**
 
@@ -580,7 +612,7 @@ Regla oficial (SRD 3.5, *Vision and Light*, tabla de niveles de luz):
 3. **¿Dónde viven las fuentes de iluminación estática?** En `Board`, como campos `string[]` de claves `"x,y"` — mismo patrón que los cuatro campos `*Cells` ya existentes (ver §13.3).
 4. **¿Cómo se representan fuentes dinámicas o zonas de oscuridad?** Fuera de alcance de esta vertical (ver §13.3, Alternativas C/D) — cuando existan (antorchas portátiles, *Darkness*/*Fog Cloud*), se resolverían anclando un `EffectInstance` a `targetCells` (patrón de hazards ya establecido) que se traduzca a los mismos campos estáticos de `Board` al construir el Snapshot, sin cambiar el contrato de consumo de `getVisionAssessment`.
 5. **¿Qué transporta Snapshot y qué falta?** Snapshot ya transporta posiciones, `zFeet`, `board.lineOfEffectBlockingCells`, `effectInstances`/`targetCells` (mismo invariante de Sprint 044.2: ninguna evaluación derivada nueva). Falta el campo *fuente*, no un campo de Snapshot: iluminación estática (`Board`) y capacidad perceptiva (`Combatant`). El Snapshot los transportará por el mismo whitelist-clone ya usado para `lineOfEffectBlockingCells` (ver `combatSnapshot.ts`), una vez que existan.
-6. **¿Qué debe ser derivado y nunca persistido?** `LineOfSightAssessment`/`VisionAssessment` completos (igual que `LineOfEffectAssessment`/`CoverAssessment`/`ConcealmentAssessment` hoy: puros, calculados por request, nunca guardados en `CombatRoom` ni en `EffectInstance`). Solo las *fuentes* (iluminación estática del tablero, capacidad perceptiva del combatiente) se persisten — nunca el veredicto.
+6. **¿Qué debe ser derivado y nunca persistido?** `VisualPathAssessment`/`VisionAssessment` completos (igual que `LineOfEffectAssessment`/`CoverAssessment`/`ConcealmentAssessment` hoy: puros, calculados por request, nunca guardados en `CombatRoom` ni en `EffectInstance`). Solo las *fuentes* (iluminación estática del tablero, capacidad perceptiva del combatiente) se persisten — nunca el veredicto.
 7. **¿Cómo evita Vision ser otro reducer universal?** Exactamente por el mismo principio ya aplicado a Cover/LoE/Concealment: assessments especializados con nombre y forma propios, sin un `UniversalModifier`/`VisionContribution` genérico. Vision compone **dos fuentes concretas y tipadas** (iluminación de la casilla del objetivo, capacidad del observador) mediante una función pura con nombre propio (`getVisionAssessment`), no mediante un reductor declarativo genérico — el único reductor declarativo que toca Concealment sigue siendo `EffectReducer.reduceConcealmentContributions`, reservado a `EffectInstance` (Blinded, futura niebla mágica), nunca a Vision.
 
 ### 13.3. Modelo mínimo de iluminación (decisión)
@@ -625,7 +657,6 @@ patrón exacto que `IntrinsicDefense` (rasgo permanente, catálogo-fuente, no
 ```ts
 // Combatant (Sprint 053B, no en este sprint)
 interface IntrinsicPerception {
-  readonly lowLightVision: boolean;
   readonly darkvisionFeet: number; // 0 = sin Darkvision
 }
 ```
@@ -633,25 +664,49 @@ interface IntrinsicPerception {
 Explícitamente **no** se agrega todavía: Blindsight, Blindsense, Tremorsense,
 True Seeing (fuera de alcance de esta vertical, ver §13.8).
 
-**Alcance de la primera vertical (Sprint 053B): solo Darkvision.**
-Low-Light Vision, bajo el modelo de campos estáticos de §13.3 (sin radio de
-fuente que duplicar), resulta mecánicamente simple de expresar (trata
-`dimLightCells` como luz brillante para ese observador) — pero se difiere de
-todos modos para mantener acotado el alcance de 053B, tal como exige este
-sprint ("Darkvision o Low-Light Vision, pero no ambos"). Darkvision se elige
-como la primera capacidad por ser el caso SRD más frecuente y dramático en
-juego (mazmorras sin luz) y por tener un parámetro numérico simple
-(`darkvisionFeet`) fácil de verificar contra la tabla SRD (típicamente 60 ft).
-`IntrinsicPerception.lowLightVision` puede quedar declarado en el tipo desde
-053B (con efecto nulo) para no requerir una segunda migración de tipo, pero
-su lógica de negocio queda fuera de alcance hasta un sprint posterior.
+**Corrección (Sprint 053A.1): Low-Light Vision retirado por completo del
+contrato de 053B**, no solo de su lógica de negocio. La versión anterior de
+esta sección proponía declarar `lowLightVision: boolean` en el tipo desde ya
+"para no requerir una segunda migración" — eso es exactamente el tipo de
+infraestructura especulativa que este proyecto ya aprendió a evitar (mismo
+error, en espíritu, que la extensión no auditada de `impassableCells` en
+Sprint 042). Razones concretas para no declararlo todavía:
+
+- No tendría ninguna lógica funcional en 053B — sería un campo presente en
+  el tipo sin ningún consumidor que lo lea.
+- El modelo de §13.3 (`dimLightCells`/`darknessCells` estáticos, sin radio)
+  no representa fielmente la regla SRD de Low-Light Vision, que duplica el
+  **alcance de una fuente de luz** (una antorcha, una ventana) — sin un
+  concepto de fuente con radio, "tratar `dimLightCells` como brillante" sería
+  una aproximación, no una implementación fiel de la regla, y declarar el
+  campo ahora invitaría a implementarlo con esa aproximación bajo presión de
+  "ya que el campo existe".
+- Agregarlo ahora "para evitar una migración futura" es priorizar la
+  comodidad de una migración de tipo por sobre la fidelidad normativa — el
+  proyecto prefiere una segunda migración pequeña y bien fundamentada a un
+  campo presente sin regla real detrás.
+
+**Low-Light Vision se implementará cuando exista** una fuente de luz con
+alcance/radio (o un modelo equivalente que permita aplicar su regla de
+"duplicar la distancia" con fidelidad) — no antes, y no como "ignorar
+`dimLightCells`" (esa sería precisamente la aproximación infiel que se
+rechaza aquí). Hasta entonces, un observador sin `IntrinsicPerception` (o con
+`darkvisionFeet: 0`) es simplemente un observador de visión normal frente a
+`dimLightCells`/`darknessCells`, sin ninguna rama de código ni campo de tipo
+para Low-Light Vision.
+
+**Alcance de la primera vertical (Sprint 053B): solo Darkvision.** Darkvision
+se elige como la primera capacidad por ser el caso SRD más frecuente y
+dramático en juego (mazmorras sin luz) y por tener un parámetro numérico
+simple (`darkvisionFeet`) fácil de verificar contra la tabla SRD (típicamente
+60 ft), sin depender de un modelo de fuente de luz con radio.
 
 ### 13.5. Contratos conceptuales (sin implementar)
 
 ```ts
 // Geometría — hermano de LineOfEffectAssessment, nunca su alias ni derivado.
-interface LineOfSightAssessment {
-  readonly hasLineOfSight: boolean;
+interface VisualPathAssessment {
+  readonly hasClearVisualPath: boolean;
   readonly blockedCellKeys: readonly string[];
 }
 
@@ -662,10 +717,32 @@ interface VisionAssessment {
   readonly canPerceiveVisually: boolean;      // el objetivo puede percibirse visualmente en absoluto
   readonly kind: ConcealmentKind;             // "none" | "partial" | "total" — reutiliza el tipo ya existente
   readonly missChancePercent: number;
-  readonly directTargetingAllowed: boolean;   // mismos nombres que ConcealmentAssessment, a propósito (ver §13.6)
+  readonly directTargetingAllowed: boolean;   // mismos nombres que ConcealmentAssessment, a propósito (ver §13.8)
   readonly requiresTargetSquare: boolean;
-  readonly dominantReason: string;            // motivo dominante legible (no un enum cerrado todavía — sin consumidor real que fije las categorías finales)
-  readonly traces: readonly VisionTrace[];    // mismo patrón que ConcealmentTrace: fuente + estado, sin effectInstanceId (Vision no viene de un EffectInstance)
+  readonly dominantReason: VisionReason;      // motivo dominante — union cerrada, ver más abajo
+  readonly traces: readonly VisionTrace[];    // fuente + estado; sin effectInstanceId (Vision no viene de un EffectInstance)
+}
+
+// Corrección (Sprint 053A.1): union cerrada, no un string libre. Se cierra a
+// exactamente las 5 categorías que 053B va a producir de verdad (§13.8, regla
+// de decisión) — ninguna categoría especulativa sin consumidor real.
+type VisionReason =
+  | "clear"                    // sin ninguna restricción de Vision
+  | "dim-light"                // luz tenue sin capacidad adecuada (20%)
+  | "darkness"                 // oscuridad total, dentro o fuera de alcance de Darkvision (50%)
+  | "blocked-visual-path"      // VisualPathAssessment.hasClearVisualPath === false (50%)
+  | "darkvision-out-of-range"; // el observador tiene Darkvision pero el objetivo está más allá de su alcance (50%, caso particular de "darkness" con causa distinguible)
+
+// Corrección (Sprint 053A.1): fuente estable, no effectInstanceId — Vision no
+// se origina en un EffectInstance. Union cerrada a las 3 fuentes que 053B
+// produce de verdad, mismo patrón que ConcealmentTrace (fuente + estado) pero
+// sin ningún campo de ActiveEffects.
+interface VisionTrace {
+  readonly source: "board-light" | "visual-path" | "intrinsic-perception";
+  readonly label: string;
+  readonly kind: ConcealmentKind;
+  readonly missChancePercent: number;
+  readonly status: "applied" | "suppressed"; // mismo vocabulario que ConcealmentTrace.status
 }
 ```
 
@@ -674,12 +751,236 @@ Los nombres de campo de `VisionAssessment` (`kind`, `missChancePercent`,
 los de `ConcealmentAssessment` deliberadamente: no por casualidad ni por
 ahorro de diseño, sino porque son la misma pregunta conceptual respondida por
 una fuente distinta, y esa simetría es lo que permite componerlos por
-precedencia de severidad sin lógica especial (§13.6). No se fijan campos
+precedencia de severidad sin lógica especial (§13.8). No se fijan campos
 adicionales sin consumidor real (ej. ningún campo de "distancia de
 Darkvision restante" — eso es un detalle interno de `getVisionAssessment`,
 no algo que el consumidor final necesite ver).
 
-### 13.6. Pipeline funcional
+**`VisionReason` cerrado, no string libre (Sprint 053A.1)**: se comparó
+string libre (máxima flexibilidad, cero seguridad de tipo, mismo patrón que
+`labelParts` en `ConcealmentAssessment`) contra union cerrada (seguridad de
+tipo, fuerza declarar explícitamente cada categoría nueva) contra
+`labelParts` + trazas tipadas (redundante con `traces`, que ya cumple ese rol
+para trazabilidad detallada). Se elige la union cerrada porque **053B ya
+conoce sus 5 categorías exactas** de antemano (regla de decisión de §13.8) —
+a diferencia de `dominantReason` en la versión anterior de este documento,
+que quedaba sin cerrar "por falta de consumidor real" cuando en realidad el
+consumidor (la regla de decisión de Vision) ya estaba completamente
+especificado. No se agregan categorías especulativas (ej. nada de niebla,
+Blindsight) que 053B no vaya a producir.
+
+### 13.6. Alcance parcial de oscuridad (Sprint 053A.1)
+
+**Declaración explícita**: Sprint 053B implementará únicamente las
+**consecuencias ofensivas** de la visibilidad ambiental — ocultación
+parcial/total, targeting directo versus casilla, y miss chance (todo lo que
+ya especifica `VisionAssessment`/§13.8). **No** implementará todavía todas
+las consecuencias de estar "efectivamente cegado" por oscuridad, que en el
+SRD acompañan a la condición Blinded pero que son conceptualmente
+independientes de "no poder ver a un objetivo específico para atacarlo".
+
+Quedan explícitamente fuera de 053B:
+
+- pérdida de Destreza a CA;
+- -2 CA;
+- media velocidad de movimiento;
+- penalizaciones a Search y pruebas basadas en Fuerza/Destreza;
+- interacción completa con Correr/Retirada;
+- cualquier estado equivalente a Blinded;
+- aplicación o remoción de condiciones por entrar/salir de una celda oscura.
+
+**Restricción explícita**: no modelar la oscuridad aplicando
+automáticamente `srd_blinded` (ni ningún otro `EffectInstance`) a un
+combatiente que entra en una celda de `darknessCells`. La oscuridad, tal como
+la implementa esta vertical, es **contextual y relativa al observador**, no
+una condición persistente del combatiente:
+
+- depende de quién observa (un combatiente con Darkvision no sufre nada; uno
+  sin ella sí, **en el mismo instante, sobre el mismo objetivo**);
+- depende de la casilla del objetivo (una criatura puede estar en
+  `darknessCells` frente a un observador y a plena vista de otro que la mira
+  desde una casilla iluminada, si la regla de decisión de §13.8 así lo
+  determina para cada par observador/objetivo);
+- depende del alcance de Darkvision de cada observador individual;
+- **puede ser distinta para dos observadores simultáneos mirando al mismo
+  objetivo** — algo que una condición `EffectInstance` persistente y única
+  por combatiente (como Blinded) no puede representar correctamente, porque
+  Blinded es una propiedad del combatiente cegado, no del par
+  observador/objetivo.
+
+Por esto, la oscuridad de esta vertical se registra como **regla parcial**,
+no como "Darkness completo" ni como un sinónimo de Blinded: cubre
+exclusivamente si un ataque concreto, entre un observador y un objetivo
+concretos, sufre ocultación por falta de luz — nada más.
+
+### 13.7. Targeting por casilla bajo Ocultación Total (diseño completo, Sprint 053A.1)
+
+**Corrección**: la versión anterior de este documento dejaba "cómo el
+cliente presenta la elección de casilla" como una decisión abierta para la
+implementación de 053B. Esta sección cierra esa decisión — no queda nada de
+targeting por casilla para improvisar durante el código.
+
+#### Flujo autoritativo
+
+```text
+El atacante no puede hacer targeting directo (VisionAssessment.directTargetingAllowed === false)
+    ↓
+el cliente elige una casilla (position) en vez de un combatiente
+    ↓
+el servidor resuelve autoritativamente qué combatiente (si alguno) ocupa esa casilla
+    ↓
+si no hay criatura válida en esa casilla:
+    fallo automático — no se revela si había algo cerca ni qué combatiente era
+    ↓
+si hay una criatura válida en esa casilla:
+    se resuelve el ataque normalmente (Line of Effect → Vision/Concealment → tirada)
+    aplicando el 50% de miss chance por Ocultación Total como cualquier otro ataque
+```
+
+#### Contrato de intención: extender `resolve-attack`, no crear un comando paralelo
+
+Se evaluaron dos formas de expresar la intención del cliente:
+
+1. **Extender `resolve-attack`** con una unión discriminada de objetivo:
+   ```ts
+   // ClientCommand "resolve-attack" (Sprint 053B, no en este sprint)
+   target:
+     | { kind: "combatant"; combatantId: string }
+     | { kind: "square"; position: Position };
+   ```
+   (reemplazando el actual `targetId: string` único, o conviviendo con él
+   mediante una migración de schema — a decidir en la implementación exacta
+   de 053B, sin que eso cambie la decisión de fondo tomada aquí).
+2. **Comando paralelo** (`resolve-blind-attack`, `attack-square`).
+
+**Decisión: opción 1.** Un ataque a casilla y un ataque directo son la misma
+operación de juego (la misma economía de acción, la misma rutina de ataque,
+el mismo Attack Resolver) con una única diferencia — cómo se identifica el
+objetivo antes de resolver. Un comando paralelo duplicaría toda la validación
+de autorización, economía de acción y rutina de ataque que `resolve-attack`
+ya implementa (`handleResolveAttackDraft`), exactamente el antipatrón que
+este proyecto ya rechazó para Cover/Concealment/Line of Effect (assessments
+especializados, pero una única ruta de resolución). La intención sigue
+siendo genérica: "resolver un ataque", con una variante en cómo se identifica
+el objetivo — no una acción de juego distinta.
+
+#### Reglas de autoridad (servidor, no negociable por el cliente)
+
+- La UI expresa `combatant` o `square` como la intención del jugador; el
+  **servidor** decide si el targeting directo está permitido en absoluto,
+  consultando `VisionAssessment.directTargetingAllowed` — el cliente no
+  puede forzar un modo.
+- **Targeting directo por combatiente nunca es un bypass**: si
+  `directTargetingAllowed === false` (Ocultación Total) y el cliente envía
+  `{ kind: "combatant", combatantId }` de todos modos, el servidor rechaza el
+  comando (mismo patrón de rechazo ya usado para otras validaciones de
+  `handleResolveAttackDraft` — un error explícito, sin mutación, antes de
+  cualquier tirada). El cliente no puede evitar la elección de casilla
+  enviando el ID del combatiente que ya conoce por otros medios (ej.
+  historial de turno, tablero visible para el jugador aunque el personaje no
+  vea).
+- **Casilla vacía**: si no hay ninguna criatura viva y válida (misma
+  definición de "válida" que ya usa `getAttackLineInterception` — estado
+  `active`/`disabled`) ocupando la casilla elegida, el ataque falla
+  automáticamente. El mensaje/log **no revela** si la casilla elegida estaba
+  cerca de un combatiente real, cuál combatiente era, ni ninguna pista que
+  permita al jugador deducir la posición real por descarte — mismo principio
+  de "no fuga de información" ya aplicado implícitamente a Cobertura Total
+  (rechazo genérico, sin exponer geometría interna al cliente).
+- **Auditoría SRD sobre consumo de tirada de ataque en casilla vacía**: el
+  SRD no exige una tirada de d20 para un fallo automático contra una casilla
+  vacía (es, por definición, un fallo sin necesidad de comparar contra una
+  CA que no existe). **Decisión**: no se consume tirada de ataque (d20) ni se
+  invoca el `diceRoller` de ataque cuando la casilla está vacía — mismo
+  principio ya establecido en Sprint 052B para el rechazo por Cobertura Total
+  (`tests/line-of-effect-server.test.mjs`: un `diceRoller` que lanza si se
+  invoca, probando que el RNG de ataque nunca se consume en un rechazo).
+- **Consumo de acción y economía de turno**: a diferencia del rechazo por
+  Cobertura Total (que es un objetivo **inválido**, no se gasta nada — mismo
+  patrón de Sprint 052B), elegir una casilla vacía bajo Ocultación Total
+  **es un objetivo válido que el jugador eligió libremente y falló** — el
+  SRD no exime este caso de gastar la acción de ataque. **Decisión**: elegir
+  una casilla vacía consume la acción de ataque, el modo de ataque declarado
+  y el ítem de munición si el arma la requiere (igual que fallar un ataque
+  contra un combatiente real por no superar la CA) — el fallo es "un ataque
+  que erró", no "un objetivo inválido que nunca se intentó". Esta es la
+  distinción clave entre el flujo de Cobertura Total (§7.3, objetivo
+  inválido, nada se consume) y el flujo de Ocultación Total con casilla
+  vacía (objetivo válido elegido, ataque intentado y fallado, todo se
+  consume).
+- **Múltiples criaturas en la misma casilla**: el modelo actual de
+  ocupación (`sameCell`/bloqueo de movimiento a casillas ocupadas,
+  `roomState.ts`) ya impone que una casilla 1×1 solo puede estar ocupada por
+  **un** combatiente base a la vez (el motor rechaza moverse a una casilla
+  ocupada). El único caso de solapamiento real y ya soportado es el de
+  footprints multicasilla (Large+, que ocupan varias casillas con un único
+  combatiente "dueño" de todas ellas) — no dos combatientes distintos
+  compartiendo una casilla. Por lo tanto, **el modelo actual hace
+  estructuralmente imposible que dos combatientes distintos ocupen la misma
+  casilla**, y esta vertical no necesita una regla de desempate: a lo sumo
+  una casilla resuelve a un único combatiente (o footprint) o a ninguno.
+- **Criaturas multicasilla (Large+)**: cualquier celda ocupada por el
+  footprint del objetivo debe poder elegirse como la casilla objetivo —
+  mismo principio ya usado por Line of Effect (§1.3.1: "puede elegir
+  cualquier casilla que ocupa"). El servidor resuelve la casilla elegida
+  contra `getCombatantOccupiedCells` de **todos** los combatientes vivos
+  (no solo contra la posición ancla), igual que ya hace
+  `getAttackLineInterception` para detectar bloqueadores por criatura.
+- **El servidor, nunca el cliente, resuelve qué combatiente ocupa la
+  casilla** — el cliente solo envía `position`; la resolución de qué
+  combatiente (si alguno) responde a esa posición ocurre enteramente en el
+  handler del servidor, antes de cualquier tirada.
+- **Registro en el log**: el log debe reflejar que el atacante intentó un
+  ataque a una casilla y su resultado (impacto/fallo), **sin** filtrar
+  información que el atacante no tendría (ej. nunca debe mencionar el nombre
+  del combatiente real si la casilla estaba vacía; si había un combatiente
+  real y el ataque impacta, el nombre sí aparece porque en ese punto el
+  atacante ya lo percibió por el resultado del ataque, igual que hoy ocurre
+  con un ataque exitoso contra un objetivo con Ocultación Total).
+
+#### Orden del pipeline (definido, no a decidir en 053B)
+
+```text
+Intent                      (cliente: { kind: "combatant" | "square", ... })
+    ↓
+Authorization               (requireCombatantControl, ensureActiveTurn — sin cambios)
+    ↓
+Action availability         (attackMode, rutina de ataque, economía de turno — sin cambios)
+    ↓
+Target mode validation      (si kind === "combatant" pero directTargetingAllowed === false → rechazo, sin mutación)
+    ↓
+Resolve target square       (solo si kind === "square": servidor resuelve combatiente ocupante o "vacío")
+    ↓
+    ├─ si "vacío" ──────────────────────────────────────────────┐
+    │                                                            ↓
+    ├─ si hay combatiente resuelto                    Attack roll or automatic miss (fallo automático, sin tirada — ver reglas de autoridad arriba)
+    ↓                                                            ↓
+Line of Effect               (Target Legality existente, Sprint 052B — sin cambios de orden)
+    ↓
+Vision / Concealment         (VisionAssessment se computa aquí)
+    ↓
+Attack roll or automatic miss (tirada real, con el 50% de Ocultación Total si corresponde)
+    ↓
+Consequences                 (daño, munición, log — con las reglas de consumo ya fijadas arriba)
+```
+
+Si la casilla resuelve "vacío", el flujo salta directamente de "Resolve
+target square" a "Attack roll or automatic miss" como fallo automático —
+**sin pasar** por Line of Effect ni por Vision/Concealment (ninguno de los
+dos tiene sentido contra una casilla sin combatiente). Si la casilla resuelve
+un combatiente real (o el modo era `combatant` desde el inicio), el flujo
+continúa por Line of Effect → Vision/Concealment → tirada real, exactamente
+como hoy.
+
+Este orden es una extensión explícita del pipeline ya existente en
+`handleResolveAttackDraft` (Sprint 052B: Legalidad de objetivo antes de
+tirada/mutación) — no introduce una fase nueva antes de Target Legality, solo
+inserta "Target mode validation" y "Resolve target square" entre la
+disponibilidad de acción (ya existente) y la Legalidad de Objetivo/Line of
+Effect (ya existente), y mueve la tirada de ataque a condicional según si hay
+un objetivo real resuelto.
+
+### 13.8. Pipeline funcional
 
 ```text
 Snapshot sources
@@ -687,47 +988,56 @@ Snapshot sources
 ├─ iluminación (board.dimLightCells / board.darknessCells)
 └─ capacidades perceptivas (combatant.intrinsicPerception)
         ↓
-LineOfSightAssessment (geometría pura, independiente de luz — Sprint 053B)
+VisualPathAssessment (geometría pura, independiente de luz — Sprint 053B)
         ↓
-VisionAssessment (LineOfSightAssessment + iluminación de la casilla objetivo + capacidad del observador)
+VisionAssessment (VisualPathAssessment + iluminación de la casilla objetivo + capacidad del observador)
         ↓
 Composición con Concealment existente (ver más abajo)
         ↓
 ConcealmentAssessment (consumido igual que hoy por Attack Resolver/UI — sin cambios de firma)
 ```
 
-**Regla de decisión de `VisionAssessment.kind` (orden de evaluación,
-más restrictivo gana)**:
+**Regla de decisión de `VisionAssessment.kind`/`dominantReason` (orden de
+evaluación, más restrictivo gana)**:
 
-1. Si `LineOfSightAssessment.hasLineOfSight` es `false` (obstáculo opaco
-   interpuesto) → `kind: "total"`, 50%, `requiresTargetSquare: true`. Esta es
-   la regla RAW citada en §13.1: LoE presente + LoS ausente = Ocultación
-   Total — el caso ya bosquejado en §7.2 de este documento.
-2. Si la casilla del objetivo está en `darknessCells` y la distancia al
-   observador supera su `darkvisionFeet` (o el observador no tiene
-   Darkvision) → `kind: "total"`, 50%, `requiresTargetSquare: true`.
-3. Si la casilla del objetivo está en `dimLightCells` y el observador no
+1. Si `VisualPathAssessment.hasClearVisualPath` es `false` (obstáculo opaco
+   interpuesto) → `kind: "total"`, 50%, `requiresTargetSquare: true`,
+   `dominantReason: "blocked-visual-path"`. Esta es la regla RAW citada en
+   §13.1: LoE presente + LoS ausente = Ocultación Total — el caso ya
+   bosquejado en §7.2 de este documento.
+2. Si la casilla del objetivo está en `darknessCells` y el observador **no**
+   tiene Darkvision → `kind: "total"`, 50%, `requiresTargetSquare: true`,
+   `dominantReason: "darkness"`.
+3. Si la casilla del objetivo está en `darknessCells`, el observador **sí**
+   tiene Darkvision, pero la distancia supera su `darkvisionFeet` →
+   `kind: "total"`, 50%, `requiresTargetSquare: true`,
+   `dominantReason: "darkvision-out-of-range"` (mismo resultado mecánico que
+   el caso 2, causa distinguible en la traza para UI/debug).
+4. Si la casilla del objetivo está en `dimLightCells` y el observador no
    tiene Darkvision (Low-Light Vision queda fuera de alcance en 053B, ver
-   §13.4) → `kind: "partial"`, 20%, `directTargetingAllowed: true`.
-4. En cualquier otro caso → `kind: "none"`.
+   §13.4) → `kind: "partial"`, 20%, `directTargetingAllowed: true`,
+   `dominantReason: "dim-light"`.
+5. En cualquier otro caso → `kind: "none"`, `dominantReason: "clear"`.
 
 **Cuándo Vision aporta 20% vs. 50%**: 20% (parcial, targeting directo
-permitido) solo en el caso 3 (luz tenue sin capacidad adecuada); 50% (total,
-debe elegirse casilla) en los casos 1 y 2 (LoS bloqueada u oscuridad más allá
+permitido) solo en el caso 4 (luz tenue sin capacidad adecuada); 50% (total,
+debe elegirse casilla) en los casos 1-3 (LoS bloqueada u oscuridad más allá
 del alcance perceptivo) — coincide exactamente con las bandas ya
 existentes en `ConcealmentKind`/`ConcealmentAssessment`, sin inventar una
 tercera banda.
 
 **Cuándo impide targeting directo vs. cuándo aún puede atacarse una
-casilla**: exactamente cuando `kind === "total"` (casos 1 y 2) —
+casilla**: exactamente cuando `kind === "total"` (casos 1-3) —
 `requiresTargetSquare: true`, `directTargetingAllowed: false`, igual
 semántica que `ConcealmentAssessment` ya implementa hoy para Total
-Concealment.
+Concealment. El flujo completo de targeting por casilla bajo este resultado
+se especifica en §13.7.
 
 **Composición con Concealment existente (y con Blinded)**: `getConcealmentAssessment`
 (`rules.ts:1936`) seguirá llamando a `EffectReducer.reduceConcealmentContributions`
 exactamente igual que hoy (Blinded y cualquier futura niebla mágica declarativa
-siguen ahí, sin tocarse). `composeConcealmentAssessment` (o una capa
+siguen ahí, sin tocarse) — **no** se sintetiza ningún `EffectInstance` ficticio
+para inyectar Vision en ese reductor. `composeConcealmentAssessment` (o una capa
 inmediatamente posterior, a decidir en la implementación de 053B) recibirá
 además el `VisionAssessment` ya calculado y compondrá el resultado final
 tomando la **severidad máxima** entre ambas fuentes (total > parcial > none),
@@ -736,6 +1046,30 @@ por precedencia — sin ninguna regla especial de interacción entre Blinded y
 Vision: si el atacante está cegado, su contribución (`total`, incondicional)
 ya domina cualquier resultado que Vision calcule para ese mismo ataque, sin
 necesitar código que verifique explícitamente "si Blinded, ignorar Vision".
+Sobre el resultado final compuesto:
+
+- `directTargetingAllowed`/`requiresTargetSquare`: el resultado **más
+  restrictivo domina** entre ambas fuentes — si cualquiera de las dos (la
+  reducción de `EffectInstance` o `VisionAssessment`) exige
+  `requiresTargetSquare: true`, el resultado final lo exige, aunque la otra
+  fuente por sí sola no lo exigiera.
+- `missChancePercent`: nunca se suman los porcentajes de ambas fuentes (ej.
+  20% de Vision + 50% de un efecto declarativo **no** da 70%) — se toma
+  únicamente el de la fuente de mayor severidad, exactamente igual que el
+  reductor interno ya hace hoy entre múltiples `ConcealmentContribution`.
+- `opportunityAttackAllowed`: se deriva de la **misma regla ya existente**
+  en `composeConcealmentAssessment` (`rules.ts:1965`, `!total`) aplicada al
+  `kind` **ya compuesto** (Vision + efectos) — Ocultación Total desde
+  cualquier fuente (Vision o efecto declarativo) mantiene el comportamiento
+  ya vigente hoy (bloquea AdO igual que Blinded/niebla ya lo hacen), salvo
+  que una auditoría SRD futura demuestre una excepción real; no se audita
+  ninguna excepción nueva en este documento.
+- Trazas: el `ConcealmentAssessment` final conserva **ambos** conjuntos de
+  trazas por separado — las de `EffectReducer` (`ConcealmentTrace[]`, ya
+  existentes) y las de Vision (`VisionTrace[]`, nuevas) — más el
+  `dominantReason` de Vision cuando Vision es la fuente que decide la
+  severidad final. No se fusionan en un tipo de traza único ni se sintetiza
+  ningún `EffectInstance`/`ConcealmentTrace` falso para representar a Vision.
 
 **Qué ocurre si una fuente ya produce ocultación total**: nada especial — la
 composición por máxima severidad ya es idempotente ante múltiples fuentes en
@@ -746,86 +1080,177 @@ siendo `"total"`, no se duplica el 50% ni se suma).
 completo, vía su propio trait, sin pasar por este pipeline — diseño
 diferido), Low-Light Vision (§13.4), niebla/oscuridad mágica dinámica
 (§13.3), altura/`zFeet` en la geometría de LoS (misma simplificación
-documentada que ya tiene LoE), facing.
+documentada que ya tiene LoE), facing, y todas las consecuencias no
+ofensivas de oscuridad listadas en §13.6.
 
-### 13.7. Riesgos y alternativas descartadas
+### 13.9. Riesgos (Sprint 053A.1, completo)
 
-- **Riesgo**: introducir `IntrinsicPerception`/campos de `Board` sin
-  consumidor completo si 053B queda a medio implementar. Mitigación: 053B
-  debe entregar la vertical completa (geometría + luz + Darkvision +
-  composición con Concealment + tests autoritativos) en un único sprint, no
-  fragmentado — igual disciplina que ya se aplicó a Sprint 052B.
-- **Alternativa descartada**: inyectar Vision directamente dentro de
-  `EffectReducer.reduceConcealmentContributions` (ej. sintetizando un
-  `EffectInstance` ficticio). Descartada: violaría la invariante de que ese
-  reductor opera solo sobre efectos declarativos reales con
-  `effectInstanceId` trazable (`reducer.ts:69-92`), y acoplaría geometría de
-  tablero dentro del sistema de ActiveEffects sin necesidad.
-- **Alternativa descartada**: derivar capacidad perceptiva de
-  `creatureTypeId`/`sizeCategory`. Descartada en §13.2, pregunta 1 — ninguno
-  de los dos discrimina razas dentro de un mismo tipo de criatura.
-- **Riesgo aceptado y documentado**: la regla de "elegir una casilla" bajo
-  Ocultación Total ya existe en el contrato (`requiresTargetSquare`) pero su
-  UI/flujo de selección de casilla a ciegas no se audita en este documento —
-  queda expresamente para la implementación de 053B decidir cómo el cliente
-  presenta esa elección, sin bloquear el diseño del assessment.
+**Riesgos identificados en Sprint 053A (conservados):**
 
-### 13.8. Preguntas abiertas (heredadas o nuevas)
+1. **Infraestructura a medio implementar**: introducir
+   `IntrinsicPerception`/campos de `Board` sin consumidor completo si 053B
+   queda a medio implementar. Mitigación: 053B debe entregar la vertical
+   completa (geometría + luz + Darkvision + composición con Concealment +
+   targeting por casilla + tests autoritativos) en un único sprint, no
+   fragmentado — igual disciplina que ya se aplicó a Sprint 052B.
+2. **Derivar capacidad perceptiva de `creatureTypeId`/`sizeCategory`**
+   (alternativa descartada, §13.2 pregunta 1): ninguno de los dos discrimina
+   razas dentro de un mismo tipo de criatura.
 
-1. ¿`Low-Light Vision` se implementa como parte de 053B una vez que resultó
-   mecánicamente simple bajo el modelo de §13.3, o se reserva para un
-   micro-sprint propio inmediatamente posterior? No se decide aquí — es una
-   decisión de alcance para el `Proceed` de 053B, no de este diseño.
-2. ¿La "distancia" para comparar contra `darkvisionFeet` (regla 2 de §13.6)
-   usa la misma función de distancia en pies ya existente
+**Riesgos nuevos (Sprint 053A.1, Corrección 8):**
+
+3. **Fuga de información por ataque a casilla**: mensajes distintos para
+   "casilla vacía" vs. "casilla ocupada, ataque fallado por CA/miss chance"
+   podrían revelar posiciones reales al jugador atacante por descarte.
+   Mitigación: §13.7 fija explícitamente que el fallo automático por casilla
+   vacía no revela ninguna pista adicional (ni "estuviste cerca", ni el
+   nombre del combatiente real).
+4. **Consumo incorrecto de acción o munición**: un fallo automático por
+   casilla equivocada podría, por accidente de implementación, tratarse
+   igual que un objetivo inválido (Cobertura Total, nada se consume) en vez
+   de un ataque intentado y fallado. Mitigación: §13.7 fija explícitamente
+   que sí se consume acción/modo de ataque/munición — el diseño ya distingue
+   ambos casos, la implementación debe respetarlo con un test de regresión
+   dedicado.
+5. **Targeting por combatiente usado como bypass**: el cliente podría enviar
+   `{ kind: "combatant", combatantId }` conociendo la posición real por otros
+   medios (historial de turno, tablero visible del jugador) para evitar la
+   elección de casilla cuando el servidor exige Ocultación Total. Mitigación:
+   §13.7 fija que el servidor rechaza explícitamente ese comando cuando
+   `directTargetingAllowed === false`, sin importar qué envíe el cliente.
+6. **Oscuridad confundida con Blinded persistente**: implementar oscuridad
+   aplicando/removiendo `srd_blinded` (u otro `EffectInstance`) al entrar o
+   salir de una celda oscura. Mitigación: §13.6 prohíbe explícitamente esto
+   — la oscuridad es contextual por par observador/objetivo, nunca una
+   condición persistente del combatiente.
+7. **Low-Light Vision mal modelada**: agregarla antes de que exista un
+   modelo de fuente de luz con radio, aproximándola como "ignorar
+   `dimLightCells`". Mitigación: §13.4 la excluye por completo del contrato
+   de 053B (ni el campo de tipo), no solo de su lógica.
+8. **UI autoritativa incorrecta**: que el cliente (cualquier UI futura de
+   selección de casilla) decida por sí mismo si hay o no una criatura en la
+   casilla elegida, en vez de limitarse a enviar la posición. Mitigación:
+   §13.7 fija que el servidor resuelve autoritativamente la ocupación de la
+   casilla; la UI solo elige y envía `position`.
+9. **Assessment duplicado**: que Vision cree su propio sistema de miss
+   chance/resolución en paralelo al de `ConcealmentAssessment`/
+   `resolveConcealment`, en vez de alimentar el mismo pipeline existente.
+   Mitigación: §13.8 fija que Vision compone dentro de `ConcealmentAssessment`
+   (severidad máxima) y que el Attack Resolver sigue tirando una única miss
+   chance autoritativa (`resolveConcealment`, sin cambios de firma).
+
+**Alternativa descartada (conservada de Sprint 053A)**: inyectar Vision
+directamente dentro de `EffectReducer.reduceConcealmentContributions`
+sintetizando un `EffectInstance` ficticio. Descartada: violaría la
+invariante de que ese reductor opera solo sobre efectos declarativos reales
+con `effectInstanceId` trazable (`reducer.ts:69-92`), y acoplaría geometría
+de tablero dentro del sistema de ActiveEffects sin necesidad — ver también
+riesgo 9 arriba.
+
+### 13.10. Preguntas abiertas (heredadas o nuevas, Sprint 053A.1)
+
+1. ¿La "distancia" para comparar contra `darkvisionFeet` (regla 2/3 de
+   §13.8) usa la misma función de distancia en pies ya existente
    (`distanceBetweenFootprintsFeet`/`distanceFeet`) o requiere una geometría
    propia? Hipótesis de trabajo: reutilizar la existente, sin auditoría
    adicional — a confirmar en la implementación.
-3. ¿`dominantReason` (§13.5) debe convertirse en un enum cerrado una vez que
-   053B tenga consumidores reales, o basta con un string libre indefinidamente
-   (mismo patrón que `labelParts` en `ConcealmentAssessment`)? Diferido a la
-   implementación.
-4. Todas las preguntas ya abiertas en §8 de este documento que no fueron
-   resueltas por Sprint 053A siguen abiertas sin cambios (granularidad de luz
-   por zona vs. celda para mapas grandes, forma de `TargetingAssessment`,
-   etc.).
+2. ¿La extensión de `resolve-attack` (§13.7) reemplaza `targetId: string`
+   por la unión discriminada, o convive con él mediante un campo opcional
+   nuevo y una migración de schema? No se decide aquí — es un detalle de
+   implementación de 053B que no cambia ninguna de las reglas de autoridad
+   ya fijadas en §13.7.
+3. Todas las preguntas ya abiertas en §8 de este documento que no fueron
+   resueltas por Sprint 053A/053A.1 siguen abiertas sin cambios (granularidad
+   de luz por zona vs. celda para mapas grandes, forma de un futuro
+   `TargetingAssessment` genérico más allá de esta vertical, etc.).
 
-### 13.9. Alcance exacto propuesto para Sprint 053B (implementación)
+**Cerradas en Sprint 053A.1 (ya no son preguntas abiertas)**: si Low-Light
+Vision se incluye en 053B (no — excluida por completo, §13.4); si
+`dominantReason` es string libre o union cerrada (union cerrada,
+`VisionReason`, §13.5); cómo se diseña el targeting por casilla (§13.7,
+diseño completo).
 
-**Incluye:**
+### 13.11. Alcance exacto propuesto para Sprint 053B (implementación) — atómico
 
-1. `Board.dimLightCells?`/`Board.darknessCells?` (§13.3, dos campos).
-2. `Combatant.intrinsicPerception?: IntrinsicPerception` con
-   `darkvisionFeet` funcional; `lowLightVision` puede declararse en el tipo
-   sin lógica de negocio (ver §13.4).
-3. `LineOfSightAssessment`/`getLineOfSight`, reutilizando
-   `traversedCellKeysBetween` (extracción pequeña y pura, sin alterar el
-   comportamiento ya probado de `getLineOfEffect`) y, provisionalmente,
+**Incluye (17 puntos, ninguno queda a decidir durante la implementación):**
+
+1. `Board.dimLightCells?: string[]` (§13.3).
+2. `Board.darknessCells?: string[]` (§13.3).
+3. `Combatant.intrinsicPerception?: IntrinsicPerception` con únicamente
+   `darkvisionFeet: number` (§13.4 — sin `lowLightVision`, ver exclusiones).
+4. Transporte de las tres fuentes anteriores por `CombatRulesSnapshot`,
+   mismo whitelist-clone ya usado para `lineOfEffectBlockingCells`
+   (`combatSnapshot.ts`).
+5. `VisualPathAssessment`/`getVisualPath` — assessment geométrico interno
+   (§3, §13.5), reutilizando `traversedCellKeysBetween` y, provisionalmente,
    `board.lineOfEffectBlockingCells` como fuente de bloqueadores (decisión ya
-   tomada en Sprint 053, §3 — no se reabre aquí).
-4. `VisionAssessment`/`getVisionAssessment`, implementando la regla de
-   decisión de §13.6.
-5. Composición con `ConcealmentAssessment` existente por severidad máxima
-   (§13.6), sin tocar `EffectReducer.reduceConcealmentContributions`.
-6. Targeting directo vs. casilla, consumiendo los campos ya existentes de
-   `ConcealmentAssessment` (`directTargetingAllowed`/`requiresTargetSquare`)
-   — sin contrato de targeting nuevo.
-7. Tests autoritativos: geometría de `getLineOfSight` (matriz reducida o
-   compartida con `getLineOfEffect` solo si no acopla las reglas — ver
-   restricción explícita de Sprint 053 de no duplicar ciegamente los 29
-   casos), `getVisionAssessment` (luz × capacidad × geometría), composición
-   con Blinded (regresión), integración de servidor si corresponde a un
-   consumidor real (a decidir en 053B según si ya conecta a Attack Resolver).
-8. Rule ID nueva **solo si** 053B efectivamente conecta esta vertical a un
-   consumidor de juego real (ej. Attack Resolver vía Concealment) — si
-   queda como infraestructura pura sin consecuencia observable, no se abre
-   Rule ID todavía (misma política que Sprint 053 aplicó a Line of Sight).
+   tomada en Sprint 053 §3 — no se reabre aquí).
+6. `VisionAssessment`/`getVisionAssessment`, implementando la regla de
+   decisión de §13.8 (incluye `VisionReason`/`VisionTrace` de §13.5).
+7. Composición final con `ConcealmentAssessment` existente por severidad
+   máxima (§13.8), sin tocar `EffectReducer.reduceConcealmentContributions`.
+8. Targeting directo vs. casilla: consumo de
+   `directTargetingAllowed`/`requiresTargetSquare` ya existentes en
+   `ConcealmentAssessment` — sin contrato de targeting nuevo más allá de la
+   unión discriminada de intención (punto 9).
+9. Extensión genérica de `resolve-attack` para aceptar objetivo por
+   combatiente o por casilla (§13.7 — unión discriminada `{ kind: "combatant"
+   | "square", ... }`; ningún comando paralelo).
+10. Resolución autoritativa de casilla ocupada/vacía en el servidor (§13.7),
+    incluyendo footprints multicasilla (cualquier celda ocupada es
+    elegible) y las reglas exactas de consumo de tirada/acción/munición ya
+    fijadas en §13.7.
+11. Visión normal (caso "clear"/`kind: "none"`, §13.8).
+12. Darkvision (§13.4, §13.8).
+13. Luz brillante (default implícito, §13.3).
+14. Luz tenue (`dimLightCells`, ocultación parcial 20%, §13.8).
+15. Oscuridad total (`darknessCells`, ocultación total 50% + targeting por
+    casilla, §13.8), con el alcance parcial fijado en §13.6 (sin
+    consecuencias no ofensivas, sin Blinded automático).
+16. Tests: unitarios (`getVisualPath`, `getVisionAssessment`), de
+    integración de servidor (targeting por casilla, composición con
+    Blinded, no-bypass de targeting directo), E2E WebSocket para el/los
+    flujo(s) que conecten a un consumidor real, y UI mínima **solo si**
+    053B conecta esta vertical a una interacción real de tablero/ataque (no
+    UI especulativa sin consumidor).
+17. Rule ID **Parcial** — ver estado de regla más abajo.
 
 **Excluye explícitamente:**
 
-Blindsight, Blindsense, Tremorsense, True Seeing, invisibilidad, niebla,
-conjuros concretos (*Darkness*, *Fog Cloud*, *Obscuring Mist*), UI de Fog of
-War, editor de iluminación, AoE, altura/`zFeet`, facing, Low-Light Vision
-(salvo que 053B decida explícitamente incluirlo, ver §13.8 pregunta 1),
-fuentes de luz dinámicas/con radio (§13.3, Alternativa D), zonas
-declarativas (§13.3, Alternativa C).
+- Low-Light Vision (§13.4 — ni el campo de tipo);
+- Blindsight, Blindsense, Tremorsense, True Seeing;
+- invisibilidad;
+- niebla, humo;
+- conjuros concretos (*Darkness*, *Fog Cloud*, *Obscuring Mist*);
+- fuentes de luz dinámicas, radios de antorchas (§13.3, Alternativa D);
+- zonas declarativas (§13.3, Alternativa C);
+- Fog of War de UI;
+- editor de iluminación;
+- AoE;
+- altura/`zFeet`;
+- facing;
+- consecuencias defensivas/de movimiento/de habilidades por oscuridad
+  (pérdida de Destreza a CA, -2 CA, media velocidad, Search,
+  Fuerza/Destreza, Correr/Retirada — §13.6);
+- aplicación o remoción automática de `srd_blinded` u otro `EffectInstance`
+  por entrar/salir de una celda oscura (§13.6, restricción explícita).
+
+**Estado de regla**: proponer una Rule ID estable (ej.
+`DEFENSE-VISION-BASIC` o nombre equivalente a decidir por convención de
+`docs/rules/registry.md` al momento de implementar) **únicamente si** 053B
+conecta la vertical al flujo real de ataque (Attack Resolver vía
+Concealment) — si quedara como infraestructura pura sin consecuencia
+observable, no se abre Rule ID todavía, misma política ya aplicada por
+Sprint 053 a `VisualPathAssessment`. La Rule ID, si se abre, debe quedar en
+estado **Parcial** porque:
+
+- no incluye todas las consecuencias de oscuridad (§13.6);
+- no incluye sentidos especiales (Blindsight/Blindsense/Tremorsense);
+- no incluye niebla/invisibilidad;
+- no incluye Low-Light Vision;
+- no incluye hechizos/AoE.
+
+No crear variantes de la Rule ID (ej. nada de `-V2`, `-DARKNESS`,
+`-DARKVISION` por separado) — una única regla oficial estable, con su
+alcance Parcial documentado en la misma fila, siguiendo la política ya
+fijada en Sprint 044.1.
