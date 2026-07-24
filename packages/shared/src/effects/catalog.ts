@@ -91,6 +91,26 @@ export const effectsCatalog = {
       { type: "numeric", id: "fatigued_dex", stat: "DEXTERITY", stackingGroup: "penalty", stackingPolicy: "sum", value: -2 }
     ],
     ruleOverrides: ["FORBID_RUN", "FORBID_CHARGE"],
+    // Sprint 049 (SRD): "un personaje fatigado que sufre algo que normalmente causaría fatiga
+    // queda Exhausto en su lugar". La transición pertenece a esta condición (no a cada fuente
+    // que la dispara) — ver docs/designs/exhausted-condition.md, auditoría normativa.
+    onStack: "upgrade_to",
+    upgradeTo: "srd_exhausted"
+  },
+  "srd_exhausted": {
+    name: "Exhausto",
+    description: "El personaje se mueve a la mitad de velocidad y sufre un penalizador de -6 a Fuerza y Destreza. No puede correr ni cargar.",
+    traits: ["EXHAUSTED"],
+    modifiers: [
+      { type: "numeric", id: "exhausted_str", stat: "STRENGTH", stackingGroup: "penalty", stackingPolicy: "sum", value: -6 },
+      { type: "numeric", id: "exhausted_dex", stat: "DEXTERITY", stackingGroup: "penalty", stackingPolicy: "sum", value: -6 }
+    ],
+    movementRateContributions: [
+      { id: "exhausted_half_speed", label: "Exhausted ×1/2", stackingKey: "condition:exhausted:half-speed", numerator: 1, denominator: 2 }
+    ],
+    ruleOverrides: ["FORBID_RUN", "FORBID_CHARGE"],
+    // Ya es el techo de severidad de esta familia: sin efecto adicional ante una nueva
+    // fatiga/agotamiento (igual que Ray of Exhaustion no afecta a un objetivo ya Exhausto).
     onStack: "ignore"
   },
   "srd_entangled": {

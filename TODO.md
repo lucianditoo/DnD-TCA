@@ -44,14 +44,24 @@ Documento vivo de tareas pendientes. El backlog está organizado en Sprints. Par
 - [x] Sprint 047: implementación funcional de Blinded (Core) — `srd_blinded`, `FORBID_RUN`, `FORBID_CHARGE`, velocidad a la mitad, 50% fallo ataque por Concealment automático, Concealment total (50%) a enemigos. Validación exitosa.
 - [x] Sprint 047.1: Auditoría Final y Cierre Formal de EFFECT-BLINDED. Confirmación arquitectónica terminada.
 - [x] Sprint 048: Helpless Combat & Coup de Grace — `MANEUVER-COUP-DE-GRACE` (Registry), `getDefensiveAbilityProjection`, `pendingCoupDeGrace`. Cerrado formalmente con validación real: `npm test` 457/457, typecheck/build en verde, E2E 93/93, Playwright 6/6.
+- [x] Sprint 049: EFFECT-EXHAUSTED + corrección de `onStack` (DT-022) — `srd_exhausted`, `srd_fatigued.onStack:"upgrade_to"`, `EffectManager.add` consume `onStack`/`severityChain` por primera vez. Validación real: `npm test` 467/467, typecheck/build en verde, E2E 93/93, Playwright 6/6.
 
 ## Próximos Sprints
 
-Ver `ROADMAP.md`. Sprint 044.2 fija el pipeline transversal y Sprint 046 entrega la infraestructura de `DEFENSE-CONCEALMENT`. Las fuentes productivas, targeting por casilla de ocultación total y la política efectiva de AdO requieren gates propios. Power Attack (039) sigue congelado. Próximo candidato funcional: Sprint 049 (`EFFECT-EXHAUSTED`), pendiente de auditoría normativa y diseño antes de implementar.
+Ver `ROADMAP.md`. Sprint 044.2 fija el pipeline transversal y Sprint 046 entrega la infraestructura de `DEFENSE-CONCEALMENT`. Las fuentes productivas, targeting por casilla de ocultación total y la política efectiva de AdO requieren gates propios. Power Attack (039) sigue congelado. `EFFECT-EXHAUSTED` (049) cerrado; próximo candidato funcional pendiente de nueva auditoría/recomendación.
 
 ## Sprint Activo
 
-Ninguno — Sprint 048 (Helpless Combat & Coup de Grace) cerrado formalmente tras auditar el diff pendiente, limpiar `git diff --check` y confirmar el DoD completo con ejecución real.
+Ninguno — Sprint 049 (EFFECT-EXHAUSTED) cerrado formalmente con DoD completo y ejecución real.
+
+  **Sprint 049 — COMPLETADO**
+  - [x] Auditoría normativa SRD de Fatigued/Exhausted (fuentes oficiales, transiciones, casos límite).
+  - [x] Auditar si el dominio necesita más valores de `onStack` que `ignore`/`upgrade_to` — angostado el tipo a esos dos.
+  - [x] Implementar consumo de `onStack` exclusivamente en `EffectManager.add` (`severityChain`), sin lógica en fuentes/handlers/hazards.
+  - [x] `srd_fatigued.onStack:"upgrade_to"` → `srd_exhausted`; `srd_exhausted.onStack:"ignore"`.
+  - [x] Corregir el bug de acumulación existente (Prone, Fatigued vía gas venenoso) como fix de infraestructura (DT-022), no feature nueva.
+  - [x] `docs/designs/exhausted-condition.md`, Registry (`EFFECT-EXHAUSTED`), `docs/technical-debt.md` (DT-022).
+  - [x] Validación real: `npm test` 467/467, typecheck 0 errores, build 3/3, E2E 93/93, Playwright 6/6.
 
   **Sprint 048 — COMPLETADO**
   - [x] Agregar soporte a Coup de Grace en comandos tácticos (`handleCoupDeGrace`, `handleResumeCoupDeGrace`, `resume-coup-de-grace`).

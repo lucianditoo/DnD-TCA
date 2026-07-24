@@ -1,50 +1,124 @@
-# Walkthrough — Cierre de Sprint 048 (Helpless Combat & Coup de Grace)
+# Walkthrough — Sprint 049 (EFFECT-EXHAUSTED + corrección de `onStack`)
 
-## Estado final
+## Objetivo
 
-Al iniciar el gate de precondición del Sprint 049 (`EFFECT-EXHAUSTED`), el working tree **no estaba limpio**: 14 archivos con cambios sin commitear (código de producción, un test y documentación) más una carpeta `scratch/` sin versionar. El usuario confirmó que ese trabajo pendiente correspondía a Sprint 048 (Helpless Combat & Coup de Grace), ya diseñado en un commit previo (`337ebb9 docs(design): refine helpless combat transaction`). Este documento cierra ese trabajo: auditado, limpiado, validado con el DoD completo y comiteado de forma atómica.
+Implementar Exhausted (SRD 3.5) y, condición explícita del usuario antes de aprobar
+la implementación, corregir de raíz un gap de infraestructura descubierto durante
+la auditoría normativa: `EffectDefinition.onStack` estaba declarado desde el
+diseño original de ActiveEffects (Sprint 003) pero ningún consumidor lo leía nunca.
 
-## Auditoría del diff pendiente
+## Auditoría normativa (Fase 1)
 
-Revisado archivo por archivo contra el alcance declarado (Helpless Combat + Coup de Grace):
+Sin acceso directo a d20srd.org/dandwiki.com (403/402 al hacer fetch), se
+trianguló con múltiples fuentes secundarias independientes convergentes:
 
-- `apps/server/src/combat/attackResolver.ts` (+47): nueva `resolveAutomaticCritical` — daño base × multiplicador de crítico, con Ataque Furtivo plegado si aplica. Sin tirada de ataque (Coup de Grace RAW no requiere impactar).
-- `apps/server/src/commands/dispatcher.ts` (+3): nuevo caso `resume-coup-de-grace`.
-- `apps/server/src/commands/tacticalCommands.ts` (+~200): `handleCoupDeGrace` (validación de objetivo `HELPLESS`, inmunidad a críticos, alcance/adyacencia, provocación de AdO interrumpible), `handleResumeCoupDeGrace` (reanudación tras resolver AdO pendientes, con cancelación segura si el estado cambió), `_executeCoupDeGrace` (crítico automático + salvación de Fortaleza CD 10+daño o muerte instantánea).
-- `packages/shared/src/rules.ts`: `isValidCoupDeGraceTarget` (trait `HELPLESS`, no objetivo muerto) y `getDefensiveAbilityProjection`, que **reemplaza** el parche ad-hoc de "diferencial de Destreza" que existía en `totalArmorClass` por un cálculo declarativo único (Destreza 0/-5 para `HELPLESS`, supresión para `NO_DEX_TO_AC`/Flat-Footed, normal en el resto) — sin introducir `if (effectId === ...)`.
-- `packages/shared/src/types.ts`/`combatSnapshot.ts`/`demo-data.ts`: nuevo `PendingCoupDeGrace` en `CombatRoom`/`CombatRulesSnapshot`, clonado defensivamente, inicializado en `createEmptyRoom`.
-- `packages/shared/src/schemas/commands/*`: Zod para `action: "coup-de-grace"` y el nuevo tipo de comando `resume-coup-de-grace`.
-- `tests/dt-006-snapshot-integrity.test.mjs`: fixture extendida con `pendingCoupDeGrace: null`.
-- `scripts/e2e-websocket.mjs`: ajuste de un caso previo de Blinded (Sprint 047) — el refactor de `getDefensiveAbilityProjection` unifica la supresión de Destreza para `HELPLESS`/`NO_DEX_TO_AC`, y este ajuste (d20Roll 20→15, reordenamiento del assert) es un efecto colateral esperado de tocar el mismo cálculo de CA que usa Blinded, no una ampliación de alcance.
+- **Fatigued**: -2 STR/-2 DEX, no corre ni carga. La regla de escalado ("hacer
+  algo que causaría fatiga vuelve Exhausted a un Fatigado") vive en la definición
+  de la condición misma, no en cada fuente — confirmado comparando la regla
+  general contra el texto de *Ray of Exhaustion* (que la reafirma, no la inventa).
+- **Exhausted**: -6 STR/-6 DEX, mitad de velocidad, no corre ni carga.
+- Ninguna fuente oficial (Marcha Forzada, Inanición, Sed, *Ray of Exhaustion*) está
+  implementada hoy en el motor. La única fuente real y ya existente que aplica
+  Fatigued es `srd_poison_gas_hazard` (`onFailEffectId:"srd_fatigued"`).
 
-**Conclusión de la auditoría**: todo el diff pertenece a Helpless Combat/Coup de Grace, con una única excepción menor (el ajuste del caso Blinded en el E2E) que es un efecto colateral directo y esperado de refactorizar código compartido (`totalArmorClass`), no scope creep.
+Detalle completo en `docs/designs/exhausted-condition.md`.
 
-## `scratch/` — revisado y eliminado
+## El hallazgo que amplió el alcance (DT-022)
 
-Contenía `patch_rules.mjs`, `patch_tacticalCommands.mjs` (scripts Node que aplicaron programáticamente los cambios de arriba — confirmado línea por línea que coinciden con el diff real) y `rules.old.ts` (backup pre-patch en UTF-16). Sin contenido único no aplicado. Eliminada la carpeta completa.
+Al leer `packages/shared/src/effects/manager.ts` y `reducer.ts` completos se
+confirmó: `EffectManager.add` era puramente aditivo (nunca comparaba contra
+instancias existentes) y `EffectReducer` solo resuelve `stackingGroup`/
+`stackingPolicy` (un mecanismo distinto, a nivel de modificador numérico).
+`tests/conditions-v3.test.mjs` ya documentaba el síntoma para `srd_prone` con un
+comentario que afirmaba —incorrectamente— que `onStack:"ignore"` bloqueaba el
+stacking "en el EffectManager"; en la práctica dos instancias sumaban el
+penalizador dos veces (14-4-4=6).
 
-## Correcciones aplicadas
+Peor: `srd_poison_gas_hazard` reaplica `srd_fatigued` cada ronda que el objetivo
+falla su salvación mientras permanece en la nube. Sin consumo de `onStack`, tres
+fallos consecutivos producían -6 STR/-6 DEX (tres instancias sumadas), no la
+transición a Exhausted que exige el RAW.
 
-- **`git diff --check`**: 18 líneas con espacio en blanco al final corregidas en 4 archivos, cuidando de no tocar líneas preexistentes ajenas a este sprint (verificado comparando contra `HEAD` línea por línea antes de aceptar cada cambio).
-- **`docs/rules/registry.md`**: nueva fila `MANEUVER-COUP-DE-GRACE` (Completo), con desglose de qué reutiliza (trait `HELPLESS` ya existente desde Sprint 014, sin catálogo nuevo) y qué es genuinamente nuevo. De paso, se corrigió una fila `EFFECT-BLINDED` duplicada y mal formada (fuera de la tabla, sin backticks, nombre de test truncado) que había quedado de un cierre anterior.
-- **`docs/testing/master-coverage.md`**: entradas de Sprint 047 y 048 con números reales verificados.
-- **`PROJECT_STATUS.md`/`TODO.md`**: reemplazadas las afirmaciones genéricas ("100% exitosas") por los números exactos de esta validación.
-- **`docs/audits/combat-rules-deviations.md`**: revisado — Coup de Grace no introduce ninguna divergencia respecto del RAW (impacto automático sin tirada, crítico automático, salvación de Fortaleza CD 10+daño), no se modificó.
+El usuario aprobó ampliar el alcance para corregir esto de forma **genérica**
+(beneficia a Prone, Dazed, Paralyzed y cualquier condición futura), documentado
+como corrección de infraestructura existente (DT-022), no como funcionalidad
+nueva.
 
-## Validación (DoD completo, ejecutado de verdad tras las correcciones)
+## Auditoría de valores de `onStack` (condición del usuario antes de implementar)
+
+Se auditó si el dominio necesita `"replace"`/`"refresh_duration"` además de
+`"ignore"`/`"upgrade_to"`: los 14 entries previos del catálogo usaban solo
+`"ignore"`, ningún efecto con `duration` real modela "recast mientras sigue
+activo", y la investigación SRD de Fatigued/Exhausted tampoco lo requiere. Sin
+casos normativos reales, `EffectDefinition.onStack` se angostó de 4 a 2 valores
+(`"ignore" | "upgrade_to"`) en `contracts.ts`.
+
+## Implementación
+
+- `packages/shared/src/effects/manager.ts`: `EffectManager.add` es ahora el único
+  punto de consumo de `onStack` (cero lógica en fuentes/handlers/hazards). Nueva
+  función `severityChain` resuelve la cadena de severidad de un `effectId`
+  siguiendo sus punteros `upgradeTo`. La colisión se evalúa por cadena completa,
+  no solo por `effectId` exacto: si el objetivo ya tiene un miembro más severo
+  (ej. ya Exhausted cuando el gas venenoso insiste con Fatigued en la ronda 3+),
+  la nueva aplicación es redundante y se descarta; si tiene solo un miembro más
+  débil (ej. se aplica Exhausted directo sobre un objetivo solo Fatigued), la
+  instancia débil se reemplaza. La detección solo compara `targets` (efectos
+  anclados a criaturas) — los hazards anclados a `targetCells` nunca colisionan
+  aquí, preservando el comportamiento ya probado de múltiples hazards
+  solapados sobre la misma celda (`tests/environmental-hazards.test.mjs`).
+- `packages/shared/src/effects/catalog.ts`: `srd_fatigued` ahora declara
+  `onStack:"upgrade_to"` + `upgradeTo:"srd_exhausted"`. Nueva entrada
+  `srd_exhausted` (-6 STR/-6 DEX, velocidad ×1/2, `FORBID_RUN`/`FORBID_CHARGE`,
+  `onStack:"ignore"`) — mismo patrón declarativo que Fatigued/Entangled/Blinded.
+- `packages/shared/src/effects/contracts.ts`: `onStack` angostado a
+  `"ignore" | "upgrade_to"`.
+
+## Tests
+
+- `tests/active-effects.test.mjs`: 7 casos nuevos sobre `EffectManager.add`
+  (ignore descarta duplicados intra/inter-objetivo, upgrade_to escala
+  Fatigued→Exhausted, una tercera fatiga contra un objetivo ya Exhausted no lo
+  revierte, ignore en Exhausted descarta duplicado directo, Exhausted directo
+  sobre un Fatigued reemplaza la instancia débil).
+- `tests/exhausted-condition.test.mjs` (nuevo, 4 casos): STR/DEX -6, velocidad
+  ×1/2, FORBID_RUN/FORBID_CHARGE, snapshot — mismo patrón que
+  `entangled-condition.test.mjs`.
+- `tests/conditions-v3.test.mjs`: comentario corregido (ya no afirma que el bug
+  de Prone duplicado sigue abierto; documenta que el test bypasea
+  `EffectManager.add` a propósito para caracterizar que el evaluador en sí mismo
+  no deduplica).
+
+## Documentación sincronizada
+
+- `docs/designs/exhausted-condition.md` (nuevo): auditoría normativa completa,
+  hallazgo DT-022, diseño de `severityChain`, límites de alcance documentados.
+- `docs/technical-debt.md`: nueva entrada DT-022, resuelta.
+- `docs/rules/registry.md`: nueva fila `EFFECT-EXHAUSTED` (Completo);
+  `EFFECT-FATIGUED` anotada con la transición.
+- `docs/testing/master-coverage.md`, `PROJECT_STATUS.md`, `TODO.md`: entrada de
+  Sprint 049 con números reales verificados.
+
+## Validación (DoD completo, ejecutado de verdad)
 
 | Comando | Resultado |
 |---|---|
-| `npm test` | ✅ **457/457**, 0 fallos |
+| `npm test` | ✅ **467/467**, 0 fallos (53 archivos) |
 | `npm run typecheck` | ✅ 0 errores (3 workspaces) |
 | `npm run build` | ✅ los 3 workspaces en verde (Vite compila 1660 módulos) |
-| `node scripts/e2e-websocket.mjs` | ✅ **93/93** aserciones, exit 0 |
+| `node scripts/e2e-websocket.mjs` | ✅ **93/93** aserciones, exit 0 (sin regresión) |
 | `npm run test:ui` (Playwright) | ✅ **6/6** escenarios |
 
-## Archivos en el commit
+## Alcance explícitamente excluido
 
-`PROJECT_STATUS.md`, `TODO.md`, `docs/rules/registry.md`, `docs/testing/master-coverage.md`, `apps/server/src/combat/attackResolver.ts`, `apps/server/src/commands/dispatcher.ts`, `apps/server/src/commands/tacticalCommands.ts`, `packages/shared/src/combatSnapshot.ts`, `packages/shared/src/demo-data.ts`, `packages/shared/src/rules.ts`, `packages/shared/src/schemas/commands/index.ts`, `packages/shared/src/schemas/commands/tacticalCommands.ts`, `packages/shared/src/types.ts`, `scripts/e2e-websocket.mjs`, `tests/dt-006-snapshot-integrity.test.mjs`, `walkthrough.md`. `scratch/` eliminado (no versionado, no aparece en el commit).
+- Recuperación Exhausted→Fatigued tras 1h de descanso (depende del paso del
+  tiempo, no de aplicación de efectos).
+- Marcha Forzada, Inanición, Sed, Calor/Frío como fuentes activas (ninguna
+  implementada hoy).
+- Frightened, Panicked, Vision, Line of Effect, Concentration.
 
 ## Estado y próximo paso
 
-Sprint 048 cerrado formalmente. **No se inició Sprint 049** (`EFFECT-EXHAUSTED`) — queda pendiente de su propio gate de precondición y auditoría normativa, ahora sí sobre un working tree limpio.
+Sprint 049 cerrado formalmente. `EFFECT-EXHAUSTED` es Completo en el Registry.
+DT-022 resuelto. Próximo sprint funcional pendiente de nueva auditoría/
+recomendación.

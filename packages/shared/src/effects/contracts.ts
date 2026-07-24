@@ -196,8 +196,12 @@ export interface EffectDefinition {
   /** Fuentes de ocultacion; el assessment contextual se compone en la Rule Layer. */
   readonly concealmentContributions?: readonly ConcealmentContribution[];
   readonly ruleOverrides: readonly RuleOverride[];
-  // Reglas de apilamiento de instancias del mismo tipo de efecto
-  readonly onStack: "ignore" | "replace" | "upgrade_to" | "accumulate";
+  // Reglas de apilamiento de instancias del mismo tipo de efecto.
+  // Sprint 049: angostado a los dos únicos valores con respaldo normativo verificado
+  // (auditoría SRD Fatigued/Exhausted, ver docs/designs/exhausted-condition.md). "replace"
+  // y "accumulate" no tienen ningún caso oficial que los requiera en este dominio; se retiran
+  // en vez de dejarlos como opciones muertas del tipo.
+  readonly onStack: "ignore" | "upgrade_to";
   readonly upgradeTo?: string; // Si onStack === "upgrade_to", hacia qué efecto evoluciona (string para evitar circularidad fina)
   /** Bloque declarativo de peligro ambiental (Sprint 034). Ausente en condiciones/buffs normales. */
   readonly hazard?: EnvironmentalHazard;

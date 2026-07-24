@@ -54,8 +54,8 @@ Todo cambio requiere:
 - Defensa total.
 - Carga con ruta prevista.
 - Prestar ayuda con buff pendiente de eleccion.
-- **Fase Actual:** Sprint 046, infraestructura oficial de `DEFENSE-CONCEALMENT` implementada y validada. La Rule ID permanece **Infraestructura solamente** porque este sprint no incorpora fuentes productivas.
-- **Estado:** ✅ assessment compartido · ✅ d100 autoritativo post-CA · ✅ Sneak Attack bloqueado por ocultación · ✅ 450/450 unitarias · ✅ 91/91 WebSocket · ✅ Playwright 6/6.
+- **Fase Actual:** Sprint 049, `EFFECT-EXHAUSTED` implementado y validado, más corrección de infraestructura (DT-022: `onStack` sin consumidor real desde Sprint 003, ahora consumido en `EffectManager.add`).
+- **Estado:** ✅ Fatigued→Exhausted vía `onStack:"upgrade_to"` · ✅ `EFFECT-EXHAUSTED` Completo · ✅ 467/467 unitarias · ✅ 93/93 WebSocket · ✅ Playwright 6/6.
 - **Hitos Completados Recientes:**
   - `Sprint 046`: contrato especializado `ConcealmentContribution`, reducción determinista con stacking/trazas, `ConcealmentAssessment` compartido, resolución porcentual autoritativa y preview UI sin RNG de cliente.
   - `Sprint 045`: `srd_entangled` declarativo (-2 ataque, -4 DEX, velocidad ×1/2, `FORBID_RUN`, `FORBID_CHARGE`), contrato especializado `MovementRateContribution`, deduplicación/trazas y preview isomorfo.
@@ -195,7 +195,19 @@ Todo cambio requiere:
   - Implementación de `Fatigued`, `Prone`, `Dazed` y `Paralyzed` con lógica de sobrescritura de características.
   - Integración de `getEffectiveAbilityScore` y nuevas pruebas de regresión.
 
-### FASE ACTUAL: Sprint 048 — Helpless Combat & Coup de Grace (cerrado formalmente)
+### FASE ACTUAL: Sprint 049 — EFFECT-EXHAUSTED + corrección de `onStack` (DT-022)
+
+  **Sprint 049 — implementación funcional de Exhausted y consumo real de `onStack`**
+  - Nueva condición `srd_exhausted` (`effects/catalog.ts`): -6 STR/-6 DEX, velocidad ×1/2, `FORBID_RUN`/`FORBID_CHARGE` — mismo patrón declarativo que Fatigued/Entangled/Blinded.
+  - `srd_fatigued` ahora declara `onStack:"upgrade_to"` hacia `srd_exhausted`, modelando la regla SRD "un personaje Fatigado que vuelve a sufrir fatiga queda Exhausto en su lugar".
+  - **Hallazgo y corrección de infraestructura (DT-022)**: `EffectDefinition.onStack` estaba declarado desde Sprint 003 pero ningún consumidor lo leía — `EffectManager.add` era puramente aditivo. `tests/conditions-v3.test.mjs` ya documentaba el síntoma para Prone (dos instancias duplicaban el penalizador de CA) sin corregirlo. `EffectManager.add` ahora resuelve `onStack` mediante `severityChain` (cadena de severidad vía `upgradeTo`): reaplicar el mismo efecto respeta su política declarada, un efecto más débil se reemplaza por uno más severo de la misma cadena, y un efecto ya-superado por algo más severo se descarta como redundante — sin lógica en fuentes/handlers/hazards individuales.
+  - Corrige un bug real y alcanzable: `srd_poison_gas_hazard` reaplicaba `srd_fatigued` cada ronda que el objetivo fallaba su salvación; sin este fix, tres fallos consecutivos sumaban -6 STR/-6 DEX en vez de escalar correctamente a Exhausted.
+  - `EffectDefinition.onStack` angostado de 4 a 2 valores (`"ignore" | "upgrade_to"`) tras auditoría normativa confirmando que `"replace"`/`"accumulate"` no tienen respaldo oficial en este dominio.
+  - Fuera de alcance, documentado explícitamente: recuperación Exhausted→Fatigued tras 1h de descanso (depende del paso del tiempo, no de aplicación de efectos).
+  - **Validación real ejecutada (2026-07-23)**: `npm test` **467/467**, `npm run typecheck` 0 errores (3 workspaces), `npm run build` los 3 en verde, `node scripts/e2e-websocket.mjs` **93/93** aserciones exit 0 (sin regresión), `npm run test:ui` **6/6** escenarios Playwright.
+  - Registry: nueva Rule ID `EFFECT-EXHAUSTED` (Completo); `EFFECT-FATIGUED` anotado con la transición.
+
+### HISTÓRICO: Sprint 048 — Helpless Combat & Coup de Grace (cerrado formalmente)
 
   **Sprint 048 — implementación funcional de Helpless & Coup de Grace**
   - Implementación completa de la acción "Coup de Grace" a través de comandos tácticos en el servidor (`handleCoupDeGrace`, `handleResumeCoupDeGrace`), con validador `isValidCoupDeGraceTarget` y ejecución (`resolveAutomaticCritical` + salvación de Fortaleza CD 10+daño o muerte instantánea).

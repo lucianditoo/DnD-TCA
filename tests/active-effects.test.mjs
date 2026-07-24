@@ -158,6 +158,138 @@ test("ActiveEffects Infrastructure Core", async (t) => {
     assertNoFunctions(effectsCatalog);
   });
 
+  await t.test("Sprint 049 - onStack:'ignore' descarta una segunda instancia del mismo efecto sobre el mismo objetivo", () => {
+    const room1 = EffectManager.add(baseRoom, {
+      instanceId: "prone-a",
+      effectId: "srd_prone",
+      source: { type: "system" },
+      targets: ["target-A"],
+      appliedAtEvent: { type: "SystemInjected", round: 1 }
+    });
+    const room2 = EffectManager.add(room1, {
+      instanceId: "prone-b",
+      effectId: "srd_prone",
+      source: { type: "system" },
+      targets: ["target-A"],
+      appliedAtEvent: { type: "SystemInjected", round: 2 }
+    });
+
+    assert.equal(room2.effectInstances.length, 1, "La segunda instancia debe descartarse, no acumularse.");
+    assert.equal(room2.effectInstances[0].instanceId, "prone-a");
+  });
+
+  await t.test("Sprint 049 - onStack:'ignore' no interfiere entre objetivos distintos", () => {
+    const room1 = EffectManager.add(baseRoom, {
+      instanceId: "prone-a",
+      effectId: "srd_prone",
+      source: { type: "system" },
+      targets: ["target-A"],
+      appliedAtEvent: { type: "SystemInjected", round: 1 }
+    });
+    const room2 = EffectManager.add(room1, {
+      instanceId: "prone-b",
+      effectId: "srd_prone",
+      source: { type: "system" },
+      targets: ["target-B"],
+      appliedAtEvent: { type: "SystemInjected", round: 1 }
+    });
+
+    assert.equal(room2.effectInstances.length, 2, "Objetivos distintos nunca colisionan.");
+  });
+
+  await t.test("Sprint 049 - onStack:'upgrade_to' escala Fatigued→Exhausted al reaplicar Fatigued", () => {
+    const room1 = EffectManager.add(baseRoom, {
+      instanceId: "fatigue-1",
+      effectId: "srd_fatigued",
+      source: { type: "environment" },
+      targets: ["gas-target"],
+      appliedAtEvent: { type: "SystemInjected", round: 1 }
+    });
+    assert.equal(room1.effectInstances.length, 1);
+    assert.equal(room1.effectInstances[0].effectId, "srd_fatigued");
+
+    const room2 = EffectManager.add(room1, {
+      instanceId: "fatigue-2",
+      effectId: "srd_fatigued",
+      source: { type: "environment" },
+      targets: ["gas-target"],
+      appliedAtEvent: { type: "SystemInjected", round: 2 }
+    });
+
+    assert.equal(room2.effectInstances.length, 1, "La instancia vieja de Fatigued se reemplaza, no se suma.");
+    assert.equal(room2.effectInstances[0].effectId, "srd_exhausted");
+    assert.equal(room2.effectInstances[0].instanceId, "fatigue-2", "La nueva identidad de instancia representa el evento que disparó la escalada.");
+  });
+
+  await t.test("Sprint 049 - una tercera fatiga contra un objetivo ya Exhausted no revive Fatigued (round 3+ de gas venenoso)", () => {
+    const room1 = EffectManager.add(baseRoom, {
+      instanceId: "fatigue-1",
+      effectId: "srd_fatigued",
+      source: { type: "environment" },
+      targets: ["gas-target"],
+      appliedAtEvent: { type: "SystemInjected", round: 1 }
+    });
+    const room2 = EffectManager.add(room1, {
+      instanceId: "fatigue-2",
+      effectId: "srd_fatigued",
+      source: { type: "environment" },
+      targets: ["gas-target"],
+      appliedAtEvent: { type: "SystemInjected", round: 2 }
+    });
+    const room3 = EffectManager.add(room2, {
+      instanceId: "fatigue-3",
+      effectId: "srd_fatigued",
+      source: { type: "environment" },
+      targets: ["gas-target"],
+      appliedAtEvent: { type: "SystemInjected", round: 3 }
+    });
+
+    assert.equal(room3.effectInstances.length, 1, "El objetivo ya está en el techo de severidad de la cadena: la fatiga adicional es redundante.");
+    assert.equal(room3.effectInstances[0].effectId, "srd_exhausted");
+    assert.equal(room3.effectInstances[0].instanceId, "fatigue-2", "No debe tocarse la instancia Exhausted existente.");
+  });
+
+  await t.test("Sprint 049 - onStack:'ignore' en Exhausted descarta una segunda instancia directa", () => {
+    const room1 = EffectManager.add(baseRoom, {
+      instanceId: "exhausted-1",
+      effectId: "srd_exhausted",
+      source: { type: "spell" },
+      targets: ["target-A"],
+      appliedAtEvent: { type: "SystemInjected", round: 1 }
+    });
+    const room2 = EffectManager.add(room1, {
+      instanceId: "exhausted-2",
+      effectId: "srd_exhausted",
+      source: { type: "spell" },
+      targets: ["target-A"],
+      appliedAtEvent: { type: "SystemInjected", round: 2 }
+    });
+
+    assert.equal(room2.effectInstances.length, 1);
+    assert.equal(room2.effectInstances[0].instanceId, "exhausted-1");
+  });
+
+  await t.test("Sprint 049 - aplicar Exhausted directo sobre un objetivo solo Fatigued reemplaza la instancia más débil", () => {
+    const room1 = EffectManager.add(baseRoom, {
+      instanceId: "fatigue-1",
+      effectId: "srd_fatigued",
+      source: { type: "environment" },
+      targets: ["target-A"],
+      appliedAtEvent: { type: "SystemInjected", round: 1 }
+    });
+    const room2 = EffectManager.add(room1, {
+      instanceId: "exhausted-direct",
+      effectId: "srd_exhausted",
+      source: { type: "spell" },
+      targets: ["target-A"],
+      appliedAtEvent: { type: "SystemInjected", round: 2 }
+    });
+
+    assert.equal(room2.effectInstances.length, 1, "Fatigued y Exhausted nunca coexisten sobre el mismo objetivo.");
+    assert.equal(room2.effectInstances[0].effectId, "srd_exhausted");
+    assert.equal(room2.effectInstances[0].instanceId, "exhausted-direct");
+  });
+
   await t.test("Serialización JSON determinista", () => {
     const effect = {
       instanceId: "inst-4",

@@ -117,15 +117,15 @@ test("srd_prone: instancias duplicadas no stackean el bono condicional (onStack:
   ]);
   const context = createCombatRulesSnapshot(room);
 
-  // Ambas instancias aplican sus conditionalModifiers —
-  // La política onStack:"ignore" bloquea el stackeo de instancias en EffectManager,
-  // pero en un test directo de totalArmorClass ambas instancias están presentes.
-  // Validamos que la suma no sea +8 (dos veces +4) ya que el catálogo declara onStack:ignore.
-  // Nota: onStack es responsabilidad del EffectManager al inyectar; en este test manual
-  // ambas instancias llegaron. Documentamos el comportamiento actual.
+  // Sprint 049 (DT-022, corregido): antes de este sprint `onStack:"ignore"` estaba declarado
+  // en el catálogo pero ningún consumidor lo leía; en la práctica DOS instancias de Prone
+  // podían coexistir vía EffectManager.add y aquí el evaluador las sumaba ambas (14-4-4=6).
+  // Ahora EffectManager.add SÍ aplica onStack (ver tests/active-effects.test.mjs), por lo que
+  // el camino de aplicación real nunca deja coexistir dos instancias de un mismo effectId+
+  // objetivo. Este test sigue construyendo las dos instancias directamente en `effectInstances`
+  // (bypaseando EffectManager.add a propósito) para caracterizar que `totalArmorClass` en sí
+  // mismo no deduplica — esa garantía vive únicamente en el EffectManager, no en el evaluador.
   const result = Rules.totalArmorClass(context, combatant, { attackType: "melee" });
-  // Con dos instancias manuales, el evaluador suma ambas: 14 - 4 - 4 = 6
-  // Esto es correcto: el bloqueo de stacking ocurre en el EffectManager, no en el evaluador.
   assert.ok(result.total <= 10, "Con dos instancias manuales el penalizador se aplica al menos una vez");
 });
 
