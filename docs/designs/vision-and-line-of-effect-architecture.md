@@ -56,14 +56,39 @@ sección: se corrigió en su lugar (dejó de hacer algo que nunca debió hacer) 
 `getLineOfEffect` se implementó como función nueva e independiente. Ver
 `walkthrough.md` (Sprint 052B) para el detalle completo de la implementación.
 
-### 1.3.1. Line of Effect (`getLineOfEffect`, Sprint 052B)
+### 1.3.1. Line of Effect (`getLineOfEffect`, Sprint 052B, geometría corregida en Sprint 052B.1)
 
 Función pura nueva en `rules.ts`, deliberadamente **no** una generalización de
-`getAttackLineInterception` (reimplementa su propio closure de colinealidad
-exacta). Consulta únicamente `board.lineOfEffectBlockingCells` — nunca
-`impassableCells`. Para footprints multicasilla (Large+), existe Line of
+`getAttackLineInterception`. Consulta únicamente `board.lineOfEffectBlockingCells`
+— nunca `impassableCells`.
+
+**Corrección geométrica (Sprint 052B.1)**: la versión original de Sprint 052B
+modelaba cada celda bloqueadora como un único **punto** (su ancla entera) y
+probaba colinealidad exacta de ese punto con el segmento centro-a-centro. Esto
+fallaba para cualquier línea que atravesara el **área** de una celda
+bloqueadora sin pasar exactamente por su ancla — un bug real, no solo una
+laguna de tests (confirmado con casos concretos: `(0,0)→(3,1)` con bloqueador
+en `(2,0)` no se detectaba, pese a que la línea sí cruza esa celda). La
+implementación corregida trata cada celda como su área unitaria
+`[x,x+1)×[y,y+1)` y usa un recorrido **"supercover"** (algoritmo estándar de
+línea de visión en grillas, aritmética enteramente entera — sin coma
+flotante): en cada paso avanza el eje que va "atrasado" respecto al otro
+(comparación por multiplicación cruzada, sin dividir), y cuando el segmento
+cruza exactamente un vértice compartido por 4 celdas (diagonal exacta),
+incluye conservadoramente ambas celdas vecinas de esa esquina — una diagonal
+no puede "colarse" entre dos bloqueadores que solo se tocan en la esquina.
+Política de bordes explícita: un tramo recto (horizontal/vertical) atraviesa
+el área completa de cada celda de su fila/columna (el centro de cada celda
+intermedia está siempre estrictamente dentro de su área, nunca solo "roza" un
+borde); una diagonal exacta que pasa por un vértice compartido se resuelve
+incluyendo ambas celdas vecinas, como se describe arriba. Ver
+`traversedCellKeysBetween` en `rules.ts` y `tests/line-of-effect.test.mjs`
+(29 casos, incluida una matriz de 4 pendientes no triviales con verificación
+empírica contra la implementación real, no derivada a mano).
+
+Para footprints multicasilla (Large+), existe Line of
 Effect si al menos un par de celdas ocupadas (una del atacante, una del
-objetivo) tiene un segmento sin bloqueadores interiores; solo hay Cobertura
+objetivo) tiene un recorrido sin bloqueadores; solo hay Cobertura
 Total si todos los pares posibles están bloqueados — esto responde la
 pregunta 6 de §8 para el caso de esta implementación (queda igual de abierta
 para Line of *Sight*/Vision, que Sprint 052B no toca). `zFeet`/altura se
@@ -378,10 +403,11 @@ No attack roll
    - consistencia con el algoritmo ya existente de `getAttackLineInterception` (Cover, hoy 1×1 centro-a-centro) y con las reglas SRD de criaturas multicasilla, sin asumir que ambas mecánicas deban resolver footprints de la misma manera.
    **Resuelto en Sprint 052B, solo para Line of Effect** (Line of Sight/Vision
    sigue abierta): existe Line of Effect si al menos un par de celdas ocupadas
-   (una del atacante, una del objetivo) tiene un segmento sin bloqueadores
-   interiores; Cobertura Total exige que **todos** los pares posibles estén
-   bloqueados. `zFeet` se ignora (misma simplificación que ya tenía Cover).
-   Ver `tests/line-of-effect.test.mjs`.
+   (una del atacante, una del objetivo) tiene un recorrido sin bloqueadores;
+   Cobertura Total exige que **todos** los pares posibles estén bloqueados.
+   `zFeet` se ignora (misma simplificación que ya tenía Cover). **La geometría
+   de cada recorrido individual (punto vs. área de celda) se corrigió en
+   Sprint 052B.1** — ver §1.3.1 arriba. Ver `tests/line-of-effect.test.mjs`.
 7. ¿Orden exacto de fases dentro de "Fase 5 — Contexto efímero" cuando coexistan Cover, Concealment por efecto declarativo y Concealment por Vision — se calculan independientemente y se componen al final, o existe precedencia (ej. Blinded ya implica ocultación total y no necesita evaluar luz)?
 8. ¿Blindsight/Blindsense se modelan como traits (`Trait` ya es un union cerrado) o como capacidad de percepción con alcance, análoga a Visión en la Oscuridad? Ambos existen en el SRD con reglas ligeramente distintas (§2).
 9. ¿`impassableCells` basta como aproximación de obstrucción física para Line of Effect, o se necesita un campo declarativo distinto que distinga "intransitable para movimiento" de "opaco a efectos/percepción" (cristal, barrotes, rejas)? Ver §1.3 y §11. **Resuelto en Sprint 052B**: se optó por el campo declarativo distinto — `Board.lineOfEffectBlockingCells`, independiente de `impassableCells` (que queda exclusivamente de movimiento). La distinción más fina "opaco a efectos" vs. "opaco a percepción" (cristal, barrotes) sigue abierta para cuando exista Vision/Line of Sight.

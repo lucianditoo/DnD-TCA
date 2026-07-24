@@ -16,6 +16,17 @@ implementación vive en `walkthrough.md` (Sprint 052B) y en
 de este documento se conserva sin cambios como registro histórico de la
 auditoría y la comparación de alternativas que fundamentaron la decisión.
 
+**Adenda (Sprint 052B.1)**: la implementación inicial de `getLineOfEffect`
+(Sprint 052B) tenía un bug geométrico real, no cubierto por esta auditoría de
+semántica de terreno — probaba colinealidad exacta del ANCLA entera de una
+celda bloqueadora, en vez de si el segmento atraviesa el ÁREA de esa celda.
+Corregido en Sprint 052B.1 (recorrido "supercover" por área de celda); ver
+`docs/designs/vision-and-line-of-effect-architecture.md` §1.3.1 y
+`walkthrough.md` (Sprint 052B.1) para el detalle. Esta decisión de semántica
+de campos (`impassableCells` vs `lineOfEffectBlockingCells`) no se vio
+afectada por esa corrección — solo cambió la geometría interna de
+`getLineOfEffect`.
+
 ## Estado real (verificado en código, no en documentación)
 
 `impassableCells` es un `string[]` de claves `"x,y"` en `Board` (`types.ts:29`),

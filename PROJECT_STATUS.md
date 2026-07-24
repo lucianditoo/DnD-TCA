@@ -54,9 +54,10 @@ Todo cambio requiere:
 - Defensa total.
 - Carga con ruta prevista.
 - Prestar ayuda con buff pendiente de eleccion.
-- **Fase Actual:** Sprint 052B, Line of Effect y Cobertura Total — `impassableCells` queda restringido a movimiento; nuevo campo independiente `Board.lineOfEffectBlockingCells` bloquea el intento de ataque (Cobertura Total) sin conceder Cover; `terrain-cover`/`terrainBlockedCellKeys` retirados por ser tipos muertos.
-- **Estado:** ✅ Aplicar/remover condiciones desde la UI real · ✅ onStack delegado íntegramente a `EffectManager` · ✅ Legalidad de objetivo (Line of Effect) antes de tirada/mutación en `resolve-attack` · ✅ 498/498 unitarias · ✅ 99/99 WebSocket · ✅ Playwright 7/7.
+- **Fase Actual:** Sprint 052B.1, corrección geométrica de Line of Effect — `getLineOfEffect` modelaba cada celda bloqueadora como un punto (ancla entera) y probaba colinealidad exacta; corregido a un recorrido "supercover" por área de celda (aritmética entera, sin coma flotante), con política explícita para cruces por borde y por vértice.
+- **Estado:** ✅ Aplicar/remover condiciones desde la UI real · ✅ onStack delegado íntegramente a `EffectManager` · ✅ Legalidad de objetivo (Line of Effect) antes de tirada/mutación en `resolve-attack`, con geometría corregida · ✅ 510/510 unitarias · ✅ 99/99 WebSocket · ✅ Playwright 7/7.
 - **Hitos Completados Recientes:**
+  - `Sprint 052B.1`: corrección geométrica de `getLineOfEffect` (recorrido "supercover" por área de celda en vez de colinealidad exacta de punto), 29 casos nuevos en `tests/line-of-effect.test.mjs` (matriz de 4 pendientes, política de bordes/vértices, footprints 1×1/Large/ambos Large), todos verificados empíricamente contra la implementación real.
   - `Sprint 052B`: `LineOfEffectAssessment`/`getLineOfEffect` independientes de Cover, `DEFENSE-LINE-OF-EFFECT` (Parcial, solo ataques físicos ordinarios), corrección de `getAttackLineInterception`/`buildCoverAssessment` (Cover ahora es solo por interposición de criaturas, no por `impassableCells`).
   - `Sprint 052A`: auditoría de semántica de terreno — confirmó que la extensión de `impassableCells` a Cover (Sprint 042) nunca tuvo NDD dedicado; recomendó separar movimiento de Line of Effect (Opción A).
   - `Sprint 046`: contrato especializado `ConcealmentContribution`, reducción determinista con stacking/trazas, `ConcealmentAssessment` compartido, resolución porcentual autoritativa y preview UI sin RNG de cliente.

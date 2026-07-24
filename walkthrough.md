@@ -1,139 +1,174 @@
-# Walkthrough — Sprint 052B (Line of Effect + Cobertura Total)
+# Walkthrough — Sprint 052B.1 (Corrección geométrica de Line of Effect)
 
 ## Objetivo
 
-Corregir la contradicción confirmada en Sprint 052/052A: `getAttackLineInterception`
-(Sprint 042) consultaba `board.impassableCells` y otorgaba Cover (+4 CA) por
-obstáculos de terreno, aunque ese uso nunca tuvo un NDD dedicado (Sprint 013 lo
-excluyó explícitamente) y confundía dos mecánicas independientes del SRD:
-Cover parcial (obstruye parte de la línea, +2 a +4 CA, el ataque igual se
-intenta) y Cobertura Total (ninguna línea llega al objetivo, el ataque no
-puede intentarse en absoluto). Ver
-`docs/designs/terrain-cover-line-of-effect-decision.md` (Sprint 052A) para la
-auditoría y la comparación de alternativas que llevó a la Opción A elegida
-aquí.
+Corregir exclusivamente la geometría de `getLineOfEffect` (Sprint 052B). La
+arquitectura de Sprint 052B se conserva intacta: `impassableCells` sigue
+siendo independiente de movimiento, `lineOfEffectBlockingCells` sigue siendo
+la fuente de Line of Effect, Cover sigue limitado a criaturas, Target
+Legality sigue evaluándose antes del Attack Resolver, y
+`LineOfEffectAssessment` sigue siendo un contrato independiente. Ninguna de
+esas decisiones se reabrió.
 
-## Qué se separó: `impassableCells` vs `lineOfEffectBlockingCells`
+## El bug confirmado
 
-`Board.impassableCells` queda restringido exclusivamente a movimiento (Bull
-Rush, corte de esquinas, pathing) — su semántica original. Se agrega un campo
-independiente `Board.lineOfEffectBlockingCells` que representa obstrucción
-física real para Line of Effect/Cobertura Total. No existe inferencia entre
-ambos campos: una celda puede estar en uno, en el otro, en ambos o en
-ninguno, y cada campo se consulta solo por la función que le corresponde. La
-migración no tenía datos de producción que depender: `demoBoard` no declara
-`impassableCells`, no existe editor de tablero en la UI, y los únicos usos
-previos eran ~15 fixtures de test (confirmado en la auditoría de Sprint 052A).
+La implementación original (Sprint 052B) modelaba cada celda de
+`lineOfEffectBlockingCells` como un único **punto** — su ancla entera
+`(x, y)` — y probaba si ese punto era exactamente colineal con el segmento
+centro-a-centro entre la celda de origen y la de destino (producto cruzado
+== 0, producto punto estrictamente entre 0 y la longitud al cuadrado). Esto
+bloqueaba correctamente una línea que pasara **exactamente** por ese punto,
+pero fallaba para cualquier línea que atravesara el **área** de esa celda sin
+pasar por su ancla — por ejemplo, `(0,0)→(3,1)` con un bloqueador en `(2,0)`
+no se detectaba como bloqueado, pese a que la línea sí cruza esa celda. El
+síntoma más visible de este bug en el propio código de Sprint 052B era un
+test con un fixture `(15,21)` obtenido por búsqueda numérica de mínimo común
+múltiplo — necesario únicamente para forzar que las 4 esquinas de un
+footprint Large compartieran un punto lattice exacto con el objetivo, algo
+que no representa ninguna escala de juego real.
 
-## Corrección de Cover: solo interposición de criaturas
+## Auditoría geométrica (Fase 1)
 
-`getAttackLineInterception` ya no consulta `impassableCells`; solo calcula
-`creatureBlockerIds`. `buildCoverAssessment` se simplifica: `kind` es
-`"creature-cover"` o `"none"`, nunca más `"terrain-cover"`. Se retiran por
-completo (no se conservan por compatibilidad hipotética):
-`CoverKind: "terrain-cover"`, `CoverAssessment.blockedCellKeys` y
-`AttackLineInterception.terrainBlockedCellKeys`. `ActionsPanel.tsx` (3 sitios)
-y `tests/cover-reach.test.mjs`/`tests/flanking.test.mjs` se corrigieron para
-reflejar que Cover ya no puede originarse en terreno.
+- **Representación de celdas en el repositorio**: cada combatiente ocupa
+  celdas discretas por índice entero `(x, y)` (`getCombatantOccupiedCells`,
+  `getNaturalCombatantOccupiedCellsAt`). No existe en ningún punto del código
+  una convención de "centro" con offset (`+0.5`); el resto del motor
+  (movimiento, distancia, Cover) trata directamente el índice entero como
+  coordenada para su propia aritmética de grilla. Sin embargo, campos como
+  `impassableCells`/`difficultTerrainCells`/`lineOfEffectBlockingCells`
+  representan inequívocamente **áreas** (una celda completa, no un punto)
+  cuando se usan como obstrucción de movimiento o terreno.
+- **Conclusión de la auditoría**: el origen y destino de cada trazado se
+  mantienen en el mismo índice de celda ya usado en todo el motor (consistente
+  con Cover y con la arquitectura ya cerrada de Sprint 052B — no se inventó
+  una nueva convención de "centro elegida por conveniencia" para los
+  extremos). Lo que debía corregirse es exclusivamente cómo participa una
+  celda **bloqueadora** en la prueba: como área, no como punto.
+- **Criterio SRD**: el método canónico 3.5 (elegir una esquina del espacio
+  del atacante, trazar líneas a las 4 esquinas del espacio del objetivo;
+  Cobertura Total si todas están bloqueadas) es más fino que la aproximación
+  centro-a-centro de una sola línea por par de celdas que ya usaba Cover
+  desde Sprint 013/042. Reabrir esa aproximación para Cover está fuera de
+  alcance de este sprint (no se reabre esa decisión). Para `getLineOfEffect`
+  específicamente, se adoptó un algoritmo de **recorrido de celdas** ("línea
+  supercover", estándar en líneas de visión de grillas tácticas) que
+  determina qué celdas atraviesa realmente el segmento centro-a-centro entre
+  cada par de celdas ocupadas — evitando tanto el bug de "punto exacto" como
+  la complejidad combinatoria de un modelo de 4 esquinas por celda.
 
-## `getLineOfEffect` — implementación independiente
+## Geometría correcta (Fase 2): recorrido "supercover"
 
-Nueva función en `rules.ts`, deliberadamente **sin reutilizar** la geometría de
-`getAttackLineInterception` (son preguntas distintas: Cover pregunta "¿hay un
-+4 disponible?", Line of Effect pregunta "¿se puede siquiera intentar el
-ataque?"). Reimplementa el mismo tipo de matemática de colinealidad (producto
-cruzado/punto para detectar un punto interior exacto de un segmento) como un
-closure local separado.
+Nueva función local `traversedCellKeysBetween` en `rules.ts`. Modela cada
+celda como su área unitaria `[x,x+1)×[y,y+1)` y camina desde la celda de
+origen hasta la de destino avanzando, en cada paso, el eje que va "atrasado"
+respecto al otro — comparación por multiplicación cruzada
+`(2·ix+1)·ny` vs `(2·iy+1)·nx`, aritmética enteramente entera, sin coma
+flotante ni división. Cuando el segmento cruza exactamente un vértice
+compartido por 4 celdas (diagonal exacta — "línea por vértice"), el
+algoritmo incluye conservadoramente ambas celdas vecinas de esa esquina
+además de la celda de destino de ese paso: una diagonal no puede "colarse"
+entre dos bloqueadores que solo se tocan en la esquina.
 
-Regla de footprints multicasilla (Fase 1, aplicable a huellas Large/Huge):
-**existe Line of Effect si al menos un par de celdas ocupadas (una del
-atacante, una del objetivo) tiene un segmento sin bloqueadores interiores**.
-Solo hay Cobertura Total si **todos** los pares posibles están bloqueados —
-generalización directa del principio SRD "puede elegir cualquier casilla que
-ocupa". Para las criaturas 1×1 del catálogo actual esto colapsa al mismo par
-único que Cover ya usaba. `zFeet`/altura se ignora deliberadamente (misma
-simplificación que ya tenía `getAttackLineInterception`; queda como pregunta
-abierta documentada, no como omisión silenciosa).
+**Política de bordes explícita**: un tramo recto (horizontal/vertical)
+atraviesa el área completa de cada celda de su fila/columna — nunca "roza"
+un borde sin entrar, porque el centro de cada celda intermedia está siempre
+estrictamente dentro de su propia área ("línea por borde": el paso ordinario
+de un solo eje, avance por una arista compartida). Una diagonal exacta que
+pasa por un vértice compartido se resuelve incluyendo ambas celdas vecinas
+("línea por vértice", ver arriba). Es una función pura, determinista,
+independiente de Cover, sin lógica por ID de efecto ni raycasting visual.
 
-`LineOfEffectAssessment` es un contrato mínimo:
-`{ hasLineOfEffect: boolean; blockedCellKeys: readonly string[] }` — sin un
-campo `applies` ambiguo.
+`getLineOfEffect` usa este recorrido para cada par (celda ocupada de origen,
+celda ocupada de destino), excluyendo siempre las celdas propias de ambos
+combatientes de la lista de bloqueadores (tu propia casilla nunca bloquea tu
+propia línea de efecto, sin importar de qué par se trate).
 
-## Legalidad de objetivo en el ataque real
+## Footprints (Fase 3): criterio sin cambios, geometría interna corregida
 
-`handleResolveAttackDraft` (`attackCommands.ts`) gana un chequeo nuevo
-inmediatamente después de `createCombatRulesSnapshot(room)` y antes de
-cualquier tirada, consumo de munición o mutación: si `getLineOfEffect` reporta
-`hasLineOfEffect: false`, se lanza un `Error` (misma convención que el resto
-del archivo, sin inventar un segundo formato de respuesta) y el ataque nunca
-llega a `resolveAttack`. Alcance de este sprint: **solo** el camino ordinario
-de `resolve-attack`; ataques de oportunidad, Cargas, conjuros/aptitudes y
-Coup de Grace quedan fuera — de ahí que `DEFENSE-LINE-OF-EFFECT` se registre
-como **Parcial**.
+El criterio aprobado en Sprint 052B se mantiene intacto: existe Line of
+Effect si **al menos un** par de celdas ocupadas (una del atacante, una del
+objetivo) tiene un recorrido sin bloqueadores; hay Cobertura Total solo si
+**todos** los pares posibles están bloqueados. Lo único que cambió es que
+cada "recorrido" ahora es el conjunto real de celdas atravesadas (supercover),
+no una prueba de colinealidad de un único punto. Esto tiene una consecuencia
+práctica importante: escenarios de footprint Large que antes requerían
+coordenadas artificiales (el fixture `(15,21)`) para lograr "todos los pares
+bloqueados" ahora se logran con bloqueadores adyacentes a distancias
+normales de juego (ej. origen Large en `(0,0)`, objetivo en `(5,0)`,
+bloqueadores en `(2,0)`/`(2,1)`).
 
 ## Tests
 
-- `tests/line-of-effect.test.mjs` (nuevo, 17 casos): línea despejada, un
-  bloqueador, varios bloqueadores, obstáculo fuera del segmento,
-  horizontal/vertical/diagonal, adyacencia (sin punto interior posible),
-  claves inválidas/duplicadas, dos escenarios de footprint multicasilla Large
-  (al menos un par despejado → LoE; todos los pares bloqueados → Cobertura
-  Total, usando un destino calculado por búsqueda numérica de mínimo común
-  divisor para que las 4 esquinas del footprint compartan un punto lattice
-  interior real), independencia de `impassableCells` en ambos sentidos, y
-  transporte correcto del campo por `createCombatRulesSnapshot`.
-- `tests/line-of-effect-server.test.mjs` (nuevo, 4 casos de integración de
-  servidor, mismo patrón que `tests/attack-rules.test.mjs`): ataque con LoE
-  se resuelve normal; ataque sin LoE se rechaza antes de cualquier tirada o
-  mutación (verificado con un `diceRoller` que lanza si llega a invocarse,
-  probando que el RNG nunca se consume); la Cobertura Total no oculta ni
-  reemplaza el control de turno existente (un actor no autorizado sigue
-  siendo rechazado por autorización, con o sin bloqueadores de LoE).
-- `tests/cover-reach.test.mjs`/`tests/flanking.test.mjs`: 9 aserciones que
-  dependían de `impassableCells` produciendo `terrain-cover` se reescribieron
-  (algunas sustituyendo el obstáculo por un aliado interpuesto, para conservar
-  la intención original del test de ejercitar un Cover real no trivial).
-- `scripts/e2e-websocket.mjs`: nuevo bloque que confirma el camino positivo
-  (Line of Effect presente, tablero demo sin obstáculos) resuelve el ataque
-  normalmente. El camino de rechazo **no** se agrega aquí — no existe comando
-  ni editor para fijar `board.lineOfEffectBlockingCells` sobre una sala viva,
-  y construir uno solo para este caso habría sido el "editor de mapas" que
-  este sprint excluye explícitamente. Ese camino queda cubierto con rigor por
-  integración directa de servidor (ver arriba), documentado en el propio
-  script.
+`tests/line-of-effect.test.mjs` reescrito por completo (17 → 29 casos), todos
+verificados ejecutando la implementación real (se usó un script de sondeo
+temporal, descartado antes de este commit, para confirmar cada fixture en vez
+de derivarlo a mano — la causa raíz de este sprint fue precisamente un test
+anterior derivado a mano de forma incorrecta):
+
+- Matriz obligatoria de 4 pendientes no triviales — `(0,0)→(2,1)`,
+  `(0,0)→(3,1)`, `(0,0)→(3,2)`, `(1,1)→(4,3)` — cada una con "celda realmente
+  atravesada bloquea" y "celda cercana pero no atravesada no bloquea".
+- Política de bordes explícita: un caso de cruce ordinario ("por borde") y
+  tres casos de cruce diagonal exacto ("por vértice": el vértice mismo y sus
+  dos celdas vecinas conservadoramente incluidas), más un caso de celda
+  fuera de cualquier vértice del cruce que no bloquea.
+- Horizontal, vertical y diagonal 45° como orientaciones básicas.
+- Adyacencia (celdas propias listadas como bloqueadoras nunca bloquean),
+  claves inválidas/mal formadas, claves duplicadas, independencia de
+  `impassableCells`/`lineOfEffectBlockingCells` en ambos sentidos, y
+  transporte del campo por `createCombatRulesSnapshot`.
+- Footprints: 1×1 (baseline), origen Large, objetivo Large, ambos Large —
+  cada uno con "al menos un par despejado" y "todos los pares bloqueados".
+
+`tests/line-of-effect-server.test.mjs`, `tests/cover-reach.test.mjs` y
+`tests/flanking.test.mjs` no requirieron cambios: la corrección es interna a
+`getLineOfEffect` y no altera el contrato `LineOfEffectAssessment`, el camino
+de servidor, ni Cover.
+
+## Regresión funcional confirmada
+
+- Cobertura Total sigue rechazando antes de cualquier tirada/consumo/mutación
+  (`tests/line-of-effect-server.test.mjs`, con `diceRoller` que lanza si se
+  invoca).
+- No se consume munición, no se muta HP, no queda amenaza de crítico
+  pendiente en el rechazo.
+- `impassableCells` sigue sin bloquear Line of Effect;
+  `lineOfEffectBlockingCells` sigue sin conceder Cover +4; una criatura
+  interpuesta sigue dando exactamente +4 CA (`tests/cover-reach.test.mjs`).
 
 ## Documentación sincronizada
 
-`docs/rules/registry.md`: nueva fila `DEFENSE-LINE-OF-EFFECT` (Parcial) y
-corrección de la fila `DEFENSE-COVER` (ya no menciona "obstáculos completos").
-`PROJECT_STATUS.md`, `TODO.md`, `docs/testing/master-coverage.md`: entradas
-nuevas para Sprint 052A/052B y corrección de la afirmación histórica de
-Sprint 042 sobre `impassableCells` y Cover. `docs/designs/vision-and-line-of-effect-architecture.md`
-y `docs/designs/terrain-cover-line-of-effect-decision.md`: contradicción y
-decisión marcadas como resueltas/implementadas. Sin cambios en
-`docs/technical-debt.md` (no apareció deuda nueva ni se cerró ninguna
-existente).
+`docs/designs/vision-and-line-of-effect-architecture.md` §1.3.1 corregido
+(describe el algoritmo real, no la colinealidad de punto ya retirada) y §8
+pregunta 6 actualizada. `docs/designs/terrain-cover-line-of-effect-decision.md`
+recibe una adenda breve aclarando que esta corrección es puramente geométrica
+y no reabre la decisión de semántica de campos. `docs/rules/registry.md`:
+`DEFENSE-LINE-OF-EFFECT` mantiene su alcance declarado (**Parcial**, sin
+cambios), solo se actualiza la columna de Sprint/implementación. Sin cambios
+en `docs/technical-debt.md` (no apareció deuda nueva).
 
 ## Validación (DoD completo, ejecutado de verdad)
 
 | Comando | Resultado |
 |---|---|
-| `npm test` | ✅ **498/498**, 0 fallos (56 archivos) |
+| `npm test` | ✅ **510/510**, 0 fallos (56 archivos) |
 | `npm run typecheck` | ✅ 0 errores (3 workspaces) |
-| `npm run build` | ✅ los 3 workspaces en verde (Vite compila 1660 módulos) |
-| `node scripts/e2e-websocket.mjs` | ✅ **99/99** aserciones, exit 0 |
-| `npm run test:ui` (Playwright) | ✅ **7/7** escenarios (sin cambios: no existe editor de tablero para un escenario visual nuevo de Cobertura Total) |
+| `npm run build` | ✅ los 3 workspaces en verde |
+| `node scripts/e2e-websocket.mjs` | ✅ **99/99** aserciones, exit 0 (sin cambios) |
+| `npm run test:ui` (Playwright) | ✅ **7/7** escenarios (sin cambios) |
 
 ## Alcance explícitamente excluido (sin cambios)
 
-Conjuros/AoE, amenaza de Ataques de Oportunidad, Coup de Grace, Visión y
-Línea de Visión (perspectiva del observador, iluminación, `blindsight`),
-altura/`zFeet` en la geometría de Line of Effect, editor de tablero/mapas,
-persistencia de `lineOfEffectBlockingCells` fuera del `Board` ya existente.
+Todo lo ya excluido en Sprint 052B (conjuros/AoE, amenaza de AdO, Coup de
+Grace, Visión/Línea de Visión, altura/`zFeet`, editor de tablero). Además,
+específico de este sprint: no se adoptó el modelo completo de 4-esquinas-por-
+celda del SRD (se mantuvo el recorrido centro-a-centro por par de celdas, ya
+establecido); no se tocó la geometría de Cover (`getAttackLineInterception`
+sigue usando su propia prueba de colinealidad de un único punto, sin cambios,
+por decisión explícita de no reabrir esa arquitectura).
 
 ## Estado y próximo paso
 
-Sprint 052B cerrado formalmente. `DEFENSE-LINE-OF-EFFECT` queda **Parcial**:
-cubre únicamente ataques físicos ordinarios. Conjuros/AoE, amenaza de AdO y
-la arquitectura completa de Visión (`docs/designs/vision-and-line-of-effect-architecture.md`)
-siguen pendientes de sprints propios.
+Sprint 052B.1 cerrado formalmente. `DEFENSE-LINE-OF-EFFECT` sigue **Parcial**
+con el mismo alcance declarado en Sprint 052B — este sprint fue una
+corrección de bug, no una ampliación de alcance.

@@ -1772,20 +1772,80 @@ function buildCoverAssessment(interception: AttackLineInterception): CoverAssess
 }
 
 /**
+ * Recorrido "supercover" entre dos celdas (Sprint 052B.1, corrige el bug geométrico de Sprint
+ * 052B: la versión anterior probaba si el ancla entera de una celda bloqueadora era un punto
+ * exactamente colineal del segmento centro-a-centro, lo que fallaba para cualquier línea que
+ * atravesara el ÁREA de una celda sin pasar exactamente por su punto ancla — ver
+ * `docs/designs/vision-and-line-of-effect-architecture.md` §1.3.1 para la auditoría completa).
+ *
+ * Modela cada celda como el área unitaria `[x,x+1)×[y,y+1)` y traza el segmento entre los
+ * CENTROS de la celda de origen y destino (`(x+0.5, y+0.5)`), devolviendo el conjunto de celdas
+ * cuya área el segmento realmente atraviesa. Es el algoritmo "supercover"/"conservative line
+ * drawing" estándar para líneas de visión en grillas: en cada paso avanza el eje que va
+ * "atrasado" respecto al otro (comparando el avance fraccional de x e y sin dividir, por
+ * multiplicación cruzada `(2*ix+1)*ny` vs `(2*iy+1)*nx` — aritmética enteramente entera, sin
+ * coma flotante). Cuando el segmento cruza exactamente un vértice compartido por 4 celdas (un
+ * cruce diagonal exacto — línea "por vértice"), el algoritmo incluye conservadoramente las DOS
+ * celdas vecinas de esa esquina además de la celda de destino de ese paso: una diagonal no puede
+ * "colarse" entre dos bloqueadores que se tocan solo en la esquina.
+ *
+ * Política de bordes explícita: un segmento recto que corre exactamente por una fila o columna
+ * (horizontal/vertical) atraviesa el área completa de cada celda de esa fila/columna — nunca
+ * "roza" un borde sin entrar, porque el centro de cada celda intermedia está estrictamente dentro
+ * de su área. Una diagonal exacta que pasa por un vértice compartido ("por vértice") se resuelve
+ * de forma conservadora incluyendo ambas celdas vecinas, como se describe arriba.
+ */
+function traversedCellKeysBetween(ax: number, ay: number, bx: number, by: number): Set<string> {
+  const dx = bx - ax;
+  const dy = by - ay;
+  const nx = Math.abs(dx);
+  const ny = Math.abs(dy);
+  const signX = dx > 0 ? 1 : -1;
+  const signY = dy > 0 ? 1 : -1;
+  let x = ax;
+  let y = ay;
+  let ix = 0;
+  let iy = 0;
+  const visited = new Set<string>([`${x},${y}`]);
+  while (ix < nx || iy < ny) {
+    const lhs = (2 * ix + 1) * ny;
+    const rhs = (2 * iy + 1) * nx;
+    if (ny === 0 || (nx > 0 && lhs < rhs)) {
+      x += signX;
+      ix += 1;
+    } else if (nx === 0 || lhs > rhs) {
+      y += signY;
+      iy += 1;
+    } else {
+      visited.add(`${x + signX},${y}`);
+      visited.add(`${x},${y + signY}`);
+      x += signX;
+      y += signY;
+      ix += 1;
+      iy += 1;
+    }
+    visited.add(`${x},${y}`);
+  }
+  return visited;
+}
+
+/**
  * Sprint 052B: geometría pura e independiente de Line of Effect. Responde exclusivamente si
  * existe obstrucción física completa (`board.lineOfEffectBlockingCells`) entre el atacante y el
  * objetivo — nunca consulta criaturas ni `impassableCells`. No generaliza ni envuelve
- * semánticamente `getAttackLineInterception`: comparte únicamente el mismo tipo de prueba
- * geométrica (colinealidad exacta + pertenencia estricta al segmento), reimplementada aquí como
- * una utilidad local independiente.
+ * semánticamente `getAttackLineInterception`: comparte únicamente el mismo tipo de tablero, no la
+ * prueba geométrica (que es un recorrido de celdas por área, no una prueba de colinealidad de
+ * puntos — ver `traversedCellKeysBetween` arriba, corregido en Sprint 052B.1).
  *
  * Footprints multicasilla (Sprint 052A/052B, decisión de Fase 1, ver
  * `docs/designs/terrain-cover-line-of-effect-decision.md`): existe Line of Effect si **al menos
- * un** par de celdas ocupadas (una del atacante, una del objetivo) tiene un segmento sin
- * bloqueadores interiores — análogo a que el SRD permita elegir la esquina más favorable del
- * propio espacio al trazar líneas hacia las esquinas del objetivo. Hay Total Cover únicamente si
- * **todos** los pares posibles están bloqueados. Para criaturas 1×1 (todas las del catálogo de
- * demo actual) esto colapsa a un único par, igual que antes.
+ * un** par de celdas ocupadas (una del atacante, una del objetivo) tiene un recorrido sin
+ * bloqueadores — análogo a que el SRD permita elegir la esquina/casilla más favorable del propio
+ * espacio al trazar líneas hacia el objetivo. Hay Total Cover únicamente si **todos** los pares
+ * posibles están bloqueados. Para criaturas 1×1 (todas las del catálogo de demo actual) esto
+ * colapsa a un único par, igual que antes. Las celdas propias de origen/destino (de cualquiera de
+ * los dos combatientes, no solo del par actual) nunca cuentan como bloqueadoras de su propia
+ * línea de efecto.
  *
  * `zFeet` (altura): esta primera versión ignora la diferencia de altura entre celdas, igual que
  * `getAttackLineInterception` hace hoy — es una simplificación deliberada y documentada, no un
@@ -1796,41 +1856,33 @@ export function getLineOfEffect(
   origin: Combatant,
   target: Combatant
 ): LineOfEffectAssessment {
-  const blockingCells = [...new Set(room.board.lineOfEffectBlockingCells ?? [])]
-    .map((key) => {
-      const [x, y] = key.split(",").map(Number);
-      return { key, x, y };
-    })
-    .filter((cell) => Number.isFinite(cell.x) && Number.isFinite(cell.y))
-    .sort((left, right) => left.key.localeCompare(right.key));
-
-  const isStrictInteriorPointOfSegment = (ax: number, ay: number, bx: number, by: number, px: number, py: number): boolean => {
-    const dxAB = bx - ax;
-    const dyAB = by - ay;
-    const lengthSquaredAB = dxAB * dxAB + dyAB * dyAB;
-    const dxAC = px - ax;
-    const dyAC = py - ay;
-    const cross = dxAB * dyAC - dyAB * dxAC;
-    if (cross !== 0) return false;
-    const dot = dxAC * dxAB + dyAC * dyAB;
-    return dot > 0 && dot < lengthSquaredAB;
-  };
-
   const originCells = getCombatantOccupiedCells(origin, room);
   const destinationCells = getCombatantOccupiedCells(target, room);
+  const ownCellKeys = new Set<string>([
+    ...originCells.map((cell) => `${cell.x},${cell.y}`),
+    ...destinationCells.map((cell) => `${cell.x},${cell.y}`)
+  ]);
+
+  const blockingCellKeys = new Set(
+    [...new Set(room.board.lineOfEffectBlockingCells ?? [])].filter((key) => {
+      const [x, y] = key.split(",").map(Number);
+      return Number.isInteger(x) && Number.isInteger(y) && `${x},${y}` === key && !ownCellKeys.has(key);
+    })
+  );
 
   let hasLineOfEffect = false;
   const blockedCellKeys = new Set<string>();
 
   for (const a of originCells) {
     for (const b of destinationCells) {
-      const blockersForThisPair = blockingCells.filter((cell) =>
-        isStrictInteriorPointOfSegment(a.x, a.y, b.x, b.y, cell.x, cell.y)
-      );
+      const visited = traversedCellKeysBetween(a.x, a.y, b.x, b.y);
+      visited.delete(`${a.x},${a.y}`);
+      visited.delete(`${b.x},${b.y}`);
+      const blockersForThisPair = [...visited].filter((key) => blockingCellKeys.has(key));
       if (blockersForThisPair.length === 0) {
         hasLineOfEffect = true;
       } else {
-        for (const blocker of blockersForThisPair) blockedCellKeys.add(blocker.key);
+        for (const key of blockersForThisPair) blockedCellKeys.add(key);
       }
     }
   }
