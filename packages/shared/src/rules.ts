@@ -1,7 +1,7 @@
 import type { ArmorClassBonusType, ArmorClassBreakdown, AttackContextModifiers, AttackDeliveryContext, CombatLogEntry, CombatRoom, CombatRulesSnapshot, Combatant, CombatantSnapshot, ConcealmentAssessment, CoverAssessment, CoverKind, LifeStatus, OpportunityAttack, Position, SavingThrowType, SizeCategory, SpecialManeuverId } from "./types.js";
 import type { ConditionalModifier, EffectDefinition, ModifierCondition, Trait, TraitCondition, EffectStat } from "./effects/contracts.js";
 import type { CatalogEffectId } from "./effects/types.js";
-import { EffectReducer, type MovementRateTrace, type ReducedConcealment } from "./effects/reducer.js";
+import { EffectReducer, type MovementRateTrace, type ReducedConcealment, type ReducedEffects } from "./effects/reducer.js";
 import { effectsCatalog, type ProductionEffectId } from "./effects/catalog.js";
 import { EquipmentCatalog } from "./equipmentCatalog.js";
 import { deriveArmorClassBreakdown, deriveMeleeThreatSources, getArmorAdjustedSpeedFeet, getEquippedArmorEntry, getEquippedWeaponEntry, resolveEquippedWeaponProfile } from "./equipmentStats.js";
@@ -163,6 +163,70 @@ export function applyHealing(combatant: Combatant, amount: number): { hpBefore: 
 // ─────────────────────────────────────────────────────────────────────────────
 // Contexto de ataque táctico para evaluación situacional de CA
 // ─────────────────────────────────────────────────────────────────────────────
+
+
+export interface DefensiveAbilityProjection {
+  readonly effectiveDexterityScore: number;
+  readonly dexterityModifier: number;
+  readonly suppressDexAndDodge: boolean;
+  readonly traitSource: "HELPLESS" | "NO_DEX_TO_AC" | "FLAT_FOOTED" | "NORMAL";
+}
+
+export function getDefensiveAbilityProjection(
+  combatant: Combatant,
+  reduced: ReducedEffects,
+  attackContext?: AttackContext,
+  contextualTraits?: readonly Trait[]
+): DefensiveAbilityProjection {
+  const isHelpless = hasEffectTrait(reduced, "HELPLESS") || (contextualTraits && contextualTraits.includes("HELPLESS"));
+
+  if (isHelpless) {
+    return {
+      effectiveDexterityScore: 0,
+      dexterityModifier: -5,
+      suppressDexAndDodge: true,
+      traitSource: "HELPLESS"
+    };
+  }
+
+  const effectiveDexScore = _getEffectiveAbilityScoreFromReduced(combatant, "dexterity", reduced);
+  const effectiveDexMod = getAbilityModifier(effectiveDexScore);
+
+  const isFlatFooted = attackContext?.isFlatFootedOverride === true;
+  const noDex = hasEffectTrait(reduced, "NO_DEX_TO_AC") || (contextualTraits && contextualTraits.includes("NO_DEX_TO_AC"));
+
+  if (noDex || isFlatFooted) {
+    return {
+      effectiveDexterityScore: effectiveDexScore,
+      dexterityModifier: Math.min(0, effectiveDexMod), // if mod is > 0, we suppress it
+      suppressDexAndDodge: true,
+      traitSource: noDex ? "NO_DEX_TO_AC" : "FLAT_FOOTED"
+    };
+  }
+
+  return {
+    effectiveDexterityScore: effectiveDexScore,
+    dexterityModifier: effectiveDexMod,
+    suppressDexAndDodge: false,
+    traitSource: "NORMAL"
+  };
+}
+
+export function isValidCoupDeGraceTarget(
+  context: CombatRulesSnapshot<any>,
+  targetId: string,
+  catalog: Record<string, EffectDefinition>
+): boolean {
+  const target = context.combatants.find(c => c.id === targetId);
+  if (!target) return false;
+  if (lifeStatus(target) === "dead") return false;
+  const reduced = EffectReducer.reduceEffectsForTarget({
+    effectInstances: context.effectInstances,
+    targetId: target.id,
+    catalog
+  });
+  return hasEffectTrait(reduced, "HELPLESS");
+}
 
 export interface AttackContext {
   readonly attackType?: "melee" | "ranged";
@@ -385,7 +449,7 @@ export function createRuleEvaluator<TCatalog extends Record<string, EffectDefini
       const attackAbility = attackContext?.abilityForAttack ?? resolveEquippedWeaponProfile(combatant).profile.abilityForAttack;
       const effectiveAbilityScore = _getEffectiveAbilityScoreFromReduced(combatant, attackAbility, reduced);
       const selectedModifier = getAbilityModifier(effectiveAbilityScore) + getSizeRule(combatant.sizeCategory).attackAndAcModifier;
-      
+
       let conditionalDelta = 0;
       let conditionalParts: string[] = [];
       if (attackContext && attackContext.attackType) {
@@ -421,13 +485,10 @@ export function createRuleEvaluator<TCatalog extends Record<string, EffectDefini
         catalog
       });
       const contextualTraits = attackContext ? evaluateConditionalTraits(applicable, catalog, attackContext) : [];
-      const suppressDexAndDodge = attackContext?.isFlatFootedOverride === true
-        || hasEffectTrait(reduced, "NO_DEX_TO_AC")
-        || contextualTraits.includes("NO_DEX_TO_AC");
 
-      // Sprint 035: Esquiva (Dodge) y Movilidad (Mobility) — reglas derivadas directamente de
-      // featIds, sin pasar por EffectInstance/ConditionalModifier (ver NDD Sprint 035). Ambas se
-      // anulan por completo bajo la misma bandera de supresión que Destreza/Esquiva de efectos.
+      const defenseProj = getDefensiveAbilityProjection(combatant, reduced, attackContext, contextualTraits);
+      const suppressDexAndDodge = defenseProj.suppressDexAndDodge;
+
       let featDodgeBonus = 0;
       const featDodgeParts: string[] = [];
       if (!suppressDexAndDodge && attackContext) {
@@ -451,9 +512,17 @@ export function createRuleEvaluator<TCatalog extends Record<string, EffectDefini
       }
 
       const armorClassBreakdown = deriveArmorClassBreakdown(combatant);
+      // Incorporar la proyeccion de destreza defensiva preservando el tope de armadura
+      const armor = getEquippedArmorEntry(combatant);
+      const rawDexMod = getAbilityModifier(defenseProj.effectiveDexterityScore);
+      armorClassBreakdown.dexterity = armor?.maxDexBonus === null || armor?.maxDexBonus === undefined
+        ? rawDexMod
+        : Math.min(rawDexMod, armor.maxDexBonus);
+
       for (const [component, value] of Object.entries(armorClassBreakdown)) {
         if (!Number.isFinite(value)) throw new Error(`Invariante de CA violada: ${combatant.name} posee ${component} no finito.`);
       }
+
       const projected = projectStructuredArmorClass(armorClassBreakdown, attackContext, suppressDexAndDodge);
       const baseAC = projected.total;
       const parts = projected.parts;
@@ -463,8 +532,6 @@ export function createRuleEvaluator<TCatalog extends Record<string, EffectDefini
         return sum + (shouldApplyAcModifier(value, buff.acBonusType, attackContext, suppressDexAndDodge) ? value : 0);
       }, 0);
 
-      // Sprint 042: el valor ya viene resuelto por getAttackContextModifiers (CoverAssessment.acBonus);
-      // futuras variantes (Improved/Total Cover) solo cambian ese cómputo, nunca esta línea.
       const coverBonus = attackContext?.cover?.acBonus ?? 0;
 
       const acModifier = reduced.numericModifiers["AC"];
@@ -472,37 +539,13 @@ export function createRuleEvaluator<TCatalog extends Record<string, EffectDefini
         .filter((trace) => trace.status === "applied")
         .reduce((sum, trace) => sum + (shouldApplyAcModifier(trace.value, trace.stackingGroup, attackContext, suppressDexAndDodge) ? trace.value : 0), 0);
 
-      // Calculo del diferencial de destreza si fue alterada
-      const effectiveDexScore = _getEffectiveAbilityScoreFromReduced(combatant, "dexterity", reduced);
-      if (effectiveDexScore !== combatant.abilityScores.dexterity) {
-        const effectiveDexMod = getAbilityModifier(effectiveDexScore);
-        const originalDexMod = armorClassBreakdown.dexterity;
-        const dexDifferential = effectiveDexMod - originalDexMod;
-        
-        // Si la Destreza base ya fue suprimida (porque era positiva y está Flat-Footed o NO_DEX_TO_AC),
-        // no restamos el originalDexMod ya que projectStructuredArmorClass no lo sumó.
-        // Pero si el effectiveDexMod es negativo, las reglas dicen que Flat-Footed NO previene penalizadores.
-        // Así que debemos asegurarnos de que la CA final aplique el penalizador correcto.
-        if (suppressDexAndDodge && originalDexMod > 0) {
-           // originalDexMod fue ignorado en baseAC.
-           // Si el nuevo modificador es negativo (ej. Paralizado, -5), SÍ debe aplicar.
-           // Si el nuevo es positivo, sigue suprimido.
-           if (effectiveDexMod < 0) {
-             deltaAC += effectiveDexMod; // aplicamos el penalizador puro
-           }
-        } else {
-           deltaAC += dexDifferential; // Diferencial normal
-        }
-      }
-
-      // Modificadores condicionales: solo cuando se provee contexto táctico de ataque
       let conditionalDelta = 0;
       if (attackContext) {
         const conditional = evaluateConditionalModifiers(applicable, catalog, attackContext, suppressDexAndDodge, "AC");
         conditionalDelta = conditional.total;
         parts.push(...conditional.parts);
       }
-      
+
       if (coverBonus > 0) {
         parts.push("cobertura +" + coverBonus);
       }
@@ -574,7 +617,7 @@ export function createRuleEvaluator<TCatalog extends Record<string, EffectDefini
     actionProvokesOpportunityAttack(
       snapshot: CombatRulesSnapshot<TEffectId>,
       combatant: Combatant,
-      actionType: "cast-spell" | "ranged-attack"
+      actionType: "cast-spell" | "ranged-attack" | "coup-de-grace"
     ): boolean {
       const prodSnapshot = snapshot as unknown as CombatRulesSnapshot<ProductionEffectId>;
       // Chequear si algun enemigo amenaza al combatiente
@@ -713,9 +756,9 @@ export function isImpassable(context: CombatRulesSnapshot<any>, x: number, y: nu
 }
 
 export function validateMovePath<TCatalog extends Record<string, EffectDefinition>>(
-  context: CombatRulesSnapshot<CatalogEffectId<TCatalog>>, 
-  combatant: Combatant, 
-  path: Position[], 
+  context: CombatRulesSnapshot<CatalogEffectId<TCatalog>>,
+  combatant: Combatant,
+  path: Position[],
   totalSpeedFeet: number,
   isFiveFootStep: boolean = false,
   isAcrobatic: boolean = false
@@ -821,10 +864,10 @@ export function canUseMoveAction(room: CombatRulesSnapshot<ProductionEffectId>, 
   if (!turnCheck.ok) return turnCheck;
   if (hasActiveTrait(room, actor, "CANNOT_MOVE")) return { ok: false, error: actor.name + " no puede moverse voluntariamente mientras esté paralizado o en presa." };
   if (room.currentTurn.usedTotalDefense) return { ok: false, error: actor.name + " ya uso Defensa total y renuncio al resto de acciones del turno." };
-  
+
   const disabledCheck = canDisabledCombatantTakeAction(room, actor, "move");
   if (!disabledCheck.ok) return disabledCheck;
-  
+
   if (room.currentTurn.usedFullAttack || room.currentTurn.attacksMade > 1) return { ok: false, error: "Ya uso una accion de asalto completo." };
   if (room.currentTurn.usedMoveAction) return { ok: false, error: "Ya uso su accion de movimiento." };
   return { ok: true, value: true };
@@ -835,7 +878,7 @@ export function canFullAttack<TCatalog extends Record<string, EffectDefinition>>
   const turnCheck = canTakeTurn(attacker);
   if (!turnCheck.ok) return turnCheck;
   if (room.currentTurn.usedTotalDefense) return { ok: false, error: attacker.name + " ya uso Defensa total y no puede atacar este turno." };
-  
+
   const disabledCheck = canDisabledCombatantTakeAction(room, attacker, "full-round");
   if (!disabledCheck.ok) return disabledCheck;
 
@@ -1599,7 +1642,7 @@ export function projectForcedMovement(
       y: target.position.y + direction.dy * step,
       zFeet: target.position.zFeet ?? 0
     };
-    
+
     const proj = projectMovementFootprint(snapshot, target, candidate, direction);
     if (!proj) {
        blockedAt = candidate;

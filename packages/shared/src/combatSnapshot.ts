@@ -209,6 +209,7 @@ export function cloneEffectInstances<TId extends string>(
       origin: { ...o.origin },
       destination: { ...o.destination }
     })),
+    pendingCoupDeGrace: room.pendingCoupDeGrace ? { ...room.pendingCoupDeGrace } : null,
     activeAttackThreat: room.activeAttackThreat ? {
       ...room.activeAttackThreat,
       normalDamageBundle: {

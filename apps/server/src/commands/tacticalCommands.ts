@@ -13,13 +13,17 @@ import { resolveSavingThrow } from "../combat/savingThrowResolver.js";
 import { rollDice } from "../combat/diceRoller.js";
 import { effectsCatalog } from "@dnd-tactical/shared";
 import { commitSpatialTransition } from "../combat/spatialTransition.js";
+import { resolveAutomaticCritical } from "../combat/attackResolver.js";
+import { isValidCoupDeGraceTarget, EffectReducer, distanceFeet } from "@dnd-tactical/shared";
+import { syncEncounterPhase } from "../room/roomState.js";
+
 export function handleUseTacticalAction(room: CombatRoom, command: Extract<ClientCommand, { type: "use-tactical-action" }>): void {
   if (room.phase !== "active") throw new Error("Esta accion solo esta disponible con el combate en curso.");
   const combatant = findCombatant(room, command.combatantId);
   requireCombatantControl(command.actorId, combatant);
   ensureActiveTurn(room, combatant.id);
   const snapshot = createCombatRulesSnapshot(room);
-  
+
   const availability = Rules.evaluateActionAvailability(snapshot, combatant);
   if (!availability.ok) throw new Error(availability.error);
 
@@ -30,6 +34,7 @@ export function handleUseTacticalAction(room: CombatRoom, command: Extract<Clien
   if (command.action === "stand-up") return handleStandUp(room, snapshot, command, combatant);
   if (command.action === "withdraw") return handleWithdraw(room, snapshot, command, combatant);
   if (command.action === "run") return handleRun(room, snapshot, command, combatant);
+  if (command.action === "coup-de-grace") return handleCoupDeGrace(room, snapshot, command, combatant);
 }
 
 /**
@@ -264,7 +269,7 @@ export function handleDeclareAttackMode(room: CombatRoom, command: Extract<Clien
   if (!availability.ok) throw new Error(availability.error);
 
   if (room.currentTurn.attacksMade > 0) throw new Error("No se puede cambiar el modo despues de haber atacado.");
-  
+
   if (command.mode === "full") {
     if (lifeStatus(combatant) === "disabled") {
       throw new Error("Un personaje a 0 HP no puede realizar un Ataque Completo.");
@@ -298,22 +303,22 @@ function handleTotalDefense(room: CombatRoom, snapshot: CombatRulesSnapshot<impo
   const turnCheck = canStandardAttack(snapshot, combatant);
   if (!turnCheck.ok) throw new Error(turnCheck.error);
   if (room.currentTurn.movementUsedFeet > 0 || room.currentTurn.usedMoveAction || room.currentTurn.usedFiveFootStep) throw new Error("Defensa total requiere renunciar al movimiento, ataques y conjuros de este turno.");
-  
+
   const wasDisabledAtActionStart = lifeStatus(combatant) === "disabled";
-  
+
   applyStartOfNextTurnBuff(combatant, { name: "Defensa total", source: "Tacticas", acBonus: 4, acBonusType: "dodge", preventsOpportunityAttacks: true });
   room.currentTurn.usedStandardAction = true;
   room.currentTurn.usedMoveAction = true;
   room.currentTurn.usedTotalDefense = true;
   room.log.unshift(makeLog("status", combatant.name + " usa Defensa total: +4 de esquiva a la CA hasta el inicio de su proximo turno y no puede realizar ataques de oportunidad."));
-  
+
   const exertion = applyDisabledExertion(combatant, { wasDisabledAtActionStart, actionKind: "standard", actionWasExerting: true });
   if (exertion.applied) {
     room.log.unshift(makeLog("status", combatant.name + " actua incapacitado con " + exertion.previousHp + " HP y pierde 1 HP por esfuerzo. HP: " + exertion.currentHp + "/" + combatant.hpMax + "."));
     logStatusChange(room, combatant, exertion.statusBefore, exertion.statusAfter);
     checkCombatOutcome(room);
   }
-  
+
   broadcast(room);
 }
 
@@ -324,14 +329,14 @@ function handleCharge(room: CombatRoom, snapshot: CombatRulesSnapshot<import("@d
   if (target.type === combatant.type) throw new Error("Carga requiere un enemigo como objetivo.");
   const chargePath = findChargePath(snapshot, combatant, target);
   if (!chargePath.ok || !chargePath.value) throw new Error(chargePath.error);
-  
+
   const wasDisabledAtActionStart = lifeStatus(combatant) === "disabled";
-  
+
   const movementDistance = calculatePathDistanceFeet(combatant.position, chargePath.value, room.board.cellSizeFeet);
   const opportunities = findTriggeredOpportunityAttacksForPath(
-    snapshot, 
-    combatant, 
-    chargePath.value, 
+    snapshot,
+    combatant,
+    chargePath.value,
     movementDistance,
     (c) => Rules.canMakeOpportunityAttack(snapshot, c, combatant.id)
   );
@@ -348,7 +353,7 @@ function handleCharge(room: CombatRoom, snapshot: CombatRulesSnapshot<import("@d
   const result = resolveAttack(snapshot, combatant, target, command.d20Roll, command.damage, "carga", 2 + tactical.attackBonus, { source: resolveWeaponAttackSource(combatant, "melee"), diceRoller: rollDice, cover: tactical.cover, concealment: tactical.concealment });
   result.attackParts.push("carga +2");
   result.attackParts.push(...tactical.labelParts);
-  
+
   if (result.threatened) {
     room.activeAttackThreat = {
       attackerId: combatant.id,
@@ -370,7 +375,7 @@ function handleCharge(room: CombatRoom, snapshot: CombatRulesSnapshot<import("@d
   }
   applyStartOfNextTurnBuff(combatant, { name: "Carga", source: "Tacticas", acBonus: -2 });
   room.log.unshift(makeLog("status", combatant.name + " queda con -2 a la CA por cargar hasta el inicio de su proximo turno."));
-  
+
   const exertion = applyDisabledExertion(combatant, { wasDisabledAtActionStart, actionKind: "full-round", actionWasExerting: true });
   if (exertion.applied) {
     room.log.unshift(makeLog("status", combatant.name + " actua incapacitado con " + exertion.previousHp + " HP y pierde 1 HP por esfuerzo. HP: " + exertion.currentHp + "/" + combatant.hpMax + "."));
@@ -391,9 +396,9 @@ function handleAidAnother(room: CombatRoom, snapshot: CombatRulesSnapshot<import
   if (ally.type !== combatant.type) throw new Error("Prestar ayuda requiere un aliado.");
   if (target.type === combatant.type) throw new Error("Prestar ayuda en combate requiere un enemigo como oponente.");
   if (!threatensTarget(snapshot, combatant, target)) throw new Error(combatant.name + " no amenaza a " + target.name + "; no puede ayudar en ese combate cuerpo a cuerpo.");
-  
+
   const wasDisabledAtActionStart = lifeStatus(combatant) === "disabled";
-  
+
   const attack = Rules.totalAttackBonus(snapshot, combatant);
   const total = command.d20Roll + attack.total;
   room.currentTurn.usedStandardAction = true;
@@ -414,7 +419,7 @@ function handleAidAnother(room: CombatRoom, snapshot: CombatRulesSnapshot<import
   } else {
     room.log.unshift(makeLog("status", combatant.name + " intenta prestar ayuda a " + ally.name + " contra " + target.name + ", pero falla. d20 " + command.d20Roll + " + ataque " + attack.total + " = " + total + " contra CA 10."));
   }
-  
+
   const exertion = applyDisabledExertion(combatant, { wasDisabledAtActionStart, actionKind: "standard", actionWasExerting: true });
   if (exertion.applied) {
     room.log.unshift(makeLog("status", combatant.name + " actua incapacitado con " + exertion.previousHp + " HP y pierde 1 HP por esfuerzo. HP: " + exertion.currentHp + "/" + combatant.hpMax + "."));
@@ -508,7 +513,7 @@ export function handleResolveSavingThrow(room: CombatRoom, command: Extract<Clie
   const snapshot = createCombatRulesSnapshot(room);
 
   const result = resolveSavingThrow(snapshot, target, command.saveType, command.dc, command.d20Roll);
-  
+
   let outcomeText = result.success ? "éxito" : "fallo";
   if (result.isNatural1) outcomeText = "Fallo Crítico (1 natural)";
   if (result.isNatural20) outcomeText = "Éxito Crítico (20 natural)";
@@ -543,5 +548,171 @@ export function handleDeclareDodgeTarget(room: CombatRoom, command: Extract<Clie
 
   combatant.dodgeTargetId = target.id;
   room.log.unshift(makeLog("status", combatant.name + " designa a " + target.name + " como objetivo de Esquiva."));
+  broadcast(room);
+}
+
+
+function handleCoupDeGrace(room: CombatRoom, snapshot: CombatRulesSnapshot<import("@dnd-tactical/shared").ProductionEffectId>, command: Extract<ClientCommand, { type: "use-tactical-action"; action: "coup-de-grace" }>, combatant: ReturnType<typeof findCombatant>): void {
+  if (room.pendingOpportunityAttacks && room.pendingOpportunityAttacks.length > 0) {
+    throw new Error("Hay ataques de oportunidad pendientes. Resuelvelos antes de continuar.");
+  }
+
+  const baseGate = canStandardAttack(snapshot, combatant);
+  if (!baseGate.ok) throw new Error(baseGate.error);
+
+  const fullRoundCheck = canDisabledCombatantTakeAction(snapshot, combatant, "full-round");
+  if (!fullRoundCheck.ok) throw new Error(fullRoundCheck.error);
+  if (room.currentTurn.usedStandardAction || room.currentTurn.usedMoveAction || room.currentTurn.attacksMade > 0) {
+    throw new Error("Coup de Grace requiere una accion de asalto completo.");
+  }
+
+  const target = findCombatant(room, command.targetId);
+  if (!isValidCoupDeGraceTarget(snapshot, target.id, effectsCatalog)) {
+    throw new Error("El objetivo no es un objetivo valido para Coup de Grace (no esta indefenso o ya esta muerto).");
+  }
+
+  const reducedTarget = EffectReducer.reduceEffectsForTarget({ effectInstances: snapshot.effectInstances, targetId: target.id, catalog: effectsCatalog });
+  if (hasEffectTrait(reducedTarget, "IMMUNE_TO_CRITICAL_HITS")) {
+    throw new Error("No puedes realizar un Golpe de gracia a un objetivo inmune a golpes criticos.");
+  }
+
+  const source = resolveWeaponAttackSource(combatant);
+  if (source.attackType === "ranged" && !isAdjacent(combatant.position, target.position)) {
+    throw new Error("Para usar un arma a distancia en un Golpe de gracia, debes estar adyacente al objetivo.");
+  }
+
+  const distance = distanceFeet(combatant.position, target.position, snapshot.board.cellSizeFeet);
+  if (source.attackType === "melee" && distance > source.maxRangeFeet) {
+    throw new Error(target.name + " esta a " + distance + " ft, fuera del alcance de " + combatant.name + " (maximo " + source.maxRangeFeet + " ft).");
+  }
+
+  if (Rules.actionProvokesOpportunityAttack(snapshot, combatant, "coup-de-grace")) {
+    const enemies = snapshot.combatants.filter(e =>
+      e.id !== combatant.id &&
+      e.type !== combatant.type &&
+      lifeStatus(e) === "active" &&
+      threatensTarget(snapshot, e, combatant) &&
+      Rules.canMakeOpportunityAttack(snapshot, e, combatant.id)
+    );
+    if (enemies.length > 0) {
+      room.pendingCoupDeGrace = {
+        actorId: combatant.id,
+        targetId: target.id,
+        weaponId: source.name
+      };
+
+      room.pendingOpportunityAttacks.push(...enemies.map(e => ({
+        id: crypto.randomUUID(),
+        attackerId: e.id,
+        targetId: combatant.id,
+        attackerPosition: e.position,
+        origin: combatant.position,
+        destination: combatant.position,
+        reason: `${combatant.name} provoca por Golpe de gracia.`,
+        createdAt: new Date().toISOString()
+      })));
+      room.log.unshift(makeLog("attack", `${combatant.name} provoca ${enemies.length} Ataques de Oportunidad al intentar un Golpe de gracia.`));
+      syncEncounterPhase(room);
+      broadcast(room);
+      return;
+    }
+  }
+
+  _executeCoupDeGrace(room, snapshot, combatant, target, source);
+}
+
+export function handleResumeCoupDeGrace(room: CombatRoom, command: Extract<ClientCommand, { type: "resume-coup-de-grace" }>): void {
+  if (room.phase !== "active") throw new Error("Esta accion solo esta disponible con el combate en curso.");
+  const combatant = findCombatant(room, command.actorId);
+  requireCombatantControl(command.actorId, combatant);
+  ensureActiveTurn(room, combatant.id);
+
+  if (!room.pendingCoupDeGrace || room.pendingCoupDeGrace.actorId !== combatant.id) {
+    throw new Error("No hay un Golpe de gracia pendiente para este combatiente.");
+  }
+
+  if (room.pendingOpportunityAttacks && room.pendingOpportunityAttacks.length > 0) {
+    throw new Error("Hay ataques de oportunidad pendientes. Resuelvelos antes de continuar.");
+  }
+
+  const snapshot = createCombatRulesSnapshot(room);
+  const pending = room.pendingCoupDeGrace;
+  room.pendingCoupDeGrace = null;
+
+  if (lifeStatus(combatant) === "dead" || lifeStatus(combatant) === "dying") {
+    room.log.unshift(makeLog("system", `El Golpe de gracia de ${combatant.name} fue cancelado por estar incapacitado o muerto.`));
+    broadcast(room);
+    return;
+  }
+  const baseGate = canStandardAttack(snapshot, combatant);
+  if (!baseGate.ok) {
+    room.log.unshift(makeLog("system", `El Golpe de gracia de ${combatant.name} fue cancelado: ${baseGate.error}`));
+    broadcast(room);
+    return;
+  }
+
+  const target = findCombatant(room, pending.targetId);
+  if (!isValidCoupDeGraceTarget(snapshot, target.id, effectsCatalog)) {
+    room.log.unshift(makeLog("system", `El Golpe de gracia de ${combatant.name} fue cancelado porque el objetivo ya no es valido.`));
+    broadcast(room);
+    return;
+  }
+
+  const source = resolveWeaponAttackSource(combatant);
+  if (source.name !== pending.weaponId) {
+    room.log.unshift(makeLog("system", `El Golpe de gracia de ${combatant.name} fue cancelado porque cambio de arma.`));
+    broadcast(room);
+    return;
+  }
+
+  if (source.attackType === "ranged" && !isAdjacent(combatant.position, target.position)) {
+    room.log.unshift(makeLog("system", `El Golpe de gracia fue cancelado por perdida de adyacencia (arma a distancia).`));
+    broadcast(room);
+    return;
+  }
+
+  const distance = distanceFeet(combatant.position, target.position, snapshot.board.cellSizeFeet);
+  if (source.attackType === "melee" && distance > source.maxRangeFeet) {
+    room.log.unshift(makeLog("system", `El Golpe de gracia fue cancelado por alcance insuficiente.`));
+    broadcast(room);
+    return;
+  }
+
+  _executeCoupDeGrace(room, snapshot, combatant, target, source);
+}
+
+function _executeCoupDeGrace(
+  room: CombatRoom,
+  snapshot: CombatRulesSnapshot<import("@dnd-tactical/shared").ProductionEffectId>,
+  attacker: ReturnType<typeof findCombatant>,
+  target: ReturnType<typeof findCombatant>,
+  source: ReturnType<typeof resolveWeaponAttackSource>
+): void {
+  room.currentTurn.usedFullAttack = true;
+  room.currentTurn.attacksMade += 1;
+
+  const resolution = resolveAutomaticCritical(snapshot, attacker, target, source, null, { diceRoller: rollDice });
+
+  const initialApplyResult = applyDamage(target, resolution.damage);
+  room.log.unshift(makeLog("attack", `${attacker.name} ejecuta Golpe de gracia contra ${target.name} (${resolution.damage} de daño critico).`));
+  room.log.unshift(makeLog("damage", target.name + " recibe " + resolution.damage + " puntos de daño. HP restante: " + target.hpCurrent + "/" + target.hpMax + "."));
+  logStatusChange(room, target, initialApplyResult.statusBefore, initialApplyResult.statusAfter);
+
+  // Verificamos si sobrevivio al dano inicial antes de la salvacion
+  if (initialApplyResult.statusAfter !== "dead") {
+    const dc = 10 + resolution.damage;
+    const saveResult = resolveSavingThrow(snapshot, target, "fortitude", dc, rollDice(20));
+    const saveLabel = saveResult.isNatural1 ? "fallo automático por 1 natural" : saveResult.isNatural20 ? "éxito automático por 20 natural" : saveResult.success ? "éxito" : "fallo";
+    room.log.unshift(makeLog("system", `${target.name} realiza salvación de Fortaleza (DC ${dc}): ${saveLabel} (${saveResult.total}).`));
+
+    if (!saveResult.success) {
+      room.log.unshift(makeLog("system", `${target.name} falla la salvación y muere instantáneamente por el Golpe de gracia.`));
+
+      const deathResult = applyDamage(target, target.hpCurrent + 10);
+      logStatusChange(room, target, deathResult.statusBefore, deathResult.statusAfter);
+    }
+  }
+
+  checkCombatOutcome(room);
   broadcast(room);
 }

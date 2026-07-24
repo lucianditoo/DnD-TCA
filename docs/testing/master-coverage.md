@@ -46,6 +46,10 @@ Sprint 030 eleva la cobertura a **303/303** pruebas e incorpora vínculo estrict
 
 **Sprint 046**: **450/450 pruebas, 0 fallos**. `concealment-core.test.mjs` cubre perspectivas atacante/objetivo, 20%/50%, partial/total, deduplicación y precedencia por `stackingKey`, trazas deterministas, validación de contratos, orden CA→d100, 20 natural, ausencia de segunda tirada en crítico, supresión de daño/consecuencias y bloqueo de Sneak Attack aun con d100 exitoso. No se crea una fuente productiva ni un API de test en red.
 
+**Sprint 047**: `blinded-core.test.mjs` (6 casos) cubre `srd_blinded`: -2 AC, pérdida de Destreza, velocidad ×1/2 (stacking seguro con Entangled), `FORBID_RUN`/`FORBID_CHARGE`, y ocultación total automática vía `ConcealmentContribution`.
+
+**Sprint 048 (Helpless Combat & Coup de Grace, cierre 2026-07-18)**: **457/457 pruebas, 0 fallos** (52 archivos) — número de tests sin cambios respecto de Sprint 047 porque Coup de Grace no agrega un archivo de test unitario dedicado; su cobertura real vive en la suite global (fixture de `dt-006-snapshot-integrity.test.mjs` extendida con `pendingCoupDeGrace`) y en el E2E WebSocket. `npm run typecheck`/`npm run build` verdes en los 3 workspaces. `node scripts/e2e-websocket.mjs`: **93/93** aserciones, exit 0 (sube desde 91/91 de Sprint 046 con los casos nuevos de Coup de Grace/interrupción por AdO). `npm run test:ui`: **6/6** escenarios Playwright.
+
 ## Cobertura UI
 
 Sprint 011 cierra con **2/2** escenarios Playwright: el recorrido crítico de movimiento/AdO y el preview de flanqueo que diferencia arma melee, Shocking Grasp y Ray of Frost.

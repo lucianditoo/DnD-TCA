@@ -63,8 +63,23 @@ export const useTacticalActionSchema = z.discriminatedUnion("action", [
     combatantId: z.string().min(1),
     action: z.literal("stand-up"),
     isAutoRoll: z.boolean().optional()
+  }),
+  z.object({
+    type: z.literal("use-tactical-action"),
+    roomCode: z.string().min(1),
+    actorId: z.string().min(1),
+    combatantId: z.string().min(1),
+    action: z.literal("coup-de-grace"),
+    targetId: z.string().min(1)
   })
 ]);
+
+export const resumeCoupDeGraceSchema = z.object({
+  type: z.literal("resume-coup-de-grace"),
+  roomCode: z.string().min(1),
+  actorId: z.string().min(1),
+  combatantId: z.string().min(1)
+});
 
 export const chooseAidBonusSchema = z.object({
   type: z.literal("choose-aid-bonus"),

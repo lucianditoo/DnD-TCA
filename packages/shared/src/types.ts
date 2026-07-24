@@ -293,7 +293,13 @@ export interface AttackThreatState {
   readonly label: string;
   readonly opportunityAttackId?: string;
 }
-export interface CombatRoom { code: string; board: Board; combatants: Combatant[]; turnOrder: string[]; activeTurnIndex: number; round: number; phase: EncounterPhase; outcome: CombatOutcome; completedAt: string | null; currentTurn: TurnState; pendingOpportunityAttacks: OpportunityAttack[]; log: CombatLogEntry[]; activeAttackThreat: AttackThreatState | null; effectInstances: EffectInstance<ProductionEffectId>[]; eventSequence: number; }
+export interface PendingCoupDeGrace {
+  readonly actorId: string;
+  readonly targetId: string;
+  readonly weaponId: string | null;
+}
+
+export interface CombatRoom { code: string; board: Board; combatants: Combatant[]; turnOrder: string[]; activeTurnIndex: number; round: number; phase: EncounterPhase; outcome: CombatOutcome; completedAt: string | null; currentTurn: TurnState; pendingOpportunityAttacks: OpportunityAttack[]; log: CombatLogEntry[]; activeAttackThreat: AttackThreatState | null; pendingCoupDeGrace: PendingCoupDeGrace | null; effectInstances: EffectInstance<ProductionEffectId>[]; eventSequence: number; }
 export interface CombatRulesSnapshot<TEffectId extends string = string> {
   readonly board: {
     readonly width: number;
@@ -308,6 +314,7 @@ export interface CombatRulesSnapshot<TEffectId extends string = string> {
   readonly phase: EncounterPhase;
   readonly pendingOpportunityAttacks: ReadonlyArray<Readonly<OpportunityAttack>>;
   readonly activeAttackThreat: Readonly<AttackThreatState> | null;
+  readonly pendingCoupDeGrace: Readonly<PendingCoupDeGrace> | null;
   /**
    * Copia defensiva de las instancias de efectos activas en el momento de creación del snapshot.
    * El Snapshot es un portador pasivo de datos: no interpreta, no reduce, no aplica reglas.
@@ -349,6 +356,8 @@ export type ClientCommand =
   | { type: "use-tactical-action"; roomCode: string; actorId: string; combatantId: string; action: "withdraw"; to: Position; path?: Position[] }
   | { type: "use-tactical-action"; roomCode: string; actorId: string; combatantId: string; action: "run"; to: Position }
   | { type: "use-tactical-action"; roomCode: string; actorId: string; combatantId: string; action: "stand-up"; isAutoRoll?: boolean }
+  | { type: "use-tactical-action"; roomCode: string; actorId: string; combatantId: string; action: "coup-de-grace"; targetId: string }
+  | { type: "resume-coup-de-grace"; roomCode: string; actorId: string; combatantId: string }
   | { type: "choose-aid-bonus"; roomCode: string; actorId: string; combatantId: string; buffId: string; choice: "attack" | "ac" }
   | { type: "use-ability"; roomCode: string; actorId: string; casterId: string; targetId: string; abilityId: string; amount: number | null }
   | { type: "resolve-ability-attack"; roomCode: string; actorId: string; casterId: string; targetId: string; abilityId: string; d20Roll: number; damage: number | null }

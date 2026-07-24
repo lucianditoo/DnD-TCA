@@ -1,95 +1,50 @@
-# Walkthrough — Sprint 046 (DEFENSE-CONCEALMENT)
+# Walkthrough — Cierre de Sprint 048 (Helpless Combat & Coup de Grace)
 
-## Resultado
+## Estado final
 
-La infraestructura oficial de `DEFENSE-CONCEALMENT` quedó implementada como regla base independiente de Cover. El pipeline acepta contribuciones declarativas, produce un assessment efímero compartido, resuelve el d100 en el servidor después de superar la CA y antes de cualquier daño, y bloquea Ataque Furtivo ante cualquier ocultación. La Rule ID queda **Infraestructura solamente** porque no se incorporaron fuentes productivas.
+Al iniciar el gate de precondición del Sprint 049 (`EFFECT-EXHAUSTED`), el working tree **no estaba limpio**: 14 archivos con cambios sin commitear (código de producción, un test y documentación) más una carpeta `scratch/` sin versionar. El usuario confirmó que ese trabajo pendiente correspondía a Sprint 048 (Helpless Combat & Coup de Grace), ya diseñado en un commit previo (`337ebb9 docs(design): refine helpless combat transaction`). Este documento cierra ese trabajo: auditado, limpiado, validado con el DoD completo y comiteado de forma atómica.
 
-## Gate y revalidación
+## Auditoría del diff pendiente
 
-## Sprint 047 — Blinded Core (IMPLEMENTADO)
-**Objetivo**: Implementar la condición Ceguera (Blinded Core) basándose en las primitivas del Motor de Reglas establecidas en Sprints anteriores, garantizando que emite un modificador de CA, una penalización en destreza, reducción de movimiento a la mitad, bloqueo de las acciones correr y cargar, y la emisión de Ocultamiento Total (Total Concealment) de forma declarativa.
+Revisado archivo por archivo contra el alcance declarado (Helpless Combat + Coup de Grace):
 
-### Cambios realizados
-1. **Catalogación de la Condición**: Se agregó `srd_blinded` al `effectsCatalog` (`packages/shared/src/effects/catalog.ts`), definiéndolo de forma 100% declarativa, emitiendo Traits (NO_DEX_TO_AC, CANNOT_MAKE_AOO), RuleOverrides (FORBID_RUN, FORBID_CHARGE), MovementRate (x1/2), NumericModifiers (-2 AC) y ConcealmentContributions (total concealment *perspective: attacks_by_target*).
-2. **Suite de Pruebas Unitaria (blinded-core.test.mjs)**: Se crearon 6 pruebas unitarias formales para validar todo el scope de Blinded Core. Todas las pruebas pasan verificando reducciones correctas a la CA, la mitad de velocidad (con stacking seguro con Entangled), los override para carga, y el bloqueo al Ataque Furtivo de forma inherente por el sistema de ocultamiento.
-3. **Master Coverage**: Se agregó Blinded a la lista general de condiciones en `master-coverage.md`.
-4. **Docs & Plans**: Se refinó `docs/designs/blinded-condition.md` descartando `NO_THREAT` y habilidades complejas según la auditoría aprobada, actualizando todo el diseño arquitectónico a las capacidades del motor.
+- `apps/server/src/combat/attackResolver.ts` (+47): nueva `resolveAutomaticCritical` — daño base × multiplicador de crítico, con Ataque Furtivo plegado si aplica. Sin tirada de ataque (Coup de Grace RAW no requiere impactar).
+- `apps/server/src/commands/dispatcher.ts` (+3): nuevo caso `resume-coup-de-grace`.
+- `apps/server/src/commands/tacticalCommands.ts` (+~200): `handleCoupDeGrace` (validación de objetivo `HELPLESS`, inmunidad a críticos, alcance/adyacencia, provocación de AdO interrumpible), `handleResumeCoupDeGrace` (reanudación tras resolver AdO pendientes, con cancelación segura si el estado cambió), `_executeCoupDeGrace` (crítico automático + salvación de Fortaleza CD 10+daño o muerte instantánea).
+- `packages/shared/src/rules.ts`: `isValidCoupDeGraceTarget` (trait `HELPLESS`, no objetivo muerto) y `getDefensiveAbilityProjection`, que **reemplaza** el parche ad-hoc de "diferencial de Destreza" que existía en `totalArmorClass` por un cálculo declarativo único (Destreza 0/-5 para `HELPLESS`, supresión para `NO_DEX_TO_AC`/Flat-Footed, normal en el resto) — sin introducir `if (effectId === ...)`.
+- `packages/shared/src/types.ts`/`combatSnapshot.ts`/`demo-data.ts`: nuevo `PendingCoupDeGrace` en `CombatRoom`/`CombatRulesSnapshot`, clonado defensivamente, inicializado en `createEmptyRoom`.
+- `packages/shared/src/schemas/commands/*`: Zod para `action: "coup-de-grace"` y el nuevo tipo de comando `resume-coup-de-grace`.
+- `tests/dt-006-snapshot-integrity.test.mjs`: fixture extendida con `pendingCoupDeGrace: null`.
+- `scripts/e2e-websocket.mjs`: ajuste de un caso previo de Blinded (Sprint 047) — el refactor de `getDefensiveAbilityProjection` unifica la supresión de Destreza para `HELPLESS`/`NO_DEX_TO_AC`, y este ajuste (d20Roll 20→15, reordenamiento del assert) es un efecto colateral esperado de tocar el mismo cálculo de CA que usa Blinded, no una ampliación de alcance.
 
-### Validaciones Ejecutadas
-Todas las validaciones estipuladas en la DoD terminaron de forma exitosa (tras iterar y reparar el setup de pruebas y los fixtures de la snapshot):
-- `npm test`: **457/457 pruebas superadas** (incluyendo las pruebas de la sprint 047).
-- `npm run typecheck`: Superado sin errores de compilación para todos los workspaces.
-- `npm run build`: Superado.
+**Conclusión de la auditoría**: todo el diff pertenece a Helpless Combat/Coup de Grace, con una única excepción menor (el ajuste del caso Blinded en el E2E) que es un efecto colateral directo y esperado de refactorizar código compartido (`totalArmorClass`), no scope creep.
 
-### Deuda Técnica / Future Work
-- **Sprints futuros (Vision/Spot/Targeting)**: Blinded sentó las bases para el manejo de ocultamiento asimétrico (`attacks_by_target`), pero la mecánica real de Vision (Raycasting, targeting en oscuridad, invisibilidad) está planificada para otra iteración (como el Sprint de Fog of War).
+## `scratch/` — revisado y eliminado
 
-- `ConcealmentContribution` es el único contrato especializado. El marker dormido `Modifier.mechanic/CONCEALMENT` fue eliminado al confirmarse que no tenía productores ni consumidores.
-- `EffectReducer.reduceConcealmentContributions` valida porcentajes, ordena determinísticamente, deduplica semánticas por `stackingKey`, rechaza contradicciones, selecciona la mayor probabilidad sin sumar fuentes y conserva trazas `applied`/`suppressed`.
-- `Rules.getConcealmentAssessment` compone un `ConcealmentAssessment` efímero desde las perspectivas del atacante y del objetivo. Cover se calcula en paralelo y permanece matemáticamente independiente.
-- `resolveConcealment` usa el roller canónico del servidor. No tira si el ataque ya falló contra CA; un 20 natural todavía afronta ocultación; el d100 se compara inclusivamente con el porcentaje y no se repite para confirmar crítico.
-- Ataques básicos/completos, aptitudes, conjuros, Carga, AdO y ataques de toque de maniobras consumen el mismo assessment. Daño, críticos, salvaciones y efectos on-hit solo ocurren tras superar CA y ocultación.
-- `canApplySneakAttack` consume el assessment de ese mismo intento: cualquier ocultación impide daño de precisión aunque el d100 sea exitoso.
-- React muestra tipo, porcentaje y trazabilidad usando la misma proyección compartida; no genera RNG ni envía flags de ocultación por WebSocket.
-- Los campos futuros de targeting por casilla y AdO forman parte informativa del assessment, sin consumidores productivos en este sprint. No se agregó `AttackAttemptProjection` ni se persistió estado derivado.
+Contenía `patch_rules.mjs`, `patch_tacticalCommands.mjs` (scripts Node que aplicaron programáticamente los cambios de arriba — confirmado línea por línea que coinciden con el diff real) y `rules.old.ts` (backup pre-patch en UTF-16). Sin contenido único no aplicado. Eliminada la carpeta completa.
 
-## Pruebas y gates
+## Correcciones aplicadas
 
-- `tests/concealment-core.test.mjs` cubre ausencia de fuentes, perspectivas, 20%/50%, stacking, deduplicación, precedencia, trazas, validación, orden CA→d100, 20 natural, daño/consecuencias y bloqueo de Sneak Attack.
-- Suite global: 450/450, 0 fallos.
-- Typecheck: shared, web y server, 0 errores.
-- Build: shared, web y server en verde; Vite transformó 1660 módulos.
-- E2E WebSocket: 91/91 aserciones, exit 0; además rechaza porcentajes/d100 inyectados por cliente.
-- Playwright: 6/6 escenarios. El primer intento dentro del sandbox fue bloqueado por `spawn EPERM`; la repetición autorizada fuera del sandbox ejecutó Chromium y pasó 6/6 en 15.4 s.
-- `git diff --check`: sin errores.
+- **`git diff --check`**: 18 líneas con espacio en blanco al final corregidas en 4 archivos, cuidando de no tocar líneas preexistentes ajenas a este sprint (verificado comparando contra `HEAD` línea por línea antes de aceptar cada cambio).
+- **`docs/rules/registry.md`**: nueva fila `MANEUVER-COUP-DE-GRACE` (Completo), con desglose de qué reutiliza (trait `HELPLESS` ya existente desde Sprint 014, sin catálogo nuevo) y qué es genuinamente nuevo. De paso, se corrigió una fila `EFFECT-BLINDED` duplicada y mal formada (fuera de la tabla, sin backticks, nombre de test truncado) que había quedado de un cierre anterior.
+- **`docs/testing/master-coverage.md`**: entradas de Sprint 047 y 048 con números reales verificados.
+- **`PROJECT_STATUS.md`/`TODO.md`**: reemplazadas las afirmaciones genéricas ("100% exitosas") por los números exactos de esta validación.
+- **`docs/audits/combat-rules-deviations.md`**: revisado — Coup de Grace no introduce ninguna divergencia respecto del RAW (impacto automático sin tirada, crítico automático, salvación de Fortaleza CD 10+daño), no se modificó.
 
-## Estado y pendientes deliberados
+## Validación (DoD completo, ejecutado de verdad tras las correcciones)
 
-- Registry: `DEFENSE-CONCEALMENT` = **Infraestructura solamente**.
-- Sin fuentes productivas de ocultación, sin Blinded, Vision, Line of Effect ni targeting efectivo por casilla.
-- Sin deuda técnica nueva. Se elimina el contrato paralelo dormido `Modifier.mechanic/CONCEALMENT`.
+| Comando | Resultado |
+|---|---|
+| `npm test` | ✅ **457/457**, 0 fallos |
+| `npm run typecheck` | ✅ 0 errores (3 workspaces) |
+| `npm run build` | ✅ los 3 workspaces en verde (Vite compila 1660 módulos) |
+| `node scripts/e2e-websocket.mjs` | ✅ **93/93** aserciones, exit 0 |
+| `npm run test:ui` (Playwright) | ✅ **6/6** escenarios |
 
----
+## Archivos en el commit
 
-# Histórico — Sprint 045 (Entangled Core)
+`PROJECT_STATUS.md`, `TODO.md`, `docs/rules/registry.md`, `docs/testing/master-coverage.md`, `apps/server/src/combat/attackResolver.ts`, `apps/server/src/commands/dispatcher.ts`, `apps/server/src/commands/tacticalCommands.ts`, `packages/shared/src/combatSnapshot.ts`, `packages/shared/src/demo-data.ts`, `packages/shared/src/rules.ts`, `packages/shared/src/schemas/commands/index.ts`, `packages/shared/src/schemas/commands/tacticalCommands.ts`, `packages/shared/src/types.ts`, `scripts/e2e-websocket.mjs`, `tests/dt-006-snapshot-integrity.test.mjs`, `walkthrough.md`. `scratch/` eliminado (no versionado, no aparece en el commit).
 
-## Resultado
+## Estado y próximo paso
 
-Entangled Core quedó implementado y validado sobre el pipeline oficial de modificadores. La condición aporta exclusivamente -2 a Attack, -4 a Dexterity, velocidad ×1/2, `FORBID_RUN` y `FORBID_CHARGE`. `EFFECT-ENTANGLED` permanece **Parcial — falta Concentration**.
-
-## Gate inicial
-
-- Rama: `master`.
-- HEAD inicial: `7f9ba105dfa40835dc097adb2f452f3a6143a14e`.
-- Sincronización inicial con `origin/master`: 0 commits ahead / 0 behind.
-- Sin cambios tracked o staged al comenzar.
-- `.claude/settings.local.json` permaneció como excepción local no seguida: no se leyó, modificó, eliminó, auditó ni agregó a staging.
-
-## Implementación
-
-- `MovementRateContribution` representa tasas racionales mediante numerador/denominador, etiqueta y `stackingKey`; no reutiliza deltas planos ni crea un modificador universal.
-- `EffectReducer.reduceMovementRateContributions` ordena determinísticamente, deduplica aportes equivalentes, conserva trazas `applied`/`suppressed` y rechaza razones contradictorias bajo una misma clave.
-- `Rules.getMovementSpeedProjection` aplica la tasa después de equipo, buffs de velocidad y deltas existentes; redondea hacia abajo una sola vez y nunca persiste el total.
-- `Rules.totalSpeedFeet` consume esa proyección. Movimiento, Run, Charge, Stand Up, servidor y UI heredan la misma matemática sin ramas específicas.
-- `canUseFiveFootStep` aplica la regla general: la velocidad efectiva debe superar el tamaño de una casilla. `validateMovePath` conserva el rechazo general por terreno difícil.
-- React muestra el desglose de velocidad y consulta los gates compartidos de Run y paso de 5 pies.
-
-## Pruebas
-
-- `tests/entangled-condition.test.mjs`: 10/10 casos focales.
-- Suite global: 440/440, 0 fallos.
-- Typecheck: shared, web y server, 0 errores.
-- Build: shared, web y server en verde; Vite transformó 1660 módulos.
-- E2E WebSocket: 91/91 aserciones, exit 0.
-- Playwright: 6/6 escenarios, incluido preview de 15 ft, traza `Entangled ×1/2`, Run bloqueado y paso de 5 pies habilitado.
-
-## Auditoría arquitectónica
-
-- No existe ningún `if (effectId === "srd_entangled")` en producción.
-- El ID productivo solo aparece en `effects/catalog.ts`; las demás apariciones son diseño, plan o pruebas/integraciones.
-- No se añadieron velocidad persistida, flags especiales, reglas base duplicadas ni Rule IDs ajenas; el único alta en Registry es `EFFECT-ENTANGLED`, exigida por el alcance aprobado.
-- Concentration y fuentes concretas de Entangled permanecen deliberadamente fuera de alcance.
-
-## Estado
-
-Sprint 045 cerrado en su alcance aprobado. La Rule ID `EFFECT-ENTANGLED` queda **Parcial** hasta una futura vertical de Concentration.
+Sprint 048 cerrado formalmente. **No se inició Sprint 049** (`EFFECT-EXHAUSTED`) — queda pendiente de su propio gate de precondición y auditoría normativa, ahora sí sobre un working tree limpio.

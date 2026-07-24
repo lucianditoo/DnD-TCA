@@ -7,7 +7,7 @@ import { handleGmAddLog, handleGmApplyEffect, handleGmApplyEnvironmentalHazard, 
 import { handleEndTurn, handleSetInitiative, handleSortInitiative } from "./initiativeCommands.js";
 import { handleMoveCombatant } from "./movementCommands.js";
 import { handleCreateRoom, handleJoinRoom } from "./roomCommands.js";
-import { handleChooseAidBonus, handleUseTacticalAction, handleDeclareAttackMode, handleCancelAttackMode, handleResolveSavingThrow, handleDeclareDodgeTarget } from "./tacticalCommands.js";
+import { handleChooseAidBonus, handleUseTacticalAction, handleDeclareAttackMode, handleCancelAttackMode, handleResolveSavingThrow, handleDeclareDodgeTarget, handleResumeCoupDeGrace } from "./tacticalCommands.js";
 import { handleResolveGrappleEscape, handleResolveSpecialManeuver } from "./specialManeuverCommands.js";
 import { handleEquipItem, handleUnequipItem } from "./equipmentCommands.js";
 import { ensureLegacyRoomShape } from "../room/roomState.js";
@@ -49,6 +49,7 @@ export function dispatchCommand(socket: WebSocket, command: ClientCommand): void
     case "resolve-attack-confirmation": handleResolveAttackConfirmation(room, command); return;
     case "cancel-attack-threat": handleCancelAttackThreat(room, command); return;
     case "use-tactical-action": handleUseTacticalAction(room, command); return;
+    case "resume-coup-de-grace": handleResumeCoupDeGrace(room, command); return;
     case "choose-aid-bonus": handleChooseAidBonus(room, command); return;
     case "declare-attack-mode": handleDeclareAttackMode(room, command); return;
     case "cancel-attack-mode": handleCancelAttackMode(room, command); return;

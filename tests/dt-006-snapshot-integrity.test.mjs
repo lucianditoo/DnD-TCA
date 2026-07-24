@@ -69,6 +69,7 @@ describe("DT-006: Integrity and mapping validation for CombatRulesSnapshot", () 
       pendingOpportunityAttacks: [],
       log: [],
       activeAttackThreat: null,
+      pendingCoupDeGrace: null,
       effectInstances: [],
       eventSequence: 1
     };

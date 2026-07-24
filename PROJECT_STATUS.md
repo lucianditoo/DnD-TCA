@@ -138,6 +138,11 @@ Todo cambio requiere:
 - Ataque Completo Formal e Iterativos:
   - Rutinas iterativas calculadas puramente basadas en BAB.
   - El límite de ataques por turno se incrementa automáticamente (hasta 4 ataques).
+- Sprint 048 (Helpless Combat & Coup de Grace):
+  - Integración completa del ataque "Coup de Grace" a través del servidor.
+  - Interrupción asíncrona de ataques de oportunidad.
+  - Resolución automática de golpes críticos.
+  - Validaciones robustas de E2E WebSockets pasadas.
   - Bloqueo dinámico si se usó la acción de movimiento normal (el 5-foot step sigue permitido).
   - UI interactiva mostrando el progreso y penalizadores iterativos.
   - Modo Explícito de Ataque Completo: el jugador declara la intención (Estándar o Completo, más Lucha a la Defensiva opcional) antes de consumir la acción.
@@ -190,9 +195,17 @@ Todo cambio requiere:
   - Implementación de `Fatigued`, `Prone`, `Dazed` y `Paralyzed` con lógica de sobrescritura de características.
   - Integración de `getEffectiveAbilityScore` y nuevas pruebas de regresión.
 
-### FASE ACTUAL: Sprint 047.1 — EFFECT-BLINDED (Core cerrado)
+### FASE ACTUAL: Sprint 048 — Helpless Combat & Coup de Grace (cerrado formalmente)
 
-  **Sprint 047 — implementación funcional de Blinded (Core)**
+  **Sprint 048 — implementación funcional de Helpless & Coup de Grace**
+  - Implementación completa de la acción "Coup de Grace" a través de comandos tácticos en el servidor (`handleCoupDeGrace`, `handleResumeCoupDeGrace`), con validador `isValidCoupDeGraceTarget` y ejecución (`resolveAutomaticCritical` + salvación de Fortaleza CD 10+daño o muerte instantánea).
+  - Provocación y manejo asíncrono de Ataques de Oportunidad mediante `pendingCoupDeGrace` (mismo patrón interrumpir/reanudar que Withdraw/Charge).
+  - `getDefensiveAbilityProjection` (`rules.ts`) reemplaza el parche ad-hoc de "diferencial de Destreza" en `totalArmorClass` por un cálculo declarativo único que cubre `HELPLESS` (Destreza 0/-5), `NO_DEX_TO_AC` y Flat-Footed sin `if (effectId === ...)`.
+  - Reutiliza el trait `HELPLESS` ya existente (otorgado por `srd_paralyzed`, Sprint 014) — cero efectos de catálogo nuevos.
+  - **Validación real ejecutada en el cierre de este trabajo (Sprint 044.1→048, 2026-07-18)**: `npm test` **457/457**, `npm run typecheck` 0 errores (3 workspaces), `npm run build` los 3 en verde, `node scripts/e2e-websocket.mjs` **93/93** aserciones exit 0, `npm run test:ui` **6/6** escenarios Playwright.
+  - Registry: nueva Rule ID `MANEUVER-COUP-DE-GRACE` (Completo) en `docs/rules/registry.md`; de paso se corrigió una fila `EFFECT-BLINDED` duplicada y mal formada que había quedado fuera de la tabla.
+
+### HISTÓRICO: Sprint 047.1 — EFFECT-BLINDED (Core cerrado)
   - `srd_blinded` implementado: -2 AC, pérdida de bono de Destreza a la CA, -4 en interacciones físicas.
   - Velocidad reducida a 1/2 y prohibición de correr y cargar (FORBID_RUN, FORBID_CHARGE).
   - Los ataques propios fallan un 50% de las veces por Concealment automático (Total Concealment del blanco).

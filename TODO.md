@@ -43,20 +43,22 @@ Documento vivo de tareas pendientes. El backlog está organizado en Sprints. Par
 - [x] Sprint 046: infraestructura `DEFENSE-CONCEALMENT` — contribuciones especializadas, stacking/trazas, assessment compartido, d100 autoritativo post-CA, bloqueo de Sneak Attack y preview UI; validación 450/450 + 91/91 + Playwright 6/6. Estado: **Infraestructura solamente**, sin fuentes productivas.
 - [x] Sprint 047: implementación funcional de Blinded (Core) — `srd_blinded`, `FORBID_RUN`, `FORBID_CHARGE`, velocidad a la mitad, 50% fallo ataque por Concealment automático, Concealment total (50%) a enemigos. Validación exitosa.
 - [x] Sprint 047.1: Auditoría Final y Cierre Formal de EFFECT-BLINDED. Confirmación arquitectónica terminada.
+- [x] Sprint 048: Helpless Combat & Coup de Grace — `MANEUVER-COUP-DE-GRACE` (Registry), `getDefensiveAbilityProjection`, `pendingCoupDeGrace`. Cerrado formalmente con validación real: `npm test` 457/457, typecheck/build en verde, E2E 93/93, Playwright 6/6.
 
 ## Próximos Sprints
 
-Ver `ROADMAP.md`. Sprint 044.2 fija el pipeline transversal y Sprint 046 entrega la infraestructura de `DEFENSE-CONCEALMENT`. Las fuentes productivas, Blinded, targeting por casilla de ocultación total y la política efectiva de AdO requieren gates propios. Power Attack (039) sigue congelado.
+Ver `ROADMAP.md`. Sprint 044.2 fija el pipeline transversal y Sprint 046 entrega la infraestructura de `DEFENSE-CONCEALMENT`. Las fuentes productivas, targeting por casilla de ocultación total y la política efectiva de AdO requieren gates propios. Power Attack (039) sigue congelado. Próximo candidato funcional: Sprint 049 (`EFFECT-EXHAUSTED`), pendiente de auditoría normativa y diseño antes de implementar.
 
 ## Sprint Activo
 
-**Sprint 047.1 — Auditoría Final y Cierre Formal de EFFECT-BLINDED. COMPLETADO.** Confirmación arquitectónica terminada y E2E ajustado exitosamente.
+Ninguno — Sprint 048 (Helpless Combat & Coup de Grace) cerrado formalmente tras auditar el diff pendiente, limpiar `git diff --check` y confirmar el DoD completo con ejecución real.
 
-  **Sprint 047.1 — COMPLETADO**
-  - [x] Ejecutar la auditoría técnica completa de la implementación de EFFECT-BLINDED.
-  - [x] Validar que cumple la arquitectura declarativa de modificadores sin introducir lógica en el resolver.
-  - [x] Validar comportamiento del E2E.
-  - [x] Cierre formal.
+  **Sprint 048 — COMPLETADO**
+  - [x] Agregar soporte a Coup de Grace en comandos tácticos (`handleCoupDeGrace`, `handleResumeCoupDeGrace`, `resume-coup-de-grace`).
+  - [x] Manejar interrupciones y suspensiones (AdO) vía `pendingCoupDeGrace`.
+  - [x] `getDefensiveAbilityProjection`: cálculo declarativo único de Destreza efectiva/supresión de esquiva (HELPLESS/NO_DEX_TO_AC/Flat-Footed), reemplaza el parche ad-hoc anterior.
+  - [x] Validar comportamiento del E2E — 93/93 real.
+  - [x] Cierre formal: `npm test` 457/457, typecheck 0 errores, build 3/3, Playwright 6/6, `docs/rules/registry.md` sincronizado con `MANEUVER-COUP-DE-GRACE`.
 
 **Sprint 046 — DEFENSE-CONCEALMENT. COMPLETADO en su alcance aprobado.** La Rule ID conserva estado global **Infraestructura solamente** porque las fuentes productivas no forman parte de este sprint.
 

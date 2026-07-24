@@ -3,7 +3,7 @@ import { createRoomSchema, joinRoomSchema } from "./roomCommands.js";
 import { addDemoCombatantSchema, addCatalogCombatantSchema, addProfileCombatantSchema } from "./combatantCommands.js";
 import { moveCombatantSchema } from "./movementCommands.js";
 import { resolveAttackSchema, resolveAttackConfirmationSchema, cancelAttackThreatSchema, resolveOpportunityAttackSchema } from "./attackCommands.js";
-import { useTacticalActionSchema, chooseAidBonusSchema, declareAttackModeSchema, cancelAttackModeSchema, resolveSavingThrowSchema, declareDodgeTargetSchema } from "./tacticalCommands.js";
+import { useTacticalActionSchema, chooseAidBonusSchema, declareAttackModeSchema, cancelAttackModeSchema, resolveSavingThrowSchema, declareDodgeTargetSchema, resumeCoupDeGraceSchema } from "./tacticalCommands.js";
 import { useAbilitySchema, resolveAbilityAttackSchema, rollStabilizationSchema, castSpellSchema } from "./abilityCommands.js";
 import { healCombatantSchema, gmMoveCombatantSchema, gmSetHpSchema, gmSetStatusSchema, gmClearOpportunitiesSchema, gmAddLogSchema, gmApplyEffectSchema, gmApplyEnvironmentalHazardSchema, gmForceOutcomeSchema } from "./gmCommands.js";
 import { setInitiativeSchema, sortInitiativeSchema, endTurnSchema } from "./initiativeCommands.js";
@@ -60,7 +60,8 @@ export const clientCommandSchema = z.union([
   resolveSpecialManeuverSchema,
   resolveGrappleEscapeSchema,
   equipItemSchema,
-  unequipItemSchema
+  unequipItemSchema,
+  resumeCoupDeGraceSchema
 ]);
 export type ClientCommandInput = z.input<typeof clientCommandSchema>;
 export type ClientCommandParsed = z.output<typeof clientCommandSchema>;
@@ -101,5 +102,6 @@ export const commandSchemasMap: Record<string, z.ZodTypeAny> = {
   "resolve-special-maneuver": resolveSpecialManeuverSchema,
   "resolve-grapple-escape": resolveGrappleEscapeSchema,
   "equip-item": equipItemSchema,
-  "unequip-item": unequipItemSchema
+  "unequip-item": unequipItemSchema,
+  "resume-coup-de-grace": resumeCoupDeGraceSchema
 };

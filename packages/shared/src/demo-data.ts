@@ -24,6 +24,7 @@ export function createEmptyRoom(code: string): CombatRoom {
     pendingOpportunityAttacks: [],
     log: [{ id: cryptoId("log"), kind: "system", message: "Sala " + code + " creada. Preparacion: agreguen combatientes, posiciones e iniciativas.", createdAt: new Date().toISOString() }],
     activeAttackThreat: null,
+    pendingCoupDeGrace: null,
     effectInstances: [],
     eventSequence: 0
   };

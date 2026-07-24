@@ -289,3 +289,50 @@ function sumAidBonus(buffs: Buff[], opponentId: string, choice: "attack" | "ac")
 function consumeChosenAid(combatant: Combatant, opponentId: string, choice: "attack" | "ac"): void {
   combatant.buffs = combatant.buffs.filter((buff) => !(buff.aidChoice === choice && buff.aidTargetId === opponentId));
 }
+
+export function resolveAutomaticCritical(
+  context: CombatRulesSnapshot<import("@dnd-tactical/shared").ProductionEffectId>,
+  attacker: Combatant,
+  target: Combatant,
+  source: ResolvedAttackSource,
+  damageInput: number | null,
+  options: { diceRoller?: (sides: number) => number }
+): { damage: number; damageBundle: DamageBundle; weaponName: string; multiplier: number } {
+  const baseDamage = Math.max(1, damageInput ?? source.defaultDamage);
+  const damageComponents: DamageComponent[] = [{
+    sourceId: source.name,
+    label: source.name,
+    category: "base",
+    amount: baseDamage,
+    neverMultiply: false
+  }];
+
+  const delivery = { attackType: source.attackType, distanceFeet: 5, requiresAttackRoll: false, dealsDamage: true } as const;
+  const concealment: ConcealmentAssessment = { applies: false, kind: "none", missChancePercent: 0, directTargetingAllowed: true, requiresTargetSquare: false, opportunityAttackAllowed: true, labelParts: [], traces: [] };
+
+  if (canApplySneakAttack(context, attacker, target, delivery, concealment)) {
+    const roller = options.diceRoller ?? rollDice;
+    let precisionDamage = 0;
+    const sneakAttackDice = getEffectiveSneakAttackDice(context, attacker);
+    for (let die = 0; die < sneakAttackDice; die += 1) precisionDamage += roller(6);
+    damageComponents.push({
+      sourceId: "srd_sneak_attack",
+      label: `Ataque furtivo +${sneakAttackDice}d6`,
+      category: "precision",
+      amount: precisionDamage,
+      diceExpression: `${sneakAttackDice}d6`,
+      neverMultiply: true
+    });
+  }
+
+  const normalBundle = makeDamageBundle(damageComponents);
+  const multiplier = source.criticalMultiplier ?? 2;
+  const criticalBundle = multiplyDamageBundle(normalBundle, multiplier, damageInput);
+
+  return {
+    damage: criticalBundle.total,
+    damageBundle: criticalBundle,
+    weaponName: source.name,
+    multiplier
+  };
+}
