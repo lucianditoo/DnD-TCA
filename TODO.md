@@ -6,11 +6,10 @@
 
 ## Vision, Line of Effect y Concealment
 
-- Integrar Line of Effect en conjuros, áreas y amenaza/AdO donde corresponda.
+- Integrar Line of Effect en conjuros y áreas de efecto.
 - Diseñar Low-Light Vision, Blindsight, Blindsense y Tremorsense.
 - Modelar niebla, humo, invisibilidad y fuentes dinámicas de luz.
 - Completar las consecuencias defensivas y de movimiento de la oscuridad.
-- Resolver la política efectiva de AdO bajo Concealment.
 
 ## Conditions
 

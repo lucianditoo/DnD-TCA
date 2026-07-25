@@ -195,6 +195,30 @@ export interface AttackDeliveryContext {
   readonly dealsDamage: boolean;
 }
 
+/**
+ * Sprint 055B: motivo dominante de `OpportunityAttackLegality` — unión cerrada, sin categorías
+ * especulativas. `"clear"` es el único caso donde `allowed === true`.
+ */
+export type OpportunityAttackLegalityReason = "clear" | "no-line-of-effect" | "cover" | "total-concealment";
+
+/**
+ * Sprint 055B (NDD §14.5/§14.7): responde exclusivamente "¿puede el reactor intentar este AdO
+ * concreto contra este provocador?" — nunca recalcula amenaza, provocación ni daño (esas capas
+ * son responsabilidad de `threatensTarget`/`canProjectMeleeThreat`, la detección de provocación en
+ * `findTriggeredOpportunityAttacksForPath`, y `resolveAttack` respectivamente). Compone,
+ * exclusivamente por consumo (nunca recálculo), tres assessments ya existentes: Line of Effect
+ * (más fundamental — un muro impide el ataque en sí, se evalúa primero, mismo orden de precedencia
+ * ya establecido para ataques declarados en Sprint 053B/053B.2), Cover de `AttackContextModifiers`
+ * (cualquier grado bloquea el AdO — regla más estricta que para ataques normales, donde Cover solo
+ * aporta +4 CA), y `ConcealmentAssessment.opportunityAttackAllowed` (ya deriva `!total` desde
+ * Sprint 053B; Ocultación parcial nunca bloquea, solo aporta miss chance en la resolución). Ver
+ * `docs/designs/vision-and-line-of-effect-architecture.md` §14.
+ */
+export interface OpportunityAttackLegality {
+  readonly allowed: boolean;
+  readonly reason: OpportunityAttackLegalityReason;
+}
+
 export interface EquipmentSlots {
   readonly mainHandItemId: string | null;
   readonly offHandItemId: string | null;

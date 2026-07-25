@@ -7,11 +7,12 @@
 ## Estado actual
 
 - Rama de integración: `master`.
-- Última vertical funcional integrada: Sprint 053B.2, corrección del Blind
-  Targeting (modo casilla solo justificado por Vision, Line of Effect hacia
-  la casilla independiente de ocupación, proyección pública indistinguible).
+- Última vertical funcional integrada: Sprint 055B, Ataques de Oportunidad
+  bajo Cover y Ocultación Total (Line of Effect, Cover de cualquier grado y
+  `opportunityAttackAllowed` ahora gatean la generación del AdO, consumiendo
+  exclusivamente los assessments ya existentes).
 - Último saneamiento documental: Sprint 054C.
-- Baseline funcional publicada: 547/547 pruebas unitarias, 100/100 aserciones
+- Baseline funcional publicada: 559/559 pruebas unitarias, 100/100 aserciones
   WebSocket y 7/7 escenarios Playwright; typecheck y build verdes.
 - GitHub Actions sobre Windows es el gate canónico de cierre para la revisión
   publicada.
@@ -35,7 +36,9 @@ El monorepo contiene:
 - Line of Effect independiente de Cover y del terreno de movimiento;
 - Concealment como assessment defensivo independiente;
 - Vision básica con luz tenue, oscuridad, Darkvision por alcance y targeting a
-  ciegas por casilla.
+  ciegas por casilla;
+- Ataques de Oportunidad que respetan Line of Effect, Cover (cualquier grado)
+  y Ocultación Total como condiciones de legalidad, no solo de resolución.
 
 ## Límites vigentes
 
@@ -45,6 +48,9 @@ El monorepo contiene:
 - Cover, Line of Effect, Concealment y Vision son responsabilidades separadas.
 - Vision y Line of Effect todavía tienen extensiones pendientes; su estado
   oficial se consulta en el Registry.
+- La legalidad de un Ataque de Oportunidad (`getOpportunityAttackLegality`)
+  consume Line of Effect/Cover/Concealment ya calculados; nunca los
+  recalcula ni introduce una cuarta fuente de verdad.
 - Persisten verticales funcionales y deuda técnica pendientes, enumeradas sin
   historial en [`TODO.md`](TODO.md) y ordenadas en [`ROADMAP.md`](ROADMAP.md).
 

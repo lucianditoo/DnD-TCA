@@ -7,7 +7,8 @@
 ## Orden propuesto
 
 1. **Vision, Line of Effect y Concealment**
-   - Extender Line of Effect a conjuros, áreas y AdO.
+   - Extender Line of Effect a conjuros y áreas de efecto (AdO ya cerrado en
+     Sprint 055B).
    - Incorporar sentidos alternativos, fuentes dinámicas de luz y fenómenos
      visuales.
    - Completar las consecuencias todavía no modeladas de oscuridad y

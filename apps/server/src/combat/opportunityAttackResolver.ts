@@ -1,4 +1,4 @@
-import { Rules, lifeStatus, resolveEquippedWeaponProfile, threatensTarget, type CombatRoom, type CombatRulesSnapshot, type Combatant, type ProductionEffectId } from "@dnd-tactical/shared";
+import { Rules, getOpportunityAttackLegality, lifeStatus, resolveEquippedWeaponProfile, threatensTarget, type CombatRoom, type CombatRulesSnapshot, type Combatant, type ProductionEffectId } from "@dnd-tactical/shared";
 
 import { syncEncounterPhase } from "../room/roomState.js";
 
@@ -9,6 +9,9 @@ export function findTriggeredRangedOpportunityAttacks(context: CombatRulesSnapsh
   if (lifeStatus(attacker) !== "active" && lifeStatus(attacker) !== "disabled") return [];
   return context.combatants
     .filter((other) => other.id !== attacker.id && lifeStatus(other) === "active" && Rules.canMakeOpportunityAttack(context, other, attacker.id) && threatensTarget(context, other, attacker))
+    // Sprint 055B (NDD §14.5/§14.7): Line of Effect/Cover/Ocultación Total pueden impedir que este
+    // reactor concreto ejecute el AdO, sin duplicar el cálculo de amenaza ya resuelto arriba.
+    .filter((other) => getOpportunityAttackLegality(context, other, attacker).allowed)
     .map((other) => ({
       id: "aoo-" + Math.random().toString(36).slice(2, 10),
       attackerId: other.id,

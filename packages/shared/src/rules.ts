@@ -1,4 +1,4 @@
-import type { ArmorClassBonusType, ArmorClassBreakdown, AttackContextModifiers, AttackDeliveryContext, CombatLogEntry, CombatRoom, CombatRulesSnapshot, Combatant, CombatantSnapshot, ConcealmentAssessment, ConcealmentKind, CoverAssessment, CoverKind, LifeStatus, LineOfEffectAssessment, OpportunityAttack, Position, SavingThrowType, SizeCategory, SpecialManeuverId, VisionAssessment, VisionReason, VisionTrace, VisualPathAssessment } from "./types.js";
+import type { ArmorClassBonusType, ArmorClassBreakdown, AttackContextModifiers, AttackDeliveryContext, CombatLogEntry, CombatRoom, CombatRulesSnapshot, Combatant, CombatantSnapshot, ConcealmentAssessment, ConcealmentKind, CoverAssessment, CoverKind, LifeStatus, LineOfEffectAssessment, OpportunityAttack, OpportunityAttackLegality, Position, SavingThrowType, SizeCategory, SpecialManeuverId, VisionAssessment, VisionReason, VisionTrace, VisualPathAssessment } from "./types.js";
 import type { ConditionalModifier, EffectDefinition, ModifierCondition, Trait, TraitCondition, EffectStat } from "./effects/contracts.js";
 import type { CatalogEffectId } from "./effects/types.js";
 import { EffectReducer, type MovementRateTrace, type ReducedConcealment, type ReducedEffects } from "./effects/reducer.js";
@@ -1023,6 +1023,11 @@ export function findTriggeredOpportunityAttacksForPath(
       const key = footprintCellKey(cell);
       return !stepCellKeys.has(key) && !exemptDepartureCellKeys.has(key);
     });
+    // Sprint 055B: proxy efímero con la posición exacta de la casilla abandonada en este paso —
+    // `mover.position` en el snapshot es la posición inicial de todo el trayecto, no la casilla
+    // concreta que se evalúa en pasos intermedios. Nunca se muta `mover`; es una copia superficial
+    // consumida únicamente por `getOpportunityAttackLegality` (Line of Effect/Cover/Concealment).
+    const moverAtOrigin: Combatant = { ...mover, position: origin };
     for (const reactor of reactors) {
       const other = reactor.combatant;
       if (triggeredAttackerIds.has(other.id)) continue;
@@ -1035,6 +1040,14 @@ export function findTriggeredOpportunityAttacksForPath(
         return hasMeleeThreatFromSourcesAtDistance(reactor.threatSources, distance);
       });
       if (provokingCells.length === 0) continue;
+      // Sprint 055B (NDD §14.5/§14.7): Line of Effect/Cover/Ocultación Total pueden impedir que
+      // ESTE reactor concreto ejecute el AdO contra ESTE provocador concreto, sin afectar a otros
+      // reactores/pasos. No se marca `triggeredAttackerIds` cuando se rechaza — el mismo reactor
+      // puede volver a intentarlo en un paso posterior si las condiciones cambian (ej. el
+      // provocador sale de detrás de un obstáculo), coherente con que un AdO rechazado nunca
+      // "se gasta".
+      const legality = getOpportunityAttackLegality(room, other, moverAtOrigin);
+      if (!legality.allowed) continue;
       triggeredAttackerIds.add(other.id);
       opportunities.push({
         id: cryptoId("aoo"),
@@ -2281,6 +2294,43 @@ export function getAttackContextModifiers(
       ranged: { attackBonus: rangedIntoMelee.penalty, labelParts: rangedLabelParts, cover, concealment }
     }
   };
+}
+
+/**
+ * Sprint 055B (NDD §14.5/§14.7, Opportunity Legality Assessment): decide si `reactor` puede
+ * intentar un Ataque de Oportunidad concreto contra `provoker`. Compone exclusivamente tres
+ * assessments ya existentes, sin recalcular ninguno: Line of Effect (más fundamental, se evalúa
+ * primero — mismo orden de precedencia ya establecido para ataques declarados desde Sprint
+ * 052B/053B), Cover (cualquier grado bloquea el AdO, a diferencia de un ataque normal donde Cover
+ * solo aporta +4 CA — cita SRD `combat/08_ataques_de_oportunidad.txt`: "no puedes realizar un
+ * ataque de oportunidad contra un oponente que tenga cobertura respecto a ti"), y
+ * `ConcealmentAssessment.opportunityAttackAllowed` (ya deriva `!total` desde Sprint 053B — cita
+ * SRD `combat/10_modificadores_de_combate.txt`: "No puedes realizar un ataque de oportunidad
+ * contra un enemigo con ocultación total, ni aunque sepas en qué casilla o casillas está").
+ * Ocultación parcial nunca bloquea aquí — solo aporta miss chance en `resolveAttack`, sin cambios.
+ * No calcula amenaza, provocación ni daño — esas capas son responsabilidad de sus propias
+ * funciones (`threatensTarget`/`canProjectMeleeThreat`, la detección de provocación del llamador,
+ * y `resolveAttack` respectivamente).
+ */
+export function getOpportunityAttackLegality(
+  room: CombatRulesSnapshot<ProductionEffectId>,
+  reactor: Combatant,
+  provoker: Combatant
+): OpportunityAttackLegality {
+  const lineOfEffect = getLineOfEffect(room, reactor, provoker);
+  if (!lineOfEffect.hasLineOfEffect) {
+    return { allowed: false, reason: "no-line-of-effect" };
+  }
+
+  const context = getAttackContextModifiers(room, reactor, provoker);
+  if (context.byAttackType.melee.cover.applies) {
+    return { allowed: false, reason: "cover" };
+  }
+  if (!context.byAttackType.melee.concealment.opportunityAttackAllowed) {
+    return { allowed: false, reason: "total-concealment" };
+  }
+
+  return { allowed: true, reason: "clear" };
 }
 
 export function getEffectiveSneakAttackDice(

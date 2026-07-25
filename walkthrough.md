@@ -1,105 +1,115 @@
-# Walkthrough — Sprint 053B.2 (Corrección del Blind Targeting)
+# Walkthrough — Sprint 055B (Opportunity Attacks: Cover & Concealment Enforcement)
 
 ## Objetivo
 
-Cerrar los tres defectos arquitectónicos detectados en la revisión de Sprint
-053B, sin agregar mecánicas nuevas ni tocar los contratos de
-`VisionAssessment`/`VisualPathAssessment`/`LineOfEffectAssessment`.
+Implementar exactamente el NDD aprobado en Sprint 055A
+(`docs/designs/vision-and-line-of-effect-architecture.md` §14): Line of
+Effect, Cover (cualquier grado) y Ocultación Total ahora gatean la
+**generación** de un Ataque de Oportunidad, consumiendo exclusivamente los
+assessments ya existentes, sin recalcular ninguno.
 
-## Corrección 1 — El modo casilla ya no es un bypass
+## Implementación
 
-Antes, el servidor aceptaba `target.kind = "square"` incluso cuando el
-assessment final no exigía `requiresTargetSquare` — cualquier cliente podía
-atacar por casilla a un objetivo perfectamente visible. Ahora
-`isSquareTargetingJustified` (`rules.ts`) decide la legalidad del modo
-casilla usando **solo información que el atacante posee legítimamente**: su
-propia Ocultación Total declarativa sobre sus ataques (perspectiva
-`attacks_by_target`, ej. `srd_blinded`) o la oscuridad total de la casilla
-fuera del alcance de su Darkvision (misma matemática que las reglas 2/3 de
-`getVisionAssessment`). Nunca consulta al ocupante — ni la aceptación ni el
-rechazo filtran ocupación, y el mensaje de rechazo es idéntico esté la
-casilla ocupada o vacía. La luz tenue (ocultación parcial, 20%) no justifica
-el modo casilla, exactamente igual que no activa `requiresTargetSquare`
-contra un objetivo real.
+### Nueva función pura: `getOpportunityAttackLegality`
 
-## Corrección 2 — Line of Effect hacia la casilla, no hacia el ocupante
+`packages/shared/src/rules.ts` gana `getOpportunityAttackLegality(room,
+reactor, provoker): OpportunityAttackLegality` (nuevo tipo en `types.ts`,
+`{ allowed: boolean; reason: "clear"|"no-line-of-effect"|"cover"|
+"total-concealment" }`). Responde exclusivamente "¿puede el reactor intentar
+este AdO concreto contra este provocador?" — nunca calcula amenaza,
+provocación ni daño. Compone, en este orden de precedencia (Line of Effect
+primero, más fundamental — mismo orden ya establecido para ataques
+declarados desde Sprint 052B/053B):
 
-Antes, la validación de Line of Effect solo corría cuando existía una
-criatura en la casilla: una casilla vacía detrás de un muro "se podía
-atacar" (consumiendo acción y munición) mientras que la misma casilla
-ocupada se rechazaba — esa asimetría era en sí misma una filtración de
-ocupación. Ahora la secuencia es: posición elegida → `getLineOfEffectToCell`
-(nueva función pura en `rules.ts`, mismo recorrido supercover y misma fuente
-de bloqueadores que `getLineOfEffect`, con la celda como destino) → si
-falla, rechazo por Cobertura Total con un mensaje que jamás nombra a ningún
-combatiente → recién después se resuelve en secreto la ocupación. La
-legalidad geométrica ya no depende de que haya o no una criatura. El helper
-privado `computeSupercoverPathAssessment` se refactorizó mecánicamente para
-aceptar listas de celdas en vez de dos `Combatant` (cero cambios de
-algoritmo; `getLineOfEffect` y `getVisualPathAssessment` producen
-exactamente lo mismo que antes).
+1. `getLineOfEffect(room, reactor, provoker)` — sin línea de efecto, no hay
+   capacidad física real de atacar.
+2. `getAttackContextModifiers(room, reactor, provoker)` — una sola llamada
+   que ya trae Cover **y** Concealment compuestos; se lee
+   `.byAttackType.melee.cover.applies` (cualquier grado bloquea el AdO,
+   regla más estricta que para ataques normales) y
+   `.byAttackType.melee.concealment.opportunityAttackAllowed` (ya deriva
+   `!total` desde Sprint 053B — Ocultación parcial nunca bloquea, solo
+   Ocultación Total).
 
-## Corrección 3 — Proyección pública indistinguible
+Cero llamadas nuevas a `getConcealmentAssessment`/`getAttackLineInterception`
+— todo pasa por las funciones canónicas ya existentes.
 
-Antes, un ataque por casilla contra una casilla **ocupada** emitía el log
-público completo ("Bane realiza ataque simple contra Canocrock… d20… contra
-CA… falla por ocultacion total (50%; d100 25)") — revelando presencia,
-identidad, CA y el motivo exacto del fallo, mientras la casilla vacía emitía
-el genérico "El ataque falla.". Ahora todo ataque en modo casilla usa la
-proyección segura (NDD §13.8): en cualquier fallo (casilla vacía, fallo por
-CA, fallo por Concealment, 1 natural) el log público es, palabra por
-palabra, `"X ataca a una casilla a N ft. El ataque falla."`; un impacto
-emite `"…El ataque impacta."` seguido del daño (la presencia revelada por un
-impacto es una consecuencia observable legítima). El desglose real (nombre,
-CA, d20, d100, motivo) queda solo en el estado autoritativo del servidor.
-Para que ningún canal secundario divergiera entre ocupada y vacía, el modo
-casilla ahora deriva distancia y tipo de ataque de la **casilla** (no del
-footprint del ocupante), usa el mismo chequeo y mensaje de alcance máximo
-que el camino vacío, y dispara los AdO por ataque a distancia con la misma
-distancia.
+### Wiring en los dos call sites de generación
 
-## Sin cambios
+- `findTriggeredOpportunityAttacksForPath` (`rules.ts`, disparo por
+  movimiento): antes de empujar una oportunidad, se evalúa
+  `getOpportunityAttackLegality(room, reactor, moverAtOrigin)`, donde
+  `moverAtOrigin` es un proxy efímero (`{ ...mover, position: origin }`) con
+  la posición exacta de la casilla abandonada en ese paso del trayecto —
+  `mover.position` en el snapshot es la posición inicial de todo el
+  recorrido, no la casilla concreta de un paso intermedio. Un reactor
+  rechazado en un paso **no** se marca como "ya disparado" — puede volver a
+  intentarlo en un paso posterior si las condiciones cambian (ej. el
+  provocador sale de detrás de un obstáculo), coherente con que un AdO
+  rechazado nunca "se gasta".
+- `findTriggeredRangedOpportunityAttacks`
+  (`apps/server/src/combat/opportunityAttackResolver.ts`, disparo por ataque
+  a distancia/conjuro): un `.filter()` adicional aplica el mismo gate sobre
+  el snapshot ya existente, sin cambios de posición (escenario de snapshot
+  único, sin aproximación de trayecto).
 
-`VisionAssessment`, `VisualPathAssessment`, `LineOfEffectAssessment`,
-`ConcealmentAssessment`, el Snapshot, ActiveEffects, los schemas Zod y la UI
-quedaron intactos. El camino de targeting directo (`combatantId`) no cambió
-en nada: mismo orden de gates (LoE del objetivo → Vision), mismos mensajes,
-mismo log detallado.
+### Sin cambios
 
-## Tests (Corrección 4)
+`CoverAssessment`, `ConcealmentAssessment`, `VisionAssessment`,
+`LineOfEffectAssessment` y su fórmula quedan intocados. `srd_blinded`
+conserva su trait `CANNOT_MAKE_AOO` sin cambios (decisión explícitamente
+diferida en el NDD §14.9, no se resuelve en este sprint). No se toca
+`handleResolveOpportunityAttack` (ejecución) — tras el gate en generación,
+`pendingOpportunityAttacks` nunca contiene un AdO ilegal, y el encargo de
+este sprint solo pedía el gate "antes de generarse".
 
-`tests/blind-targeting-server.test.mjs` pasa de 15 a 18 casos:
+## Tests (6 mínimos requeridos, 12 entregados)
 
-- **Correcciones 1**: modo casilla rechazado con casilla visible, con
-  mensaje idéntico ocupada/vacía (sin filtrar ocupación); la luz tenue no
-  justifica el modo casilla.
-- **Corrección 2**: Line of Effect evaluada hacia una casilla vacía detrás
-  de un muro (rechazo por Cobertura Total sin consumir acción) y mensaje
-  idéntico con la misma casilla ocupada.
-- **Corrección 3**: el log público de un fallo por CA (1 natural) y de un
-  fallo por Concealment (d100=1) contra casilla ocupada es exactamente igual
-  al de una casilla vacía a la misma distancia, sin nombre/CA/d20/d100.
-- El test previo que codificaba el comportamiento defectuoso ("no es un
-  bypass: resuelve igual que targeting directo") se reescribió para
-  afirmar el rechazo correcto.
+Nuevo `tests/opportunity-attack-legality.test.mjs`:
 
-`scripts/e2e-websocket.mjs`: la aserción del escenario Blinded ahora valida
-la proyección segura (log genérico de casilla presente, y ausencia de
-cualquier log con d20/CA/d100 del ataque por casilla).
+- **Unitarios sobre `getOpportunityAttackLegality`** (5): sin Cover/sin
+  Concealment/con LoE → `allowed`/`clear`; LoE rota → `no-line-of-effect`;
+  Cover por criatura interpuesta → `cover`; Ocultación Total (oscuridad
+  fuera de Darkvision) → `total-concealment`; Ocultación parcial (luz
+  tenue) → `allowed`/`clear` (nunca bloquea).
+- **Integración `findTriggeredOpportunityAttacksForPath`** (5): regresión
+  sin Cover/Concealment (genera normal); Cover interpuesto (no genera); Total
+  Concealment (no genera); LoE rota (no genera); Concealment parcial (sigue
+  generando).
+- **Integración `findTriggeredRangedOpportunityAttacks`** (2): regresión sin
+  Cover/Concealment; Cover interpuesto (no genera).
+
+Fixtures geométricas notables: para que un bloqueador de Cover/LoE no sea,
+él mismo, un reactor válido con un tiro limpio, el reactor real necesita un
+arma con alcance (lanza larga, 5–10 ft) para amenazar a 10 ft con el
+bloqueador exactamente en el punto medio (5 ft) — a distancia adyacente no
+existe ninguna casilla intermedia real donde colocar un bloqueador.
 
 ## Validación (DoD completo, ejecutado de verdad)
 
 | Comando | Resultado |
 |---|---|
-| `npm test` | ✅ **547/547**, 0 fallos (58 archivos) |
+| `npm test` | ✅ **559/559**, 0 fallos (59 archivos) |
 | `npm run typecheck` | ✅ 0 errores (3 workspaces) |
 | `npm run build` | ✅ los 3 workspaces en verde |
-| `node scripts/e2e-websocket.mjs` | ✅ **100/100** aserciones, exit 0 |
-| `npm run test:ui` (Playwright) | ✅ **7/7** escenarios |
+| `node scripts/e2e-websocket.mjs` | ✅ **100/100** aserciones, exit 0 (sin regresión) |
+| `npm run test:ui` (Playwright) | ✅ **7/7** escenarios (sin cambios de UI) |
 | `git diff --check` | ✅ sin problemas de espacio en blanco |
+
+## Documentación sincronizada
+
+`docs/rules/registry.md`: `DEFENSE-COVER`, `DEFENSE-LINE-OF-EFFECT` y
+`DEFENSE-CONCEALMENT` actualizadas con su nuevo rol como gate de legalidad de
+AdO; nota nueva explicando por qué **no** se abrió una Rule ID nueva (no es
+una regla autónoma del SRD, es la integración de tres reglas ya
+registradas — política de Sprint 044.1). `PROJECT_STATUS.md`/`TODO.md`/
+`ROADMAP.md`: AdO retirado de la lista de pendientes de la vertical
+Vision/Line of Effect/Concealment. `docs/testing/master-coverage.md`:
+entrada nueva con el detalle de los 12 casos.
 
 ## Estado
 
-`DEFENSE-VISION` sigue **Parcial** con el mismo alcance declarado; la fila
-del Registry registra el cierre de los tres defectos (Sprint 053B.2). Sin
-deuda técnica nueva.
+Sin deuda técnica nueva. `srd_blinded.CANNOT_MAKE_AOO` sigue siendo
+redundante-pero-inofensivo con el nuevo gate (decisión de si retirarlo queda
+explícitamente diferida, NDD §14.9). Ninguna Rule ID nueva — ver
+justificación en `docs/rules/registry.md`.
