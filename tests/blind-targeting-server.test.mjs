@@ -82,14 +82,14 @@ function attackDirect(room, actorId, targetId, options = {}) {
   }, options);
 }
 
-function attackSquare(room, actorId, position, options = {}) {
+function attackSquare(room, actorId, position, options = {}, d20Roll = 15) {
   handleResolveAttack(room, {
     type: "resolve-attack",
     roomCode: "BLIND01",
     actorId,
     attackerId: "blind-attacker",
     target: { kind: "square", position },
-    d20Roll: 15,
+    d20Roll,
     damage: 9
   }, options);
 }
@@ -170,12 +170,87 @@ test("casilla vacia no muta HP ni crea amenaza de critico pendiente", () => {
   assert.equal(room.activeAttackThreat, null, "una casilla vacia nunca puede amenazar critico: no hay tirada de ataque real.");
 });
 
-test("targeting por casilla no es un bypass: contra un objetivo con Vision clara, resuelve igual que targeting directo", () => {
-  const { room: roomDirect, target: targetDirect } = makeRoom();
-  attackDirect(roomDirect, "player-blind-actor", "blind-target");
-  const { room: roomSquare, target: targetSquare } = makeRoom({ targetPosition: { x: 1, y: 0, zFeet: 0 } });
-  attackSquare(roomSquare, "player-blind-actor", { x: 1, y: 0, zFeet: 0 });
-  assert.equal(targetDirect.hpCurrent, targetSquare.hpCurrent, "elegir casilla en vez de combatiente no cambia el resultado cuando Vision no exigia una casilla.");
+test("053B.2 Correccion 1: targeting por casilla RECHAZADO cuando el atacante puede ver la casilla (bypass prohibido), con mensaje identico este o no ocupada", () => {
+  // Casilla visible y OCUPADA: el modo casilla se rechaza — el cliente debe usar combatantId.
+  const { room, target } = makeRoom({ targetPosition: { x: 1, y: 0, zFeet: 0 } });
+  let occupiedError = null;
+  try {
+    attackSquare(room, "player-blind-actor", { x: 1, y: 0, zFeet: 0 });
+  } catch (error) {
+    occupiedError = error.message;
+  }
+  assert.match(occupiedError ?? "", /puede ver esa casilla/i, "el modo casilla sin justificacion de Vision debe rechazarse.");
+  assert.equal(target.hpCurrent, 100, "el rechazo no debe mutar HP.");
+  assert.equal(room.currentTurn.attacksMade, 0, "el rechazo no debe consumir el ataque de la rutina.");
+
+  // Casilla visible y VACIA (misma casilla, sin ocupante): mismo rechazo, mensaje EXACTAMENTE
+  // identico — el rechazo del modo casilla jamas filtra ocupacion.
+  const { room: emptyRoom } = makeRoom({ targetPosition: { x: 4, y: 4, zFeet: 0 } });
+  let emptyError = null;
+  try {
+    attackSquare(emptyRoom, "player-blind-actor", { x: 1, y: 0, zFeet: 0 });
+  } catch (error) {
+    emptyError = error.message;
+  }
+  assert.equal(occupiedError, emptyError, "el rechazo por casilla visible debe ser identico con o sin ocupante.");
+});
+
+test("053B.2 Correccion 1: la luz tenue NO justifica el modo casilla (ocultacion parcial => targeting directo obligatorio)", () => {
+  const { room } = makeRoom({ targetPosition: { x: 1, y: 0, zFeet: 0 } });
+  room.board = { ...room.board, dimLightCells: ["1,0"] };
+  assert.throws(
+    () => attackSquare(room, "player-blind-actor", { x: 1, y: 0, zFeet: 0 }),
+    /puede ver esa casilla/i,
+    "la ocultacion parcial (20%) mantiene directTargetingAllowed=true, asi que el modo casilla no corresponde."
+  );
+});
+
+test("053B.2 Correccion 2: Line of Effect se evalua hacia la CASILLA, aunque este vacia, con mensaje identico este o no ocupada", () => {
+  // Casilla en oscuridad (modo casilla justificado) detras de un muro, VACIA: se rechaza por
+  // Cobertura Total como intento ilegal — sin consumir accion/ataque/municion.
+  const { room: emptyRoom } = makeRoom({ darknessCells: ["2,0"], lineOfEffectBlockingCells: ["1,0"], targetPosition: { x: 5, y: 5, zFeet: 0 } });
+  let emptyError = null;
+  try {
+    attackSquare(emptyRoom, "player-blind-actor", { x: 2, y: 0, zFeet: 0 });
+  } catch (error) {
+    emptyError = error.message;
+  }
+  assert.match(emptyError ?? "", /Cobertura Total/, "la legalidad geometrica no depende de que haya una criatura.");
+  assert.doesNotMatch(emptyError ?? "", /Objetivo/, "el mensaje no puede nombrar a ningun combatiente.");
+  assert.equal(emptyRoom.currentTurn.attacksMade, 0, "un intento ilegal no consume el ataque (distinto del fallo contra casilla vacia legal, que si consume).");
+
+  // La MISMA casilla, ahora OCUPADA: mensaje exactamente identico.
+  const { room: occupiedRoom, target } = makeRoom({ darknessCells: ["2,0"], lineOfEffectBlockingCells: ["1,0"], targetPosition: { x: 2, y: 0, zFeet: 0 } });
+  let occupiedError = null;
+  try {
+    attackSquare(occupiedRoom, "player-blind-actor", { x: 2, y: 0, zFeet: 0 });
+  } catch (error) {
+    occupiedError = error.message;
+  }
+  assert.equal(occupiedError, emptyError, "el rechazo por Cobertura Total hacia una casilla no puede depender de la ocupacion.");
+  assert.equal(target.hpCurrent, 100);
+});
+
+test("053B.2 Correccion 3: el log publico de un fallo contra casilla OCUPADA es identico al de casilla VACIA (fallo por CA y por Concealment)", () => {
+  // Fallo por CA (1 natural, fallo automatico determinista) contra casilla ocupada en oscuridad.
+  const { room: acMissRoom, target } = makeRoom({ darknessCells: ["1,0"], targetPosition: { x: 1, y: 0, zFeet: 0 } });
+  attackSquare(acMissRoom, "player-blind-actor", { x: 1, y: 0, zFeet: 0 }, {}, 1);
+  const acMissLog = acMissRoom.log.find((entry) => entry.kind === "attack").message;
+
+  // Fallo por Concealment (CA impactada, d100=1 <= 50%) contra la misma casilla ocupada.
+  const { room: concealMissRoom } = makeRoom({ darknessCells: ["1,0"], targetPosition: { x: 1, y: 0, zFeet: 0 } });
+  attackSquare(concealMissRoom, "player-blind-actor", { x: 1, y: 0, zFeet: 0 }, { diceRoller: (sides) => (sides === 100 ? 1 : 15) });
+  const concealMissLog = concealMissRoom.log.find((entry) => entry.kind === "attack").message;
+
+  // Casilla VACIA a la misma distancia.
+  const { room: emptyRoom } = makeRoom({ darknessCells: ["1,0"], targetPosition: { x: 5, y: 5, zFeet: 0 } });
+  attackSquare(emptyRoom, "player-blind-actor", { x: 1, y: 0, zFeet: 0 });
+  const emptyLog = emptyRoom.log.find((entry) => entry.kind === "attack").message;
+
+  assert.equal(acMissLog, emptyLog, "fallo por CA y casilla vacia deben producir exactamente el mismo mensaje publico.");
+  assert.equal(concealMissLog, emptyLog, "fallo por Concealment y casilla vacia deben producir exactamente el mismo mensaje publico.");
+  assert.doesNotMatch(acMissLog, /Objetivo|contra |d20|d100|ocultaci/i, "el log publico no expone el desglose autoritativo.");
+  assert.equal(target.hpCurrent, 100);
 });
 
 test("regresion: Line of Effect sigue bloqueando antes que cualquier verificacion de Vision", () => {

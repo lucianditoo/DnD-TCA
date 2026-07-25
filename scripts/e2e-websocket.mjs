@@ -622,10 +622,14 @@ await send(gmEntangled, { type: 'sort-initiative', roomCode: entangledCode, acto
   await send(gmBlinded, { type: 'resolve-attack', roomCode: blindedCode, actorId: blindedGmId, attackerId: blindedBane.id, targetId: blindedEnemy.id, d20Roll: 15, damage: 1 });
   record('Blinded: targeting directo (targetId legado) es rechazado — debe elegir una casilla', gmBlinded.errors.some(e => /Ocultación Total.*casilla/i.test(e)), gmBlinded.errors.join(' | '));
 
+  // Sprint 053B.2 (Correccion 3, Anti-Metagaming): el log publico de un ataque por casilla es la
+  // proyeccion segura ("ataca a una casilla... El ataque falla/impacta.") — nunca el desglose
+  // real (nombre del ocupante, CA, d100), que queda solo en el estado autoritativo del servidor.
   const blindedEnemyNow = gmBlinded.room.combatants.find(c => c.id === blindedEnemy.id);
   await send(gmBlinded, { type: 'resolve-attack', roomCode: blindedCode, actorId: blindedGmId, attackerId: blindedBane.id, target: { kind: 'square', position: blindedEnemyNow.position }, d20Roll: 15, damage: 1 });
-  const blindLog = gmBlinded.room.log.find(l => /Bane.*?contra/i.test(l.message));
-  record('Blinded: servidor lanza d100 de Concealment (50%) en ataques del portador (via targeting por casilla)', !!blindLog && /falla|d100|ocultaci|Impacta/i.test(blindLog.message), blindLog?.message || 'No log found');
+  const blindLog = gmBlinded.room.log.find(l => /Bane ataca a una casilla a \d+ ft\. El ataque (falla|impacta)\./.test(l.message));
+  const blindLeakLog = gmBlinded.room.log.find(l => /Bane.*contra.*(d20|CA \d|d100)/i.test(l.message));
+  record('Blinded: ataque por casilla resuelto con proyeccion segura (sin CA/d100/nombre en el log publico)', !!blindLog && !blindLeakLog, blindLog?.message || 'No log found');
 await send(gmEntangled, { type: 'gm-apply-effect', roomCode: entangledCode, actorId: entangledGmId, targetId: entangledBane.id, effectId: 'srd_entangled' });
 record('Entangled: snapshot de red conserva la fuente declarativa', gmEntangled.room.effectInstances.some(e => e.effectId === 'srd_entangled' && e.targets.includes(entangledBane.id)), JSON.stringify(gmEntangled.room.effectInstances));
 

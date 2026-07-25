@@ -1860,13 +1860,10 @@ function traversedCellKeysBetween(ax: number, ay: number, bx: number, by: number
  * `getLineOfEffect` (Sprint 052B.1): mismo comportamiento exacto, cero cambios de lógica.
  */
 function computeSupercoverPathAssessment(
-  room: CombatRulesSnapshot<ProductionEffectId>,
-  origin: Combatant,
-  target: Combatant,
+  originCells: ReadonlyArray<{ readonly x: number; readonly y: number }>,
+  destinationCells: ReadonlyArray<{ readonly x: number; readonly y: number }>,
   blockingCellSource: ReadonlyArray<string> | undefined
 ): { readonly hasClearPath: boolean; readonly blockedCellKeys: readonly string[] } {
-  const originCells = getCombatantOccupiedCells(origin, room);
-  const destinationCells = getCombatantOccupiedCells(target, room);
   const ownCellKeys = new Set<string>([
     ...originCells.map((cell) => `${cell.x},${cell.y}`),
     ...destinationCells.map((cell) => `${cell.x},${cell.y}`)
@@ -1907,7 +1904,31 @@ export function getLineOfEffect(
   origin: Combatant,
   target: Combatant
 ): LineOfEffectAssessment {
-  const result = computeSupercoverPathAssessment(room, origin, target, room.board.lineOfEffectBlockingCells);
+  const result = computeSupercoverPathAssessment(
+    getCombatantOccupiedCells(origin, room),
+    getCombatantOccupiedCells(target, room),
+    room.board.lineOfEffectBlockingCells
+  );
+  return { hasLineOfEffect: result.hasClearPath, blockedCellKeys: result.blockedCellKeys };
+}
+
+/**
+ * Sprint 053B.2 (Corrección 2 del Blind Targeting): Line of Effect desde un combatiente hacia una
+ * CASILLA concreta, sin ningún combatiente objetivo — la legalidad geométrica de un ataque por
+ * casilla nunca puede depender de si la casilla está ocupada o no (eso filtraría información).
+ * Misma primitiva supercover y misma fuente de bloqueadores que `getLineOfEffect`; la única
+ * diferencia es que el destino es exactamente una celda en vez del footprint de un objetivo.
+ */
+export function getLineOfEffectToCell(
+  room: CombatRulesSnapshot<ProductionEffectId>,
+  origin: Combatant,
+  targetCell: Position
+): LineOfEffectAssessment {
+  const result = computeSupercoverPathAssessment(
+    getCombatantOccupiedCells(origin, room),
+    [{ x: targetCell.x, y: targetCell.y }],
+    room.board.lineOfEffectBlockingCells
+  );
   return { hasLineOfEffect: result.hasClearPath, blockedCellKeys: result.blockedCellKeys };
 }
 
@@ -1928,8 +1949,56 @@ export function getVisualPathAssessment(
   observer: Combatant,
   target: Combatant
 ): VisualPathAssessment {
-  const result = computeSupercoverPathAssessment(room, observer, target, room.board.lineOfEffectBlockingCells);
+  const result = computeSupercoverPathAssessment(
+    getCombatantOccupiedCells(observer, room),
+    getCombatantOccupiedCells(target, room),
+    room.board.lineOfEffectBlockingCells
+  );
   return { hasClearVisualPath: result.hasClearPath, blockedCellKeys: result.blockedCellKeys };
+}
+
+/**
+ * Sprint 053B.2 (Corrección 1 del Blind Targeting): decide si el targeting por casilla está
+ * justificado para este atacante hacia esta casilla — el modo casilla NUNCA es una alternativa
+ * libre al targeting directo; solo se admite cuando el atacante no puede ver el contenido de la
+ * casilla, exactamente los mismos motivos por los que el assessment final exigiría
+ * `requiresTargetSquare` contra un objetivo real allí parado:
+ *
+ * 1. Ocultación Total declarativa sobre los ataques DEL PROPIO atacante (perspectiva
+ *    `attacks_by_target`, ej. `srd_blinded`) — independiente del objetivo por definición.
+ * 2. La casilla está en oscuridad total fuera del alcance de Darkvision del atacante (mismos
+ *    datos y misma matemática que la regla 2/3 de `getVisionAssessment`, aplicada a la celda).
+ *
+ * Deliberadamente NO consulta al ocupante de la casilla: la decisión usa solo información que el
+ * atacante posee legítimamente (su propio estado + la luz del tablero + geometría), por lo que ni
+ * la aceptación ni el rechazo filtran ocupación. La ruta visual bloqueada no se evalúa aquí: con
+ * la fuente provisional compartida, ruta bloqueada implica Line of Effect bloqueada hacia la
+ * casilla, que se rechaza antes como Cobertura Total (ver `handleResolveAttackDraft`).
+ *
+ * La luz tenue no justifica el modo casilla: es Ocultación parcial (20%) con
+ * `directTargetingAllowed === true`, igual que contra un objetivo real.
+ */
+export function isSquareTargetingJustified(
+  room: CombatRulesSnapshot<ProductionEffectId>,
+  attacker: Combatant,
+  square: Position
+): boolean {
+  const attackerEffectConcealment = EffectReducer.reduceConcealmentContributions({
+    effectInstances: room.effectInstances,
+    catalog: effectsCatalog,
+    targets: [{ targetId: attacker.id, perspective: "attacks_by_target" }]
+  });
+  if (attackerEffectConcealment.kind === "total") return true;
+
+  const squareKey = `${square.x},${square.y}`;
+  if ((room.board.darknessCells ?? []).includes(squareKey)) {
+    const darkvisionFeet = attacker.intrinsicPerception?.darkvisionFeet ?? 0;
+    const distance = distanceFeet(attacker.position, square, room.board.cellSizeFeet);
+    const withinDarkvisionRange = darkvisionFeet > 0 && distance <= darkvisionFeet;
+    if (!withinDarkvisionRange) return true;
+  }
+
+  return false;
 }
 
 /**

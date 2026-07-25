@@ -7,10 +7,11 @@
 ## Estado actual
 
 - Rama de integración: `master`.
-- Última vertical funcional integrada: Sprint 053B.1, revisión de Vision e
-  iluminación básica.
-- Último saneamiento documental: Sprint 054A.
-- Baseline funcional publicada: 544/544 pruebas unitarias, 100/100 aserciones
+- Última vertical funcional integrada: Sprint 053B.2, corrección del Blind
+  Targeting (modo casilla solo justificado por Vision, Line of Effect hacia
+  la casilla independiente de ocupación, proyección pública indistinguible).
+- Último saneamiento documental: Sprint 054C.
+- Baseline funcional publicada: 547/547 pruebas unitarias, 100/100 aserciones
   WebSocket y 7/7 escenarios Playwright; typecheck y build verdes.
 - GitHub Actions sobre Windows es el gate canónico de cierre para la revisión
   publicada.

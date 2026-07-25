@@ -1,4 +1,4 @@
-import { applyDamage, canFullAttack, canStandardAttack, consumeInventoryQuantity, distanceFeet, getCombatantOccupiedCells, getConcealmentAssessment, getEquippedWeaponEntry, getLineOfEffect, lifeStatus, makeLog, createCombatRulesSnapshot, resolveEquippedWeaponProfile, validateAttackAmmunition, type AttackTarget, type ClientCommand, type Combatant, type CombatRoom, type AttackThreatState, type CombatRulesSnapshot, type DamageBundle, type Position, type ProductionEffectId } from "@dnd-tactical/shared";
+import { applyDamage, canFullAttack, canStandardAttack, consumeInventoryQuantity, distanceFeet, getCombatantOccupiedCells, getConcealmentAssessment, getEquippedWeaponEntry, getLineOfEffect, getLineOfEffectToCell, isSquareTargetingJustified, lifeStatus, makeLog, createCombatRulesSnapshot, resolveEquippedWeaponProfile, validateAttackAmmunition, type AttackTarget, type ClientCommand, type Combatant, type CombatRoom, type AttackThreatState, type CombatRulesSnapshot, type DamageBundle, type Position, type ProductionEffectId } from "@dnd-tactical/shared";
 import { requireCombatantControl, requireTurnControl } from "../auth/control.js";
 import { attackRangeFeet, resolveAttack, resolveCriticalConfirmation, resolveWeaponAttackSource } from "../combat/attackResolver.js";
 import { applyStartOfNextTurnBuff } from "../combat/buffRules.js";
@@ -115,6 +115,25 @@ function handleResolveAttackDraft(room: CombatRoom, command: Extract<ClientComma
 
   const currentAttack = routine[room.currentTurn.attacksMade];
 
+  if (square !== null) {
+    // Sprint 053B.2 (Corrección 2): la legalidad geométrica de un ataque por casilla se evalúa
+    // contra la CASILLA, antes y con independencia total de si hay una criatura en ella — la
+    // misma posición produce exactamente el mismo veredicto (y el mismo mensaje) esté ocupada o
+    // vacía, para que ni la aceptación ni el rechazo filtren ocupación.
+    const squareLineOfEffect = getLineOfEffectToCell(snapshot, attacker, square);
+    if (!squareLineOfEffect.hasLineOfEffect) {
+      throw new Error("Cobertura Total: " + attacker.name + " no tiene línea de efecto hacia la casilla elegida.");
+    }
+
+    // Sprint 053B.2 (Corrección 1): el modo casilla no es un bypass — solo se admite cuando el
+    // atacante no puede ver el contenido de la casilla (su propia Ocultación Total declarativa,
+    // ej. Blinded, u oscuridad total fuera de su Darkvision). La decisión usa únicamente
+    // información que el atacante posee legítimamente; nunca consulta al ocupante.
+    if (!isSquareTargetingJustified(snapshot, attacker, square)) {
+      throw new Error(attacker.name + " puede ver esa casilla con claridad: debe usar targeting directo por objetivo.");
+    }
+  }
+
   if (target === null) {
     // Sprint 053B (Blind Targeting, NDD §13.7/§13.8): casilla elegida sin ningún combatiente
     // atacable. Consume el intento de ataque, la acción y la munición exactamente igual que un
@@ -127,7 +146,9 @@ function handleResolveAttackDraft(room: CombatRoom, command: Extract<ClientComma
   // tirada/consumo/mutación. Ausencia de Line of Effect = Total Cover = el ataque no puede
   // intentarse en absoluto (distinto de Cover por criatura, que solo aporta +4 CA y no bloquea
   // el intento). Ver docs/designs/vision-and-line-of-effect-architecture.md y
-  // docs/designs/terrain-cover-line-of-effect-decision.md.
+  // docs/designs/terrain-cover-line-of-effect-decision.md. Para el modo casilla este gate ya
+  // ocurrió arriba contra la celda elegida (y esa celda pertenece al footprint del ocupante, por
+  // lo que este segundo chequeo nunca puede divergir del primero).
   const lineOfEffect = getLineOfEffect(snapshot, attacker, target);
   if (!lineOfEffect.hasLineOfEffect) {
     throw new Error(target.name + " tiene Cobertura Total: " + attacker.name + " no tiene línea de efecto hacia el objetivo.");
@@ -147,9 +168,23 @@ function handleResolveAttackDraft(room: CombatRoom, command: Extract<ClientComma
     }
   }
 
-  const attackDistance = attackRangeFeet(snapshot, attacker, target);
-  const attackType = getWeaponAttackTypeForTarget(snapshot, attacker, target);
+  // Sprint 053B.2 (Corrección 3): en modo casilla, distancia y tipo de ataque se derivan de la
+  // CASILLA elegida (no del footprint del ocupante) — exactamente igual que en el camino de
+  // casilla vacía (`resolveBlindSquareMiss`). Si difirieran (ej. footprint Large con una celda
+  // más cercana), el consumo de munición, el chequeo de alcance o el log de distancia serían
+  // distinguibles entre casilla ocupada y vacía, filtrando ocupación.
+  const attackDistance = square !== null
+    ? distanceFeet(attacker.position, square, room.board.cellSizeFeet)
+    : attackRangeFeet(snapshot, attacker, target);
+  const attackType = square !== null
+    ? getWeaponAttackTypeForPosition(attacker, attackDistance)
+    : getWeaponAttackTypeForTarget(snapshot, attacker, target);
   const source = resolveWeaponAttackSource(attacker, attackType);
+  if (square !== null && attackDistance > source.maxRangeFeet) {
+    // Mismo mensaje exacto que el camino de casilla vacía — el rechazo por alcance nunca revela
+    // ocupación (jamás menciona al ocupante ni usa el mensaje con nombre del camino directo).
+    throw new Error("La casilla elegida esta fuera del alcance de " + attacker.name + " (maximo " + source.maxRangeFeet + " ft).");
+  }
   const weaponEntry = getEquippedWeaponEntry(attacker);
   const ammunition = attackType === "ranged" ? validateAttackAmmunition(attacker, weaponEntry) : { ok: true as const, value: { required: false, availableQuantity: 0 } };
   if (!ammunition.ok || !ammunition.value) throw new Error(ammunition.error ?? "No hay munición disponible.");
@@ -228,8 +263,10 @@ function handleResolveAttackDraft(room: CombatRoom, command: Extract<ClientComma
     return;
   }
 
-  // Apply mutations for non-threat attack
-  applyAttackMutations(room, attacker, target, rolls.d20Roll, attackDistance, attackLabel, result);
+  // Apply mutations for non-threat attack. Sprint 053B.2 (Corrección 3): en modo casilla el log
+  // público usa la proyección segura (idéntica al camino de casilla vacía) — el detalle real
+  // (nombre, CA, d100) queda solo en el estado autoritativo del servidor.
+  applyAttackMutations(room, attacker, target, rolls.d20Roll, attackDistance, attackLabel, result, { blindSquareLog: square !== null });
 
   checkCombatOutcome(room);
   pruneInvalidOpportunityAttacks(room);
@@ -443,7 +480,7 @@ export function handleResolveOpportunityAttack(room: CombatRoom, command: Extrac
   broadcast(room);
 }
 
-export function applyAttackMutations(room: CombatRoom, attacker: ReturnType<typeof findCombatant>, target: ReturnType<typeof findCombatant>, d20Roll: number, range: number, label: string, result: ReturnType<typeof resolveAttack>) {
+export function applyAttackMutations(room: CombatRoom, attacker: ReturnType<typeof findCombatant>, target: ReturnType<typeof findCombatant>, d20Roll: number, range: number, label: string, result: ReturnType<typeof resolveAttack>, logOptions?: { blindSquareLog?: boolean }) {
   attacker.stats.attacksMade += 1;
   if (label === "ataque de oportunidad") {
     attacker.stats.opportunityAttacksMade += 1;
@@ -453,17 +490,27 @@ export function applyAttackMutations(room: CombatRoom, attacker: ReturnType<type
   if (result.hits) attacker.stats.hits += 1;
   else attacker.stats.misses += 1;
 
-  const hitSuffix = result.concealment.missed
-    ? `La tirada alcanza la CA, pero falla por ocultacion ${result.concealment.assessment.kind === "total" ? "total" : "parcial"} (${result.concealment.assessment.missChancePercent}%; d100 ${result.concealment.d100Roll}).`
-    : result.isNatural20 && result.hits
-    ? "¡Impacto automático! (20 natural)."
-    : result.isNatural1
-    ? "Falla automática (1 natural)."
-    : result.hits
-    ? "Impacta por " + (result.totalAttack - (result.targetArmorClass ?? 10)) + "."
-    : "Falla.";
+  if (logOptions?.blindSquareLog) {
+    // Sprint 053B.2 (Corrección 3, Anti-Metagaming — NDD §13.8, Payload seguro): el log público
+    // de un ataque por casilla no revela contra quién se resolvió, ni si el fallo fue por CA o
+    // por Concealment — es estructuralmente idéntico, palabra por palabra, al log del camino de
+    // casilla vacía. Un impacto sí revela presencia (el daño es una consecuencia observable
+    // legítima); un fallo nunca revela nada. El desglose real (d20, CA, d100, nombre) permanece
+    // solo en el estado autoritativo del servidor.
+    room.log.unshift(makeLog("attack", attacker.name + " ataca a una casilla a " + range + " ft. El ataque " + (result.hits ? "impacta" : "falla") + "."));
+  } else {
+    const hitSuffix = result.concealment.missed
+      ? `La tirada alcanza la CA, pero falla por ocultacion ${result.concealment.assessment.kind === "total" ? "total" : "parcial"} (${result.concealment.assessment.missChancePercent}%; d100 ${result.concealment.d100Roll}).`
+      : result.isNatural20 && result.hits
+      ? "¡Impacto automático! (20 natural)."
+      : result.isNatural1
+      ? "Falla automática (1 natural)."
+      : result.hits
+      ? "Impacta por " + (result.totalAttack - (result.targetArmorClass ?? 10)) + "."
+      : "Falla.";
 
-  room.log.unshift(makeLog("attack", attacker.name + " realiza " + label + " contra " + target.name + " a " + range + " ft. d20 " + d20Roll + " + ataque " + result.attackBonusTotal + " (" + result.attackParts.join(", ") + ") = " + result.totalAttack + " contra CA " + result.targetArmorClass + " (" + result.acParts.join(", ") + "). " + hitSuffix));
+    room.log.unshift(makeLog("attack", attacker.name + " realiza " + label + " contra " + target.name + " a " + range + " ft. d20 " + d20Roll + " + ataque " + result.attackBonusTotal + " (" + result.attackParts.join(", ") + ") = " + result.totalAttack + " contra CA " + result.targetArmorClass + " (" + result.acParts.join(", ") + "). " + hitSuffix));
+  }
 
   if (result.consumedAttackerAidId) attacker.buffs = attacker.buffs.filter((b) => !(b.aidChoice === "attack" && b.aidTargetId === result.consumedAttackerAidId));
   if (result.consumedTargetAidId) target.buffs = target.buffs.filter((b) => !(b.aidChoice === "ac" && b.aidTargetId === result.consumedTargetAidId));
