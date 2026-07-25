@@ -10,7 +10,11 @@ Este archivo contiene las reglas y el flujo de desarrollo no negociables para cu
 
 ## 2. Flujo de Desarrollo (Obligatorio)
 
-### FASE 0: Lectura previa (pirámide documental — Sprint 054B)
+### FASE 0: Reader Pipeline (lectura previa obligatoria — Sprints 054B/054C)
+
+**Regla metodológica permanente: ningún agente puede comenzar una tarea sin
+completar el Reader Pipeline.** No es una recomendación informal — es la
+primera fase del flujo obligatorio, al mismo nivel que el DoD.
 
 Antes de la Fase 1, todo agente ejecuta este flujo exacto (la política que lo
 justifica vive en `GOVERNANCE.md` §6.3):
@@ -36,6 +40,26 @@ justifica vive en `GOVERNANCE.md` §6.3):
 
 No leer en el flujo normal: `docs/archive/` ni NDD de verticales ajenas a la
 tarea (`GOVERNANCE.md` §6.3).
+
+#### Reader Matrix por tipo de tarea (Sprint 054C)
+
+P0 (`GOVERNANCE.md` + este archivo) y P1 (`PROJECT_STATUS.md` + `TODO.md` +
+`walkthrough.md`) son obligatorios **siempre**; la matriz define únicamente
+las lecturas adicionales según el tipo de tarea. Nada fuera de la fila
+aplicable se lee salvo que la propia tarea lo requiera con evidencia.
+
+| Tipo de tarea | Nivel típico | Lecturas adicionales obligatorias |
+|---|---|---|
+| **Nueva regla/feature SRD** | C/D | `docs/rules/registry.md` (fila afectada); NDD de la vertical (o crearlo en Fase 2); ADR del área si toca infraestructura decidida; `docs/audits/combat-rules-deviations.md` si diverge del SRD; `.ai/coverage/*_PHB_CHECKLIST.md` si cubre un ítem del Master Plan |
+| **Bugfix** | B/C | Archivo(s) afectado(s) y el test que reproduce el bug; NDD de la vertical solo si el bug contradice el diseño; `docs/technical-debt.md` si la deuda ya está registrada |
+| **Auditoría** | A/D | Lo que defina el prompt de auditoría; por defecto: `docs/rules/registry.md` + `docs/testing/master-coverage.md` + `docs/technical-debt.md` + `INDEX.md`; `docs/archive/` solo si investiga historia |
+| **Documentación** | A | `INDEX.md` + los documentos afectados; `GOVERNANCE.md` §6.5-§6.6 si crea o reclasifica documentos |
+| **Arquitectura/Infraestructura** | D | ADR del área + `docs/architecture/` del subsistema afectado + NDD de las verticales impactadas |
+| **Testing** | B/C | `docs/testing/master-coverage.md` + los tests afectados; NDD de la vertical si los casos derivan del diseño |
+
+La matriz es una guía de mínimos, no un techo: si durante la tarea aparece
+evidencia de que otro documento es relevante, se lee. Lo prohibido es lo
+inverso — abrir decenas de documentos "por las dudas".
 
 **Governance v2 (Sprint 052)**: el rigor de las fases 2-3 es proporcional al
 **Nivel de cambio** del sprint (`GOVERNANCE.md` §5.2 — A/B/C/D). Nivel A/B

@@ -257,6 +257,50 @@ elimina si ya no aporta). Un agente nunca "promedia" dos documentos en
 conflicto: aplica la norma de evidencia primero — se detiene y reporta la
 contradicción si afecta la tarea en curso.
 
+#### 6.2.1 Ficha de responsabilidad de los documentos troncales (Sprint 054C)
+
+Para los nueve documentos troncales, la responsabilidad queda cerrada en
+cuatro ejes: qué responde, qué **no** responde, cuándo se modifica (este eje
+es su ciclo de actualización oficial — no existe otro disparador válido), y
+su consumidor principal.
+
+| Documento | Responde | NO responde | Se modifica únicamente cuando | Consumidor principal |
+|---|---|---|---|---|
+| `GOVERNANCE.md` | Principios, políticas, niveles de cambio, metodología documental | Estado actual, pendientes, pasos operativos concretos | Cambia la gobernanza misma (sprint dedicado) | Todo agente (P0) |
+| `.agents/AGENTS.md` | Fases operativas, Reader Pipeline, DoD | Principios (el "porqué"), estado, planificación | Cambia el flujo operativo o el DoD | Todo agente (P0) |
+| `PROJECT_STATUS.md` | Estado actual del proyecto (fase, baseline, hitos) | Qué falta (TODO), orden futuro (ROADMAP), detalle de reglas (Registry) | Termina un sprint que cambia el estado | Agentes (P1) y humanos que quieren la foto |
+| `ROADMAP.md` | Qué sigue y en qué orden tentativo | Estado actual, detalle de tareas por sprint | Cambia la planificación (épica cerrada, reorden, recomendación nueva) | Usuario/planificación; agentes solo si la tarea planifica |
+| `TODO.md` | Qué está pendiente y qué se completó, por sprint | El porqué (NDD) y la narrativa de estado (PROJECT_STATUS) | Cambia el trabajo pendiente (apertura/cierre de sprint) | Agentes (P1) |
+| `docs/rules/registry.md` | Qué reglas de D&D existen, en qué estado real, con qué evidencia | Cómo se diseñaron (NDD); cobertura PHB ítem a ítem (`.ai/coverage/`) | Cambia el estado real de una regla, verificado contra código y tests | Sprints Nivel C/D; Architecture Review |
+| `docs/testing/master-coverage.md` | Qué evidencia de pruebas existe por cierre | Estado de reglas (Registry); cobertura normativa PHB | Un cierre altera la evidencia (tests nuevos/cambiados/conteos) | Architecture Review; auditorías |
+| `walkthrough.md` | Qué hizo exactamente el último sprint cerrado y cómo se validó | Historia de sprints previos (Git) y estado global | Se **reescribe por completo** al cerrar una implementación; nunca se edita incrementalmente | El siguiente agente (P1); Architecture Review |
+| `INDEX.md` | Dónde vive cada responsabilidad | Ningún contenido — solo localiza | Se crea, reemplaza o archiva un documento (en el mismo commit) | Cualquier agente (P2) |
+
+Si una necesidad de escritura no coincide con la columna "Se modifica
+únicamente cuando" de ningún documento, eso es señal de que el contenido no
+pertenece a ninguno de los nueve — aplicar el flujo de creación (§6.6) antes
+de forzarlo dentro del documento equivocado.
+
+#### 6.2.2 Clasificación operativa vigente (Sprint 054C)
+
+Con §6.2/§6.4 aplicadas, la clasificación queda cerrada así:
+
+- **SSOT (canónicos)**: `GOVERNANCE.md`, `.agents/AGENTS.md`, `INDEX.md`,
+  `docs/rules/registry.md`, cada NDD respecto de su vertical, `docs/adr/`,
+  `docs/technical-debt.md`, `docs/testing/master-coverage.md`,
+  `.ai/coverage/` (granularidad PHB), y los snapshots vivos
+  `PROJECT_STATUS.md`/`TODO.md`/`ROADMAP.md` respecto de su pregunta única.
+- **Derivados** (pierden ante su canónico): `README.md`, `.ai/README.md`,
+  `.ai/WORKFLOW.md`, `.ai/FILE_INDEX.md`, `CODEX_GUIDE.md`,
+  `ARCHITECTURE.md`, `RULES_ENGINE.md`, `COMBAT_FLOW.md` y el resto de `.ai/`.
+- **Históricos**: `docs/archive/**` y las auditorías de sprint ya cerradas.
+- **Temporales**: `implementation_plan.md` en raíz durante su sprint.
+
+Las ambigüedades detectadas al aplicar esta clasificación están registradas,
+sin resolver, como deuda documental **DT-023** en `docs/technical-debt.md`
+(§6.7(c)); su resolución pertenece a la próxima auditoría documental, no a
+este sprint.
+
 **Riesgo señalado para la próxima auditoría documental** (no se corrige en
 este sprint): `RULES_ENGINE.md` y `CODEX_GUIDE.md` solapan parcialmente la
 responsabilidad de `docs/rules/registry.md` y `PROJECT_STATUS.md`; `README.md`,
@@ -264,7 +308,14 @@ responsabilidad de `docs/rules/registry.md` y `PROJECT_STATUS.md`; `README.md`,
 tabla de fuentes canónicas está duplicada en `INDEX.md` y `.ai/README.md`.
 La próxima auditoría (§6.6) debe consolidar cada caso aplicando §2.
 
-### 6.3 Pirámide de lectura
+### 6.3 Pirámide de lectura (Reader Pipeline)
+
+**Nombre oficial**: esta pirámide, ejecutada en orden, es el **Reader
+Pipeline** del proyecto. **Regla metodológica permanente (Sprint 054C):
+ningún agente puede comenzar una tarea sin completar el Reader Pipeline.**
+No es una recomendación: es parte del flujo obligatorio (Fase 0 de
+`.agents/AGENTS.md`, donde vive su forma operativa y la Reader Matrix por
+tipo de tarea).
 
 Leerlo todo es tan dañino como no leer nada: consume contexto (agentes) o
 tiempo (humanos) y diluye lo obligatorio. La lectura se organiza en niveles;
@@ -412,7 +463,22 @@ descarta porque desacopla la auditoría del trabajo real (una épica de 6
 sprints quedaría sin auditar; diez sprints Nivel A no generan deriva que
 justifique el costo) — mismo razonamiento con el que §5.6 rechazó la cadencia
 fija para auditorías arquitectónicas. La salvaguarda de ~15 sprints de §5.6
-aplica igualmente a la deriva documental.
+aplica igualmente a la deriva documental. Reevaluada en Sprint 054C con el
+mismo veredicto.
+
+**Resumen de tres niveles (Sprint 054C)** — la política completa de revisión
+periódica del proyecto queda así:
+
+1. **Cada sprint**: Architecture Review sobre el commit pusheado (§5.3-§5.4)
+   más el gate documental de cierre proporcional al Nivel de cambio
+   (`.agents/AGENTS.md` §4.5.1). Ninguna excepción.
+2. **Cada épica/vertical grande cerrada**: Architectural Audit Sprint
+   integral — código, documentación y gobernanza en el mismo sprint (§5.6),
+   con la fase documental obligatoria de esta sección.
+3. **Disparadores extraordinarios**: Release etiquetada, cambio de la propia
+   gobernanza, o detección de responsabilidad duplicada (los disparadores
+   (a)-(c) del punto 2 de esta sección) — sin esperar al cierre de la épica
+   en curso.
 
 ### 6.8 Veredicto: ¿"Sistema Operativo del Proyecto"?
 

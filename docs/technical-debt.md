@@ -275,7 +275,7 @@ este índice no lo repite:
 [DT-013](#dt-013) · [DT-014](#dt-014) · [DT-015](#dt-015) ·
 [DT-016](#dt-016) · [DT-017](#dt-017) · [DT-018](#dt-018) ·
 [DT-019](#dt-019) · [DT-020](#dt-020) · [DT-021](#dt-021) ·
-[DT-022](#dt-022)
+[DT-022](#dt-022) · [DT-023](#dt-023)
 
 ---
 
@@ -379,3 +379,25 @@ Correr y Retirada; no ramificar por `effectId`.
 **Módulo afectado**: `packages/shared/src/effects/contracts.ts` (tipo `onStack`), `packages/shared/src/effects/manager.ts` (`EffectManager.add`, `severityChain`), `packages/shared/src/effects/catalog.ts` (`srd_fatigued.upgradeTo`, nueva entrada `srd_exhausted`). Tests: `tests/active-effects.test.mjs` (7 casos nuevos de stacking), `tests/exhausted-condition.test.mjs`, comentario corregido en `tests/conditions-v3.test.mjs`.
 
 **Bloqueaba MVP**: no bloqueaba el MVP, pero dejaba sin protección real cualquier condición reaplicada (Prone, Fatigued, y cualquier futura condición con `onStack`) — ahora resuelto de forma genérica, no solo para Exhausted.
+
+---
+
+<a id="dt-023"></a>
+### DT-023: Deuda documental — ambigüedades de responsabilidad detectadas en la clasificación de Sprint 054C
+
+**Descripción**: al aplicar la clasificación operativa SSOT/Derivado/Histórico/Temporal (`GOVERNANCE.md` §6.2.2, Sprint 054C) sobre el corpus documental, se detectaron las siguientes ambigüedades. Por alcance explícito del sprint, se registran **sin resolver** — no se eliminó, movió ni renombró ningún documento:
+
+1. **`RULES_ENGINE.md`** solapa parcialmente la responsabilidad de `docs/rules/registry.md` ("reglas implementadas y pendientes") y de `PROJECT_STATUS.md`. Como vista derivada, pierde ante ambos en conflicto, pero su existencia exige mantenimiento por sprint — candidata a consolidación o reducción a puntero.
+2. **`CODEX_GUIDE.md`** solapa `PROJECT_STATUS.md` (estado/features) y `ARCHITECTURE.md` (organización técnica). `README.md` lo presenta como "guía principal del proyecto", lo que compite con la puerta de entrada oficial del Reader Pipeline.
+3. **Tres órdenes de lectura distintos** conviven: `README.md` ("Empieza por leer" con 7 documentos), `.ai/README.md` ("Orden de lectura" propio) e `INDEX.md`. Ninguno coincide exactamente con el Reader Pipeline oficial (P0→P1, `.agents/AGENTS.md` Fase 0); deben quedar como punteros al pipeline, no como órdenes paralelos.
+4. **Tabla de fuentes canónicas duplicada** en `INDEX.md` y `.ai/README.md` — dos copias casi idénticas de la misma tabla, riesgo directo de divergencia (violación latente de `GOVERNANCE.md` §2.1).
+5. **`.agents/AGENTS.md` §3** exige actualizar `CODEX_GUIDE.md`, `ARCHITECTURE.md` y `RULES_ENGINE.md` en cada funcionalidad importante, pese a que §6.2.2 los clasifica como vistas derivadas — tensión entre el costo de mantenimiento por sprint y su condición de derivadas (`GOVERNANCE.md` §6.6, paso 5).
+6. **`.ai/WORKFLOW.md`** re-narra las fases de `AGENTS.md` con detalle propio (no es un mero enlace); como derivada con contenido extenso, es el punto de divergencia más probable cada vez que cambie el flujo — ya requirió sincronización manual en Sprints 052/054B.
+
+**Riesgo**: bajo — ninguna ambigüedad afecta código ni reglas; el riesgo es deriva documental futura y confusión de onboarding, exactamente lo que la metodología de §6 busca prevenir.
+
+**Módulo afectado**: solo documentación (`RULES_ENGINE.md`, `CODEX_GUIDE.md`, `README.md`, `.ai/README.md`, `.ai/WORKFLOW.md`, `INDEX.md`, `.agents/AGENTS.md` §3).
+
+**Recomendación**: resolver en la próxima auditoría documental (`GOVERNANCE.md` §6.7) aplicando Migration First (§2.4) caso por caso: consolidar o reducir a puntero las derivadas con solapamiento, dejar un único orden de lectura (el Reader Pipeline) y una única tabla de fuentes canónicas (en `INDEX.md`). No resolver de forma incremental en sprints funcionales.
+
+**Bloquea MVP**: No.
