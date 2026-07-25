@@ -10,6 +10,33 @@ Este archivo contiene las reglas y el flujo de desarrollo no negociables para cu
 
 ## 2. Flujo de Desarrollo (Obligatorio)
 
+### FASE 0: Lectura previa (pirámide documental — Sprint 054B)
+
+Antes de la Fase 1, todo agente ejecuta este flujo exacto (la política que lo
+justifica vive en `GOVERNANCE.md` §6.3):
+
+1. **Precondition gate de repositorio**: `git status`, rama, HEAD,
+   `git diff --check`, sincronía con `origin/master`. Ante un estado
+   inesperado, detenerse y reportar antes de leer nada más.
+2. **P0**: `GOVERNANCE.md` + este archivo — cómo se trabaja.
+3. **P1**: `PROJECT_STATUS.md` + `TODO.md` + `walkthrough.md` — desde dónde
+   se trabaja y qué hizo el último cierre.
+4. **Clasificar el Nivel de cambio** (`GOVERNANCE.md` §5.2, A/B/C/D) — el
+   nivel determina qué lecturas P3 son obligatorias y qué rigor exigen las
+   Fases 2-3.
+5. **Identificar la vertical afectada** y leer solo su P3: NDD
+   correspondiente; `docs/rules/registry.md` si afecta reglas (C/D); ADR del
+   área si toca infraestructura decidida; `docs/technical-debt.md` si toca
+   deuda registrada.
+6. **Regla de contradicción**: si dos documentos (o un documento y el código)
+   se contradicen en algo que afecta la tarea, detenerse y presentar la
+   evidencia — nunca elegir silenciosamente una interpretación ni improvisar
+   una tercera.
+7. Recién entonces comienza la Fase 1.
+
+No leer en el flujo normal: `docs/archive/` ni NDD de verticales ajenas a la
+tarea (`GOVERNANCE.md` §6.3).
+
 **Governance v2 (Sprint 052)**: el rigor de las fases 2-3 es proporcional al
 **Nivel de cambio** del sprint (`GOVERNANCE.md` §5.2 — A/B/C/D). Nivel A/B
 puede resumir diseño y plan dentro del propio commit/PR sin un NDD dedicado;
@@ -104,6 +131,30 @@ Toda la documentación afectada debe quedar sincronizada. Revisar automáticamen
 
 ### 4.5 Auditoría
 Antes de cerrar una tarea se debe verificar que el código y la documentación describan exactamente el mismo sistema. No deben existir documentos contradictorios y el backlog debe estar actualizado.
+
+### 4.5.1 Gate documental de cierre (Sprint 054B — verificación manual)
+
+Al cerrar todo sprint, además del DoD técnico, el agente verifica y deja
+constancia (en `walkthrough.md` o el commit) de:
+
+1. **Enlaces**: los enlaces internos de los documentos tocados resuelven a
+   archivos existentes.
+2. **Responsabilidad única**: el sprint no dejó dos documentos respondiendo
+   la misma pregunta (`GOVERNANCE.md` §6.2); si creó un documento, siguió el
+   flujo de creación (`GOVERNANCE.md` §6.6) y agregó su fila a `INDEX.md`.
+3. **Registry consistente**: toda Rule ID citada por el sprint existe en
+   `docs/rules/registry.md` con el estado que el código y los tests realmente
+   demuestran.
+4. **Snapshots sincronizados**: `PROJECT_STATUS.md`/`TODO.md`/afectados
+   reflejan el cierre; `walkthrough.md` fue reescrito para este sprint.
+5. **Encabezado**: los documentos permanentes nuevos o reescritos incluyen el
+   encabezado estándar (`GOVERNANCE.md` §6.5).
+
+Estas verificaciones son hoy manuales y de alcance proporcional al Nivel de
+cambio (un sprint Nivel A que tocó dos archivos revisa esos dos, no el corpus
+entero). Su automatización (validador de enlaces, detector de duplicados,
+consistencia de Registry) queda diseñada como candidata a tooling futuro y
+fuera de alcance hasta su propio sprint.
 
 ### 4.6 Entrega Final Obligatoria (Governance v2)
 El detalle completo (archivos modificados, tests agregados/modificados,
