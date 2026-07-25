@@ -5,8 +5,11 @@
 **Estado:** NDD histórico aprobado e implementado. Sprint 052B/052B.1 cerró
 Line of Effect y Sprint 053B cerró la primera vertical funcional de Vision.
 La revisión arquitectónica 053B.1 corrigió la aplicación del alcance de
-Darkvision también en luz tenue y aprobó la integración publicada. Las Rule
-IDs y sus estados vigentes viven exclusivamente en
+Darkvision también en luz tenue y Sprint 053B.2 cerró tres defectos del
+Blind Targeting. Sprint 055A (§14) es una auditoría y diseño normativo —
+sin código — sobre la interacción de Vision/Concealment con Ataques de
+Oportunidad; su alcance de implementación (055B) requiere `Proceed`
+independiente. Las Rule IDs y sus estados vigentes viven exclusivamente en
 `docs/rules/registry.md`.
 
 **Precondition gate (Sprint 051.1)**: rama `master`, HEAD
@@ -471,7 +474,7 @@ No attack roll
 1. ¿La capacidad de visión (Visión en la Oscuridad/Penumbra) vive en `Combatant` directamente o en un catálogo nuevo análogo a `SizeRulesCatalog`? Ambas opciones reutilizan el patrón fuente→proyección; ninguna se decide aquí.
 2. ¿Granularidad de datos de luz: por celda (`Board.dimLightCells`/`darknessCells`, análogo a `difficultTerrainCells`) o por zona/polígono traducida a celdas en el snapshot?
 3. ¿`getLineOfEffect` debe considerar criaturas como obstrucción parcial, o el bloqueo por criaturas queda exclusivamente en `getAttackLineInterception` (Cover)? La lectura SRD más simple sugiere que Total Cover es sobre terreno/objetos, no sobre criaturas, pero no se cierra aquí. **Resuelto en Sprint 052B**: `getLineOfEffect` consulta únicamente `lineOfEffectBlockingCells` (terreno/objetos); el bloqueo por criaturas interpuestas queda exclusivamente en `getAttackLineInterception`/Cover, sin solapamiento entre ambas mecánicas.
-4. ¿Cómo interactúan `threatensTarget`/AdO con Total Cover? (Ej.: ¿un enemigo detrás de un muro sólido puede amenazar/flanquear?) Fuera de alcance de este documento, pero el diseño de implementación deberá decidir explícitamente si lo deja fuera o lo cierra.
+4. ¿Cómo interactúan `threatensTarget`/AdO con Total Cover? (Ej.: ¿un enemigo detrás de un muro sólido puede amenazar/flanquear?) Fuera de alcance de este documento, pero el diseño de implementación deberá decidir explícitamente si lo deja fuera o lo cierra. **Cerrado en Sprint 055A** — ver §14: `threatensTarget`/AdO deben exigir Line of Effect (no basta reach/geometría); ver la Corrección propuesta §14.4 y el gap real confirmado en §14.2.
 5. ¿La forma declarativa de "zona de luz reducida" anclada a `targetCells` necesita su propio bloque en `EffectDefinition` (análogo a `hazard`) o basta una extensión mínima de `EnvironmentalHazard`?
 6. **Geometría de Line of Effect / Line of Sight contra footprints multicasilla (gate de diseño previo a implementación, no un detalle a resolver durante el código)**: debe auditarse y decidirse explícitamente, con respaldo normativo y casos de prueba geométricos, antes de que Sprint 052 (o el sprint que implemente LoE) toque código, al menos:
    - cómo se evalúa LoE/LoS cuando el origen y/o el objetivo son criaturas Large o mayores (footprint multicasilla);
@@ -1458,3 +1461,497 @@ No crear variantes de la Rule ID (ej. nada de `-V2`, `-DARKNESS`,
 `-DARKVISION` por separado) — una única regla oficial estable, con su
 alcance Parcial documentado en la misma fila, siguiendo la política ya
 fijada en Sprint 044.1.
+
+## 14. Sprint 055A — Ataques de Oportunidad bajo Concealment y Vision (Solo Diseño)
+
+**Estado**: auditoría y diseño normativo, sin código. Cierra el punto 4 de
+§8 ("Preguntas abiertas"), dejado explícitamente fuera de alcance en
+Sprint 051. Sprint 055B requiere `Proceed` independiente.
+
+### 14.1. Auditoría normativa SRD (con cita exacta)
+
+Fuente: `combat/08_ataques_de_oportunidad.txt` y `combat/10_modificadores_de_combate.txt` (corpus normativo local, reproducción fiel del SRD 3.5 ya usada como fuente de verdad por el resto de este documento y por `docs/audits/combat-rules-deviations.md`).
+
+**Cita 1 (amenaza — es física, no perceptiva)**, `08_ataques_de_oportunidad.txt`:
+> "Casillas amenazadas: amenazas todas las casillas en las cuales puedes realizar un ataque de cuerpo a cuerpo, aunque esa no sea tu acción... Si no tienes armas, normalmente no amenazas ninguna casilla."
+
+Amenazar se define en términos de **capacidad física** de atacar cuerpo a
+cuerpo (arma, alcance, tener manos libres o un arma natural) — no menciona
+percepción del ocupante en ningún momento.
+
+**Cita 2 (Cover bloquea el intento de AdO, no solo la CA)**, mismo archivo:
+> "Cobertura y ataques de oportunidad: no puedes realizar un ataque de oportunidad contra un oponente que tenga cobertura respecto a ti."
+
+Esta es una regla **más estricta que para ataques normales**: contra un
+ataque normal, Cover solo aporta +4 CA (no bloquea el intento — ver
+`DEFENSE-COVER`); contra un AdO, **cualquier** Cover (no solo Total Cover/
+ausencia de Line of Effect) bloquea el intento por completo.
+
+**Cita 3 (Ocultación Total bloquea el AdO, categóricamente, sin importar
+localización)**, `10_modificadores_de_combate.txt`:
+> "Ocultación total: si tienes una línea de efecto hasta un objetivo, pero no línea visual (por ejemplo, si el blanco está en la oscuridad total o es invisible, o tú estás cegado), se considera que tiene cobertura total respecto a ti. No puedes atacar a un oponente que tenga ocultación total, aunque puedes atacar la casilla que creas que ocupa... **No puedes realizar un ataque de oportunidad contra un enemigo con ocultación total, ni aunque sepas en qué casilla o casillas está.**"
+
+Esta cita resuelve, de forma inequívoca y sin necesidad de interpretación,
+la pregunta central del sprint. Nótese además la asimetría explícita: el
+targeting a ciegas por casilla (Sprint 053B/053B.2) es un mecanismo
+**exclusivo de ataques declarados** (estándar/completo) — el propio texto
+niega la variante equivalente para AdO ("ni aunque sepas... está").
+
+**Cita 4 (Ocultación parcial — solo aporta miss chance, nunca mencionada
+como bloqueo)**, mismo archivo:
+> "Posibilidad de fallo por ocultación: la ocultación concede a la víctima de un ataque con éxito una posibilidad de un 20% que su atacante falle por no ver correctamente."
+
+El texto que sí bloquea AdO (cita 3) es exclusivo de "ocultación **total**".
+Ninguna cláusula extiende ese bloqueo a la ocultación parcial. Por
+contigüidad editorial y por el principio general de que un AdO es "un
+ataque cuerpo a cuerpo" como cualquier otro salvo excepción expresa, la
+interpretación mínima (no inventada, por exclusión textual) es: **la
+ocultación parcial no impide el AdO, solo aplica su miss chance del 20% al
+resolverlo**, igual que un ataque normal.
+
+**Respuestas a las 10 preguntas normativas obligatorias**:
+
+1. **¿La ocultación parcial impide un AdO o únicamente introduce miss
+   chance?** Solo introduce miss chance (cita 4; ausencia de prohibición
+   textual).
+2. **¿La ocultación total impide ejecutar un AdO?** Sí, categóricamente
+   (cita 3).
+3. **¿Una criatura que no puede ver a un enemigo sigue amenazando sus
+   casillas?** Sí — amenazar es físico, no perceptivo (cita 1).
+4. **¿Amenazar requiere percepción visual del ocupante o solamente
+   capacidad física de realizar un ataque cuerpo a cuerpo?** Solo capacidad
+   física (cita 1). Line of Effect sigue siendo un requisito aparte (no es
+   "percepción"; es geometría/obstrucción física — un muro sólido impide el
+   ataque cuerpo a cuerpo en sí, no la percepción de él).
+5. **¿Una criatura puede realizar un AdO contra una casilla elegida a
+   ciegas?** No — expresamente prohibido (cita 3, "ni aunque sepas...
+   está").
+6. **¿El SRD permite "adivinar casilla" en una reacción de oportunidad o
+   ese procedimiento pertenece únicamente a ataques declarados?** Pertenece
+   únicamente a ataques declarados (cita 3, por contraste explícito con el
+   AdO).
+7. **¿Una criatura invisible provoca AdO de alguien que no la ha
+   localizado?** La acción en sí (moverse, atacar a distancia, lanzar un
+   conjuro) sigue provocando igual (la provocación no depende de
+   percepción — ver §14.3); pero el reactor **nunca puede ejecutar** el AdO
+   resultante contra un objetivo con Ocultación Total, localizado o no
+   (cita 3). Invisibilidad no está implementada en este motor — fuera de
+   alcance de 055B, ver §14.6.
+8. **¿Estar Blinded elimina la capacidad de amenazar o únicamente impide
+   detectar la oportunidad?** Ninguna de las dos, literalmente: Blinded no
+   elimina la capacidad física de amenazar (cita 1), pero un personaje
+   Cegado tiene Ocultación Total hacia **todos** sus objetivos (ya
+   modelado, `srd_blinded.concealmentContributions`, perspectiva
+   `attacks_by_target`) — por lo que la cita 3 le bloquea la ejecución de
+   cualquier AdO, siempre, como consecuencia derivada, no como una regla
+   especial de "Blinded no amenaza".
+9. **¿Line of Effect es requisito independiente para amenaza y AdO?** Sí —
+   es geometría física (cita 1, "capacidad de realizar un ataque cuerpo a
+   cuerpo"), no perceptiva, y por tanto es un requisito propio, aparte de
+   Concealment/Vision, coherente con `DEFENSE-LINE-OF-EFFECT` ya existente.
+10. **¿La ocultación total de quien provoca y la de quien reacciona
+    producen consecuencias diferentes?** Sí, y es una distinción crítica:
+    - Si el **provocador** tiene Ocultación Total hacia el **reactor**
+      (ej. el reactor está en oscuridad total respecto del provocador, o
+      el provocador está invisible/el reactor no puede verlo): el reactor
+      no puede ejecutar el AdO contra él (cita 3, dirección
+      reactor→provocador).
+    - Si el **reactor mismo** tiene Ocultación Total hacia todo el mundo
+      (Blinded): el resultado es el mismo (nunca puede ejecutar ningún
+      AdO), pero por la razón inversa — no es que el objetivo concreto
+      tenga Ocultación Total hacia él, es que él nunca ve a nadie. La
+      dirección de la evaluación (`getConcealmentAssessment(room,
+      reactor, provocador)`, ya existente) es la misma en ambos casos —
+      no se necesita una regla separada, solo evaluar la Concealment del
+      reactor **hacia** el provocador, exactamente como ya hace
+      `getConcealmentAssessment`.
+
+### 14.2. Auditoría del código real
+
+Rutas leídas por completo: `threatensTarget`/`threatensTargetWithGeometry`/
+`threatensCell`/`canProjectMeleeThreat` (`rules.ts`),
+`findTriggeredOpportunityAttacksForPath`/`findTriggeredOpportunityAttacks`
+(`rules.ts`), `findTriggeredRangedOpportunityAttacks`
+(`opportunityAttackResolver.ts`), `Rules.canMakeOpportunityAttack`
+(`rules.ts`), `handleResolveOpportunityAttack`
+(`apps/server/src/commands/attackCommands.ts`), `getConcealmentAssessment`/
+`composeConcealmentAssessment`/`getAttackContextModifiers` (`rules.ts`),
+`getLineOfEffect`/`getLineOfEffectToCell` (`rules.ts`), el trait
+`CANNOT_MAKE_AOO` y la entrada `srd_blinded` (`effects/catalog.ts`),
+`movementCommands.ts`/`tacticalCommands.ts` (call sites de generación de
+AdO), y `tests/aoo-limit-regression.test.mjs`/pruebas de AdO en
+`tests/rules.test.mjs`/`scripts/e2e-websocket.mjs`.
+
+**Hallazgo 1 — `threatensTarget`/`threatensCell` no consultan Line of
+Effect.** Su lógica real (`rules.ts`, `threatensTargetWithGeometry`) es
+exactamente: `attacker.id !== target.id`, facciones distintas,
+`canProjectMeleeThreat` (estado vital activo/disabled + ausencia del trait
+`NO_THREAT`), y `hasMeleeThreatAtDistance` (geometría/alcance puro). **Cero
+referencias a `getLineOfEffect`, Vision o Concealment.** Esto es
+**correcto** respecto de percepción (cita 1: amenazar no depende de ver),
+pero es un **gap real** respecto de Line of Effect: hoy una criatura
+"amenaza" técnicamente a través de un muro sólido, lo cual contradice la
+cita 1 leída junto con la cita 9 (amenazar exige poder *realizar* el
+ataque, no solo estar a distancia).
+
+**Hallazgo 2 — la generación de AdO (`findTriggeredOpportunityAttacksForPath`,
+`findTriggeredRangedOpportunityAttacks`) tampoco consulta Line of Effect,
+Vision ni Concealment.** Filtran únicamente por: facción, estado vital,
+`canMakeOpportunityAttack` (traits/round-limit — ver Hallazgo 4) y
+`canProjectMeleeThreat`/`threatensTarget`. El único filtro geométrico es
+reach/distancia.
+
+**Hallazgo 3 — `handleResolveOpportunityAttack` (ejecución del AdO) NO
+llama a `getLineOfEffect` en ningún punto**, a diferencia de
+`handleResolveAttackDraft` (ataques normales), que sí lo hace desde
+Sprint 052B. Sí calcula `getAttackContextModifiers` (Cover + Concealment),
+pero únicamente para pasarlos como **modificadores de CA y miss chance** a
+`resolveAttack` — nunca como una condición de legalidad previa. Esto
+significa que, hoy, un AdO ejecutado a través de un muro (sin Line of
+Effect) o contra un objetivo con Cover (por criatura interpuesta) se
+**resuelve normalmente** (con el +4 de Cover en la CA, si corresponde), en
+vez de rechazarse — contradice las citas 2 y 9.
+
+**Hallazgo 4 — `opportunityAttackAllowed` (`ConcealmentAssessment`) tiene
+la semántica CORRECTA pero CERO consumidores reales.** Su fórmula
+(`composeConcealmentAssessment`, `rules.ts`) es exactamente `!total` — es
+decir, ya captura fielmente la cita 3 (Ocultación Total bloquea el AdO).
+Se confirmó por grep exhaustivo (`.opportunityAttackAllowed` en todo
+`packages/shared/src`, `apps/server/src`, `apps/web/src`, `tests/`) que
+**ningún handler, resolver ni componente de UI lee este campo** — solo
+`tests/vision-core.test.mjs` verifica que se *calcula* correctamente, sin
+que nada lo *use*. Es infraestructura sin consumidor, la misma clase de
+hallazgo que este proyecto ya corrigió una vez con `impassableCells`/Cover
+(Sprint 052A) y evitó deliberadamente con `IntrinsicPerception.darkvisionFeet`
+(Sprint 053A.1). **Contradicción documentada con este mismo NDD**: §13.9
+(línea "`opportunityAttackAllowed`: se deriva de la misma regla ya
+existente... Ocultación Total... mantiene el comportamiento ya vigente hoy
+(bloquea AdO igual que Blinded/niebla ya lo hacen)") **asumía, sin
+verificarlo contra el código, que el campo ya bloqueaba AdO en la
+práctica. Esa afirmación era incorrecta** — el campo se calcula pero nunca
+se aplica. Se corrige aquí explícitamente, seguido de la regla de
+contradicción del Reader Pipeline (evidencia primero, sin improvisar).
+
+**Hallazgo 5 — Blinded alcanza el resultado correcto hoy, pero por un
+mecanismo distinto y redundante al de la cita 3.** `srd_blinded` declara el
+trait `CANNOT_MAKE_AOO` explícito (`effects/catalog.ts`), consumido por
+`Rules.canMakeOpportunityAttack`, que bloquea la generación de cualquier
+AdO para un atacante Cegado — **coincide** con el resultado que produciría
+correctamente aplicar la cita 3 (un Cegado tiene Ocultación Total hacia
+todos, luego `opportunityAttackAllowed` sería `false` contra cualquier
+objetivo), pero por una vía **paralela y no relacionada** (un trait
+declarativo ad-hoc, no la Concealment real evaluada objetivo por
+objetivo). No es una contradicción — es una duplicación de responsabilidad
+a resolver con cuidado en 055B (ver §14.5, Corrección 3): `srd_stunned`
+también declara `CANNOT_MAKE_AOO` junto a `CANNOT_ACT`/`NO_THREAT`, y **ese
+uso sí debe conservarse** (Stunned no es un caso de Concealment, es
+incapacidad real de actuar) — el trait no debe eliminarse en general, solo
+evitar que el caso de Blinded quede duplicado sin necesidad una vez exista
+un gate de Concealment real para AdO.
+
+**Hallazgo 6 (menor)** — el trait `"BLIND"` existe en el union cerrado
+`Trait` (`effects/contracts.ts`) pero no lo declara ningún `EffectDefinition`
+real del catálogo (`srd_blinded` usa `NO_DEX_TO_AC`/`CANNOT_MAKE_AOO`, no
+`BLIND`) ni lo consume ningún gate — solo aparece en un fixture de
+`tests/effects-reducer.test.mjs`. Infraestructura de tipo sin consumidor;
+no bloquea este sprint, se registra como hallazgo menor (candidata a
+limpieza en una futura auditoría documental/de tipos, no en 055B).
+
+**Confirmación positiva**: `isFlanking`/`threatensTargetWithGeometry`
+(flanqueo) tampoco consultan Vision/Concealment/LoE — coherente con la
+cita 1 y fuera del alcance de este sprint (flanqueo no es AdO); no se
+encontró ninguna mezcla incompatible entre amenaza y percepción en el
+código — están limpiamente separados, solo que el separador (Line of
+Effect) le falta a la capa de amenaza, y el separador de Concealment/Cover
+le falta a la capa de ejecución.
+
+### 14.3. Mapa del flujo actual
+
+```text
+Movimiento/acción declarada
+    ↓
+validación del trayecto/acción (movementCommands.ts / tacticalCommands.ts)
+    ↓
+detección de salida de casilla amenazada o acción provocadora
+  [threatensTarget: facción + vida + NO_THREAT + reach — SIN Line of Effect]
+    ↓
+filtro de reactores elegibles
+  [canMakeOpportunityAttack: preventsOpportunityAttacks + CANNOT_MAKE_AOO
+   + round-limit/Reflejos de Combate + mismo-objetivo-ya-atacado —
+   SIN Vision/Concealment/Cover/LoE]
+    ↓
+creación de pendingOpportunityAttacks (sin ningún filtro de percepción)
+    ↓
+selección/ejecución por el jugador (resolve-opportunity-attack)
+    ↓
+handleResolveOpportunityAttack
+  [SIN chequeo de Line of Effect; SIN chequeo de legalidad por Cover/
+   Concealment — ambos se calculan solo como modificadores de CA/miss
+   chance para el Attack Resolver]
+    ↓
+Attack Resolver (resolveAttack)
+  [Cover → +4 CA; Concealment → miss chance 20%/50% — nunca bloqueo]
+    ↓
+mutaciones (HP, stats, logs)
+```
+
+**Discrepancia central entre "detección de oportunidad" y "legalidad de
+ejecutar la reacción"**: el pipeline genera y permite ejecutar un AdO en
+escenarios donde el SRD lo prohíbe categóricamente (Ocultación Total del
+provocador hacia el reactor, cualquier Cover, ausencia de Line of Effect) —
+hoy esos escenarios solo *degradan* el AdO (miss chance más alto, +4 CA),
+nunca lo *bloquean*, contradiciendo las citas 2 y 3.
+
+### 14.4. Separación de responsabilidades (evaluada contra el código real)
+
+1. **Threat Assessment** (¿existe capacidad física/reglamentaria de
+   amenazar una casilla?): hoy es `canProjectMeleeThreat` +
+   `hasMeleeThreatAtDistance` (`threatensTarget`/`threatensCell`). Correcto
+   en no depender de Vision/Concealment (cita 1). **Gap real**: debe
+   incorporar Line of Effect (Hallazgo 1) — sin línea de efecto no hay
+   capacidad física de atacar cuerpo a cuerpo, sin importar el reach.
+2. **Provocation Assessment** (¿la acción provoca un AdO?): hoy vive
+   correctamente separado en la lógica de movimiento
+   (`findTriggeredOpportunityAttacksForPath`, con la exención de huella
+   inicial de Withdraw ya resuelta en Sprint MOVE-WITHDRAW, y el gate de
+   "movimiento ≤ 1 casilla" que ya cubre el paso de 5') y de acciones
+   (`findTriggeredRangedOpportunityAttacks` para ataques a distancia). No
+   depende de Vision/Concealment — correcto, coherente con la cita 1 (la
+   provocación es sobre la acción, nunca sobre percepción). Sin gaps
+   identificados en esta capa.
+3. **Opportunity Legality Assessment** (¿el reactor puede intentar el AdO
+   concreto contra ese objetivo?): **no existe hoy como pieza propia** —
+   está fragmentado entre `canMakeOpportunityAttack` (traits/round-limit,
+   sin percepción) y nada más; Cover/Concealment/LoE nunca llegan a esta
+   capa (Hallazgo 3). Debe ser el punto de composición nuevo: `!total`
+   de Concealment (Hallazgo 4, ya calculado correctamente) + Cover
+   (cualquier grado, cita 2 — hoy inexistente como gate) + Line of Effect
+   (cita 9 — hoy inexistente como gate) + `canMakeOpportunityAttack` ya
+   existente. No debe calcular daño.
+4. **Attack Resolution**: sin cambios — `resolveAttack` sigue resolviendo
+   tirada/CA/daño/crítico exactamente igual. Con la Legalidad ya filtrada
+   en la capa 3, Cover y Concealment que **lleguen** a esta capa serán,
+   por construcción, siempre no-bloqueantes (ninguno, o parcial) — el
+   parámetro `cover`/`concealment` que hoy recibe `resolveAttack` no
+   necesita cambiar de forma, solo dejar de recibir escenarios que ya
+   debieron rechazarse antes.
+
+### 14.5. Decisión sobre `opportunityAttackAllowed`
+
+**Veredicto: Opción B — proyección legítima pero insuficiente.** La
+fórmula (`!total` sobre la Concealment ya compuesta de Vision + efectos
+declarativos) es semánticamente correcta y no necesita cambiar — es
+exactamente la cita 3 aplicada correctamente. Vive en el lugar correcto
+**para lo que responde** (Concealment no debe describir Cover ni Line of
+Effect, que son responsabilidades ajenas ya separadas en este mismo
+motor). El error no es de ubicación sino de **consumo**: no existe ningún
+punto del pipeline que lo lea.
+
+**Recomendación arquitectónica para 055B** (no implementada aquí):
+
+- Mantener `opportunityAttackAllowed` en `ConcealmentAssessment`, sin
+  cambios de forma ni de fórmula.
+- Introducir una función pura nueva y específica (nombre tentativo
+  `getOpportunityAttackLegality` o equivalente, a decidir en 055B) que
+  componga: `canMakeOpportunityAttack` (existente) + Line of Effect
+  (`getLineOfEffect`, existente) + Cover — cualquier grado, no solo Total
+  Cover (requiere exponer el resultado de `getAttackContextModifiers`/
+  `CoverAssessment` como un booleano "hay Cover" reutilizable, sin
+  duplicar su cálculo) + `getConcealmentAssessment(...).opportunityAttackAllowed`
+  (existente, correcto). Esta función es la **Opportunity Legality
+  Assessment** de §14.4 punto 3 — no un tipo persistido nuevo
+  necesariamente, puede ser un resultado efímero como `LineOfEffectAssessment`.
+- Aplicar ese gate en **generación** (`findTriggeredOpportunityAttacksForPath`/
+  `findTriggeredRangedOpportunityAttacks`), no solo en ejecución — evita
+  ofrecer al jugador una reacción que nunca podrá completar (ver §14.6,
+  anti-metagaming) y es coherente con cómo ya se filtra hoy por
+  `canMakeOpportunityAttack` en el mismo punto.
+- Evaluar en 055B si el trait `CANNOT_MAKE_AOO` de `srd_blinded` puede
+  retirarse (quedando el bloqueo cubierto únicamente por la Concealment
+  real del reactor hacia cada objetivo) o si se mantiene por redundancia
+  defensiva — **no decidir aquí**; `srd_stunned` conserva `CANNOT_MAKE_AOO`
+  sin cambios en cualquier escenario (Hallazgo 5).
+- Justificación por los cinco ejes pedidos: *semántica* (el campo ya
+  responde exactamente la pregunta de Concealment, no más); *consumidores
+  reales* (hoy ninguno — se cierra ese vacío sin tocar su fórmula);
+  *reutilización futura* (Blindsight/Blindsense/niebla, cuando existan,
+  seguirán alimentando la misma Concealment compuesta sin cambios en este
+  contrato); *riesgo de duplicación* (se evita creando un único punto de
+  composición en vez de repetir el chequeo en cada call site); *compatibilidad
+  con ataques normales* (cero cambios — `directTargetingAllowed`/
+  `requiresTargetSquare` siguen intocados).
+
+### 14.6. Anti-metagaming aplicado a AdO
+
+**Contexto arquitectónico relevante**: este motor **no implementa Fog of
+War** (decisión ya vigente y repetidamente diferida — ver exclusiones de
+§13.12 y `DEFENSE-VISION` en el Registry) — todo `CombatRoom`/
+`CombatRulesSnapshot` se difunde completo a **todos** los clientes
+conectados; la posición y existencia de cada combatiente ya es visible en
+el tablero de cualquier jugador en todo momento. Vision/Concealment
+gobiernan **reglas de targeting y miss chance**, nunca qué aparece
+dibujado en pantalla.
+
+Esto **reduce sustancialmente** el riesgo de filtración descrito en la
+Fase G del encargo: la existencia y posición de un provocador **ya son
+visibles** independientemente de si se genera o no un
+`pendingOpportunityAttack` — no hay una identidad oculta que un AdO fantasma
+pueda revelar hoy.
+
+**Respuestas concretas**:
+
+- **¿Se crea la oportunidad si el reactor no percibe al enemigo?** No
+  (recomendación de 055B, §14.5): filtrar en generación evita ofrecer una
+  reacción que la cita 3 prohíbe ejecutar, y evita además una UI "muerta"
+  (una reacción pendiente que siempre se rechazaría al intentarla).
+- **¿Quién recibe el evento?** Sin cambios respecto del patrón ya vigente
+  para AdO ordinarios: el controlador del reactor. No se introduce
+  distinción nueva por observador en 055B.
+- **¿Puede el GM recibir más información que el jugador?** Sin cambios;
+  el GM ya ve el estado completo de la sala en este motor, como todo
+  participante (no hay niveles de información por rol hoy).
+- **¿Debe existir una proyección por observador?** No en 055B — el
+  principio general de "Assessment autoritativo → Projection" (NDD §13.8)
+  queda documentado como aplicable en el futuro (cuando exista Fog of War
+  o identidades ocultas reales), pero no hay ningún dato hoy que
+  proyectar de forma distinta por observador para AdO.
+- **¿La ausencia/presencia de UI revela posición?** No, en el estado
+  actual del motor (sin Fog of War, la posición ya es visible). **Riesgo
+  documentado para el futuro**: si el proyecto implementa Fog of War,
+  generar o no un `pendingOpportunityAttack` **sí** empezaría a filtrar
+  presencia — ese riesgo queda registrado aquí explícitamente para que la
+  futura vertical de Fog of War lo revise, no se resuelve ahora (fuera de
+  alcance explícito de 055B).
+- **¿Qué información puede aparecer en el log?** Sin cambios respecto del
+  patrón ya vigente para AdO ordinarios (nombre de atacante/objetivo,
+  motivo) — no aplica aquí el mismo estándar de "proyección segura" de
+  Blind Targeting porque, a diferencia del ataque por casilla, un AdO
+  rechazado en generación **nunca llega a producir ningún log** (no hay
+  intento fallido que narrar: la reacción simplemente no se ofrece).
+- **¿Cómo evitar que el cliente reciba `combatantId` ocultos?** No aplica
+  — ningún `combatantId` está oculto hoy en este motor (sin Fog of War).
+
+**Conclusión de esta fase**: el riesgo de filtración es bajo en el estado
+actual del proyecto y no exige ningún mecanismo nuevo de proyección en
+055B; el único requisito de seguridad real es filtrar en **generación**
+(no en ejecución) para no ofrecer una reacción no ejecutable, por higiene
+de UI y fidelidad SRD, no por anti-metagaming activo.
+
+### 14.7. Propuesta mínima de alcance — Sprint 055B (tentativo, sujeto a `Proceed` propio)
+
+**Incluye**:
+
+1. Nueva función pura de legalidad de AdO (§14.5) componiendo
+   `canMakeOpportunityAttack` + `getLineOfEffect` + Cover (cualquier
+   grado) + `getConcealmentAssessment(...).opportunityAttackAllowed`.
+2. Aplicar ese gate en `findTriggeredOpportunityAttacksForPath` y
+   `findTriggeredRangedOpportunityAttacks` (generación).
+3. Aplicar el mismo gate (o confirmar que, tras el punto 2, es
+   estructuralmente imposible llegar a `handleResolveOpportunityAttack`
+   con un AdO ilegal) en la ejecución, por defensa en profundidad.
+4. Revisar si `srd_blinded.traits` puede retirar `CANNOT_MAKE_AOO` sin
+   regresión (Hallazgo 5) — decisión explícita, no implícita.
+5. Actualizar `docs/rules/registry.md` únicamente si 055B conecta la
+   vertical a un consumidor real (ver §14.8) — no antes.
+
+**Excluye explícitamente**:
+
+- Invisibilidad, criaturas no localizadas, pruebas de Avistar/Escuchar.
+- Niebla, humo, fuentes de luz dinámicas.
+- Blindsight, Blindsense, Tremorsense, Low-Light Vision.
+- Fog of War general o cualquier proyección por observador nueva.
+- Nueva UI compleja, nuevos comandos WebSocket.
+- Conjuros nuevos.
+- Refactors no relacionados con AdO (ej. no tocar `isFlanking`,
+  `threatensTarget` más allá de agregar el chequeo de Line of Effect).
+- Consecuencias defensivas/de movimiento de oscuridad (ya excluidas desde
+  §13.6, sin relación con este sprint).
+
+**Tests tentativos** (a escribir en 055B, no aquí):
+
+- AdO en luz brillante: se ejecuta normalmente, sin miss chance.
+- AdO en luz tenue: se ejecuta, con 20% de miss chance (Concealment
+  parcial no bloquea, cita 4).
+- AdO bajo oscuridad sin Darkvision: **no se genera** el
+  `pendingOpportunityAttack` (Ocultación Total, cita 3).
+- AdO dentro de Darkvision: se ejecuta normalmente (Vision `clear`).
+- AdO fuera de Darkvision: no se genera (mismo caso que sin Darkvision).
+- Reactor Blinded: no se genera ningún AdO, contra ningún objetivo
+  (verificar que se sostiene con o sin el trait `CANNOT_MAKE_AOO`, según
+  la decisión del punto 4).
+- Line of Effect bloqueada entre reactor y provocador: no se genera el
+  AdO, incluso si el reach nominal alcanzaría la casilla.
+- Cover (criatura interpuesta) entre reactor y provocador: no se genera
+  el AdO (cita 2 — a diferencia de un ataque normal, donde Cover solo
+  aporta +4 CA).
+- Concealment parcial: el AdO se genera y se ejecuta con la miss chance
+  correspondiente (no se bloquea).
+- No filtración: un AdO no generado no debe dejar ningún rastro en
+  `room.log` ni en `pendingOpportunityAttacks` que un cliente pueda
+  distinguir de "nadie provocó nada" (coherente con §14.6 — hoy no hay
+  identidad que ocultar, pero el test documenta la propiedad para cuando
+  la haya).
+- Consistencia unitaria/servidor/WebSocket: mismo criterio en
+  `tests/rules.test.mjs` (unitario), un nuevo test de integración de
+  servidor (mismo patrón que `tests/line-of-effect-server.test.mjs`/
+  `tests/blind-targeting-server.test.mjs`) y `scripts/e2e-websocket.mjs`.
+- Regresiones: Withdraw (exención de huella inicial intacta), paso de 5
+  pies (sigue sin provocar), movimiento normal sin Concealment (AdO
+  ordinario sin cambios), `tests/aoo-limit-regression.test.mjs` completo
+  en verde sin modificar sus aserciones existentes.
+
+### 14.8. Rule Registry — auditoría sin cambios en 055A
+
+No se crea ninguna Rule ID en este sprint. Auditoría de clasificación
+futura para 055B:
+
+- **No es una regla autónoma nueva del SRD** — es la integración de dos
+  reglas ya registradas (`POSITION-THREAT`/AdO implícito en el motor, sin
+  Rule ID propia hoy más allá de `ROUND-AOO-LIMIT`, y `DEFENSE-CONCEALMENT`/
+  `DEFENSE-VISION`/`DEFENSE-LINE-OF-EFFECT`, ya existentes). Por la
+  política de Sprint 044.1 ("no crear variantes ni IDs de integración
+  entre reglas existentes"), la implementación de 055B **no debería** abrir
+  una Rule ID nueva por sí sola.
+- Candidatos evaluados: (a) ampliar `DEFENSE-CONCEALMENT` con una nota de
+  alcance ("ahora también aplicado a AdO"); (b) ampliar
+  `DEFENSE-LINE-OF-EFFECT` igual; (c) si el proyecto decide que "Ataques de
+  Oportunidad" merece su propia fila (hoy solo `ROUND-AOO-LIMIT` cubre el
+  límite por ronda, no la mecánica de generación/amenaza/ejecución en sí,
+  que vive sin Rule ID dedicada), sería la primera vez que se nombra esa
+  regla explícitamente — decisión que corresponde a 055B con evidencia de
+  que el propio `POSITION-THREAT`/mecánica de AdO carece hoy de una fila
+  propia que cubra generación+ejecución (`POSITION-THREAT` cubre solo
+  amenaza derivada, no el ciclo completo de AdO).
+- **No se decide aquí** cuál de las tres opciones aplica — 055B debe
+  auditar primero contra el Registry real (`grep` de "Ataque de
+  Oportunidad"/"AdO" en `docs/rules/registry.md`, ya hecho: solo aparece
+  en `ROUND-AOO-LIMIT` y menciones de paso de la fila `DEFENSE-COVER`) y
+  decidir con esa evidencia, no de antemano.
+
+### 14.9. Preguntas abiertas (no cierran este sprint)
+
+1. ¿`srd_blinded` debe retirar el trait `CANNOT_MAKE_AOO` (redundante tras
+   055B) o conservarlo como defensa en profundidad? (§14.5, Hallazgo 5).
+2. ¿Qué Rule ID exacta corresponde a la mecánica de AdO en sí (generación +
+   amenaza + ejecución), dado que hoy solo existe `ROUND-AOO-LIMIT` para el
+   límite por ronda? (§14.8).
+3. ¿El chequeo de Cover para AdO debe reutilizar `CoverAssessment` tal
+   cual (booleano derivado de `kind !== "none"`) o requiere un campo nuevo
+   más explícito? No se decide aquí — evaluar consumidores reales en 055B.
+4. ¿Debe el trait `"BLIND"` no consumido (`effects/contracts.ts`, Hallazgo
+   6) eliminarse del union `Trait`, o dejarse para una futura auditoría de
+   tipos? Fuera de alcance de 055A/055B.
+
+### 14.10. Recomendación final
+
+El SRD cierra la pregunta central sin ambigüedad (cita 3): la Ocultación
+Total bloquea categóricamente la ejecución de un AdO, y Cover (cualquier
+grado, no solo Total Cover) hace lo mismo (cita 2) — ambas son reglas más
+estrictas que las aplicadas hoy a ataques normales. El código actual
+calcula la señal correcta (`opportunityAttackAllowed`) pero no la consume
+en ningún punto real, y omite por completo Line of Effect y Cover como
+condiciones de legalidad para AdO — un gap de implementación real, no una
+ambigüedad normativa ni una contradicción irreconciliable en el código.
+Ningún criterio de detención de este sprint se activó. Se recomienda
+proceder a Sprint 055B con el alcance mínimo de §14.7, sujeto a su propio
+`Proceed`.
