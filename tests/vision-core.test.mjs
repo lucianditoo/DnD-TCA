@@ -41,6 +41,33 @@ describe("Sprint 053B - Vision unitarios (getVisionAssessment)", () => {
     assert.equal(result.dominantReason, "dim-light");
   });
 
+  it("luz tenue dentro del alcance de Darkvision: se ve con normalidad", () => {
+    const { room, observer, target } = roomWith(
+      { x: 0, y: 0, zFeet: 0 }, { x: 2, y: 0, zFeet: 0 }, { dimLightCells: ["2,0"] },
+      { intrinsicPerception: { darkvisionFeet: 60 } }
+    );
+    const result = getVisionAssessment(room, observer, target);
+    assert.equal(result.canPerceiveVisually, true);
+    assert.equal(result.kind, "none");
+    assert.equal(result.missChancePercent, 0);
+    assert.equal(result.dominantReason, "clear");
+  });
+
+  it("luz tenue fuera del alcance de Darkvision: conserva ocultacion parcial 20%", () => {
+    const { room, observer, target } = roomWith(
+      { x: 0, y: 0, zFeet: 0 }, { x: 20, y: 0, zFeet: 0 }, { dimLightCells: ["20,0"] },
+      { intrinsicPerception: { darkvisionFeet: 10 } }
+    );
+    const result = getVisionAssessment(room, observer, target);
+    assert.equal(result.canPerceiveVisually, true);
+    assert.equal(result.kind, "partial");
+    assert.equal(result.missChancePercent, 20);
+    assert.equal(result.directTargetingAllowed, true);
+    assert.equal(result.requiresTargetSquare, false);
+    assert.equal(result.dominantReason, "dim-light");
+    assert.equal(result.traces.find((trace) => trace.source === "intrinsic-perception")?.status, "suppressed");
+  });
+
   it("oscuridad total sin Darkvision: kind total 50%, reason darkness, requiere casilla", () => {
     const { room, observer, target } = roomWith({ x: 0, y: 0, zFeet: 0 }, { x: 2, y: 0, zFeet: 0 }, { darknessCells: ["2,0"] });
     const result = getVisionAssessment(room, observer, target);

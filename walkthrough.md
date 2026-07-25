@@ -1,4 +1,20 @@
-# Walkthrough — Sprint 053B (Vision, iluminación básica y targeting a ciegas)
+# Walkthrough — Sprint 053B.1 (Revisión arquitectónica de Vision)
+
+## Resultado de la revisión 053B.1
+
+La arquitectura publicada en Sprint 053B queda aprobada: Vision permanece
+como assessment contextual independiente, se compone con Concealment por
+severidad máxima, Line of Effect conserva precedencia en la legalidad del
+intento y el servidor sigue siendo la única autoridad para resolver una
+casilla elegida a ciegas.
+
+La revisión detectó y corrigió una desviación normativa acotada:
+`getVisionAssessment` trataba cualquier Darkvision positiva como suficiente
+para anular la ocultación parcial de luz tenue. Ahora la capacidad se aplica
+solo si la distancia entre footprints es menor o igual a
+`darkvisionFeet`, igual que en oscuridad total. Se añadieron casos explícitos
+dentro y fuera de alcance. No se abrió ninguna Rule ID y
+`DEFENSE-VISION` conserva estado **Parcial**.
 
 ## Objetivo
 
@@ -95,7 +111,7 @@ mismo patrón ya usado en otros escenarios del script (`stoppedBane`,
 
 ## Tests
 
-- `tests/vision-core.test.mjs` (17 casos): 10 unitarios de `getVisionAssessment`
+- `tests/vision-core.test.mjs` (19 casos): 12 unitarios de `getVisionAssessment`
   (luz normal, luz tenue, oscuridad sin/con/fuera-de-rango de Darkvision, ruta
   bloqueada, ambas precedencias, trazas/`dominantReason`, transporte por
   Snapshot) + 7 de composición con `ConcealmentAssessment` (incluye Vision
@@ -127,7 +143,7 @@ cerrado antes de este sprint, per su propio §13.12) ni en
 
 | Comando | Resultado |
 |---|---|
-| `npm test` | ✅ **542/542**, 0 fallos (58 archivos) |
+| `npm test` | ✅ **544/544**, 0 fallos (58 archivos) |
 | `npm run typecheck` | ✅ 0 errores (3 workspaces) |
 | `npm run build` | ✅ los 3 workspaces en verde |
 | `node scripts/e2e-websocket.mjs` | ✅ **100/100** aserciones, exit 0 |
@@ -148,7 +164,7 @@ combatiente.
 
 ## Estado y próximo paso
 
-Sprint 053B cerrado formalmente. `DEFENSE-VISION` queda **Parcial** con el
+Sprint 053B.1 cerrado formalmente y arquitectura aprobada. `DEFENSE-VISION` queda **Parcial** con el
 alcance exacto declarado en el NDD §13.12. Próximos candidatos bajo gates
 propios: política efectiva de AdO bajo Ocultación Total, Low-Light Vision (una
 vez exista un modelo de luz con radio), o retomar Line of Effect para

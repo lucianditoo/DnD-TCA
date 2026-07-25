@@ -2,12 +2,12 @@
 
 ## Estado y alcance
 
-**Estado:** diseño arquitectónico en revisión (Sprint 051.1 — correcciones
-conceptuales tras primera revisión arquitectónica; todavía no aprobado para
-commit). No autoriza código, tests, Rule IDs, cambios al catálogo, a
-ActiveEffects, al Snapshot, al Attack Resolver ni comandos WebSocket. Sprint
-052 (implementación) requiere su propio `Proceed` explícito después de
-aprobar este documento.
+**Estado:** NDD histórico aprobado e implementado. Sprint 052B/052B.1 cerró
+Line of Effect y Sprint 053B cerró la primera vertical funcional de Vision.
+La revisión arquitectónica 053B.1 corrigió la aplicación del alcance de
+Darkvision también en luz tenue y aprobó la integración publicada. Las Rule
+IDs y sus estados vigentes viven exclusivamente en
+`docs/rules/registry.md`.
 
 **Precondition gate (Sprint 051.1)**: rama `master`, HEAD
 `391311e7d7680cb345882b0900a20154d0bdd9a2`, sincronizado 0/0 con
@@ -586,7 +586,7 @@ cerrado en §13.12 se implementó sin cambios de alcance durante el código.
 Regla oficial (SRD 3.5, *Vision and Light*, tabla de niveles de luz):
 
 - **Luz brillante**: visión normal, sin penalización.
-- **Iluminación tenue** ("shadowy illumination" — luz de luna, antorcha lejana): criaturas/objetos en esa luz tienen **ocultación parcial (20% de fallo)** frente a cualquier observador sin capacidad adecuada — la ocultación es del objetivo, no del observador. Low-Light Vision o Darkvision anulan esta penalización para ese observador específico (ven la zona como si fuera luz brillante).
+- **Iluminación tenue** ("shadowy illumination" — luz de luna, antorcha lejana): criaturas/objetos en esa luz tienen **ocultación parcial (20% de fallo)** frente a cualquier observador sin capacidad adecuada — la ocultación es del objetivo, no del observador. Low-Light Vision o Darkvision **dentro de su alcance declarado** anulan esta penalización para ese observador específico.
 - **Oscuridad total**: sin ninguna fuente de luz, un observador sin Darkvision no puede ver en absoluto — el objetivo tiene **ocultación total (50%, debe elegirse una casilla objetivo, sin poder apuntar directamente)**, exactamente la misma consecuencia mecánica que invisibilidad. Darkvision permite ver con normalidad (sin ninguna penalización) dentro de su alcance declarado (típicamente 60 ft, variable por criatura); más allá de ese alcance, la oscuridad total aplica igual que sin Darkvision.
 - **Low-Light Vision**: duplica la distancia a la que una criatura ve con normalidad bajo luz tenue (trata esa luz como brillante hasta el doble de alcance de la fuente). **No funciona en oscuridad total absoluta** — necesita algo de luz ambiental para duplicar.
 - **Regla normativa central para este sprint** (RAW, *Combat Modifiers*): *"Si tienes Line of Effect a un objetivo pero no Line of Sight, el objetivo tiene ocultación total desde tu perspectiva."* Esto confirma exactamente el flujo que §7.2 de este documento ya boceteaba ("Flujo de Ocultación Total: LoE presente, LoS ausente") — Line of Sight bloqueada es, mecánicamente, un caso más de Ocultación Total, con la misma consecuencia (50%, elegir casilla) que la oscuridad o la invisibilidad.
@@ -1197,9 +1197,10 @@ evaluación, más restrictivo gana)**:
    `dominantReason: "darkvision-out-of-range"` (mismo resultado mecánico que
    el caso 2, causa distinguible en la traza para UI/debug).
 4. Si la casilla del objetivo está en `dimLightCells` y el observador no
-   tiene Darkvision (Low-Light Vision queda fuera de alcance en 053B, ver
-   §13.4) → `kind: "partial"`, 20%, `directTargetingAllowed: true`,
-   `dominantReason: "dim-light"`.
+   tiene Darkvision **dentro de alcance** (porque carece de ella o porque la
+   distancia supera `darkvisionFeet`; Low-Light Vision queda fuera de alcance
+   en 053B, ver §13.4) → `kind: "partial"`, 20%,
+   `directTargetingAllowed: true`, `dominantReason: "dim-light"`.
 5. En cualquier otro caso → `kind: "none"`, `dominantReason: "clear"`.
 
 **Cuándo Vision aporta 20% vs. 50%**: 20% (parcial, targeting directo

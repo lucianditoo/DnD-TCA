@@ -1944,7 +1944,8 @@ export function getVisualPathAssessment(
  * 2. Objetivo en oscuridad total, observador sin Darkvision → total, 50%, `darkness`.
  * 3. Objetivo en oscuridad total, observador con Darkvision pero fuera de alcance →
  *    total, 50%, `darkvision-out-of-range`.
- * 4. Objetivo en luz tenue, observador sin Darkvision → parcial, 20%, `dim-light`.
+ * 4. Objetivo en luz tenue, observador sin Darkvision suficiente (ausente o fuera de alcance)
+ *    → parcial, 20%, `dim-light`.
  * 5. Cualquier otro caso (incluida luz tenue/oscuridad con Darkvision suficiente) → `clear`.
  *
  * Precedencia de datos: si una celda aparece en `darknessCells` y `dimLightCells` a la vez,
@@ -2021,22 +2022,25 @@ export function getVisionAssessment(
   }
 
   if (inDimLight) {
-    const hasDarkvision = darkvisionFeet > 0;
+    const distanceFeet = distanceBetweenFootprintsFeet(room, observer, target);
+    const withinDarkvisionRange = darkvisionFeet > 0 && distanceFeet <= darkvisionFeet;
     traces.push({
       source: "board-light",
       label: "Iluminación tenue",
       kind: "partial",
       missChancePercent: 20,
-      status: hasDarkvision ? "suppressed" : "applied"
+      status: withinDarkvisionRange ? "suppressed" : "applied"
     });
-    if (hasDarkvision) {
+    if (darkvisionFeet > 0) {
       traces.push({
         source: "intrinsic-perception",
-        label: `Darkvision ${darkvisionFeet} ft (anula luz tenue)`,
-        kind: "none",
-        missChancePercent: 0,
-        status: "applied"
+        label: `Darkvision ${darkvisionFeet} ft` + (withinDarkvisionRange ? " (anula luz tenue)" : " (fuera de alcance)"),
+        kind: withinDarkvisionRange ? "none" : "partial",
+        missChancePercent: withinDarkvisionRange ? 0 : 20,
+        status: withinDarkvisionRange ? "applied" : "suppressed"
       });
+    }
+    if (withinDarkvisionRange) {
       return { canPerceiveVisually: true, kind: "none", missChancePercent: 0, directTargetingAllowed: true, requiresTargetSquare: false, dominantReason: "clear", traces };
     }
     return {

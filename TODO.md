@@ -52,6 +52,7 @@ Documento vivo de tareas pendientes. El backlog está organizado en Sprints. Par
 - [x] Sprint 052B.1: corrección geométrica de `getLineOfEffect` — recorrido "supercover" por área de celda (aritmética entera) reemplaza la colinealidad exacta de punto; 29 casos nuevos en `line-of-effect.test.mjs` (matriz de pendientes, política de bordes/vértices, footprints 1×1/Large). Validación real: `npm test` 510/510, typecheck/build en verde, E2E 99/99, Playwright 7/7.
 - [x] Sprint 053 / 053A / 053A.1 / 053A.2 (solo diseño, sin código): corrigió la relación incorrecta `LineOfEffectAssessment → VisionAssessment` en el NDD; diseñó la primera vertical de Vision con iluminación básica; nombró la capa geométrica interna `VisualPathAssessment` (sin redefinir "Line of Sight"); retiró Low-Light Vision del alcance por falta de consumidor; diseñó targeting a ciegas y anti-metagaming (Projection Layer, payload seguro). Ver `docs/designs/vision-and-line-of-effect-architecture.md` §13.
 - [x] Sprint 053B: Vision, iluminación básica y targeting a ciegas — `Board.dimLightCells`/`darknessCells` + `IntrinsicPerception.darkvisionFeet`; `VisualPathAssessment`/`getVisualPathAssessment` (geometría, extraída de `getLineOfEffect` sin duplicar el algoritmo); `VisionAssessment`/`getVisionAssessment` (5 reglas de precedencia luz/Darkvision); composición con `ConcealmentAssessment` (severidad máxima, nunca aditiva); `resolve-attack` extendido con `target:{kind:"combatant"}|{kind:"square"}` para targeting a ciegas server-authoritative sin filtrar si la casilla estaba vacía. Nueva Rule ID `DEFENSE-VISION` (Parcial). Validación real: `npm test` 542/542, typecheck/build en verde, E2E 100/100, Playwright 7/7.
+- [x] Sprint 053B.1: revisión arquitectónica de Vision — Darkvision respeta su alcance declarado también al suprimir luz tenue; dos regresiones unitarias nuevas. `DEFENSE-VISION` permanece Parcial. Validación real: `npm test` 544/544, typecheck/build en verde, E2E 100/100, Playwright 7/7.
 
 ## Próximos Sprints
 
@@ -59,7 +60,7 @@ Ver `ROADMAP.md`. Sprint 044.2 fija el pipeline transversal y Sprint 046 entrega
 
 ## Sprint Activo
 
-Ninguno — Sprint 053B (Vision, iluminación básica y targeting a ciegas) cerrado formalmente con DoD completo y ejecución real.
+Ninguno — Sprint 053B.1 (revisión arquitectónica de Vision) cerrado formalmente con DoD completo y ejecución real.
 
   **Sprint 053B — COMPLETADO**
   - [x] Contradicción arquitectónica detectada en el precondition gate contra un prompt anterior (VisionReason/prohibiciones incompatibles con el NDD aprobado): sprint detenido, evidencia presentada, resuelto explícitamente por el usuario a favor del NDD antes de escribir código.
@@ -70,10 +71,10 @@ Ninguno — Sprint 053B (Vision, iluminación básica y targeting a ciegas) cerr
   - [x] Composición con `ConcealmentAssessment`: severidad máxima (`total > partial > none`), miss chance nunca aditivo, `visionTraces` separado de `traces`.
   - [x] `resolve-attack` extendido con `target: {kind:"combatant"}|{kind:"square"}` (unión discriminada Zod con XOR), targeting directo rechazado sin revelar posición, targeting por casilla resuelto server-side sin revelar ocupación.
   - [x] Corrección de un bug real de ordering descubierto por una regresión existente: el gate de Vision debía ejecutarse después del gate de Line of Effect ya existente (ambos comparten la misma fuente provisional de bloqueo).
-  - [x] Tests: `vision-core.test.mjs` (17), `blind-targeting-server.test.mjs` (15, incluye regresiones de Cover/LoE/Blinded).
+  - [x] Tests: `vision-core.test.mjs` (19 tras revisión 053B.1), `blind-targeting-server.test.mjs` (15, incluye regresiones de Cover/LoE/Blinded).
   - [x] Corregido un bug de posición obsoleta en `scripts/e2e-websocket.mjs` (variable de combatiente capturada antes de un `gm-move-combatant` posterior).
   - [x] Registry: nueva Rule ID `DEFENSE-VISION` (Parcial); `EFFECT-BLINDED`/`DEFENSE-LINE-OF-EFFECT` actualizadas.
-  - [x] Validación real: `npm test` 542/542, typecheck 0 errores (3 workspaces), build 3/3, E2E 100/100, Playwright 7/7.
+  - [x] Validación real tras 053B.1: `npm test` 544/544, typecheck 0 errores (3 workspaces), build 3/3, E2E 100/100, Playwright 7/7.
 
   **Sprint 052B — COMPLETADO**
   - [x] Separar `impassableCells` (movimiento) de `Board.lineOfEffectBlockingCells` (Line of Effect/Cobertura Total), sin inferencia entre ambos campos.
