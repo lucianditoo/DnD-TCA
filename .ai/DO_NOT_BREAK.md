@@ -21,10 +21,16 @@ No existen estadísticas escalares manuales como vía alternativa. Todo perfil o
 Un ataque físico que impacta siempre hace al menos 1 de daño base. (Esto puede cambiar en el futuro cuando se implemente Damage Reduction, pero por ahora es regla de oro).
 
 ## 7. Cero reglas en la UI
-React (`apps/web`) no sabe qué es un Ataque de Oportunidad ni cómo calcular cobertura. Solo sabe dibujar el `CombatRoom` que recibe. Si estás escribiendo un `if` de reglas de D&D en un `.tsx`, está mal.
+React (`apps/web`) puede mostrar previews, pero debe consumir las mismas
+proyecciones puras de `packages/shared` que usa el servidor. Nunca decide la
+legalidad final ni mantiene una fórmula paralela.
 
 ## 8. Funciones puras para reglas
-Todas las reglas viven en `packages/shared/src/rules.ts` como funciones puras, inmutables e idempotentes. (Excepción parcial: `attackResolver.ts` muta la sala actualmente, está trackeado como deuda DT-001). Todo cambio de estado de la sala debe sincronizarse mediante `syncEncounterPhase(room)` en el servidor.
+La matemática y las proyecciones reutilizables viven en funciones puras de
+`packages/shared`; los resolvers reciben contexto ya construido y no mutan la
+sala. Los Command Handlers del servidor orquestan consecuencias y commit.
+DT-001 está resuelta: `attackResolver.ts` es puro. Toda transición de fase
+debe pasar por `syncEncounterPhase(room)`.
 
 ## 9. No cambiar WebSocket sin diseño
 Cualquier cambio a `ClientCommand` o `ServerMessage` afecta a clientes, servidor, E2E y validación Zod. Nunca cambiar este contrato sin pasar por Fase 2 (Diseño).

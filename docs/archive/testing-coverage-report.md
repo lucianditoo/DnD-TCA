@@ -1,5 +1,10 @@
 # Reporte de Cobertura de Tests — D&D 3.5 Tactical Combat Engine
 
+> **Documento histórico.** Conserva la fotografía de cobertura de su época y
+> no gobierna el baseline vigente. La evidencia canónica actual está en
+> [`../testing/master-coverage.md`](../testing/master-coverage.md); los estados
+> oficiales de reglas están en [`../rules/registry.md`](../rules/registry.md).
+
 *Generado: 2026-07-07. Fuente: análisis directo de `tests/`, `scripts/e2e-websocket.mjs`, `package.json`.*
 
 ---
@@ -226,7 +231,10 @@ Los siguientes tests deben añadirse **antes** de implementar flanqueo, condicio
 
 ## Referencia de Documentos Relacionados
 
-- [docs/designs/rule-coverage-matrix.md](./designs/rule-coverage-matrix.md): Matriz completa de cobertura por sistema.
-- [docs/testing-checklist.md](./testing-checklist.md): Checklist manual de flujos a probar.
-- [docs/rules-coverage-checklist.md](./rules-coverage-checklist.md): Estado de cobertura de reglas D&D 3.5.
-- [docs/technical-debt.md](./technical-debt.md): Deuda técnica consolidada con prioridades.
+- [`../rules/registry.md`](../rules/registry.md): Rule IDs y estados oficiales.
+- [`../testing/master-coverage.md`](../testing/master-coverage.md): evidencia
+  de tests vigente.
+- [`testing-checklist.md`](testing-checklist.md): checklist histórico.
+- [`rules-coverage-checklist.md`](rules-coverage-checklist.md): cobertura
+  histórica.
+- [`../technical-debt.md`](../technical-debt.md): deuda técnica consolidada.

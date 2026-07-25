@@ -1,6 +1,6 @@
 # Deuda Técnica Consolidada — D&D 3.5 Tactical Combat Engine
 
-*Documento consolidado: 2026-07-15. Fuentes: `core-engine-audit.md`, `PROJECT_STATUS.md`, `TODO.md`, `CODEX_GUIDE.md`, walkthroughs de sesiones.*
+*Documento consolidado y saneado por última vez en Sprint 054A.*
 
 > Este documento es la fuente única de verdad para la deuda técnica. Los documentos fuente solo deben **enlazar** hacia aquí, no duplicar la información.
 
@@ -12,12 +12,14 @@ Estas deudas bloquean la implementación correcta de reglas futuras o representa
 
 ---
 
+<a id="dt-001"></a>
 ### ~~DT-001: AttackResolver muta el estado de sala directamente (impuro)~~ ✅ RESUELTO
 
 **Resolución (2026-07-08)**: `attackResolver.ts` fue refactorizado y ahora es 100% puro. Las funciones `resolveAttack` y `resolveCriticalConfirmation` devuelven una interfaz plana `AttackResult`. Todas las mutaciones imperativas (HP, stats, logs) se movieron a `apps/server/src/commands/attackCommands.ts` (específicamente en `applyAttackMutations` y `resolveThreatOutcome`).
 
 ---
 
+<a id="dt-002"></a>
 ### ~~DT-002: Movimiento a través de aliados y enemigos sin implementar~~ ✅ RESUELTO
 
 **Resolución (2026-07-08)**: Se implementó la lógica en `validateMovePath` en `rules.ts` para distinguir entre aliados, enemigos y criaturas indefensas. El frontend (`viewModel.ts` y `ActionsPanel.tsx`) ahora permite atravesar aliados e indefensos, y bloquea el botón de confirmación si se intenta terminar sobre una criatura consciente.
@@ -29,12 +31,14 @@ Cambios realizados:
 
 ---
 
+<a id="dt-003"></a>
 ### ~~DT-003: Bloqueo de flujo de críticos y AdO es ad-hoc en el dispatcher~~ ✅ RESUELTO
 
 **Resolución (2026-07-08)**: Se centralizó el estado en una máquina formal (`EncounterPhase`) calculada dinámicamente mediante `syncEncounterPhase(room)` en `roomState.ts`. A su vez, `dispatcher.ts` verifica esta fase y bloquea activamente la ejecución de comandos inválidos.
 
 ---
 
+<a id="dt-004"></a>
 ### ~~DT-004: No existe validación de payload de datos persistidos (perfiles guardados)~~ ✅ RESUELTO
 
 **Resolución final (Sprint 012, 2026-07-15)**: `profileStorage.ts` usa un sobre V3 y schemas Zod estrictos. Migra entradas anteriores de forma determinista e idempotente solo cuando tipo de criatura y features son explícitos o tienen un mapeo inequívoco, conserva backup, valida catálogos y pone perfiles opacos en cuarentena mediante `ProfileMigrationIssue`.
@@ -53,6 +57,7 @@ Cambios realizados:
 
 ---
 
+<a id="dt-005"></a>
 ### ~~DT-005: Natural 1 y Natural 20 sin implementación ni test~~ ✅ RESUELTO
 
 **Resolución (2026-07-07)**: La lógica estaba correcta en `attackResolver.ts` línea 42 (ternario `d20Roll === 1 ? false : d20Roll === 20 ? true : ...`) y en `isCriticalThreat`/`isCriticalConfirmed` en `rules.ts`. Lo que faltaban eran los tests explícitos de nivel de resolver y el log diferenciado.
@@ -65,6 +70,7 @@ Cambios realizados:
 
 ---
 
+<a id="dt-006"></a>
 ### ~~DT-006: CombatRulesSnapshot mapeo manual — riesgo de desincronización~~ ✅ RESUELTO
 
 **Resolución (2026-07-16)**: Se blindaron las interfaces y el mapeador estructural para impedir que cambios futuros en `CombatRoom` desincronicen el motor de reglas.
@@ -86,12 +92,14 @@ Estas deudas generan riesgo de regresión o complican implementaciones futuras p
 
 
 
+<a id="dt-007"></a>
 ### ~~DT-007: Límite de 1 AdO por criatura por ronda sin implementar~~ ✅ RESUELTO
 
 **Resolución (Sprint 021, 2026-07-16)**: D&D 3.5 exige que un combatiente realice como máximo 1 Ataque de Oportunidad por ronda, o más si posee "Reflejos de Combate" (1 + Mod DEX), pero nunca más de 1 AdO contra el mismo objetivo en la misma ronda. Se implementó un tracking inmutable en `CombatantStats` (`opportunityAttacksThisRound` y `targetsAttackedThisRoundViaAoO`) que se incrementa en `attackCommands.ts` de forma atómica. La validación autoritativa en `rules.ts` restringe los ataques correctamente respetando los históricos (Irreversibilidad a 20 sprints) y la regla del objetivo único. El contador se resetea vía `tickLayer.ts` puramente al comienzo de cada ronda.
 
 ---
 
+<a id="dt-008"></a>
 ### DT-008: Ownership acoplado imperativamente en cada handler
 
 **Descripción**: Las comprobaciones de `requireCombatantControl` y `requireTurnControl` están duplicadas en cada handler de comando individualmente. No existe middleware centralizado.
@@ -106,6 +114,7 @@ Estas deudas generan riesgo de regresión o complican implementaciones futuras p
 
 ---
 
+<a id="dt-009"></a>
 ### DT-009: E2E Tests son frágiles ante cambios en mecánicas de dados
 
 **Descripción**: El script E2E usa valores de d20 fijos. Cuando se agregó el sistema de críticos, los tests que usaban `d20Roll: 20` empezaron a fallar porque el servidor interceptaba el 20 como amenaza de crítico y bloqueaba la resolución del flujo. Los valores tuvieron que cambiarse a 15.
@@ -122,9 +131,12 @@ Estas deudas generan riesgo de regresión o complican implementaciones futuras p
 
 ---
 
-### DT-010: Tests unitarios de UI inexistentes
+<a id="dt-010"></a>
+### DT-010: Tests unitarios/de componente de UI inexistentes
 
-**Descripción**: No existe ningún test unitario ni de componente para `apps/web`. Cambios en `Board.tsx`, `ActionsPanel.tsx` o `GmPanel.tsx` pueden generar regresiones invisibles.
+**Descripción**: No existe ningún test unitario ni de componente para
+`apps/web`. Sí existe una suite Playwright de flujos críticos; esta deuda no
+afirma que la UI carezca de toda cobertura.
 
 **Riesgo**: Regresiones silenciosas en la interfaz tras actualización de dependencias o refactors.
 
@@ -136,13 +148,17 @@ Estas deudas generan riesgo de regresión o complican implementaciones futuras p
 
 ---
 
+<a id="dt-011"></a>
 ### ~~DT-011: Ataque completo sin ataques iterativos reales~~ ✅ RESUELTO (verificado en Sprint 044)
 
 **Descripción histórica**: El sistema marcaba el turno como "ataque completo" pero no generaba ataques iterativos por BAB (BAB 6/1, 11/6/1, etc.). El ataque completo era solo un marcador de acción.
 
 **Resolución (Sprint 036, verificada por código y tests en Sprint 044)**: `packages/shared/src/rules.ts` implementa `getAttackRoutine` y `getEffectiveAttackRoutine` (read-model puro que compone `getAttackRoutine` + `Rules.totalAttackBonus`), con progresión real de ataques iterativos por umbral de BAB. Confirmado en uso activo desde `attackCommands.ts` y `ActionsPanel.tsx`. Tests: `iterative-attacks-effective-routine.test.mjs` (5/5), `full-attack.test.mjs`. Ver Rule ID `ATTACK-FULL` en `docs/rules/registry.md` (Completo).
 
-**Alcance pendiente, no confundir con esta deuda**: Disparo Rápido (Rapid Shot) y Aceleración (Haste) real como *fuentes adicionales* de ataque extra siguen sin implementar — eso es el Rule ID `ATTACK-FULL-V2` (Sprint 038, NDD aprobado, esperando `Proceed`), una funcionalidad nueva, no la deuda original de DT-011 (que era "sin iterativos reales en absoluto").
+**Alcance pendiente, no confundir con esta deuda**: Disparo Rápido, Haste
+real y otros productores de ataques extra siguen pendientes como componentes
+de la única regla `ATTACK-FULL`. No existe ni debe restaurarse una Rule ID de
+versión. El estado oficial de `ATTACK-FULL` vive en el Registry.
 
 **Módulo afectado**: `packages/shared/src/rules.ts`, `apps/server/src/commands/attackCommands.ts`.
 
@@ -150,6 +166,7 @@ Estas deudas generan riesgo de regresión o complican implementaciones futuras p
 
 ---
 
+<a id="dt-012"></a>
 ### DT-012: EquipmentCatalog es estático y no soporta buffs dinámicos
 
 **Descripción**: `toWeaponProfile` y `deriveEquipmentStats` calculan derivados una vez, asumiendo condiciones estáticas. No pueden representar armas mágicas o efectos que modifiquen el equipo en tiempo real.
@@ -170,6 +187,7 @@ Estas deudas no generan riesgo activo pero conviene resolverlas antes de las fas
 
 ---
 
+<a id="dt-013"></a>
 ### DT-013: Stack de buffs del mismo tipo sin validación
 
 **Descripción**: Múltiples buffs del mismo tipo (ej. dos Bless) pueden acumularse y sumar bonificadores incorrectamente. D&D 3.5 tiene reglas de no-stack por tipo de bonificador.
@@ -182,6 +200,7 @@ Estas deudas no generan riesgo activo pero conviene resolverlas antes de las fas
 
 ---
 
+<a id="dt-014"></a>
 ### ~~DT-014: Pérdida automática de 1 HP por ronda (combatiente moribundo) sin implementar~~ ✅ RESUELTO (verificado en Sprint 044)
 
 **Descripción histórica**: Un combatiente moribundo debería perder 1 HP automáticamente al inicio de cada turno. Esto no ocurría.
@@ -194,18 +213,25 @@ Estas deudas no generan riesgo activo pero conviene resolverlas antes de las fas
 
 ---
 
-### DT-015: Documentación fragmentada entre múltiples archivos
+<a id="dt-015"></a>
+### ~~DT-015: Documentación fragmentada entre múltiples archivos~~ ✅ RESUELTO (Sprint 054A)
 
-**Descripción**: La deuda técnica y el estado del proyecto estaban dispersos entre `core-engine-audit.md`, `PROJECT_STATUS.md`, `TODO.md` y walkthroughs. Este documento consolida la deuda; los demás deben enlazar aquí.
+**Descripción histórica**: La deuda técnica y el estado del proyecto estaban
+dispersos entre `core-engine-audit.md`, `PROJECT_STATUS.md`, `TODO.md` y
+walkthroughs.
 
-**Módulo afectado**: Todos los `.md` de la raíz y `docs/`.
+**Resolución**: Sprint 054A fijó una fuente canónica por responsabilidad,
+consolidó aquí el estado de cada deuda, redujo `PROJECT_STATUS.md`, `TODO.md` y
+`ROADMAP.md` a sus funciones operativas y corrigió las rutas activas hacia
+documentos reemplazados. `INDEX.md` y `.ai/README.md` publican la jerarquía.
 
-**Recomendación**: Mantener este archivo como fuente única de deuda. `PROJECT_STATUS.md` y `TODO.md` deben ser resúmenes ejecutivos que enlacen aquí para el detalle.
+**Módulo afectado**: documentación raíz, `.ai/` y `docs/`.
 
-**Bloquea MVP**: No.
+**Bloquea MVP**: No — deuda cerrada.
 
 ---
 
+<a id="dt-016"></a>
 ### DT-016: DurationPolicy acoplado al número de ronda
 
 **Descripción**: La evaluación de efectos con duración en rondas en ActiveEffects (Fase 6) asume que la duración expira comprobando `event.round - appliedRound >= count`. Esto asume que el sistema de iniciativa es estático y el concepto de "ronda" es uniforme para todos.
@@ -220,6 +246,7 @@ Estas deudas no generan riesgo activo pero conviene resolverlas antes de las fas
 
 ---
 
+<a id="dt-017"></a>
 ### ~~DT-017: Variantes de CA legacy sin desglose exacto~~ ✅ RESUELTO
 
 **Resolución (2026-07-15)**: se eliminaron el retorno de `armorClass` plano y las estimaciones Touch/Flat-Footed. Las plantillas guardan fuentes explícitas; `createCombatantSnapshotFromProfile` deriva un breakdown completo y `totalArmorClass` falla con un error descriptivo si la invariante no se cumple. Todas las criaturas integradas fueron migradas.
@@ -236,46 +263,32 @@ Estas deudas no generan riesgo activo pero conviene resolverlas antes de las fas
 
 ---
 
-## Tabla Resumen
+## Índice
 
-| ID | Descripción breve | Prioridad | Módulo | Bloquea MVP |
-|---|---|---|---|---|
-| ~~DT-001~~ | ~~AttackResolver muta sala directamente (impuro)~~ | ~~🔴 Alta~~ | ~~`attackResolver.ts`~~ | ~~No~~ | ✅ **Resuelto** |
-| ~~DT-002~~ | ~~Sin validación de paso a través de aliados/enemigos~~ | ~~🔴 Alta~~ | ~~`movementCommands.ts`~~ | ~~Sí (flanqueo)~~ | ✅ **Resuelto** |
-| ~~DT-003~~ | ~~Bloqueo de flujo ad-hoc en dispatcher~~ | ~~🔴 Alta~~ | ~~`dispatcher.ts`~~ | ~~No~~ | ✅ **Resuelto** |
-| ~~DT-004~~ | ~~Sin migraciones para perfiles guardados~~ | ~~🔴 Alta~~ | ~~`profileStorage.ts`~~ | ~~No~~ | ✅ **Resuelto** |
-| ~~DT-005~~ | ~~Natural 1 / Natural 20 sin implementación~~ | ~~🔴 Alta~~ | ~~`attackResolver.ts`~~ | ~~Sí~~ | ✅ **Resuelto** |
-| ~~DT-006~~ | ~~CombatSnapshot mapeo manual sin auto-verificación~~ | ~~🟡 Media~~ | ~~`combatSnapshot.ts`~~ | ~~No~~ | ✅ **Resuelto** |
-| ~~DT-007~~ | ~~Límite de 1 AdO por criatura sin implementar~~ | ~~🟡 Media~~ | ~~`rules.ts`, `attackCommands.ts`~~ | ~~No~~ | ✅ **Resuelto** |
-| DT-008 | Ownership acoplado imperativamente | 🟡 Media | Handlers de commands | No |
-| DT-009 | E2E tests frágiles ante mecánicas de dados | 🟡 Media | `e2e-websocket.mjs` | No |
-| DT-010 | Tests de UI inexistentes | 🟡 Media | `apps/web` | No |
-| DT-011 | Ataque completo sin ataques iterativos reales | 🟡 Media | `attackCommands.ts` | No (nivel bajo) |
-| DT-012 | EquipmentCatalog estático sin soporte de buffs | 🟡 Media | `equipmentCatalog.ts` | No |
-| DT-013 | Stack de buffs sin validación de tipo | 🟢 Baja | `buffRules.ts` | No |
-| DT-014 | Sin pérdida automática de HP (moribundo) | 🟢 Baja | `turnManager.ts` | No |
-| DT-015 | Documentación fragmentada | 🟢 Baja | Docs | No |
-| DT-016 | DurationPolicy acoplado al número de ronda | 🟢 Baja | `effects/tick.ts` | No |
-| ~~DT-017~~ | ~~Variantes de CA legacy sin desglose exacto~~ | ~~🟡 Media~~ | ~~`types.ts`, `combatSnapshot.ts`, `rules.ts`~~ | ~~No~~ | ✅ **Resuelto** |
-| DT-018 | Correr: resistencia multi-asalto (Constitución/CD/descanso) diferida | 🟢 Baja | `rules.ts`, `tacticalCommands.ts` | No |
-| DT-019 | Correr: bloqueo por visión/Cegado diferido (sin modelo de visión) | 🟢 Baja | `rules.ts` | No |
+El estado canónico está únicamente en el encabezado y cuerpo de cada entrada;
+este índice no lo repite:
+
+[DT-001](#dt-001) · [DT-002](#dt-002) · [DT-003](#dt-003) ·
+[DT-004](#dt-004) · [DT-005](#dt-005) · [DT-006](#dt-006) ·
+[DT-007](#dt-007) · [DT-008](#dt-008) · [DT-009](#dt-009) ·
+[DT-010](#dt-010) · [DT-011](#dt-011) · [DT-012](#dt-012) ·
+[DT-013](#dt-013) · [DT-014](#dt-014) · [DT-015](#dt-015) ·
+[DT-016](#dt-016) · [DT-017](#dt-017) · [DT-018](#dt-018) ·
+[DT-019](#dt-019) · [DT-020](#dt-020) · [DT-021](#dt-021) ·
+[DT-022](#dt-022)
 
 ---
 
 ## Referencia de Documentos Relacionados
 
 - [docs/audits/core-engine-audit.md](./audits/core-engine-audit.md): Auditoría técnica detallada original con análisis de subsistemas.
-- [docs/designs/rule-coverage-matrix.md](./designs/rule-coverage-matrix.md): Matriz completa de cobertura de reglas.
-- [docs/testing-coverage-report.md](./testing-coverage-report.md): Reporte de cobertura de tests.
-- [TODO.md](../TODO.md): Roadmap ejecutivo por área.
+- [docs/rules/registry.md](./rules/registry.md): Rule IDs y estados oficiales.
+- [docs/testing/master-coverage.md](./testing/master-coverage.md): evidencia
+  canónica de tests.
+- [TODO.md](../TODO.md): acciones pendientes.
 - [PROJECT_STATUS.md](../PROJECT_STATUS.md): Foto actual del estado del proyecto.
 
-## Cierre Sprint 030
-
-Grapple Core V2 no introduce deuda técnica nueva. La selección restringida a arma principal ligera o ataque natural es alcance funcional explícito de V2; futuras acciones internas de Presa deben ampliar el catálogo de acciones sobre las mismas fronteras compartidas, sin bypasses en handlers o UI.
-
----
-
+<a id="dt-018"></a>
 ### DT-018: Correr — resistencia multi-asalto (Constitución/CD creciente/descanso) sin implementar
 
 **Descripción**: Sprint 041 (`MOVE-RUN`) entrega el movimiento de Correr de un único asalto (×4/×3 velocidad, línea recta, terreno difícil bloqueado, pérdida de Destreza salvo dote). El RAW completo (`combat/07_movimiento.txt:33`) exige además: rondas gratuitas de Correr = puntuación de Constitución; agotadas esas rondas, una prueba de Constitución (CD 10, +1 por ronda adicional) cada asalto que se mantenga la carrera; al fallar, detenerse; y un descanso obligatorio de 10 asaltos (1 minuto) antes de poder volver a correr. Ninguna de estas piezas está implementada — es una decisión explícita de acotación de alcance (D-2 del NDD), no un olvido.
@@ -290,20 +303,29 @@ Grapple Core V2 no introduce deuda técnica nueva. La selección restringida a a
 
 ---
 
-### DT-019: Correr — bloqueo por "no ver hacia dónde vas" sin implementar (depende de un modelo de visión/Cegado)
+<a id="dt-019"></a>
+### DT-019: Correr — bloqueo por "no ver hacia dónde vas" sin implementar
 
-**Descripción**: El RAW de Correr (`combat/07_movimiento.txt:33`) prohíbe correr si el personaje no puede ver hacia dónde va. El motor no tiene todavía ningún modelo real de visión ni de la condición Cegado — deuda ya registrada de forma general en el Sprint MOVE-WITHDRAW ("exención pro-defensor ante invisibles y Cegado sin validar"). Sprint 041 (`MOVE-RUN`, decisión D-4) difiere explícitamente esta restricción hasta que exista dicho modelo, en vez de introducir una heurística parcial.
+**Descripción**: El RAW de Correr (`combat/07_movimiento.txt:33`) prohíbe
+correr si el personaje no puede ver hacia dónde va. Desde Sprint 047/053B el
+motor ya dispone de `EFFECT-BLINDED` y `DEFENSE-VISION`, pero `canRun` todavía
+no consume una proyección visual hacia el destino. La dependencia dejó de ser
+"crear Vision"; el trabajo pendiente real es diseñar el gate compartido de
+movimiento sin acoplarlo a una condición concreta.
 
-**Riesgo**: Un combatiente Cegado o sin línea de visión hacia su destino puede correr igualmente. Bajo en el estado actual del motor (Cegado tampoco está modelado como condición jugable todavía).
+**Riesgo**: Un combatiente Cegado o sin visión hacia su destino puede correr
+igualmente.
 
 **Módulo afectado**: `packages/shared/src/rules.ts` (`canRun`); comparte el mismo punto de extensión futuro que usará Retirada para su deuda de visión equivalente.
 
-**Recomendación**: Cuando se diseñe el modelo de visión/Cegado, conectar tanto Correr como Retirada al mismo gate — no acoplar la solución a una sola de las dos acciones.
+**Recomendación**: Diseñar una proyección visual de movimiento compartida por
+Correr y Retirada; no ramificar por `effectId`.
 
 **Bloquea MVP**: No.
 
 ---
 
+<a id="dt-020"></a>
 ### ~~DT-020: `tests/withdraw-server.test.mjs` importa un módulo inexistente (`validation/index.ts`) — el archivo entero nunca ejecuta~~ ✅ RESUELTO (Sprint 042.5)
 
 **Descripción**: Hallazgo del gate de validación de Sprint 041 (`MOVE-RUN`), al instalar por primera vez los binarios nativos `linux-x64` de `esbuild`/`rollup` en el sandbox y lograr ejecutar `tsx` de verdad contra toda la suite. `tests/withdraw-server.test.mjs` (Sprint 040, `MOVE-WITHDRAW`) importa `../apps/server/src/validation/index.ts`, archivo que no existe — el módulo real es `apps/server/src/validation/validateClientCommand.ts`. Al ser un `import` estático ESM, Node aborta la carga completa del archivo con `ERR_MODULE_NOT_FOUND` antes de registrar un solo `test()`; confirmado en aislamiento (`npx tsx --test tests/withdraw-server.test.mjs` → `1 test, 0 pass, 1 fail`) y reproducido de forma idéntica en un `git worktree` del commit previo a Sprint 041 (`3190182`), por lo que es un defecto pre-existente de Sprint 040, no una regresión de Correr. Quedó invisible hasta ahora porque en sandboxes anteriores `tsx` nunca llegaba a intentar cargar el archivo (bloqueo ambiental previo de `esbuild`/`rollup`, ver DT-018/DT-019 y walkthroughs de Sprint 040/041).
@@ -326,6 +348,7 @@ Grapple Core V2 no introduce deuda técnica nueva. La selección restringida a a
 
 ---
 
+<a id="dt-021"></a>
 ### ~~DT-021: `cloneEffectInstances` no propagaba `targetCells` — hazards ambientales inoperantes en producción~~ ✅ RESUELTO (Sprint 042.5)
 
 **Descripción**: hallazgo de la auditoría de baseline Sprint 042-R, confirmado y corregido en Sprint 042.5. `packages/shared/src/combatSnapshot.ts::cloneEffectInstances` (usada por `createCombatRulesSnapshot`, invocada en cada resolución de comando) es una lista blanca explícita de campos que nunca se actualizó cuando Sprint 034 agregó `targetCells` a `EffectInstance` para modelar peligros ambientales anclados a celda (Muro de Fuego, gas venenoso, etc.). El campo se perdía silenciosamente en cada snapshot, por lo que `getEnvironmentalHazardHits` (que filtra por `instance.targetCells`) nunca detectaba ningún hazard — ni en los 5 tests de `tests/environmental-hazards.test.mjs` (que fallaban desde entonces) ni en una partida real (`apps/server/src/combat/environmentalHazardResolver.ts::resolveEnvironmentalHazards`, invocado desde `turnManager.advanceTurn`, usa el mismo snapshot roto).
@@ -342,6 +365,7 @@ Grapple Core V2 no introduce deuda técnica nueva. La selección restringida a a
 
 ---
 
+<a id="dt-022"></a>
 ### ~~DT-022: `onStack` declarado en `EffectDefinition` desde Sprint 003 sin ningún consumidor real~~ ✅ RESUELTO (Sprint 049)
 
 **Descripción**: hallazgo de la auditoría normativa de Sprint 049 (`EFFECT-EXHAUSTED`). El campo `EffectDefinition.onStack` (y `upgradeTo`) estaba declarado en `packages/shared/src/effects/contracts.ts` desde el diseño original de ActiveEffects, con cuatro valores posibles (`ignore`/`replace`/`upgrade_to`/`accumulate`), pero ningún módulo lo leía: ni `EffectManager.add` (puramente aditivo, sin comparar contra instancias existentes) ni `EffectReducer` (que solo resuelve `stackingGroup`/`stackingPolicy` a nivel de modificador numérico, un mecanismo distinto). En la práctica, cualquier `effectId` podía tener múltiples instancias simultáneas activas sobre el mismo objetivo, sin importar su `onStack` declarado.

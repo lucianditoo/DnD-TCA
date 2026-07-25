@@ -43,11 +43,14 @@ Para cada archivo: responsabilidad · qué modificar · qué NO hacer.
 ---
 
 ### `apps/server/src/combat/attackResolver.ts`
-**Responsabilidad**: Función pura (en la práctica muta la sala — DT-001) que resuelve un ataque completo: calcula impacto, daño, amenaza de crítico y log. También resuelve la confirmación de crítico.
+**Responsabilidad**: Resolver matemático puro: calcula impacto, daño,
+Concealment, amenaza y confirmación de crítico a partir de contexto ya
+construido. DT-001 está resuelta; las mutaciones viven en handlers.
 
 **Podés modificar**: Agregar Damage Reduction, condiciones de inmunidad, ataques iterativos, una vez diseñados.
 
-**No hagas**: Mover aquí lógica que ya está en `rules.ts`. No saltear `isCriticalThreat`/`isCriticalConfirmed`. No olvidar el mínimo de 1 de daño.
+**No hagas**: Leer posiciones o recorrer la sala, mover aquí lógica que ya
+está en `rules.ts`, ni mutar HP/stats/logs.
 
 ---
 
@@ -121,7 +124,9 @@ Para cada archivo: responsabilidad · qué modificar · qué NO hacer.
 
 **Podés modificar**: Añadir derivaciones nuevas (ej: bonos de escudo al CMD, velocidad de armadura pesada).
 
-**No hagas**: Sobrescribir stats manuales de monstruos cuando no hay equipo definido. Respetar: si no hay equipo → preservar valores manuales.
+**No hagas**: Inventar resultados escalares o fallbacks cuando faltan
+fuentes. Perfiles y templates V3+ deben declarar equipo, anatomía y defensa
+intrínseca explícitos; una referencia inválida falla de forma descriptiva.
 
 ---
 

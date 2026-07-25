@@ -1,6 +1,12 @@
 # Master Testing Coverage
 
-Este documento consolida las directrices y el reporte de cobertura de testing del motor de combate D&D 3.5. 
+> **Responsabilidad canónica:** evidencia global de pruebas automatizadas. No
+> representa cobertura normativa completa del PHB ni reemplaza los checklists
+> temáticos. Los estados oficiales de reglas viven en
+> [`../rules/registry.md`](../rules/registry.md).
+
+Este documento consolida las directrices y el reporte de cobertura de testing
+del motor de combate D&D 3.5.
 
 ## Cobertura E2E (WebSocket)
 Los scripts E2E (ej. `scripts/e2e-websocket.mjs`) actúan como la prueba de integración canónica del motor, emulando a clientes conectados que envían comandos tácticos.
@@ -23,7 +29,7 @@ Reglas cubiertas obligatoriamente en E2E:
 - DEFENSE-LINE-OF-EFFECT (Parcial): camino positivo (Line of Effect presente, tablero sin obstáculos) confirmado vía WebSocket. El camino de rechazo (Cobertura Total por `lineOfEffectBlockingCells`) **no** es representable en este E2E porque no existe comando ni editor para fijar el tablero de una sala viva; se cubre con integración directa de servidor en `tests/line-of-effect-server.test.mjs` (ver Sprint 052B abajo).
 - DEFENSE-VISION (Parcial, Sprint 053B): targeting directo rechazado para un atacante Cegado con `targetId` legado (Ocultación Total ahora exige elegir casilla), y el mismo ataque resuelto exitosamente vía `target: {kind:"square"}` con el d100 de Concealment (50%) autoritativo del servidor.
 
-Último cierre validado (Sprint 053B): **100/100** verificaciones WebSocket.
+Último cierre validado (Sprint 053B.1): **100/100** verificaciones WebSocket.
 
 ## Cobertura Unitaria
 Los test unitarios (ej. `tests/*.test.mjs`) evalúan casos límite aislados sin necesidad del servidor WS.

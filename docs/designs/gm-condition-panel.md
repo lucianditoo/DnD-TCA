@@ -243,3 +243,24 @@ El panel jamás debe contener una rama de código por `effectId` ni replicar
 Lesser Restoration, Restoration, descanso/recuperación tras 1 hora, conjuros,
 clima, viajes, fuentes automáticas nuevas, reglas nuevas, implementación de
 código, tests, cambios de Registry/Rule IDs, cambios de UI.
+
+## Plan ejecutado y cierre histórico
+
+El plan de implementación que acompañó este diseño se ejecutó posteriormente
+en Sprint 050.1. Se conserva aquí, en forma resumida, para evitar que un
+`implementation_plan.md` raíz obsoleto parezca trabajo aún autorizado:
+
+1. ampliar `ClientCommand` y los esquemas Zod con `gm-remove-effect`;
+2. implementar el handler administrativo con autorización GM y remoción
+   exclusiva por `instanceId` mediante `EffectManager.removeMany`;
+3. registrar el comando en el dispatcher;
+4. añadir el panel React para listar, aplicar y remover instancias sin duplicar
+   `onStack` ni `severityChain`;
+5. validar permisos, instancia inexistente, reaplicación y escalado de
+   severidad en unitarias, WebSocket y UI.
+
+El resultado integrado respeta el diseño: `gm-apply-effect` continúa siendo la
+entrada genérica de aplicación, `gm-remove-effect` remueve una instancia
+concreta y la UI refleja el `room-update` autoritativo. El estado permanente de
+la implementación se consulta en `../rules/registry.md`; este NDD conserva las
+decisiones y el historial, no el estado operativo actual.

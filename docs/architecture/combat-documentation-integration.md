@@ -7,10 +7,14 @@ En caso de conflictos o dudas de diseño, el orden de consulta es el siguiente:
 
 1. **Documentación Normativa (`combat/`)**: Contiene la reorganización literal y temática del Capítulo 8.
 2. **Decisiones Arquitectónicas (`docs/architecture/combat-engine.md`)**: Determinan *cómo* se estructura una regla en el código (separación de responsabilidades, pureza de los resolvers, ownership en servidor).
-3. **Simplificaciones Registradas (`docs/designs/combat-rules-coverage.md`)**: Si una regla normativa se reduce de manera deliberada por el alcance del proyecto.
-4. **Reglas Homebrew**: Alteraciones hechas al sistema D&D (no pertenecen al manual) que deben estar documentadas y marcadas explícitamente.
-5. **Código Fuente**: El comportamiento implementado en `packages/shared/src/rules.ts` y demás módulos.
-6. **Tests**: Son las garantías, pero **no** son normativos. Si un test protege un comportamiento contrario a la regla normativa de `combat/`, el test está equivocado y debe ser alterado una vez aprobado el cambio.
+3. **Rule Registry (`docs/rules/registry.md`)**: Identidad y estado oficial
+   de la regla.
+4. **Divergencias Registradas
+   (`docs/audits/combat-rules-deviations.md`)**: simplificaciones o
+   diferencias conocidas respecto del corpus.
+5. **Reglas Homebrew**: Alteraciones hechas al sistema D&D (no pertenecen al manual) que deben estar documentadas y marcadas explícitamente.
+6. **Código Fuente**: El comportamiento implementado en `packages/shared/src/rules.ts` y demás módulos.
+7. **Tests**: Son las garantías, pero **no** son normativos. Si un test protege un comportamiento contrario a la regla normativa de `combat/`, el test está equivocado y debe ser alterado una vez aprobado el cambio.
 
 ## 2. Cómo Consultar `combat/` al Diseñar Nuevas Reglas
 Ningún desarrollador ni agente (IA) debe implementar reglas basándose puramente en su memoria de D&D 3.5 o asunciones previas.
@@ -21,7 +25,9 @@ Ningún desarrollador ni agente (IA) debe implementar reglas basándose purament
 ## 3. Normas de Documentación
 Cada funcionalidad agregada o modificada debe clasificarse y documentarse:
 - **Regla oficial implementada fielmente**: El código responde en un 100% al manual.
-- **Regla oficial simplificada**: Se omitieron detalles deliberadamente (ej. no contemplar armas de alcance natural dinámico por ahora). Debe constar en `combat-rules-coverage.md`.
+- **Regla oficial simplificada**: Se omitieron detalles deliberadamente.
+  Debe constar en `docs/audits/combat-rules-deviations.md` y el Registry
+  conserva el estado oficial.
 - **Regla oficial no implementada**: Reservada para características fuera de scope temporalmente.
 - **Divergencia conocida (Bug/Error)**: Funciona distinto a las reglas oficiales sin haber sido aprobado como simplificación (registrado en `combat-rules-deviations.md`).
 - **Extensión Homebrew**: Mecánica creada exclusivamente para este videojuego que diverge del TTRPG.
@@ -30,7 +36,9 @@ Cada funcionalidad agregada o modificada debe clasificarse y documentarse:
 Tras la aprobación e implementación de una Fase o regla (Definition of Done de cualquier tarea de combate), se deben actualizar sincrónicamente:
 - `PROJECT_STATUS.md`
 - `TODO.md`
-- `docs/rules-coverage-checklist.md` (y `combat-rules-coverage.md`)
+- `docs/rules/registry.md` cuando cambia evidencia o estado de una Rule ID
+- `docs/testing/master-coverage.md` cuando cambia evidencia de pruebas
+- `docs/audits/combat-rules-deviations.md` solo si cambia una divergencia
 - `walkthrough.md`
 - Documentos de diseño afectados.
 

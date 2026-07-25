@@ -1,31 +1,45 @@
-# Roadmap del Motor Táctico (D&D 3.5)
+# Roadmap
 
-> **Reescrito en Sprint 043** (2026-07-18). La versión anterior de este documento describía "Fases" pre-Sprint-005 (2026, era temprana del proyecto) y llevaba desde el 2026-07-17 marcada como histórica/no vigente en su propia nota de cabecera. Casi todo su contenido (ActiveEffects, Rule Engine Integration, Conditions V1-V3, AC Split, Cover, Round Tracking/Tick Layer, tamaños/reach, gran parte de Spells) ya está implementado bajo sprints numerados. Este documento es un roadmap nuevo, construido desde el estado real del proyecto (auditoría Sprint 043), no una continuación automática del anterior. La versión anterior queda preservada en el historial de git (ver `git log -- ROADMAP.md`) por si hace falta consultarla.
+> **Responsabilidad canónica:** orden futuro y dependencias. No define estados
+> de Rule IDs; para eso prevalece
+> [`docs/rules/registry.md`](docs/rules/registry.md).
 
-## Estado de base (Sprint 053B.1, Vision revisada arquitectónicamente)
+## Orden propuesto
 
-- Sprint 053B entrega la primera vertical funcional de Vision: `Board.dimLightCells`/`darknessCells`, `IntrinsicPerception.darkvisionFeet`, `VisualPathAssessment`, `VisionAssessment`/`getVisionAssessment`, composición con `ConcealmentAssessment`, y targeting a ciegas server-authoritative por casilla. Sprint 053B.1 valida la arquitectura publicada y corrige que Darkvision respete `darkvisionFeet` también al suprimir luz tenue. Rule ID `DEFENSE-VISION` permanece Parcial. Baseline local: `npm test` 544/544, typecheck/build verdes, WebSocket E2E 100/100, Playwright 7/7.
-- Sprint 052B/052B.1 entregan Line of Effect y Cobertura Total para ataques físicos ordinarios: `Board.lineOfEffectBlockingCells` independiente de `impassableCells` (movimiento), `getLineOfEffect`/`LineOfEffectAssessment` nuevos con geometría "supercover" corregida (052B.1), `DEFENSE-LINE-OF-EFFECT` (Parcial) integrada en `handleResolveAttackDraft` antes de cualquier tirada/mutación, y corrección de `DEFENSE-COVER` (ya no concede Cover por terreno).
-- Sprint 050.1 entrega el panel administrativo de condiciones: reutiliza `gm-apply-effect` sin cambios y agrega `gm-remove-effect` (remoción exclusiva por `instanceId`, delegando stacking/`onStack`/`severityChain` a `EffectManager`, sin lógica de reglas en la UI).
-- Desde Sprint 046 hasta aquí ya se cerraron formalmente, con validación real, las verticales que este documento describía como pendientes en su versión anterior: **Blinded** (Sprint 047, `EFFECT-BLINDED` Completo — targeting por casilla ahora exigido también para su propia Ocultación Total desde Sprint 053B), **Helpless Combat & Coup de Grace** (Sprint 048, `MANEUVER-COUP-DE-GRACE` Completo), y **Exhausted** (Sprint 049, `EFFECT-EXHAUSTED` Completo, junto con la corrección de infraestructura DT-022 en `EffectManager.add`/`onStack`).
-- Cobertura del Master Plan V1.0 (`.ai/coverage/`): Equipment ~86%, Rules (PHB core) ~64%, Feats ~11%, Spells ~10%. Los dos últimos son el hueco más grande antes de poder llamar "V1.0" al proyecto.
-- Infraestructura arquitectónica considerada **completa y no debe reinventarse**: ActiveEffects (`effects/manager.ts`, `effects/catalog.ts`, `effects/reducer.ts`), Tick Layer (`effects/tick.ts` + `events/bus.ts`), sistema de Traits, `CombatRulesSnapshot`/`combatSnapshot.ts`, Rule Engine (`rules.ts`), Cover/flanqueo/amenaza, ataques iterativos por BAB, salvaciones automáticas, AoE de conjuros, huellas multicasilla, Presa/Embestida/Derribo, inventario (`EQUIPMENT-INVENTORY`), panel administrativo de condiciones (GM Condition Panel), Vision/iluminación básica (`DEFENSE-VISION`).
-- 54 Rule IDs documentados en `docs/rules/registry.md` — única fuente de verdad sobre qué reglas existen y en qué estado. Cada Rule ID representa una regla oficial estable, no una versión ni un sprint (política fijada en Sprint 044.1 tras corregir la duplicación `ATTACK-FULL`/`ATTACK-FULL-V2`). El panel administrativo del GM (Sprint 050/050.1) es tooling, no una regla de D&D — no abre Rule ID, igual que `EFFECTS-SYS-*`.
-- Arquitectura transversal canónica: `docs/designs/modifier-pipeline-architecture.md`. Toda vertical futura debe seguir Intención → Preflight → Operación base → Contribuciones estructurales → Contexto → Proyección efectiva → Resolver → Consecuencias → Commit, con contratos especializados y sin `UniversalModifier`.
+1. **Consolidación documental de coverage**
+   - Requiere un sprint separado y aprobación arquitectónica.
+   - Debe resolver responsabilidades y taxonomías sin mezclar evidencia de
+     testing con cobertura normativa PHB.
 
-## Próximos sprints propuestos
+2. **Vision, Line of Effect y Concealment**
+   - Extender Line of Effect a conjuros, áreas y AdO.
+   - Incorporar sentidos alternativos, fuentes dinámicas de luz y fenómenos
+     visuales.
+   - Completar las consecuencias todavía no modeladas de oscuridad y
+     Concealment.
 
-Ver el detalle completo (objetivo/dependencias/Rule IDs/deuda/tests/impacto) en el informe de auditoría de Sprint 043 (`walkthrough.md` de ese sprint y el mensaje de cierre correspondiente en el historial de la sesión). Resumen:
+3. **Conditions pendientes**
+   - Concentration para Entangled.
+   - Dazzled/Shaken después de skills/checks.
+   - Stunned con caída de objetos.
+   - Frightened/Panicked con movimiento obligatorio y escalado de miedo.
 
-1. **Sprint 044.2 — Pipeline de Modificadores (diseño completado, en revisión)**: audita las rutas actuales, decide cuáles retirar/consolidar y fija el pipeline oficial. No abre Rule IDs ni implementación. Documento: `docs/designs/modifier-pipeline-architecture.md`.
-2. **Sprint 046 — DEFENSE-CONCEALMENT (infraestructura completada)**: assessment compartido y resolución autoritativa implementados. Pendientes bajo gates propios: fuentes productivas, targeting por casilla de ocultación total y política efectiva de AdO; esos pendientes no cambian el estado actual **Infraestructura solamente**.
-3. **Condiciones, restantes por dependencia**: Blinded (047), Helpless/Coup de Grace (048) y Exhausted (049) ya cerraron formalmente. Restan: Entangled completo (Parcial hasta Concentration); Dazzled/Shaken tras decidir alcance de skills/checks; Stunned requiere caída real de objetos; Frightened/Panicked requieren movimiento obligatorio y escalado de miedo.
-4. **Vision/Línea de Efecto**: Line of Effect y Cobertura Total para ataques físicos ordinarios ya cerraron formalmente (Sprint 052B/052B.1, `DEFENSE-LINE-OF-EFFECT` Parcial). La primera vertical funcional de Vision (luz tenue/oscuridad total/Darkvision y targeting a ciegas por casilla) también cerró formalmente (Sprint 053B, `DEFENSE-VISION` Parcial). Restan bajo gates propios: conjuros/AoE y amenaza de AdO para Line of Effect; Low-Light Vision, Blindsight/Blindsense/Tremorsense, niebla/humo, invisibilidad, fuentes de luz dinámicas y las consecuencias defensivas/de movimiento de la oscuridad (pérdida de Destreza a la CA, -2 CA, velocidad mitad, penalizadores de habilidades) para Vision — esto último sigue cerrando parcialmente G-03 de `docs/audits/combat-rules-deviations.md` y habilitando validar Cegado en Correr/Retirada (DT-018/DT-019 parcial).
-5. **Modificadores de rutinas de ataque bajo Rule IDs independientes**: Rapid Shot, Haste, Two-Weapon Fighting, ataques naturales y Cleave/Great Cleave no son componentes intrínsecos de `ATTACK-FULL`. Deben consumir el compositor/proyección especializada definidos por Sprint 044.2.
-6. **Feats Core (lotes pequeños)**: dotes que dependan de Conditions/Concealment o del futuro compositor de rutinas.
-7. **Spells Core (lotes pequeños)**: concentración, componentes, resistencia a conjuros y migración fiel de Haste.
-8. **Saneamiento de deuda arquitectónica** (sin número fijo, reordenable): DT-008 (middleware de ownership), DT-012 (buffs dinámicos de equipo), DT-013 (validación de stacking de buffs por tipo). Sin reglas de juego nuevas.
+4. **Composición de rutinas de ataque**
+   - Rapid Shot, Haste, Two-Weapon Fighting, ataques naturales y
+     Cleave/Great Cleave deben contribuir a las reglas existentes mediante el
+     pipeline oficial.
 
-Power Attack (Sprint 039) permanece congelado por decreto de producto explícito (`docs/designs/power-attack-v6-declarative.md`) — no se reordena en este roadmap hasta nueva instrucción.
+5. **Feats y Spells Core**
+   - Entregar lotes pequeños, dependientes de las capas anteriores.
+   - Mantener Equipment como fuente catalogada, sin resultados derivados
+     persistidos.
 
-Este roadmap no es orden lineal obligatorio: cada sprint requiere su propio NDD, Design Review Checklist y `Proceed` explícito antes de implementarse, igual que todos los anteriores.
+6. **Plataforma y deuda**
+   - Ownership transversal, buffs de equipo, stacking, persistencia de salas,
+     editores, autenticación y mejoras UI.
+   - El orden interno se decide por riesgo y por
+     [`docs/technical-debt.md`](docs/technical-debt.md).
+
+Cada vertical requiere NDD, revisión, `Proceed`, validación completa, commit,
+push y CI verde. Power Attack permanece congelado hasta decisión explícita de
+producto.

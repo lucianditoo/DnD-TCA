@@ -36,6 +36,27 @@ Cuando un documento deba cambiar de ubicación o ser reemplazado, se aplicará e
 5. **Eliminar el documento original.**
 Ningún documento se eliminará antes de validar la migración.
 
+### 2.5 Política para documentos nuevos
+
+Antes de crear un documento, el agente debe buscar artefactos existentes con
+la misma responsabilidad y declarar si el nuevo documento **reemplaza**,
+**complementa** o **deriva de** uno anterior. No se crea un archivo nuevo si
+una actualización del documento canónico existente resuelve la necesidad.
+
+Todo NDD o documento permanente nuevo debe incluir, cerca de su cabecera, los
+campos:
+
+```text
+Canonical responsibility:
+Supersedes:
+Complements:
+Derived from:
+Lifecycle:
+```
+
+Esta exigencia rige hacia adelante; no autoriza una migración masiva de
+documentos históricos.
+
 ## 3. Decisiones Arquitectónicas (ADR)
 Las decisiones estructurales consolidadas deben registrarse en `docs/adr/`. Los ADRs actúan como memoria inmutable del porqué se tomaron decisiones de alto nivel. Las mecánicas en desarrollo permanecerán en `docs/designs/` hasta estabilizarse.
 
