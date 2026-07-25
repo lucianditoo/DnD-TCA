@@ -1,5 +1,7 @@
 # FEATS_CHECKLIST — Cobertura de Dotes (Manual del Jugador 3.5)
 
+> **Archivado (Sprint 054C)**: reemplazado por [`.ai/coverage/FEATS_PHB_CHECKLIST.md`](../../.ai/coverage/FEATS_PHB_CHECKLIST.md), el único inventario vivo de este universo. Este corte se conserva por su taxonomía de clasificación previa; no es autoridad vigente.
+
 **Tipo de documento**: Auditoría analítica de cobertura para la Versión 1.0. No es una NDD ni un plan de implementación. No autoriza ningún cambio de código por sí mismo.
 
 **Alcance**: Todas las dotes del Manual del Jugador 3.5 (D&D 3.5 core) con impacto potencial en combate, movimiento táctico, tiradas de ataque/daño/salvación, o generación de bonificadores mecánicos — incluyendo dotes de combate general, dotes de competencia, dotes de creación de objetos mágicos (que otorgan bonos pasivos o desbloquean comandos) y dotes metamágicas. Se excluyen explícitamente dotes puramente narrativas sin impacto mecánico verificable en el motor (ninguna dota de este tipo existe en el PHB; todas producen algún efecto mecánico, por lo que la lista es completa sobre el capítulo de dotes del manual).

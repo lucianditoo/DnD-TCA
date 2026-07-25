@@ -29,8 +29,6 @@
 ## Feats, Spells y Equipment
 
 - Continuar lotes pequeños de dotes y conjuros después de sus dependencias.
-- Resolver la taxonomía y reconciliación de los checklists PHB en un sprint
-  arquitectónico separado.
 - Mantener Power Attack congelado hasta nueva decisión explícita de producto.
 
 ## Plataforma y producto

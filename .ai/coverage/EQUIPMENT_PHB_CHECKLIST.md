@@ -2,7 +2,7 @@
 
 **Tipo de documento**: Auditoría analítica de cobertura para la V1.0, bajo el marco de `.ai/coverage/V1_LAUNCH_MANIFESTO.md`. No es una NDD ni un plan de implementación. No autoriza ningún cambio de código.
 
-**Nota de relación con `.ai/coverage/EQUIPMENT_CHECKLIST.md`**: mismo universo de equipo, reorganizado aquí estrictamente por las ranuras inmutables V5/V6 (`mainHand`, `offHand`, `armor`, `inventory`) decretadas por la instrucción de gobernanza, en vez de por familia de arma (sencilla/marcial/exótica).
+**Nota de relación (actualizada en Sprint 054C)**: este archivo es el **único inventario vivo** de cobertura de equipo, organizado por las ranuras inmutables V5/V6 (`mainHand`, `offHand`, `armor`, `inventory`). El corte previo organizado por familia de arma (`EQUIPMENT_CHECKLIST.md`) quedó archivado en [`docs/archive/EQUIPMENT_CHECKLIST.md`](../../docs/archive/EQUIPMENT_CHECKLIST.md) y no es autoridad vigente.
 
 **Ranuras V5/V6** (`packages/shared/src/types.ts:92-101`):
 

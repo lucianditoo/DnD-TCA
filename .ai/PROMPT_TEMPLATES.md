@@ -13,7 +13,7 @@ Copiá y pegá estos prompts cuando inicies una sesión con tu agente local o ex
 > Quiero planificar la funcionalidad de [nombre de feature].
 > 1. Analizá los archivos afectados.
 > 2. Creá el documento de diseño en `docs/designs/`.
-> 3. Creá el `implementation_plan.md` en artifacts.
+> 3. Creá el `implementation_plan.md` en la raíz del repo (se versiona en Git; ver `.agents/AGENTS.md` Fase 3 para su ubicación final al cierre).
 > 4. Detené la ejecución y esperá mi aprobación. No escribas código fuente todavía.
 > Respetá el flujo de `WORKFLOW.md`.
 

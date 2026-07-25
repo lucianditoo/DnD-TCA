@@ -17,7 +17,7 @@ Introducir un modelo inmutable y de solo lectura reducido (`CombatRulesSnapshot`
 ---
 
 ## 3. Modelo Propuesto: `CombatRulesSnapshot`
-En lugar de clonar toda la sala, crearemos un snapshot optimizado táctico denominado `CombatRulesSnapshot` en [types.ts](file:///c:/Users/lucia/OneDrive/Documentos/AGCLI-dnd-tactical-combat-assistant/packages/shared/src/types.ts).
+En lugar de clonar toda la sala, crearemos un snapshot optimizado táctico denominado `CombatRulesSnapshot` en [types.ts](../../packages/shared/src/types.ts).
 
 ### Estructura de Datos Requerida por las Reglas
 Las reglas tácticas de movimiento, ataques y AdO solo necesitan acceder a la geometría del tablero, a los combatientes y al estado del turno. Se excluye por completo el historial de logs y metadatos del código de sala.
@@ -47,7 +47,7 @@ export interface CombatRulesSnapshot {
 ## 4. Estrategia de Creación Inmutable (Rendimiento y Seguridad)
 Para evitar el uso de JSON y asegurar inmutabilidad real en runtime, utilizaremos una copia estructural manual controlada combinada con `deepFreeze` opcional en desarrollo/tests.
 
-Añadiremos en [combatSnapshot.ts](file:///c:/Users/lucia/OneDrive/Documentos/AGCLI-dnd-tactical-combat-assistant/packages/shared/src/combatSnapshot.ts):
+Añadiremos en [combatSnapshot.ts](../../packages/shared/src/combatSnapshot.ts):
 
 ```typescript
 export function createCombatRulesSnapshot(room: CombatRoom): CombatRulesSnapshot {
@@ -98,7 +98,7 @@ function deepFreeze<T extends object>(obj: T): Readonly<T> {
 ---
 
 ## 5. Estrategia de Testing contra Mutaciones
-Para asegurar que los helpers de reglas (en [rules.ts](file:///c:/Users/lucia/OneDrive/Documentos/AGCLI-dnd-tactical-combat-assistant/packages/shared/src/rules.ts)) no mutan el estado, la suite de pruebas unitarias (`tests/rules.test.mjs`) usará la siguiente estrategia:
+Para asegurar que los helpers de reglas (en [rules.ts](../../packages/shared/src/rules.ts)) no mutan el estado, la suite de pruebas unitarias (`tests/rules.test.mjs`) usará la siguiente estrategia:
 1. Las pruebas crearán y congelarán explícitamente el objeto snapshot de la sala usando `createCombatRulesSnapshot(room)` (que activa `deepFreeze` automáticamente en el runner de Node).
 2. Se pasarán estos snapshots congelados a funciones como `validateMovePath`, `canTakeTurn` y `findTriggeredOpportunityAttacksForPath`.
 3. Si alguna función intenta mutar el objeto en runtime (ej. `roomSnapshot.currentTurn.movementUsedFeet = X`), JavaScript arrojará inmediatamente un `TypeError` bajo el modo estricto de ESM de Node, haciendo fallar el test de regresión.
@@ -106,7 +106,7 @@ Para asegurar que los helpers de reglas (en [rules.ts](file:///c:/Users/lucia/On
 ---
 
 ## 6. Impacto en Commands e Integración Incremental
-* **Validadores en Servidor**: Los manejadores de comandos (ej. `handleMoveCombatant` en [movementCommands.ts](file:///c:/Users/lucia/OneDrive/Documentos/AGCLI-dnd-tactical-combat-assistant/apps/server/src/commands/movementCommands.ts)) generarán el `CombatRulesSnapshot` antes de validar:
+* **Validadores en Servidor**: Los manejadores de comandos (ej. `handleMoveCombatant` en [movementCommands.ts](../../apps/server/src/commands/movementCommands.ts)) generarán el `CombatRulesSnapshot` antes de validar:
   ```typescript
   const snapshot = createCombatRulesSnapshot(room);
   const check = validateMovePath(snapshot, mover, path);

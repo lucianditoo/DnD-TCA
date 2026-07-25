@@ -1,6 +1,6 @@
 # Plan de Implementación — Sprint MOVE-WITHDRAW (Retirada) · Rev. 2
 
-> **Nota de migración (Sprint 040, Lote A)**: este archivo vivía en la raíz del repo como `implementation_plan.md` (gitignored). Tras la corrección de política de `docs/designs/document-architecture-cleanup.md` §1, se versiona y se co-ubica aquí junto a `design.md` y `analysis.md`. El contenido original no se alteró, solo la ruta de este archivo y la referencia relativa al NDD (línea siguiente).
+> **Nota de migración (Sprint 040, Lote A)**: este archivo vivía en la raíz del repo como `implementation_plan.md` (gitignored). Tras la corrección de política de `document-architecture-cleanup.md` §1 (hoy archivado en `docs/archive/`), se versiona y se co-ubica aquí junto a `design.md` y `analysis.md`. El contenido original no se alteró, solo la ruta de este archivo y la referencia relativa al NDD (línea siguiente).
 
 ## Estado
 

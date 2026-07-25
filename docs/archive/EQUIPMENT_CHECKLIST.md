@@ -1,5 +1,7 @@
 # EQUIPMENT_CHECKLIST — Cobertura de Equipo (Manual del Jugador 3.5)
 
+> **Archivado (Sprint 054C)**: reemplazado por [`.ai/coverage/EQUIPMENT_PHB_CHECKLIST.md`](../../.ai/coverage/EQUIPMENT_PHB_CHECKLIST.md), el único inventario vivo de este universo. Este corte se conserva por su taxonomía de clasificación previa; no es autoridad vigente.
+
 **Tipo de documento**: Auditoría analítica de cobertura para la Versión 1.0. No es una NDD ni un plan de implementación. No autoriza ningún cambio de código por sí mismo.
 
 **Fuentes cruzadas para el estado de implementación**:

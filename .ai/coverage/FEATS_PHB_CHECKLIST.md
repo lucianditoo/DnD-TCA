@@ -2,7 +2,7 @@
 
 **Tipo de documento**: Auditoría analítica de cobertura para la V1.0, bajo el marco de `.ai/coverage/V1_LAUNCH_MANIFESTO.md`. No es una NDD ni un plan de implementación. No autoriza ningún cambio de código.
 
-**Nota de relación con `.ai/coverage/FEATS_CHECKLIST.md`**: este archivo reclasifica el mismo universo de dotes bajo la taxonomía de tres categorías del Diseño V6 (Modificadores Estáticos / Modificadores de Flujo (Traits) / Acciones Especiales), en vez de la taxonomía previa de dos subtipos de flujo. Ambos documentos coexisten porque auditan el mismo universo desde ángulos de clasificación ligeramente distintos; ninguno reemplaza al otro.
+**Nota de relación (actualizada en Sprint 054C)**: este archivo es el **único inventario vivo** de cobertura de dotes. El corte previo con otra taxonomía (`FEATS_CHECKLIST.md`) quedó archivado en [`docs/archive/FEATS_CHECKLIST.md`](../../docs/archive/FEATS_CHECKLIST.md) y no es autoridad vigente.
 
 **Clasificación V6**:
 

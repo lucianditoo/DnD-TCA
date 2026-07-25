@@ -1,5 +1,7 @@
 # SPELLS_CHECKLIST — Cobertura de Conjuros (Manual del Jugador 3.5)
 
+> **Archivado (Sprint 054C)**: reemplazado por [`.ai/coverage/SPELLS_PHB_CHECKLIST.md`](../../.ai/coverage/SPELLS_PHB_CHECKLIST.md), el único inventario vivo de este universo. Este corte se conserva por su taxonomía de clasificación previa; no es autoridad vigente.
+
 **Tipo de documento**: Auditoría analítica de cobertura para la Versión 1.0. No es una NDD ni un plan de implementación. No autoriza ningún cambio de código por sí mismo.
 
 **Alcance y límite explícito** (siguiendo la disciplina del proyecto de declarar "qué no resuelve" un documento): este checklist cubre conjuros de nivel 0 a 9 con **aplicación directa en un encuentro de combate táctico por celdas** — daño, control de acción/movimiento, defensa activa, curación en combate y reposicionamiento. Quedan fuera, por no tener ningún efecto verificable en un motor de combate por celdas, los conjuros puramente de: conocimiento/adivinación pasiva (ej. *Detectar Magia*, *Identificar*), viaje/planificación fuera de combate (ej. *Puerta Dimensional* se incluye por su uso táctico de reposicionamiento, pero *Plano Cambiante* no), interacción social/ilusión no ofensiva (ej. *Sonido Fantasma*), y utilidad doméstica (ej. *Remendar*, *Mano de Mago*). Esta exclusión es la misma que aplica el propio enunciado del encargo ("aplicables a encuentros de combate táctico"), no una omisión.

@@ -129,7 +129,7 @@ Adicional (blindaje adjunto aprobado en el plan de saneamiento): `tests/aoo-limi
 ## 8. Actualizaciones documentales previstas al cierre
 
 1. `RULES_PHB_CHECKLIST.md`: fila "Disparar/lanzar a combate cuerpo a cuerpo (-4)" → `[x]`; dashboard regenerado.
-2. `FEATS_PHB_CHECKLIST.md` / `FEATS_CHECKLIST.md`: `srd_precise_shot` → `[x]`.
+2. `FEATS_PHB_CHECKLIST.md`: `srd_precise_shot` → `[x]`.
 3. `docs/audits/combat-rules-deviations.md`: nueva discrepancia **D-11** ("amenazándose mutuamente" vs RAW *either threatens*, `combat/06:58` y copia en `combat/10:12`) + enmienda **E-10** propuesta para el Sprint de Saneamiento documental; cierre definitivo de la fila `AOO-03` (test de regresión entregado).
 4. `PROJECT_STATUS.md` / `TODO.md` / `walkthrough.md` / `.ai/PROJECT_MEMORY.md`: cierre estándar del sprint (incluyendo las sincronizaciones pendientes listadas en `core-rules-consolidation.md` §6 si la dirección las aprueba en el mismo `Proceed`).
 

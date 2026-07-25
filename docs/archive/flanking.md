@@ -1,6 +1,6 @@
 # Diseño: Flanqueo (Flanking) y Amenaza (Threatening)
 
-> **Estado:** supersedido por [`flanking-and-threatening-design.md`](./flanking-and-threatening-design.md) y la implementación validada de Sprint 011. Este archivo conserva el corte histórico inicial; no es el contrato vigente para `ThreatProfile`, `NO_THREAT` ni el contexto tipado melee/ranged.
+> **Estado:** supersedido por [`flanking-and-threatening-design.md`](../designs/flanking-and-threatening-design.md) y la implementación validada de Sprint 011. Este archivo conserva el corte histórico inicial; no es el contrato vigente para `ThreatProfile`, `NO_THREAT` ni el contexto tipado melee/ranged.
 
 ## 1. Objetivo
 Incorporar la mecánica de flanqueo de D&D 3.5 en el combate táctico. Dos aliados que flanquean a un enemigo reciben +2 a las tiradas de ataque cuerpo a cuerpo. Al mismo tiempo, sentar las bases para todas las mecánicas que requieran conciencia espacial introduciendo el concepto de amenaza de manera limpia y reutilizable.

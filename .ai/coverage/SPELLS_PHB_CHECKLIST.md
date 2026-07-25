@@ -2,7 +2,7 @@
 
 **Tipo de documento**: Auditoría analítica de cobertura para la V1.0, bajo el marco de `.ai/coverage/V1_LAUNCH_MANIFESTO.md`. No es una NDD ni un plan de implementación. No autoriza ningún cambio de código.
 
-**Nota de relación con `.ai/coverage/SPELLS_CHECKLIST.md`**: mismo universo de conjuros, reclasificado aquí estrictamente por el pipeline de servidor que la instrucción de gobernanza nombra explícitamente (Toques/Rayos, Efecto/Salvación, Áreas de Efecto). El documento previo usaba una cuarta categoría separada para daño automático sin salvación (ej. *Proyectil Mágico*) y otra para curación; aquí se conservan como notas dentro de las tres categorías decretadas, ya que el motor no tiene una categoría de servidor distinta para ellas.
+**Nota de relación (actualizada en Sprint 054C)**: este archivo es el **único inventario vivo** de cobertura de conjuros, clasificado por el pipeline de servidor (Toques/Rayos, Efecto/Salvación, Áreas de Efecto). El corte previo con una taxonomía distinta (`SPELLS_CHECKLIST.md`) quedó archivado en [`docs/archive/SPELLS_CHECKLIST.md`](../../docs/archive/SPELLS_CHECKLIST.md) y no es autoridad vigente.
 
 **Alcance**: conjuros de nivel 0 a 9 con efecto directo en un encuentro táctico (daño, control, defensa activa, curación, reposicionamiento), de las listas de Mago/Hechicero y Clérigo primariamente, con incorporaciones puntuales de Druida/Bardo en conjuros clásicos de combate compartidos. Fuera de alcance: conocimiento/adivinación pasiva, viaje/planificación sin uso táctico, ilusión no ofensiva, utilidad doméstica — mismo límite que el documento previo, consistente con "efectos en encuentros tácticos".
 
@@ -214,4 +214,4 @@
 - **Conjuros y peligros auditados**: 11 (implementados) + 9 (nivel 0) + 25 (nivel 1) + 15 (nivel 2) + 16 (nivel 3) + 13 (nivel 4) + 10 (nivel 5) + 8 (nivel 6) + 9 (nivel 7) + 6 (nivel 8) + 8 (nivel 9) ≈ **130 entradas**.
 - **Implementadas**: **11/130** (ver Sección A) — más de las 5 decretadas; ver nota de verificación arriba.
 - **No implementadas**: **119/130**.
-- **Hallazgos de auditoría reiterados** (ya documentados en `.ai/coverage/SPELLS_CHECKLIST.md`, sin cambio de código en ningún caso): referencia colgante de `srd_haste` a un `effectId` inexistente; discrepancia de nivel en `srd_hold_person` (catálogo: 3, PHB físico: 2); *Muro de Fuego* implementado solo como peligro ambiental, sin `SpellDefinition` propia; ausencia total de un pipeline de contrarresto/disipación de `ActiveEffects`.
+- **Hallazgos de auditoría reiterados** (ya documentados en el corte archivado `docs/archive/SPELLS_CHECKLIST.md`, sin cambio de código en ningún caso): referencia colgante de `srd_haste` a un `effectId` inexistente; discrepancia de nivel en `srd_hold_person` (catálogo: 3, PHB físico: 2); *Muro de Fuego* implementado solo como peligro ambiental, sin `SpellDefinition` propia; ausencia total de un pipeline de contrarresto/disipación de `ActiveEffects`.
