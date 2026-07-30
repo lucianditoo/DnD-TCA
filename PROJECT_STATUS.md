@@ -11,7 +11,8 @@
   bajo Cover y Ocultación Total (Line of Effect, Cover de cualquier grado y
   `opportunityAttackAllowed` ahora gatean la generación del AdO, consumiendo
   exclusivamente los assessments ya existentes).
-- Último saneamiento documental: Sprint 054C.
+- Última decisión arquitectónica: Sprint A-001, Spatial Engine & 2.5D Tactical Presentation (NDD Aprobado).
+- Último saneamiento documental: Sprint A-001 / Sprint 054C.
 - Baseline funcional publicada: 559/559 pruebas unitarias, 100/100 aserciones
   WebSocket y 7/7 escenarios Playwright; typecheck y build verdes.
 - GitHub Actions sobre Windows es el gate canónico de cierre para la revisión

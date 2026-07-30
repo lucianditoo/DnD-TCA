@@ -78,6 +78,7 @@ implementación cerrados (`large-footprints-v1-implementation-plan.md`,
 
 - [`docs/adr/`](docs/adr/): decisiones arquitectónicas estables.
 - [`docs/designs/`](docs/designs/): NDD y planes por vertical.
+  - [`docs/designs/spatial-engine-2.5d.md`](docs/designs/spatial-engine-2.5d.md): NDD Oficial del Motor Espacial 3D Discreto y Presentación 2.5D.
 - [`docs/audits/`](docs/audits/): auditorías y divergencias.
 - [`docs/sprints/TEMPLATE.md`](docs/sprints/TEMPLATE.md): plantilla de sprint.
 
