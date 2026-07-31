@@ -1,23 +1,32 @@
-# Walkthrough — Sprint D-1A-R1 (Remediación Normativa de Área)
+# Walkthrough — Sprint D-1B-Research (Auditoría de Reglas de Movimiento)
 
 ## Objetivo
-Remediar el NDD `docs/designs/normative-area-shape-projection.md` que falló el Normative SRD Compliance Gate debido a la mezcla de formas geométricas con modos de propagación y la invención de reglas no respaldadas por el SRD 3.5 (ej. Half-Square Rule, origen genérico en el centro de la celda).
+Realizar una auditoría exhaustiva de **todas las reglas oficiales de D&D 3.5e** (PHB, SRD, DMG) relativas al movimiento táctico antes de iniciar el diseño arquitectónico D-1B (que migrará el movimiento al `Spatial Engine 2.5D`). No diseñar ni proponer algoritmos; puramente mapear reglas vs documentación existente.
 
 ## Entregables
-- **`docs/designs/normative-area-shape-projection.md`**: Reescritura completa del NDD D-1A, con separación total de Geometric Shape vs Propagation Mode y una estricta fidelidad a los textos del PHB para Point of Origin e Inclusion Contract.
-- **`docs/designs/normative-spatial-geometry.md`**: Modificación de la sección de AoE para armonizar la delegación del trazado a D-1A-R1 e incorporar la ODR bloqueante respecto a la métrica XYZ de `Spatial Distance`.
-- **`docs/designs/spell-aoe-geometry-design.md`**: Adición de una cláusula de supersesión (Migration First), conservando su utilidad para el pipeline funcional transaccional del backend V1 pero delegando su autoridad geométrica y de propagación al nuevo NDD D-1A-R1.
-- **`docs/rules/registry.md`**: Actualizado para señalar que la autoridad de `SPELL-AOE` ahora recae sobre ambos documentos de forma híbrida (SSOT geométrica en D-1A-R1, Legacy Pipeline en Sprint 033).
-- **`PROJECT_STATUS.md`**: Refleja el cierre de D-1A-R1.
+- **`docs/audits/movement-rules-audit.md`**: Nuevo documento de auditoría que recopila:
+  1. Inventario pormenorizado de reglas oficiales y su interacción con los sistemas del juego (Movement, AoO, Charge, Reach, etc.).
+  2. Matriz de estado mapeando dichas reglas contra los diseños y NDD del proyecto (`movement-validation.md`, `run-design.md`, etc.).
+  3. Huecos Normativos (reglas SRD carentes de cobertura arquitectónica en el sistema actual).
+  4. Preguntas Abiertas (casos delegados al criterio del DM en el PHB/DMG que requerirán resolución discreta).
+  5. Extensiones Necesarias (interacciones del movimiento clásico con los recientes contratos tridimensionales de D-1R1 como `Surfaces` y `Body Prisms`).
+- **`INDEX.md`**: Actualizado para incorporar `docs/audits/movement-rules-audit.md`.
+- **`PROJECT_STATUS.md`**: Avanzado al término del sprint de Research.
 
-## Correcciones Normativas (SRD)
-1. **Forma vs Propagación:** Cone, Line, Sphere y Cylinder son geometrías. Burst, Emanation y Spread son modos de propagación. No son sinónimos (ej. *Cone-shaped Burst* existe).
-2. **Point of Origin:** El origen de un Burst, Emanation, Spread y Cylinder es una *grid intersection* (generalizado 3D a un vértice de 8 cubos). Conos y Líneas se originan desde una de las esquinas de ocupación del lanzador.
-3. **Inclusión Far Edge / Near Edge:** Eliminada la *Half-Square Rule*. Si el límite del área cruza el *far edge* del cubo, se incluye. Si solo toca el *near edge*, se excluye. La traducción a Z-axis queda registrada explícitamente como una ODR.
-4. **Spread y Cylinder:** Spread dobla esquinas, medido por *route cost* y no *Spatial Distance* recta. Cylinder origina su trazado físico desde el círculo superior e ignora obstrucciones internas para la propagación del área.
-5. **No Cover forzado:** El cálculo del área geométrica produce casillas candidatas. Cover (cobertura) y otras resoluciones son derivadas por el efecto, no un filtro universal geométrico, conservando la independencia de la resolución mecánica.
+## Metodología
+Se completó el *Reader Pipeline Obligatorio* y se extrajeron las siguientes reglas canónicas:
+- Movimiento Táctico (5-10-5).
+- Terreno Difícil (×2 coste, bloqueo de esquinas).
+- Paso de 5 pies (sin consumo de acción, inmune a AoO).
+- Squeezing (-4 ATK/AC, mitad de ancho).
+- Atravesar espacios ocupados (amigos vs. oponentes de distinto tamaño).
+- Modos de acción: Carga, Correr, Retirada.
+- Tumble/Acrobacias.
+- Interacciones de AoO (provocación al abandonar casilla).
+- Vuelo, Maniobrabilidad y Caída (del DMG/SRD).
+- Large Footprints y solapamientos.
 
 ## Cierre Formal
-- Todas las frases dudosas del D-1A original se han descartado.
-- Todas las generalizaciones tridimensionales están formalmente rotuladas en la matriz de trazabilidad como `Extensión del Proyecto`.
-- Zero Orphan Policy y comprobación de whitespace aplicadas.
+- Al ser un sprint de "Research", **no se escribió código, algoritmos ni pseudocódigo**.
+- Se cumplió estrictamente la directiva de SSOT y Zero Orphan, registrando el documento en `INDEX.md`.
+- Todas las menciones normativas se extrajeron sin interpretaciones propias del manual 3.5e, manteniendo el rigor oficial del SRD.
