@@ -1,5 +1,9 @@
-# Documento de Diseño: Spell Areas of Effect & Polygonal Templates (Sprint 033)
+> **SUPERSESIÓN (Migration First):**
+> La autoridad normativa de las áreas de efecto descritas en este documento histórico ha sido superada parcialmente por **D-1A-R1 (`docs/designs/normative-area-shape-projection.md`)**. Las definiciones geométricas (Cone, Line, Sphere, etc.), modos de propagación, orígenes y políticas de clipping/inclusión pertenecen ahora a D-1A-R1.
+> Sin embargo, la integración con el pipeline de resolución y las abstracciones del backend en `abilityCommands.ts` de este documento (Sprint 033) siguen vigentes hasta que la implementación del motor V2 las migre.
+> Véase `docs/rules/registry.md` para la autoridad consolidada de SPELL-AOE.
 
+# Documento de Diseño: Spell Areas of Effect & Polygonal Templates (Sprint 033)
 ## Objetivo
 Establecer la infraestructura geométrica isomórfica en el paquete `shared` para calcular plantillas poligonales de áreas de efecto (AoE) de conjuros bajo las reglas de D&D 3.5. Integrar este cálculo en el backend transaccional para resolver salvaciones y daño simultáneo a múltiples objetivos, y en el frontend para dibujar proyecciones predictivas.
 
@@ -9,7 +13,7 @@ Se define un nuevo catálogo de formas de áreas mágicas:
 ```typescript
 export type AoEShapeType = "cone" | "line" | "burst";
 
-export type AoEShape = 
+export type AoEShape =
   | { type: "cone"; lengthFeet: number }
   | { type: "line"; lengthFeet: number; widthFeet: 5 }
   | { type: "burst"; radiusFeet: number };
@@ -23,9 +27,9 @@ Se expondrá una función determinista y pura que calculará la matriz de celdas
 
 ```typescript
 export function getCellsIntersectedByAoE(
-  origin: Position, 
-  direction: CardinalDirection, 
-  shape: AoEShape, 
+  origin: Position,
+  direction: CardinalDirection,
+  shape: AoEShape,
   cellSizeFeet: number = 5
 ): Position[] {
   // Implementación geométrica para aproximaciones en grilla (Raycasting o discretización)
@@ -60,19 +64,19 @@ Se renderizarán polígonos o celdas de overlay de color naranja. Los tokens que
 ### 1. Filtro de Irreversibilidad a 20 Sprints
 **Pregunta:** Al estructurar la intercepción multiposición mediante el solapamiento de arrays de celdas, ¿cómo diseñamos el resolver de AoE para que en el futuro mecánicas de fuego amigo (Friendly Fire), dotes como "Esculpir Conjuro" (Sculpt Spell) o la Cobertura del terreno obstruyendo el cono se integren de forma natural sin modificar el Command Handler?
 
-**Respuesta:** La lógica de intercepción de celdas recae enteramente en la función pura y aislada `getCellsIntersectedByAoE` y su filtro asociado. 
-Para integrar Line of Effect (LoS/Cobertura), la función aceptará opcionalmente la topología del tablero (`isImpassable` o los muros de `Board`), eliminando determinísticamente las celdas ocluidas antes de devolver el array. 
+**Respuesta:** La lógica de intercepción de celdas recae enteramente en la función pura y aislada `getCellsIntersectedByAoE` y su filtro asociado.
+Para integrar Line of Effect (LoS/Cobertura), la función aceptará opcionalmente la topología del tablero (`isImpassable` o los muros de `Board`), eliminando determinísticamente las celdas ocluidas antes de devolver el array.
 Para mecánicas como Sculpt Spell, se modificará el `AoEShape` en el catálogo de modificadores (p.ej. vaciando ciertas casillas) o se alterará el filtro posterior sin necesidad de inyectar reglas complejas en `abilityCommands.ts`. El handler seguirá consumiendo un array genérico de `Position[]`.
 
 ### 2. Complejidad Accidental
 **Pregunta:** ¿Cómo evitamos la duplicación de código en el cálculo de colisiones geométricas y aseguramos que el frontend dibuje las plantillas de forma 100% simétrica a la resolución final del servidor?
 
-**Respuesta:** Aprovechando la arquitectura isomórfica del monorrepósito. La función `getCellsIntersectedByAoE` pertenecerá a `@dnd-tactical/shared`. El Frontend utilizará la misma idéntica función que el servidor para pintar los overlays superpuestos en la UI y comprobar qué combatientes están amenazados visualmente, garantizando que el usuario observe exactamente lo que el servidor resolverá con autoridad de milisegundos. 
+**Respuesta:** Aprovechando la arquitectura isomórfica del monorrepósito. La función `getCellsIntersectedByAoE` pertenecerá a `@dnd-tactical/shared`. El Frontend utilizará la misma idéntica función que el servidor para pintar los overlays superpuestos en la UI y comprobar qué combatientes están amenazados visualmente, garantizando que el usuario observe exactamente lo que el servidor resolverá con autoridad de milisegundos.
 
 ### 3. La Regla de Tres
 **Pregunta:** Nombra tres conjuros del catálogo que se beneficiarán directamente de este pipeline de áreas de efecto.
 
-**Respuesta:** 
+**Respuesta:**
 1. **Burning Hands (Manos Ardientes):** Geometría `"cone"` con longitud de 15 ft.
 2. **Lightning Bolt (Relámpago):** Geometría `"line"` con longitud de 120 ft.
 3. **Fireball (Bola de Fuego):** Geometría `"burst"` con radio de 20 ft.

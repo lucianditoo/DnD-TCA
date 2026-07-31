@@ -1,22 +1,23 @@
-# Walkthrough — Sprint D-1A (Proyección Normativa de Áreas)
+# Walkthrough — Sprint D-1A-R1 (Remediación Normativa de Área)
 
 ## Objetivo
-El proyecto ya cuenta con el diseño base normativo del espacio 3D (D-1R1), sin embargo carecía de la formalización geométrica que rige a las plantillas de Áreas de Efecto. Este sprint crea el NDD de "Normative Area Shape Projection", detallando la inclusión estricta de celdas para todas las áreas del SRD, independizando el concepto de Area Projection de `Spatial Trace` y formalizando el pipeline de ejecución espacial en el servidor.
+Remediar el NDD `docs/designs/normative-area-shape-projection.md` que falló el Normative SRD Compliance Gate debido a la mezcla de formas geométricas con modos de propagación y la invención de reglas no respaldadas por el SRD 3.5 (ej. Half-Square Rule, origen genérico en el centro de la celda).
 
 ## Entregables
-- **`docs/designs/normative-area-shape-projection.md`**: NDD canónico. Formaliza el comportamiento de Cone, Line, Burst, Spread, Emanation, Cylinder y Cube de acuerdo al SRD pero instanciado bajo las limitaciones del grid 3D discreto establecido en D-1R1.
-- **`INDEX.md`**: Actualizado para incluir `docs/designs/normative-area-shape-projection.md`.
-- **`PROJECT_STATUS.md`**: Refleja el cierre exitoso del Sprint D-1A.
+- **`docs/designs/normative-area-shape-projection.md`**: Reescritura completa del NDD D-1A, con separación total de Geometric Shape vs Propagation Mode y una estricta fidelidad a los textos del PHB para Point of Origin e Inclusion Contract.
+- **`docs/designs/normative-spatial-geometry.md`**: Modificación de la sección de AoE para armonizar la delegación del trazado a D-1A-R1 e incorporar la ODR bloqueante respecto a la métrica XYZ de `Spatial Distance`.
+- **`docs/designs/spell-aoe-geometry-design.md`**: Adición de una cláusula de supersesión (Migration First), conservando su utilidad para el pipeline funcional transaccional del backend V1 pero delegando su autoridad geométrica y de propagación al nuevo NDD D-1A-R1.
+- **`docs/rules/registry.md`**: Actualizado para señalar que la autoridad de `SPELL-AOE` ahora recae sobre ambos documentos de forma híbrida (SSOT geométrica en D-1A-R1, Legacy Pipeline en Sprint 033).
+- **`PROJECT_STATUS.md`**: Refleja el cierre de D-1A-R1.
 
-## Decisiones Arquitectónicas (NDD D-1A)
-
-1. **Origen Cuantizado:** El área de las formas jamás se proyecta desde un espacio continuo, se proyecta desde una intersección de la grilla volumétrica o una arista/vértice, salvo en el caso del "Targeted Cell" donde irradia desde la ocupación.
-2. **Orientación XYZ:** Formas direccionales (conos, líneas) no están limitadas a vectores bidimensionales. El servidor acepta cualquier vector central 3D para evaluar la inclusión de los volúmenes, permitiendo bañar balcones y abismos.
-3. **Inclusión por Borde SRD:** Se establece normativamente el "Half-Square Rule" y "Far-Edge Rule" adaptados al espacio volumétrico: toda celda cubierta en más de un 50% por la matemática de un Cono pertenece a él; todo cubo intersectado por la arista final de un Burst pertenece al Burst completo. Nunca existe afectación parcial geométrica.
-4. **Desacople Projection vs Trace:** D-1A formaliza que generar el volumen de inclusión (`Area Projection`) es un paso previo e independiente del trazado de bloqueo físico (`Spatial Trace`/LoE). Un área atraviesa paredes en su generación teórica, pero las celdas resultan censuradas después al evaluar si poseen `Line of Effect` al centro (clipping).
-5. **Diferenciación Spatial Distance vs Route Cost en Spread:** El Burst y la Emanation crecen puramente utilizando métricas de `Spatial Distance`. El Spread es la excepción sistémica que dobla esquinas, obligando a utilizar `Route Cost` radicado desde el origen para evitar paredes sin ser censurado por el clipping final.
+## Correcciones Normativas (SRD)
+1. **Forma vs Propagación:** Cone, Line, Sphere y Cylinder son geometrías. Burst, Emanation y Spread son modos de propagación. No son sinónimos (ej. *Cone-shaped Burst* existe).
+2. **Point of Origin:** El origen de un Burst, Emanation, Spread y Cylinder es una *grid intersection* (generalizado 3D a un vértice de 8 cubos). Conos y Líneas se originan desde una de las esquinas de ocupación del lanzador.
+3. **Inclusión Far Edge / Near Edge:** Eliminada la *Half-Square Rule*. Si el límite del área cruza el *far edge* del cubo, se incluye. Si solo toca el *near edge*, se excluye. La traducción a Z-axis queda registrada explícitamente como una ODR.
+4. **Spread y Cylinder:** Spread dobla esquinas, medido por *route cost* y no *Spatial Distance* recta. Cylinder origina su trazado físico desde el círculo superior e ignora obstrucciones internas para la propagación del área.
+5. **No Cover forzado:** El cálculo del área geométrica produce casillas candidatas. Cover (cobertura) y otras resoluciones son derivadas por el efecto, no un filtro universal geométrico, conservando la independencia de la resolución mecánica.
 
 ## Cierre Formal
-- Al ser un sprint puramente arquitectónico (Nivel D), no se redactó ni ejecutó código funcional ni algoritmos concretos.
-- No se definieron rules concretos sobre salvaciones o daño, únicamente la inclusión volumétrica de la plantilla.
-- Validaciones documentales (Zero Orphan, `git diff --check`) completadas.
+- Todas las frases dudosas del D-1A original se han descartado.
+- Todas las generalizaciones tridimensionales están formalmente rotuladas en la matriz de trazabilidad como `Extensión del Proyecto`.
+- Zero Orphan Policy y comprobación de whitespace aplicadas.

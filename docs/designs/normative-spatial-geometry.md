@@ -150,8 +150,10 @@ Se instaura una abstracción única para cualquier vector volumétrico: `Spatial
 ## 13. Area of Effect (AoE)
 
 Contrato conceptual:
-- Definido por origen, volumen teórico base (esfera, cono, línea) y orientación (ahora obligatoria en 3D).
-- Produce una intersección de inclusión volumétrica clipada (`Spatial Trace` de LoE desde el origen).
+- El pipeline separa la forma geométrica (Cone, Line, Sphere, etc.) del modo de propagación (Burst, Emanation, Spread).
+- La inclusión teórica genera celdas candidatas. Luego se aplica el clipping físico (generalmente `Spatial Trace` de LoE desde el origen).
+- **Excepciones:** El modo de propagación `Spread` utiliza costo de ruta (`Route Cost`) doblándo esquinas en lugar de trazado directo. La forma `Cylinder` proyecta hacia abajo desde su círculo superior e ignora obstrucciones internas para propósitos de su propia área.
+- **ODR Bloqueante (Spatial Distance XYZ):** Las áreas esféricas y propagaciones dependen de una métrica de distancia tridimensional que permanece sin resolver (ODR abierta). No se asume resuelta por este documento.
 
 ---
 

@@ -1,119 +1,142 @@
-# Normative Area Shape Projection (D-1A)
+# Normative Area Shape Projection (D-1A-R1)
 
-Responsabilidad: Definir la representación autoritativa y el contrato de inclusión de las formas de área sobre la grilla tridimensional.
+Responsabilidad: Definir la representación autoritativa, formas geométricas y modos de propagación de las áreas de efecto sobre la grilla táctica tridimensional, de acuerdo al SRD 3.5.
 Autoridad: Canónica (Nivel D)
-Lifecycle: Diseño Aprobado
-Reemplaza: -
-Complementa: `docs/designs/normative-spatial-geometry.md` (D-1R1), `docs/designs/spatial-engine-2.5d.md` (A-001R1)
-Consumidores: Rules Engine, Spells, AoE, Targeting, UI Previews.
+Lifecycle: Diseño Aprobado (Remediation)
+Reemplaza: Reemplaza parcialmente a `docs/designs/spell-aoe-geometry-design.md` (supersede las definiciones geométricas y de inclusión, pero no su pipeline interno en backend).
+Complementa: `docs/designs/normative-spatial-geometry.md` (D-1R1).
+Consumidores: Rules Engine, Spells, Targeting.
 
 ---
 
-## 1. Filosofía y Alcance
+## 1. Separación: Forma y Propagación
 
-Este documento es la única autoridad para dictaminar qué celdas espaciales (`Volumetric Spatial Coordinate` o `Anchored Spatial Position`) pertenecen al área teórica de un efecto antes de la validación de obstrucciones físicas.
+El SRD no colapsa la forma de un área con la forma en la que se propaga. Este documento separa normativamente ambas dimensiones.
 
-Las formas soportadas normativamente son las dictadas por el SRD/PHB 3.5: **Cone, Line, Burst, Spread, Emanation, Cylinder, Cube**. Formas como "Wall" (muro) y "Ray" (rayo) tienen comportamientos híbridos pero se incorporan a la geometría como formas específicas (Wall como ocupación explícita, Ray como trazado directo sin área colateral). Formas exclusivas de suplementos fuera del SRD quedan excluidas de este contrato base.
+### 1.1 Geometric Shape (Forma Geométrica)
+El volumen puro a proyectar:
+- **Cone:** Un volumen que se ensancha conforme avanza.
+- **Line:** Un volumen rectilíneo o trazado de anchura definida.
+- **Sphere:** Un volumen esférico o circular.
+- **Cylinder:** Un cilindro con radio y altura.
+- **Shapeable Cubes:** Múltiples cubos unidos para formar volúmenes irregulares.
+- **Other:** Cualquier forma irregular dictada por el efecto específico.
 
----
+### 1.2 Propagation Mode (Modo de Propagación)
+Cómo la forma interactúa con el entorno y el espacio:
+- **Burst:** Afecta a todo en su área (excepto aquello con Cobertura Total desde su origen). No dobla esquinas.
+- **Emanation:** Funciona idénticamente a un Burst, pero el efecto continúa radiando durante su duración.
+- **Spread:** Puede doblar esquinas y rodear paredes. No requiere `Line of Effect` directo al origen (utiliza distancia recorrida).
+- **Direct Line Progression:** Avanza en la dirección designada hasta su límite o una barrera (usado por Lines).
+- **Effect-specific behavior:** Propagaciones híbridas declaradas explícitamente en el efecto (ej. Cylinder).
 
-## 2. Origen del Área
-
-El punto de origen matemático de un área nunca es el centro de una celda flotante abstracta; siempre es una intersección de la grilla topológica.
-
-- **Grid Intersection (Vértice/Arista):** Para **Burst, Spread, Emanation, Cylinder y Cube**, el origen es estrictamente una intersección de la grilla volumétrica (el vértice compartido por 8 celdas en 3D, o la arista/cara compartida entre celdas).
-- **Caster's Square Corner:** Para **Cone y Line**, el origen es obligatoriamente una de las esquinas (vértices) del `Body Prism` de la criatura que origina el efecto.
-- **Centro de Celda (Targeted Cell):** En casos excepcionales donde el objetivo es una criatura o un objeto singular que derrama un efecto, el origen se asienta en la celda o el `Body Prism` del objetivo, emitiendo hacia las intersecciones colindantes.
-
----
-
-## 3. Orientación de la Forma
-
-Las formas volumétricas pueden ser dirigidas en el espacio 3D.
-- **Restricción Direccional:** Las formas direccionales (Cone, Line) se orientan definiendo un vector desde el origen hacia cualquier otra intersección de la grilla volumétrica en el espacio 3D.
-- **Libertad de Trazado:** No se restringe a las 8 direcciones planas. Cualquier vector tridimensional es válido para definir el eje central de un cono o una línea.
-- **Formas Omnidireccionales:** Burst, Spread, Emanation y Cylinder no tienen "orientación" en el sentido de un vector de ataque (salvo la verticalidad inherente del Cylinder, que crece paralelo al eje Z hacia arriba o hacia abajo).
+> **Nota SRD:** Burst, Emanation y Spread NO son sinónimos de Sphere. Un conjuro puede ser un *cone-shaped burst*, *spherical spread*, etc.
 
 ---
 
-## 4. Determinación de la Longitud y Anchura
+## 2. Punto de Origen (Point of Origin)
 
-El crecimiento del área obedece a las reglas puras del SRD:
-- **Cone (Cono):** La longitud está dada por el efecto. Su anchura en el extremo más alejado es exactamente igual a su longitud.
-- **Line (Línea):** La longitud está dada por el efecto. Su anchura normativa SRD es siempre de 5 pies (una celda de ancho/alto a lo largo del vector).
-- **Cylinder (Cilindro):** Posee un radio definido y una altura definida. Crece radialmente en el plano X/Y y linealmente en el eje Z.
-- **Cube (Cubo):** Posee un tamaño de arista. Su volumen es un cubo estricto que se alinea a los ejes de la grilla desde su origen.
-- **Burst / Emanation / Spread:** Poseen un radio. Crecen esféricamente en todas las direcciones tridimensionales desde el vértice de origen.
-
----
-
-## 5. Contrato de Inclusión (Qué celdas pertenecen)
-
-La inclusión teórica (antes de LoE) sigue la regla canónica SRD adaptada a la cuantización de 5 pies (D-1R1):
-- **Criterio del Borde Mayoritario (Half-Square Rule):** Una `Spatial Cell` (5x5x5 pies) pertenece al volumen de la forma de área si el volumen matemático de la forma cubre al menos la mitad (50%) de la celda.
-- **Burst/Emanation/Spread (Regla de Arista Lejana):** De acuerdo al PHB, si la arista más alejada de la celda está dentro del radio del área, la celda entera queda incluida.
-- **Intersección Mínima (Líneas):** Una `Line` incluye toda celda cuyo centro geométrico sea atravesado o rozado por el vector de 5 pies de espesor.
-- Ninguna celda puede estar "parcialmente afectada" mecánicamente. O la celda entera pertenece al área teórica, o está excluida.
+El origen normativo de un área jamás es el centro de una casilla.
+- **Grid Intersection (SRD):** El origen de un área es una intersección de la cuadrícula.
+- **Cones y Lines (SRD):** Comienzan estrictamente desde una esquina (intersección) del espacio del originador (el `Body Prism`).
+- **Excepciones (SRD):** Solo existen si la descripción concreta del efecto lo declara explícitamente.
+- **Generalización 3D (Extensión del Proyecto):** En el espacio tridimensional `(Volumetric Spatial Coordinate)`, una *grid intersection* es topológicamente el vértice exacto compartido por hasta 8 celdas cúbicas espaciales (o 4 celdas en el plano Z para áreas planas).
 
 ---
 
-## 6. Relación con Spatial Trace
+## 3. Inclusión de Casillas (Inclusion Contract)
 
-Es mandatorio mantener una estricta separación de responsabilidades:
-**Area Projection ≠ Spatial Trace (LoE)**
+El modelo **rechaza categóricamente** la regla del "50% de volumen/Half-Square" para calcular la inclusión en D&D 3.5 en grillas.
 
-1. **Area Projection** es el motor generador de celdas candidatas. Crea el volumen ideal y teórico en el vacío (ej. la esfera perfecta del Burst).
-2. **Spatial Trace (LoE)** es el filtro físico. Por cada celda generada por la Area Projection, el Rules Engine lanza un `Spatial Trace` desde el origen del área hasta el centro de dicha celda.
-3. **Clipping:** Si el `Spatial Trace` informa que una pared sólida corta el trayecto, la celda candidata es eliminada del área real efectiva (clipping).
-*La única excepción es el `Spread`, el cual puede "doblar esquinas". Un Spread no requiere un `Spatial Trace` recto; utiliza una métrica de distancia de ruta (Route Cost) limitada por su radio, propagándose fluidamente.*
+La regla normativa (SRD):
+- Se mide desde el punto de origen de intersección a intersección.
+- Se cuentan las diagonales con la métrica vigente (5-10-5 en 2D).
+- **Far Edge Rule:** Si el borde lejano (*far edge*) de una casilla está dentro del área (del radio o límite), la casilla queda incluida.
+- **Near Edge Rule:** Si el límite del área solo toca el borde cercano (*near edge*) o no llega al lejano, la casilla queda excluida.
+- **Line:** Afecta las casillas por las que pasa la línea trazada. No utiliza el "centro geométrico" de la celda como verificador.
 
----
-
-## 7. Relación con Spatial Distance
-
-**Area Projection utiliza `Spatial Distance`.**
-- El cálculo del radio teórico de un Burst, Emanation o Spread en el espacio 3D se basa estrictamente en la métrica `Spatial Distance` (la extrapolación de la regla 5-10-5 validada en D-1R1) desde el origen.
-- Las plantillas no son "imágenes pre-renderizadas" pegadas sobre la grilla. Son el resultado de consultar qué celdas satisfacen que su distancia al origen sea menor o igual al tamaño del área, utilizando la misma función que mide la proximidad.
-- El `Spread` utiliza en cambio `Route Cost` (distancia de ruta) en vez de `Spatial Distance` recta, ya que fluye a través de los espacios disponibles.
+> **ODR Bloqueante (Z-Axis):** La traducción exacta de la regla de *far-edge/near-edge* a la altura vertical 3D, caras superiores/inferiores y distancia volumétrica estricta depende de la ODR abierta de Distancia Tridimensional en D-1R1. El motor no implementará una regla arbitraria de caras Z hasta cerrar dicha ODR.
 
 ---
 
-## 8. Proyección Vertical y Múltiples Surfaces
+## 4. Definiciones de Formas (Geometric Shapes)
 
-En presencia de múltiples Surfaces superpuestas (ej. balcones, puentes):
-- Las formas se proyectan como volúmenes 3D completos, ignorando a qué Surface están anclados los objetivos.
-- **Cylinder:** Su origen puede ser el aire. Su radio afecta las columnas X/Y, y su altura viaja estrictamente hacia arriba o hacia abajo (según dicte el origen o efecto). Penetra Empty Space y Surfaces transitables si estas no bloquean LoE sólido.
-- **Emanation/Burst 3D (Esfera):** Corta a través de todas las Surfaces (ej. afecta a las criaturas en el piso inferior y superior si el radio es suficiente, siempre que LoE lo permita).
-- **Cono hacia abajo/arriba:** Totalmente válido. Se proyecta de acuerdo a su vector central XYZ. Puede bañar una Surface completa desde el aire.
+### 4.1 Cone
+- **SRD:** Parte de una esquina del espacio del originador, se proyecta en la dirección designada y se ensancha conforme avanza. Funciona normalmente como un *Burst* o *Emanation*. No dobla esquinas (salvo regla específica).
+- **Extensión del Proyecto:** La orientación puramente XYZ (ej. un cono disparado estrictamente hacia abajo 45 grados) es una extensión del proyecto (ya que el PHB 3.5 trata normalmente el combate en un plano 2D, aunque permite apuntar al aire).
+
+### 4.2 Line
+- **SRD:** Parte de una esquina del espacio del originador, avanza en la dirección designada y termina al alcanzar su límite o encontrar una barrera que bloquee *Line of Effect*. Afecta las criaturas en las casillas por las que pasa.
+- **Aclaración:** El ancho normativo y otras dimensiones proceden del efecto; no se universaliza un prisma 5x5.
+- **Extensión del Proyecto:** La orientación XYZ de la línea.
+
+### 4.3 Sphere
+- **SRD:** Forma geométrica (no un modo de propagación). Puede combinarse con *Burst*, *Emanation* o *Spread*. Su inclusión depende del radio, originado en una intersección.
+- **Dependencia:** Consume la métrica autoritativa 3D pendiente de D-1R1 (ODR abierta) para determinar qué casillas cubre en el espacio 3D real, utilizando la Far-Edge Rule.
+
+### 4.4 Cylinder
+- **SRD:** El origen es el **centro de un círculo horizontal**. El cilindro se proyecta **hacia abajo** desde ese círculo, poseyendo radio y altura definidos.
+- **SRD:** Ignora las obstrucciones dentro de su área. Para calcular *Line of Effect* y Cobertura Total hacia las víctimas, el origen relevante es el círculo completo del cilindro (o un punto de él), no un único centro puntual lejano.
+- **Restricción:** No proyecta "hacia arriba" por defecto. Un efecto solo proyectará hacia arriba o hacia otra orientación si su texto normativo lo exige explícitamente. No aplica el pipeline genérico de "origen a centro de celda".
+
+### 4.5 Shapeable Cubes
+- **SRD:** Algunos efectos "Shapeable" se construyen alineando múltiples cubos de tamaño base (ej. bloques de 10 pies). Los cubos son unidades de composición para formar volúmenes irregulares. Ninguna dimensión puede ser menor a la permitida por el SRD.
+- **Extensión del Proyecto:** La alineación exacta a la grilla y la orientación 3D de estas construcciones libres es una decisión discreta del motor, atada a la interfaz táctica 2.5D. No operan como "equivalentes" a los Conos/Líneas simples.
 
 ---
 
-## 9. Invariante del Renderer y UI
+## 5. Area Projection y Spatial Trace
 
-La interfaz de usuario (Renderer 2.5D) es un consumidor cosmético:
-- La UI **está autorizada** a mostrar *previews* de áreas utilizando algoritmos puros compartidos con el servidor, para permitir al usuario apuntar.
-- La UI **jamás** posee la autoridad final de qué celdas fueron incluidas ni qué criaturas fueron golpeadas.
-- Al confirmar una acción, el servidor recibe los parámetros puros (origen, vector direccional/forma) y reconstruye normativamente el área exacta.
+El documento D-1R1 introdujo `Spatial Trace`. Este documento establece que **no existe un pipeline único y universal** que aplique ciegamente `Spatial Trace` a toda área desde un origen puntual.
+
+Las estrategias normativas de combinación Forma + Propagación son:
+- **Burst / Emanation:** Proyección de forma teórica + evaluación de Total Cover mediante `Spatial Trace` (LoE) desde el punto de origen a la víctima/casilla.
+- **Spread:** Propagación progresiva que consume distancia de recorrido (ruta). Dobla esquinas. No exige LoE recto desde el origen al objetivo. Se cuenta alrededor de las paredes, pero no se trazan diagonales a través de esquinas bloqueadas (SRD).
+- **Line:** Avanza a través del `Spatial Trace` direccional hasta agotar la longitud del efecto o colisionar con una barrera física (Total Cover / LoE block).
+- **Cylinder:** Posee una regla especial. Proyecta su círculo horizontal de origen, viaja hacia abajo e ignora obstáculos internos. No utiliza el clipping genérico de Burst.
+- **Other:** Reservado para excepciones explícitas del texto de un conjuro.
 
 ---
 
-## 10. Pipeline Conceptual del Rule Engine
+## 6. Spatial Distance y Métricas de Propagación
 
-El ciclo de vida de un ataque de área queda regido por el siguiente pipeline inmutable:
+- La métrica XYZ (distancia espacial tridimensional) **NO está validada**. D-1R1 mantiene una ODR bloqueante al respecto.
+- Las formas esféricas, *Bursts* y *Emanations* deberán consumir la **futura métrica autoritativa** de distancia para determinar qué *far edges* alcanzan.
+- El modo *Spread* no utiliza distancia recta; consume **distancia recorrida** (Route Cost / pathfinding métrico).
+- La medición plana (2D) continúa obedeciendo rígidamente la regla SRD: contar desde intersección a intersección alternando el coste de diagonales 5-10-5. Ninguna proyección tridimensional dependiente de XYZ se implementará hasta cerrar la ODR.
 
-```text
-1. Ability / Spell
-     ↓ (Define Origen, Forma y Tamaño)
-2. Area Projection (Este NDD)
-     ↓ (Genera el conjunto de Spatial Cells teóricas)
-3. Spatial Trace / LoE Clipping
-     ↓ (Elimina celdas obstruidas físicamente, salvo Spreads)
-4. Intersección de Body Prisms
-     ↓ (Verifica qué Prismas comparten al menos 1 celda con el Área Efectiva Final)
-5. Criaturas Afectadas
-     ↓ (Produce la lista final de combatientes)
-6. Resolución de Reglas
-     ↓ (Tiradas de salvación, Cover, daño)
-```
+---
 
-Ningún paso puede saltearse y ningún paso realiza la tarea del anterior o siguiente.
+## 7. Cover y Resolución Mecánica
+
+El pipeline de áreas **no determina semántica defensiva automática**.
+`Area Projection` detiene su responsabilidad al devolver la colección de *Candidatos Afectados* (Prismas o Celdas). A partir de ahí, delega al *Rule Engine* del efecto concreto decidir:
+- Si se tiran salvaciones o hay daño.
+- **Cover:** Solo si el efecto lo declara (ej. un ataque de área que conceda reflejos extra por Cover parcial, o si D-1R1 dictamina que un objeto interrumpió el *Spatial Trace* sin causar Total Cover). `DEFENSE-COVER` no se muta por este documento.
+- No hay una "fase de Cover obligatoria universal" subsumida en la geometría del área.
+
+---
+
+## 8. Matriz Obligatoria de Trazabilidad
+
+| Concepto | Tipo | Fuente Normativa (SRD 3.5) | Extensión del Proyecto / Notas | ODR / Estado |
+|---|---|---|---|---|
+| Point of Origin | Intersección | PHB "Aiming a Spell" | - | Resuelto |
+| Grid Intersection | Topología | PHB "Area" | Vértice 3D (8 celdas compartidas) | Decisión Arquitectónica (D-1A-R1) |
+| Far Edge | Inclusión | PHB "Area" | - | Resuelto (SRD) |
+| Near Edge | Exclusión | PHB "Area" | - | Resuelto (SRD) |
+| Diagonal Counting | Métrica | PHB "Movement / Distance" | 5-10-5 en 2D | Resuelto para 2D |
+| Cone | Shape | PHB "Area - Cone" | Orientación y vector libre en XYZ | Extensión del Proyecto |
+| Line | Shape | PHB "Area - Line" | Orientación 3D | Extensión del Proyecto |
+| Sphere | Shape | PHB "Area - Sphere" | - | Resuelto |
+| Cylinder | Shape | PHB "Area - Cylinder" | - | Resuelto |
+| Burst | Propagation | PHB "Area - Burst" | - | Resuelto |
+| Emanation | Propagation | PHB "Area - Emanation" | - | Resuelto |
+| Spread | Propagation | PHB "Area - Spread" | - | Resuelto |
+| Shapeable Cubes | Shape | PHB "Area - Shapeable" | Alineamiento y anclaje a grid 3D | Extensión del Proyecto |
+| LoE | Primitiva | PHB "Line of Effect" | Consumido por Burst/Line/Emanation | D-1R1 / Resuelto |
+| Orientación XYZ | Dirección | - | Libertad de 360° direccional | Extensión del Proyecto |
+| Múltiples Surfaces | Topología | - | Cilindros/Conos/Esferas las penetran (si LoE lo permite) | D-1R1 / Resuelto |
+| Volumetric Coord | Identidad | - | Celdas puras en el vacío | D-1R1 / Resuelto |
+| UI Previews | Presentación | - | El cliente calcula pero sin autoridad | D-1A-R1 / Resuelto |
+| Distancia XYZ | Métrica 3D | - | Fórmula 3D para radios y far-edges | **ODR Bloqueante (D-1R1)** |
