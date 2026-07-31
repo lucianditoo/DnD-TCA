@@ -103,10 +103,10 @@ Ubicacion:
 
 ### Tablero
 
-- Tablero rectangular.
+- Tablero rectangular (V1 clásico).
 - Casilla de 5 ft.
-- Una criatura/token por casilla.
-- No se permite destino ocupado.
+- Ocupación volumétrica / espacial. (La regla de "una criatura/token por casilla" ha sido supersedida por soporte de múltiples superficies y prismas corporales en `spatial-engine-2.5d.md`).
+- No se permite destino ocupado (salvo en distintas elevaciones de superficie según NDD).
 
 ### Movimiento
 

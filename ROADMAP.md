@@ -6,7 +6,15 @@
 
 ## Orden propuesto
 
-1. **Vision, Line of Effect y Concealment**
+1. **Transición al Spatial Engine 2.5D (Nuevos Diseños Hijos)**
+   - D-1: Geometría Normativa Espacial.
+   - D-2: Fog of War y Participant Projection.
+   - D-3: Protocolo, Identidad, Reconexión y Persistencia Durable.
+   - D-4: Renderer, Presentación 2.5D y Cámara.
+   - D-5: Editor Táctico V2.
+   - D-6: Objetos Ambientales.
+
+2. **Vision, Line of Effect y Concealment**
    - Extender Line of Effect a conjuros y áreas de efecto (AdO ya cerrado en
      Sprint 055B).
    - Incorporar sentidos alternativos, fuentes dinámicas de luz y fenómenos

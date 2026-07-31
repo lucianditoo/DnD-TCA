@@ -3,192 +3,117 @@
 Responsabilidad: Definir la arquitectura autoritativa del espacio 3D discreto, entidades espaciales y su presentación visual 2.5D.
 Autoridad: Canónica
 Lifecycle: Diseño
-Reemplaza: -
-Complementa: docs/architecture/combat-engine.md
-Consumidores: Todo agente o desarrollador que modifique movimiento, geometría, LoE, Cover, proyecciones visuales, objetos del entorno o la persistencia de los mapas.
+Reemplaza: docs/designs/combat-engine-mvp.md (totalmente supersedido por exclusiones espaciales obsoletas)
+Complementa: docs/architecture/combat-engine.md, docs/designs/terrain-cover-line-of-effect-decision.md, docs/designs/cover-and-dynamic-reach-design.md, docs/designs/vision-and-line-of-effect-architecture.md, docs/designs/large-footprints-core-integration-design.md
+Consumidores: Todo agente (P0) que toque reglas de movimiento, geometría, LoE, Cover, proyecciones visuales, objetos del entorno o persistencia de mapas.
 
 ## 1. Filosofía del Spatial Engine
-
-DnD-TCA es un motor táctico autoritativo para encuentros de combate D&D 3.5. El combate es el núcleo del producto. El **Spatial Engine** evoluciona para soportar plenamente la verticalidad que las reglas mecánicas del juego exigen (diferencia de altura, túneles, puentes, caída, obstáculos volumétricos), sin convertirse en un motor de física genérico ni de simulación de mundos. Todo el espacio es discreto y sirve como tablero de arbitraje de las reglas SRD.
-
-## 2. Separación entre Simulación, Espacio, Presentación, Renderer y Audiovisual
-
-- **Simulación (Servidor):** Autoridad absoluta de estados, reglas, transacciones, y mecánicas D&D 3.5.
-- **Espacio (Servidor):** Estructura topológica y volumétrica (superficies, conexiones, niveles, elevación). Dicta distancias, alcance, LoE y Cover de forma determinista y autoritativa.
-- **Presentación (UI):** Traducción pura del estado espacial (el Snapshot) a una perspectiva visual 2.5D, cámara interactiva (isométrica, rotación, pan, zoom).
-- **Renderer (UI):** La tecnología de dibujado elegida (ej. Three.js o Babylon.js, reemplazando el CSS grid plano). No tiene autoridad de reglas.
-- **Audiovisual (UI):** Efectos visuales, sprites, animaciones, sonidos. Pura cosmética que acompaña la presentación 2.5D sin dictar mecánica.
-
-## 3. Modelo Espacial
-
-Se adopta la recomendación del Codex: **Columnas con múltiples superficies transitables y conexiones explícitas, complementadas mediante volúmenes discretos para criaturas, obstáculos y efectos.**
-El espacio es discreto (casillas x/y), pero una columna (x, y) puede tener múltiples pisos (Superficies). Cada superficie proporciona anclaje y altura de soporte canónica, y los volúmenes existen en el espacio continuo discretizado.
-
-## 4. Formato de Mapa Versionado
-
-El mapa debe versionarse semánticamente. Un mapa V2 (espacial) definirá:
-- `surfaces`: Colección indexada de superficies que otorgan piso/techo.
-- `connections`: Vínculos explícitos de transición entre superficies (rampas, escaleras, aberturas).
-- `hazards / volumes`: Regiones o celdas espaciales con propiedades persistentes.
-- `environmentalObjects`: Catálogo de objetos con identidad y presencia volumétrica.
-
-## 5. Position
-
-El concepto original de `Position {x, y, zFeet}` deja de ser simplemente "casilla + un número ignorado" para representar una coordenada de anclaje abstracta, asumiendo su `zFeet` como la cota inferior estricta en el espacio.
-
-## 6. Surface
-
-Nueva primitiva: `Surface`. 
-Define una región transitable (o no transitable pero sólida). Otorga soporte gravitatorio y elevación basal canónica (`zFeet`). Las superficies resuelven la ambigüedad estructural de dos puentes en la misma (x, y). Un combatiente apoya sus pies sobre una `Surface` explícita o cae.
-
-## 7. SpatialPosition
-
-Nueva primitiva canónica de estado de ocupación: `SpatialPosition { x: number, y: number, surfaceId: string, zFeet: number }`.
-Combina la coordenada horizontal con la identidad concreta del soporte (`surfaceId`), dejando `zFeet` como el valor derivado pero persistido de elevación real.
-
-## 8. Objetos Ambientales
-
-Existen como entidades tácticas de primera clase. Poseen:
-- Identidad (`id`).
-- Posición / Volumen ocupado.
-- Capacidades de bloqueo participativas (Cover, LoE, Ocupación de Movimiento).
-No todos tienen HP ni son destructibles en V1, pero pueden ser objetivos de selecciones tácticas si el sistema lo requiere.
-
-## 9. Movimiento
-
-- **Transiciones:** El pathfinding y validación de movimiento ya no se basan en un grid adyacente x/y liso. Se valida transitabilidad mediante adyacencia de casillas sobre la misma superficie, y transiciones explicitadas mediante `connections` entre superficies distintas.
-- Coste vertical: Todo cambio de elevación que no fluya por una conexión mitigadora (rampa) asume modo especial (trepar, saltar, volar).
-- Caen (literalmente y lógicamente) las entidades que abandonan una superficie sin tener vuelo.
-
-## 10. Ocupación
-
-Las entidades ya no ocupan sólo un rectángulo horizontal en (x,y). Ocupan un prisma discreto definido por su Footprint horizontal (size) y su Perfil Vertical (altura corporal base, ej. 5 pies para Mediano, 10 para Grande (alto)). 
-La ocupación de casilla x/y en z constante permite que dos criaturas estén en la misma (x,y) en diferentes superficies, respetando las leyes de solapamiento solo donde los prismas corporales colisionen.
-
-## 11. Geometría
-
-Las primitivas puramente planas (como distancia Euclidiana y Chebyshev horizontal) se elevan. La matemática volumétrica usa cajas delimitadoras (Bounding Boxes de tamaño `width x length x height` en pies).
-
-## 12. Distancia
-
-La regla canónica 5-10-5 de 3.5e debe calcularse en tres dimensiones: el mayor desplazamiento (x, y, z) establece la distancia base, y el segundo mayor aporta diagonales.
-
-## 13. Alcance
-
-El volumen amenazado ya no es un cuadrado plano, sino una burbuja volumétrica truncada (ej. un cubo expandido, según 3.5) alrededor del volumen corporal. Las elevaciones importan para atacar criaturas volando o sobre balcones.
-
-## 14. Threat
-
-Amenaza (Threat) requiere LoE y Alcance Volumétrico (Reach). No se amenaza a través de pisos sólidos ni coberturas totales que bloqueen LoE en Z.
-
-## 15. Flanking
-
-Sigue trazándose línea entre centros corporales (ajustados volumétricamente). Si la línea interseca bordes o caras opuestas horizontales sin obstrucciones de Cover Totales/Sólidas, otorga Flanking.
-
-## 16. AoO
-
-Ataques de oportunidad requieren Threat legal (convergencia de LoE, Alcance y Cover verificados en 3D). La trayectoria de salida de un prisma amenazado detona el AdO, midiendo sobre la superficie real que abandona o atraviesa el provocador.
-
-## 17. Cover
-
-La intercepción volumétrica. El rayo entre volúmenes o caras del agresor y objetivo busca colisión en Z con otros prismas corporales (criaturas) y objetos ambientales. Una plataforma concede Cover si el rayo de ataque cruza el suelo.
-
-## 18. Vision
-
-Iluminación y visión operan sobre volumen. Fuentes de luz esféricas radiantes que se limitan (clipping) por suelos/techos (superficies).
-
-## 19. LoE
-
-Misma lógica de trazado de rayos volumétricos. LoE se corta irrevocablemente si intersecta suelos sin aberturas o volúmenes opacos marcados como bloqueadores.
-
-## 20. AoE
-
-Expansiones de formas cilíndricas (explosiones), cónicas volumétricas y de línea 3D. 
-Celdas afectadas son la intersección volumétrica de la forma con la topología, clipada por LoE (paredes, pisos).
-
-## 21. Snapshots
-
-El `CombatRulesSnapshot` incluirá colecciones `surfaces`, `connections`, y `environmentalObjects`, junto con `positions` enriquecidas a `SpatialPosition` (o garantizando el transporte explícito de elevación y superficie).
-
-## 22. CombatRoom
-
-Envía la topología persistente del nivel en forma inmutable como parte del estado inicial y snapshotings incrementales.
-
-## 23. Versionado
-
-El protocolo WebSocket, el esquema de Room y Storage de base de datos asumen explícitamente formato/versiones: 
-- `format: "v1"` (plano clásico).
-- `format: "v2-spatial"` (superficies y objetos explícitos).
-
-## 24. Compatibilidad
-
-Los perfiles (personajes) se asumen agnósticos, al entrar al combate su `Position` asume la `Surface` inicial asignada. 
-Servidor v2 adaptará mapas antiguos (V1) autogenerando una única `Surface` basal que cubre todo el width x height, a zFeet 0.
-
-## 25. Migración Conceptual
-
-El motor espacial (servidor) expone un adaptador bidimensional temporal o resuelve que cualquier consulta carente de Z apunte al `surface` base por defecto, para no romper primitivas funcionales que todavía no hayan adoptado volumen.
-
-## 26. Presentación 2.5D
-
-La UI React abandona el Grid CSS (por insuficiencia de Z order y clipping real). Adopta una escena renderizada, con los tokens y tiles renderizables pero presentados desde perspectiva táctica.
-
-## 27. Cámara
-
-Obligatorio en V1:
-- Rotación horizontal continua de 360°.
-- Control por brújula o atajos de teclado.
-- Paneo y Zoom fluido.
-- Inclinación vertical fija u horquillada (ej. 30° a 60°) para asegurar legibilidad táctica.
-- Compartir cámara del GM temporalmente sin exponer Fog of War (posiciones ignoradas siguen invisibles).
-
-## 28. Fog of War
-
-Debe operar diferenciado por jugador, sobre el modelo 2.5D:
-- Regiones Vistas (visibles ahora, con tokens y acciones).
-- Regiones Exploradas (memoria arquitectónica, grisadas, sin tokens actuales).
-- No Exploradas (ocultas total).
-
-## 29. Editor
-
-Debe ser estricto y generar sólo el formato de mapa autoritativo V2. Crear superficies, alturas, y ubicar objetos tácticos. No un modelador libre 3D, sino un constructor de topología por bloques/superficies (tileset tridimensional o elevador de grillas).
-
-## 30. Persistencia
-
-Preparación para persistencia de Room: Los mapas no pueden existir sólo en memoria. El NDD deja el contrato preparado para que una base de datos documental (o localStorage expandido) guarde el plano topológico.
-
-## 31. Reconexión
-
-El estado del cliente reasume su cámara o posición default, descarga el Snapshot V2 y su Fog of War personal, y re-rutea el ownership en la `CombatRoom` tal y como funciona ahora, sumando identidad espacial (superficies, volúmenes, luces).
-
-## 32. Cierre del Encuentro
-
-Mantiene separación mecánica entre resultado (victory, defeat, etc.) y causa. No se involucra con el espacio directamente, pero el encuentro preserva el snapshot del terreno en la persistencia del cierre (loot sobre terreno).
-
-## 33. Riesgos
-
-- **Sobre-ingeniería de Rendering:** Intentar implementar físicas u oclusión visual fotorrealista.
-- **Rendimiento UI:** Motor WebGL costoso que impida acceso por tablets.
-- **Divergencias Servidor-UI:** Que el cliente intente "adivinar" colisiones de AoE usando el engine 3D visual en vez del árbitro del servidor.
-
-## 34. Alternativas Descartadas
-
-- **Física Continua y Motores Colisión:** Rechazado por desalineación con las reglas SRD por casillas discretas y determinismo estricto de testing (Floating Point errors).
-- **Grid Plano con Z como atributo transportado ignorado:** La recomendación y decisión del owner determinan que esto impide soporte funcional a túneles, puentes superpuestos y bloqueo de LoE real.
-
-## 35. Deuda Documental
-
-El MVP Histórico de `combat-engine-mvp.md` ya excluye vuelo y 3D, requiere marcaje de Superseded (superado) para no contradecir el `spatial-engine-2.5d.md`. Además, deberá actualizarse la mención a footprints en el documento de `RULES_ENGINE.md`.
-
-## 36. Criterios de Aceptación
-
-- Arquitectura de estado separada, puramente inyectable en `rules.ts`.
-- Primitiva `Surface` unifica resolución ambigua en el Eje Z.
-- UI con cámara aislada de la resolución autoritativa (no evalúa, solo pinta la proyección provista).
-- El `INDEX.md` refleja la introducción de este NDD de forma canónica.
-
-## 37. ODR Pendientes (Owner Decision Required)
-
-- **ODR-1: Cuantización de Eje Z (Discretización Base):** ¿Debe la altura de `Surface` anclarse obligatoriamente a incrementos discretos (ej. 5 pies), o es continua (`zFeet: 12.5`) siempre que las reglas consuman pies redondeables? 
-- **ODR-2: Foco del Editor V1:** ¿El editor táctico de V1 requiere soporte incorporado de edición de objetos volumétricos (modificar ancho y alto del objeto en la UI) o solo colocación de "prefabs" tácticos con volumen inmutable provenientes de catálogo?
-- **ODR-3: Naturaleza del Render Visual:** ¿La perspectiva obligatoria isométrica clásica será forzada (cámara ortográfica) o se admitirá cámara perspectiva con limitación de grados de libertad (tilt)?
+El motor táctico es el árbitro exclusivo de las reglas espaciales. El espacio es discreto (cuantizado) también en el eje vertical Z, con incrementos canónicos obligatorios de 5 pies (unidades espaciales enteras, prohibido el floating point). DnD-TCA no incorporará físicas continuas ni colisiones rígidas; la topología está estructurada por conectividad declarativa y volúmenes discretos alineados al grid espacial tridimensional para garantizar determinismo estricto.
+
+## 2. Separación entre capas
+- **Simulación (Servidor):** Autoridad sobre ocupación, estado, transacciones y matemática del combate.
+- **Espacio (Servidor):** Estructura topológica y volumétrica (Surfaces, Volúmenes). Fuente canónica para cálculos de alcance, visión y obstrucciones.
+- **Presentación (UI):** Proyección visual 2.5D del estado espacial. Realiza hit-testing presentacional traduciéndolo a identidades espaciales para el servidor, pero **no** decide legalidad ni reconstruye geometría normativa.
+- **Renderer y Audiovisual:** Cosmética, cámara y tecnología de dibujado; independientes del motor de reglas.
+
+## 3. Modelo Espacial: Columnas y Superficies
+Se adopta formalmente el modelo de **columnas x/y con múltiples superficies transitables (o sólidas) superpuestas, conexiones explícitas y volúmenes corporales/ambientales discretos.**
+
+## 4. Identidad Espacial Canónica y SpatialPosition
+`Position` legacy (que acarrea el valor no autoritativo `zFeet`) queda restringida a formatos V1 y fronteras de importación/adaptación.
+El dominio V2 adopta la identidad espacial canónica para celdas ocupables:
+```typescript
+SpatialPosition {
+  x: number,
+  y: number,
+  surfaceId: string
+}
+```
+`zFeet` no se persiste como fuente de verdad en `SpatialPosition`. Es un valor derivado (u obtenido por caché) resolviendo `surfaceId -> Surface -> elevación basal`.
+
+**Migración conceptual pendiente:** Los consumidores actuales (`AttackTarget.kind === "square"`, `OpportunityAttack.origin/.destination`, `provokingCells`, `MovementStepProjection`, `EffectInstance.targetCells`, viewModels) migrarán para referenciar identidades espaciales canónicas que soporten superposiciones puente/túnel en la misma x/y.
+
+## 5. Surface
+Contrato conceptual mínimo de `Surface`:
+- Identidad estable unívoca.
+- Extensión horizontal discreta (colección de casillas x/y a las que pertenece).
+- Elevación canónica base (discretizada en enteros de 5 pies).
+- Separación entre cara transitable y volumen sólido.
+- Propiedades estructurales: bloqueos de LoE, visión, iluminación, movimiento y separación de volúmenes.
+**Importante:** Una Surface no concede Cover parcial por el mero hecho de cruzarse; Cover parcial requiere una evaluación específica de interposición. Total Cover resulta de la pérdida total de LoE.
+
+## 6. Ocupación, Perfil Vertical y Footprints
+La ocupación evoluciona de rectángulos horizontales (footprints) a prismas corporales discretos.
+- **Perfil Vertical:** Dato táctico explícito (no derivado puramente de `sizeCategory`). Su autoridad puede provenir del catálogo, templates, monturas o transformaciones.
+- **Volumen Corporal:** Prismas resultantes del footprint horizontal + perfil vertical.
+- **Ocupación:** `getCombatantOccupiedCells` se reemplazará (o envolverá) en una abstracción volumétrica canónica que integre apoyo (sobre `Surface`) y extensión superior.
+
+## 7. Objetos Ambientales
+Existen como identidades tácticas independientes con capacidades particionadas explícitas y declarativas. No existe un atributo genérico `blocking`. Sus capacidades modulares son:
+- Bloqueo de Movimiento / Terreno Difícil / Squeezing.
+- Bloqueo de Line of Effect.
+- Bloqueo/Reducción de Vision / Opacidad / Emisión de luz.
+- Participación explícita en Cover parcial.
+- Ocultación (Concealment).
+- Interactividad (targetability, hazards).
+Las implementaciones específicas requieren diseño (D-6).
+
+## 8. Movimiento
+- Fluye horizontalmente sobre la transitabilidad de una misma `Surface`.
+- Cambios de elevación ordinarios ocurren por `connections` (escaleras, rampas).
+- Abandonar una superficie sin conexión válida ni vuelo implica **caída**.
+- Se requiere ancla arquitectónica (diseño futuro) para salto (transición validada a través del vacío) y trepar.
+
+## 9. Geometría Normativa: Distancia y Alcance
+La cuantización espacial y el algoritmo exacto 3D para la regla 5-10-5, así como el alcance (burbujas volumétricas truncadas) quedan diferidos al NDD hijo (D-1). Deben respetar estricto determinismo entero tridimensional.
+
+## 10. Threat, Flanking y AoO
+Se preserva la separación irrestricta de assessments:
+- **Threat (Amenaza):** Deriva de ocupación y alcance espacial. No evalúa legalidad final, Cover ni Concealment, pero sí evalúa bloqueo de LoE en Z.
+- **Flanking:** Consume Threat y trazado rectilíneo entre centros de prismas, evaluando que caras opuestas no estén obstruidas por Total Cover/superficies sólidas. No inyecta Cover parcial.
+- **Ataques de Oportunidad (AoO):** Componen provocación, Threat, LoE, Cover, Concealment y otras legalidades, invocando a los módulos individuales. LoE y Cover se verifican en la trayectoria de salida 3D, sobre la superficie real.
+
+## 11. LoE, Cover, Vision e Iluminación
+- **Line of Effect:** Rayos volumétricos clipados estrictamente por `Surfaces` sin aberturas y objetos opacos de LoE.
+- **Cover:** Interposición de prismas (criaturas) u objetos ambientales declarativos de Cover. Cover Parcial y Total Cover/LoE siguen siendo evaluaciones independientes.
+- **Vision / Iluminación:** Capacidades independientes del LoE mecánico (ej. cristal bloquea LoE pero no Vision). Clipping en Z por techos y suelos.
+
+## 12. Fog of War
+Abandona el broadcast general de `CombatRoom`.
+Se instaura la **Participant Projection** (frontera autoritativa server-side). El cliente recibe una proyección censurada (`Wire Snapshot`) correspondiente a lo que su grupo (o GM) ve legítimamente:
+- Combatientes y objetos (y sus estadísticas y efectos) fuera de visión se excluyen del payload o se ofuscan.
+- Soporte para terreno No Explorado, Explorador, y Visible.
+El diseño recae en D-2.
+
+## 13. Persistencia y Protocolo
+La persistencia autoritativa de mapas, FoW, ownership, salas y estados **debe residir en el servidor** (o BDD server-side). `localStorage` queda relegado a preferencias de UI y drafts no autoritativos.
+- Versionado por dominio (ej. handshake de red, compatibilidad de protocolo, format de Storage).
+- Se prohíben resoluciones silenciosas V2 contra superficies "por defecto". Clientes o mapas no migrados deben encontrarse en fronteras estrictas de adaptación o fallar explícitamente.
+
+## 14. Reconexión e Identidad
+No existe hoy una solución robusta. Se requiere un diseño explícito (D-3) de sesiones seguras, binding sesión-socket, tokens de reanudación y recuperación controlada de ownership ante desconexiones, coordinado con la nueva proyección FoW.
+
+## 15. Editor V1
+Producirá de manera estricta y directa el formato V2 autoritativo. Basado en colocación de prefabs ambientales (de catálogo) sobre superficies y definición de elevaciones/conexiones. Sin modelado volumétrico libre (el tamaño lo dicta el prefab). Utiliza la validación pura del servidor.
+
+## 16. Cierre de Encuentro
+Separación clara entre estado mecánico final (victoria, rendición) y retención del mapa persistido (loot, posiciones finales, objetos mutados).
+
+## 17. Migración de Perfiles
+Los perfiles de personajes actuales arrastran `Position` legacy. Queda registrada la deuda migratoria para extirpar la posición del perfil o normalizar las preferencias de despliegue en V2.
+
+## 18. Criterios de Aceptación Observables Futuros (Testing Obligatorio)
+- Entidades sobre dos superficies superpuestas en igual x/y.
+- Pasos legales por debajo de puentes ocupados.
+- Rechazo de superposiciones de prismas.
+- Distancia/Alcance volumétrico preservando 5-10-5.
+- Rechazo estricto de clientes de protocolo antiguo.
+- Proyección visual de FoW incapaz de extraer metadatos censurados.
+
+## 19. NDD Hijos Obligatorios
+- **D-1 — Geometría Normativa Espacial (Nivel D):** Algoritmos de identidad, footprint volumétrico, distancia, LoE, Cover, Vision, AoE en 3D discreto.
+- **D-2 — Fog of War y Participant Projection (Nivel D):** Frontera de servidor y proyecciones filtradas censuradas.
+- **D-3 — Protocolo, Identidad, Reconexión y Persistencia Durable (Nivel D):** Sesiones, versionado de wire y esquemas de persistencia server-side.
+- **D-4 — Renderer, Presentación 2.5D y Cámara (Nivel C/D):** Perspectiva UI (tilt, ortográfica/perspectiva), hit-testing, renders.
+- **D-5 — Editor Táctico V2 (Nivel C/D):** Creación basada en superficies y prefabs.
+- **D-6 — Objetos Ambientales (Nivel C/D):** Capacidades tácticas divisibles y entidades.

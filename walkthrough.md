@@ -1,22 +1,38 @@
-# Walkthrough — Sprint A-001 (Spatial Engine & 2.5D Tactical Presentation)
+# Walkthrough — Sprint A-001R1 (Architecture Review Remediation)
 
 ## Objetivo
+Resolver las deficiencias, contradicciones y ambigüedades arquitectónicas detectadas en el Sprint A-001 original por el Architecture Gate. El foco es asentar firmemente el NDD de motor espacial discreto tridimensional (2.5D), de manera consistente y determinista, alineado con las directivas ineludibles del Propietario.
 
-Producir el NDD (Documento de Diseño de Nodo/Arquitectónico) oficial que define la evolución del motor táctico hacia un espacio discreto tridimensional con presentación 2.5D, conforme a la decisión del propietario de no utilizar motores de física continua. Este sprint es puramente arquitectónico (Nivel D) y no incluye implementaciones en código.
+## Entregables
+- **`docs/designs/spatial-engine-2.5d.md`**: Reesquematizado y reescrito. Establece reglas concretas de discretización, perfiles verticales, identidad canónica (`SpatialPosition`), independencias funcionales (Cover, LoE, Threat), y delega explícitamente a 6 NDDs hijos mandatorios.
+- **`docs/designs/combat-engine-mvp.md`**: Header actualizado declarando su estado documental como parcialmente supersedido.
+- **`RULES_ENGINE.md`**: Corregida contradicción sobre "una criatura/token por casilla" para alinearlo con el soporte actual de footprint y la futura ocupación volumétrica.
+- **`PROJECT_STATUS.md`**: Actualizado reflejando el progreso de la remediación.
 
-## Artefactos Entregados
+## Matriz de Resolución de Hallazgos (Architecture Gate)
 
-- **`docs/designs/spatial-engine-2.5d.md`**: El NDD canónico.
-- **`INDEX.md`**: Actualizado para incluir la referencia al nuevo documento de diseño.
-- **`PROJECT_STATUS.md`**: Actualizado reflejando el cierre del Sprint A-001.
+| Hallazgo / Observación | Reviewer | Estado | Evidencia de Resolución (NDD) |
+|---|---|---|---|
+| Tolerancia a "12.5 pies" en Z. | Propietario (OD-1) | **Accepted** | Sec. 1 prohíbe floating point; Sec. 5 manda 5 pies enteros. |
+| Múltiples fuentes de verdad para `zFeet`. | Propietario (OD-2) | **Accepted** | Sec. 4 consolida `SpatialPosition` (x, y, surfaceId) y extirpa `zFeet` canónico. |
+| Cover automático por `Surface`. | Propietario (OD-3) | **Accepted** | Sec. 5 y 11 separan Cover (evaluación de interposición) de Surface. |
+| LoE/Cover acoplado dentro de `Threat`. | Propietario (OD-4) | **Accepted** | Sec. 10 aísla Threat (evalúa LoE en Z, pero no Cover/Concealment ni legalidad total). |
+| FoW via censura visual del cliente. | Propietario (OD-5) | **Accepted** | Sec. 12 obliga a censura autoritativa en `Participant Projection` (NDD D-2). |
+| `localStorage` como persistencia durable. | Propietario (OD-6) | **Accepted** | Sec. 13 restringe `localStorage`; exige BDD server-side (NDD D-3). |
+| Resolución V2 silenciosa de fallbacks V1. | Propietario (OD-7) | **Accepted** | Sec. 13 obliga a fallo explícito en fronteras si no existe adaptador estricto. |
+| Reafirmación falaz sobre la Reconexión. | Propietario (OD-8) | **Accepted** | Sec. 14 asume el problema y delega a D-3. |
+| Foco Libre 3D en el Editor V1. | Propietario (OD-9) | **Accepted** | Sec. 15 restringe V1 a catálogo de prefabs sin manipulación volumétrica libre. |
+| Tecnologías concretas en Render/Cámara. | Propietario (OD-10) | **Accepted** | Se eliminó toda mención (ej. CSS, ortográfica), delegando diseño UI a D-4. |
+| Contradicciones en `RULES_ENGINE.md`. | Codex | **Accepted** | `RULES_ENGINE.md` modificado in-situ (huellas/prismas superseden 1 criatura/casilla). |
+| MVP histórico confuso y sin superseding. | Codex | **Accepted** | Header de `combat-engine-mvp.md` actualizado y referenciado explícitamente en el NDD. |
+| Algoritmo 5-10-5 simplificado 3D irreal. | Codex | **Accepted** | Sec. 9 retira la fórmula irreal; difiere el algoritmo exacto determinista a D-1. |
+| Altura derivada únicamente de `Size`. | Codex | **Accepted** | Sec. 6 desvincula la obligatoriedad, permitiendo catálogos o templates de montura. |
 
-## Decisiones Arquitectónicas Registradas (NDD)
+Todos los _blockers_ dictaminados fueron **Aceptados**, sin ningún rechazo, incorporándose al texto final y marcando la arquitectura preparada y limpia para iteraciones venideras.
 
-1. **Modelo de Espacio Discreto:** Se utilizarán columnas x/y, pero ahora con una o múltiples `Surface`s explícitas (pisos transitables/sólidos), conectados mediante una topología formal.
-2. **Volumen Corporal (Prisma):** La ocupación y line-of-effect operan ahora sobre volúmenes (prismas rectangulares) y ya no sobre proyecciones planas de la celda origen.
-3. **Representación 2.5D:** La interfaz de React se moverá de la grilla ortogonal CSS actual a un canvas/escena con cámara interactiva isométrica libre en 360°, manteniéndose como un renderizador "dumb" que sólo dibuja el estado autoritativo dictado por el servidor.
-4. **Posición de Soporte:** Introducida la `SpatialPosition`, que identifica unívocamente sobre qué superficie se está anclado y cuál es la elevación z real.
+## Documentos Supersedidos / Parcialmente Supersedidos
+- `docs/designs/combat-engine-mvp.md`
+- `RULES_ENGINE.md` (fragmentos históricos)
 
-## Cierre Formal
-
-Al ser un sprint documental, no se ejecutaron pipelines de compilación de CI. Las revisiones de índice, cero políticas huérfanas y Source of Truth se han mantenido intactas. El sistema de documentación (GOVERNANCE.md) ratifica que este documento (`docs/designs/spatial-engine-2.5d.md`) actúa como la fuente unificada para cualquier agente futuro al tocar la geometría, el engine de movimiento, o el mapa del proyecto.
+## Estado del Gate
+ARCHITECTURE APPROVED AFTER A-001R1 REMEDIATION
