@@ -1,36 +1,22 @@
-# Walkthrough — Sprint D-1R1 (Geometría Normativa Espacial Remediation)
+# Walkthrough — Sprint D-1A (Proyección Normativa de Áreas)
 
 ## Objetivo
-Resolver los hallazgos documentales y contradicciones señalados durante el Architecture Gate del Sprint D-1 original, limpiando las definiciones de geometría normativa, identidades y dependencias de assessments para producir un NDD arquitectónico riguroso.
+El proyecto ya cuenta con el diseño base normativo del espacio 3D (D-1R1), sin embargo carecía de la formalización geométrica que rige a las plantillas de Áreas de Efecto. Este sprint crea el NDD de "Normative Area Shape Projection", detallando la inclusión estricta de celdas para todas las áreas del SRD, independizando el concepto de Area Projection de `Spatial Trace` y formalizando el pipeline de ejecución espacial en el servidor.
 
 ## Entregables
-- **`docs/designs/normative-spatial-geometry.md`**: Reesquematizado y reescrito. Establece dos identidades espaciales formales, independiza totalmente Threat de LoE, purga inferencias gráficas de los hazards, asienta Squeezing y footprint sizes inferiores a Small, y delinea explícitamente Distance vs Route Cost.
-- **`docs/designs/spatial-engine-2.5d.md`**: Corrección in-situ en la sección de Threat para remover la dependencia errónea hacia LoE, sincronizándolo con D-1R1.
-- **`PROJECT_STATUS.md`**: Actualizado reflejando el progreso del sprint documental.
+- **`docs/designs/normative-area-shape-projection.md`**: NDD canónico. Formaliza el comportamiento de Cone, Line, Burst, Spread, Emanation, Cylinder y Cube de acuerdo al SRD pero instanciado bajo las limitaciones del grid 3D discreto establecido en D-1R1.
+- **`INDEX.md`**: Actualizado para incluir `docs/designs/normative-area-shape-projection.md`.
+- **`PROJECT_STATUS.md`**: Refleja el cierre exitoso del Sprint D-1A.
 
-## Matriz de Resolución de Hallazgos (Architecture Gate)
+## Decisiones Arquitectónicas (NDD D-1A)
 
-| Hallazgo / Observación | Reviewer | Estado | Evidencia de Resolución (NDD) |
-|---|---|---|---|
-| Falsa incompatibilidad A-001 vs D-1 sobre `zFeet`. | Claude | **Rejected** | A-001 ya declaraba `surfaceId` sin persistir `zFeet`. (Se aclara precedencia delegada). |
-| Threat duplicando LoE y contradicción en AoO. | Codex | **Accepted** | Sec. 11: Threat es puramente alcance/ocupación. AoO compone Threat + LoE + Cover separadamente. Corregido en A-001. |
-| Métrica XYZ indeterminada / Distancia vs Coste. | Codex | **Accepted** | Sec. 7: Se separa Spatial Distance (simétrica) de Route Cost. Se registra ODR bloqueante para la fórmula 3D exacta. |
-| Trazado LoE ambiguo ("vector o cilindro"). | Codex | **Accepted** | Sec. 9: Instauración del contrato `Spatial Trace` como primitiva única de recorrido geométrico. |
-| Contradicción opacidad/LoE (ej: humo vs vidrio). | Codex | **Accepted** | Sec. 10: Vision (afectado por opacidad) y LoE (afectado por solidez) desconectados y sin compartir blockers idénticos. |
-| Ausencia de identidad aérea / no anclada. | Codex | **Accepted** | Sec. 2: Creación de `Volumetric Spatial Coordinate` para caída y vuelo, coexistiendo con `Anchored Spatial Position`. |
-| 50% de caída parcial inventado. | Codex | **Accepted** | Sec. 12: Se remueve la regla inventada y se difiere la mecánica exacta, reteniendo solo el invariante de soporte válido. |
-| Vertical Profile inferido rígidamente de Size. | Codex | **Accepted** | Sec. 5: Instaurada cadena de precedencia (plantilla > transformación > estado > snapshot) sin dependencia fija. |
-| Tamaño de celda ambiguo vs `cellSizeFeet`. | Codex | **Accepted** | Sec. 1: Fijado normativamente a 5 pies para V1, con `spaceFeet` permitiendo co-ocupación si es menor a 5. |
-| Footprint como segunda tabla manual y < Small. | Codex | **Accepted** | Sec. 4: Extirpada tabla manual. Permite explícitamente ocupación subcelular para Tiny/Diminutive/Fine. |
-| Ausencia de min/max Reach. | Codex | **Accepted** | Sec. 8: Reach explicitado como conjunto matemático con límites mínimos/máximos y múltiples orígenes. |
-| Squeezing incompleto. | Codex | **Accepted** | Sec. 4: Separación formal entre footprint natural, footprint efectivo y Body Prism efectivo. |
-| Dependencia inversa de Hazards. | Codex | **Accepted** | Sec. 14: Hazards formalizados como áreas pasivas consultadas por el Rules Engine, sin detonar eventos desde la geometría pura. |
-| Previews de cliente erróneamente prohibidos. | Codex | **Accepted** | Sec. 15: Permitidos previews de helpers puros sobre proyección FoW, pero confirmando que el cliente carece de autoridad normativa. |
-| Snapshots no cubiertos adecuadamente. | Codex | **Accepted** | Sec. 16: Listado exhaustivo de todas las primitivas y estructuras que el Snapshot debe congelar y persistir. |
-| Board legacy como autoridad duplicada. | Codex | **Accepted** | Sec. 16: El Board legacy sobrevive únicamente como adaptación tras un proxy V1, sin autoridad en dominios V2 puros. |
-| Contratos consumidores omitidos. | Codex | **Accepted** | Sec. 17: Agregada matriz semántica formal de consumidores de `Anchored Spatial Position` y `Volumetric Spatial Coordinate`. |
+1. **Origen Cuantizado:** El área de las formas jamás se proyecta desde un espacio continuo, se proyecta desde una intersección de la grilla volumétrica o una arista/vértice, salvo en el caso del "Targeted Cell" donde irradia desde la ocupación.
+2. **Orientación XYZ:** Formas direccionales (conos, líneas) no están limitadas a vectores bidimensionales. El servidor acepta cualquier vector central 3D para evaluar la inclusión de los volúmenes, permitiendo bañar balcones y abismos.
+3. **Inclusión por Borde SRD:** Se establece normativamente el "Half-Square Rule" y "Far-Edge Rule" adaptados al espacio volumétrico: toda celda cubierta en más de un 50% por la matemática de un Cono pertenece a él; todo cubo intersectado por la arista final de un Burst pertenece al Burst completo. Nunca existe afectación parcial geométrica.
+4. **Desacople Projection vs Trace:** D-1A formaliza que generar el volumen de inclusión (`Area Projection`) es un paso previo e independiente del trazado de bloqueo físico (`Spatial Trace`/LoE). Un área atraviesa paredes en su generación teórica, pero las celdas resultan censuradas después al evaluar si poseen `Line of Effect` al centro (clipping).
+5. **Diferenciación Spatial Distance vs Route Cost en Spread:** El Burst y la Emanation crecen puramente utilizando métricas de `Spatial Distance`. El Spread es la excepción sistémica que dobla esquinas, obligando a utilizar `Route Cost` radicado desde el origen para evitar paredes sin ser censurado por el clipping final.
 
-Todos los hallazgos validados han sido documentados, extirpando ambigüedades arquitectónicas o delegando responsablemente mediante ODRs.
-
-## Estado del Gate
-D-1 ARCHITECTURE APPROVED AFTER D-1R1 REMEDIATION
+## Cierre Formal
+- Al ser un sprint puramente arquitectónico (Nivel D), no se redactó ni ejecutó código funcional ni algoritmos concretos.
+- No se definieron rules concretos sobre salvaciones o daño, únicamente la inclusión volumétrica de la plantilla.
+- Validaciones documentales (Zero Orphan, `git diff --check`) completadas.
