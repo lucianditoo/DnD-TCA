@@ -69,8 +69,8 @@ La cuantización espacial y el algoritmo exacto 3D para la regla 5-10-5, así co
 
 ## 10. Threat, Flanking y AoO
 Se preserva la separación irrestricta de assessments:
-- **Threat (Amenaza):** Deriva de ocupación y alcance espacial. No evalúa legalidad final, Cover ni Concealment, pero sí evalúa bloqueo de LoE en Z.
-- **Flanking:** Consume Threat y trazado rectilíneo entre centros de prismas, evaluando que caras opuestas no estén obstruidas por Total Cover/superficies sólidas. No inyecta Cover parcial.
+- **Threat (Amenaza):** Deriva de ocupación y alcance espacial. No evalúa legalidad final, Cover, Concealment ni LoE.
+- **Flanking:** Consume Threat y la relación geométrica entre centros. No inyecta requisitos de LoE o Cover salvo si el PHB lo indica normativamente.
 - **Ataques de Oportunidad (AoO):** Componen provocación, Threat, LoE, Cover, Concealment y otras legalidades, invocando a los módulos individuales. LoE y Cover se verifican en la trayectoria de salida 3D, sobre la superficie real.
 
 ## 11. LoE, Cover, Vision e Iluminación

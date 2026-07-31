@@ -1,23 +1,36 @@
-# Walkthrough — Sprint D-1 (Geometría Normativa Espacial)
+# Walkthrough — Sprint D-1R1 (Geometría Normativa Espacial Remediation)
 
 ## Objetivo
-Producir el NDD arquitectónico oficial **D-1 — Geometría Normativa Espacial**, el primer diseño hijo derivado del Spatial Engine 2.5D. Establece los contratos inmutables de las entidades tridimensionales, la semántica del espacio, las intersecciones, y los invariantes topológicos que regirán a todos los consumidores funcionales (Movement, Threat, LoE, Cover).
+Resolver los hallazgos documentales y contradicciones señalados durante el Architecture Gate del Sprint D-1 original, limpiando las definiciones de geometría normativa, identidades y dependencias de assessments para producir un NDD arquitectónico riguroso.
 
 ## Entregables
-- **`docs/designs/normative-spatial-geometry.md`**: El NDD canónico. Formaliza el modelo espacial `(Celda, Columna, Surface, Prisma Corporal, Empty Space)`. Establece los límites matemáticos del Reach, Distancia, y LoE. Crea la librería de Invariantes y Casos Límite.
-- **`INDEX.md`**: Actualizado para incluir la referencia al nuevo documento D-1.
-- **`PROJECT_STATUS.md`**: Refleja el cierre exitoso del Sprint D-1 en la gobernanza.
+- **`docs/designs/normative-spatial-geometry.md`**: Reesquematizado y reescrito. Establece dos identidades espaciales formales, independiza totalmente Threat de LoE, purga inferencias gráficas de los hazards, asienta Squeezing y footprint sizes inferiores a Small, y delinea explícitamente Distance vs Route Cost.
+- **`docs/designs/spatial-engine-2.5d.md`**: Corrección in-situ en la sección de Threat para remover la dependencia errónea hacia LoE, sincronizándolo con D-1R1.
+- **`PROJECT_STATUS.md`**: Actualizado reflejando el progreso del sprint documental.
 
-## Decisiones Arquitectónicas Registradas (NDD D-1)
+## Matriz de Resolución de Hallazgos (Architecture Gate)
 
-1. **Cuantización Rígida:** Se consolida la Spatial Cell de 5x5x5 pies, prohibiendo subdivisión y elevaciones con decimales o floating points (`z=12.5`).
-2. **Consolidación Volumétrica (Body Prism):** La ocupación queda matemáticamente definida como el prisma resultante de extruir el Footprint X/Y mediante el Perfil Vertical intrínseco en Z, partiendo desde el soporte transitable.
-3. **Múltiples anclajes legales (Surface):** Se establece la capacidad de tener Surfaces superpuestas con elevación distinta en la misma Columna `(x, y)`. Se declaran los invariantes de que ninguna Surface se superpondrá a la cota idéntica de otra transitable.
-4. **Desacople Presentacional Absoluto:** Todo cálculo de Cover, LoE o Flanking es un trazado puramente matemático en el servidor; se prohíbe explícitamente usar motores de físicas o UI client-side (como raycasters WebGL) para dictaminar validez.
-5. **Composición por Delegación:** D-1 delega formalmente (No Objetivos) aspectos como FoW a D-2, protocolos/almacenamiento a D-3, presentación a D-4, editores a D-5, absteniéndose de mezclar niveles de preocupación.
+| Hallazgo / Observación | Reviewer | Estado | Evidencia de Resolución (NDD) |
+|---|---|---|---|
+| Falsa incompatibilidad A-001 vs D-1 sobre `zFeet`. | Claude | **Rejected** | A-001 ya declaraba `surfaceId` sin persistir `zFeet`. (Se aclara precedencia delegada). |
+| Threat duplicando LoE y contradicción en AoO. | Codex | **Accepted** | Sec. 11: Threat es puramente alcance/ocupación. AoO compone Threat + LoE + Cover separadamente. Corregido en A-001. |
+| Métrica XYZ indeterminada / Distancia vs Coste. | Codex | **Accepted** | Sec. 7: Se separa Spatial Distance (simétrica) de Route Cost. Se registra ODR bloqueante para la fórmula 3D exacta. |
+| Trazado LoE ambiguo ("vector o cilindro"). | Codex | **Accepted** | Sec. 9: Instauración del contrato `Spatial Trace` como primitiva única de recorrido geométrico. |
+| Contradicción opacidad/LoE (ej: humo vs vidrio). | Codex | **Accepted** | Sec. 10: Vision (afectado por opacidad) y LoE (afectado por solidez) desconectados y sin compartir blockers idénticos. |
+| Ausencia de identidad aérea / no anclada. | Codex | **Accepted** | Sec. 2: Creación de `Volumetric Spatial Coordinate` para caída y vuelo, coexistiendo con `Anchored Spatial Position`. |
+| 50% de caída parcial inventado. | Codex | **Accepted** | Sec. 12: Se remueve la regla inventada y se difiere la mecánica exacta, reteniendo solo el invariante de soporte válido. |
+| Vertical Profile inferido rígidamente de Size. | Codex | **Accepted** | Sec. 5: Instaurada cadena de precedencia (plantilla > transformación > estado > snapshot) sin dependencia fija. |
+| Tamaño de celda ambiguo vs `cellSizeFeet`. | Codex | **Accepted** | Sec. 1: Fijado normativamente a 5 pies para V1, con `spaceFeet` permitiendo co-ocupación si es menor a 5. |
+| Footprint como segunda tabla manual y < Small. | Codex | **Accepted** | Sec. 4: Extirpada tabla manual. Permite explícitamente ocupación subcelular para Tiny/Diminutive/Fine. |
+| Ausencia de min/max Reach. | Codex | **Accepted** | Sec. 8: Reach explicitado como conjunto matemático con límites mínimos/máximos y múltiples orígenes. |
+| Squeezing incompleto. | Codex | **Accepted** | Sec. 4: Separación formal entre footprint natural, footprint efectivo y Body Prism efectivo. |
+| Dependencia inversa de Hazards. | Codex | **Accepted** | Sec. 14: Hazards formalizados como áreas pasivas consultadas por el Rules Engine, sin detonar eventos desde la geometría pura. |
+| Previews de cliente erróneamente prohibidos. | Codex | **Accepted** | Sec. 15: Permitidos previews de helpers puros sobre proyección FoW, pero confirmando que el cliente carece de autoridad normativa. |
+| Snapshots no cubiertos adecuadamente. | Codex | **Accepted** | Sec. 16: Listado exhaustivo de todas las primitivas y estructuras que el Snapshot debe congelar y persistir. |
+| Board legacy como autoridad duplicada. | Codex | **Accepted** | Sec. 16: El Board legacy sobrevive únicamente como adaptación tras un proxy V1, sin autoridad en dominios V2 puros. |
+| Contratos consumidores omitidos. | Codex | **Accepted** | Sec. 17: Agregada matriz semántica formal de consumidores de `Anchored Spatial Position` y `Volumetric Spatial Coordinate`. |
 
-## Cierre Formal
-- Al ser un sprint arquitectónico (Nivel D), no se redactó ni ejecutó código funcional.
-- No se crearon ni alteraron Unit Tests.
-- Se ha respetado escrupulosamente la separación entre *contratos geométricos* y algoritmos o pseudocódigo implementacional.
-- Validaciones documentales (Zero Orphan, `git diff --check`) completadas.
+Todos los hallazgos validados han sido documentados, extirpando ambigüedades arquitectónicas o delegando responsablemente mediante ODRs.
+
+## Estado del Gate
+D-1 ARCHITECTURE APPROVED AFTER D-1R1 REMEDIATION
