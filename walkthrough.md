@@ -21,4 +21,4 @@ Realizar únicamente la remediación del documento de investigación `movement-r
 Se extrajo, analizó y aplicó el texto normativo exacto del manual (SRD 3.5), corrigiendo el documento `movement-rules-audit.md` a través de manipulación de texto en bloque. No se ejecutaron tests, ya que no se modificó el código de TypeScript subyacente de las reglas, respetando la directiva estricta de "No escribir código ni diseñar".
 
 ## Cierre Formal
-El *Research* queda saneado y purgado de *house rules* o *interpretaciones*. Queda listo para aprobar e ingresar de lleno en la fase de diseño y arquitectura del **Sprint D-1B — Normative Movement Design**.
+El documento `movement-rules-audit.md` se ha estructurado como una auditoría normativa según las reglas del SRD 3.5, el estado del motor y el Registry vigente. Las responsabilidades de resolución de los gaps identificados han sido asignadas a los propietarios correspondientes, cumpliendo con los requisitos del Sprint D-1B-Research R2. Queda listo para la fase de diseño del **Sprint D-1B — Normative Movement Design**.
