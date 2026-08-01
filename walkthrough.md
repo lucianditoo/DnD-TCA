@@ -1,24 +1,28 @@
-# Walkthrough — Sprint D-1B-Research R1 (Normative Corrections)
+# Walkthrough — Sprint D-1B-Research R3 (Final Evidence-Based Remediation)
 
 ## Objetivo
-Realizar únicamente la remediación del documento de investigación `movement-rules-audit.md` utilizando exclusivamente hallazgos normativos verificados del SRD 3.5. Al igual que en la pasada original, este sprint NO diseña arquitectura, NO modifica contratos, NO propone algoritmos, y NO implementa código. El objetivo es dejar el Research puramente alineado con el texto oficial para abrir posteriormente el NDD D-1B.
+Realizar una remediación documental estricta del documento de investigación `movement-rules-audit.md` dirigida por hallazgos específicos (B-01 a B-08 y M-01 a M-05), consolidando el documento como una auditoría normativa pura.
 
-## Entregables
-- **`docs/audits/movement-rules-audit.md`**: Remediado en las siguientes correcciones normativas obligatorias:
-  1. **Terreno difícil diagonal**: Se eliminó la regla inventada de alternancia (15/20) y se restituyó la regla estricta del SRD (cada diagonal cuesta el equivalente a dos normales, es decir, 15 ft fijos por cada diagonal).
-  2. **Five Foot Step**: Se eliminó la afirmación errónea de que no podía realizarse estando ciego (solo el terreno difícil lo prohíbe normativamente).
-  3. **Charge**: Se aclaró explícitamente que la acción *Charge* no provoca AdO por sí misma, sino que el *movimiento realizado* durante la misma puede provocarlos normalmente si abandona casillas amenazadas.
-  4. **Matriz de cobertura**:
-     - Se vinculó a las entradas reales del *Registry* (`MOVE-BASIC`, `MOVE-DIFFICULT-TERRAIN`, `MOVE-5FT`, `MOVE-ACROBATIC`, `MOVE-SQUEEZING`, `MOVE-WITHDRAW`, `MOVE-RUN`, `POSITION-LARGE-FOOTPRINT`).
-     - Se actualizó "Moverse por Enemigos" a **Parcial** documentando qué falta exactamente (Helpless, tamaño pasivo) contra lo ya implementado (Tumble).
-     - Se actualizó "Charge" reconociendo la porción ya soportada en `tacticalCommands.ts` / `rules.ts` como Parcial.
-     - Se ajustó Large Footprints a **Completo** en base a `POSITION-LARGE-FOOTPRINT` validado en el Registry; el squeeze vertical excede el SRD.
-  5. **Dependencias Arquitectónicas**: Se separó claramente la lista de reglas, la matriz de estado actual del motor, los huecos normativos puros, y las *Dependencias hacia otros NDD* (donde se ubican las consideraciones como el pathfinding 3D, conexiones y Volumetric Spatial Coordinates).
+## Estado Final
+El documento `movement-rules-audit.md` ha sido reestructurado para separar cada regla en cuatro bloques: **RAW (SRD)**, **Estado actual del motor**, **Gap** y **Propietario**. Se ha eliminado toda afirmación absoluta o asunción no verificada, alineando las descripciones con el código y tests actuales del motor y asignando claramente la responsabilidad de resolución.
 
-- **`PROJECT_STATUS.md`**: Avanzado al término de D-1B-Research R1.
+## Matriz de Hallazgos
 
-## Metodología
-Se extrajo, analizó y aplicó el texto normativo exacto del manual (SRD 3.5), corrigiendo el documento `movement-rules-audit.md` a través de manipulación de texto en bloque. No se ejecutaron tests, ya que no se modificó el código de TypeScript subyacente de las reglas, respetando la directiva estricta de "No escribir código ni diseñar".
+| ID | Hallazgo | Decisión | Archivo/Sección Modificada | Evidencia Normativa | Evidencia Código/Test | Estado Final | Justificación |
+|---|---|---|---|---|---|---|---|
+| **B-01** | Movimiento entre aliados (Afirmación falsa de rechazo) | Corregido | 5. Moverse a través de casillas ocupadas | SRD: Puede atravesarse espacio aliado pero no terminar turno ahí. | Test permite ruta por aliados y prohíbe finalizar en ellos. | ACCEPTED | El motor en 2D ya soporta atravesar aliados sin terminar en su celda. |
+| **B-02** | Five-Foot Step y Minimum Movement | Separados | 3. Five-Foot Step / 4. Minimum Movement | SRD: Minimum movement permite 5ft de asalto completo si los costes impiden avanzar. | `canUseFiveFootStep` no contempla Minimum Movement. | ACCEPTED | Son mecánicas distintas; Minimum movement provoca AdO y consume asalto completo. |
+| **B-03** | Vuelo (Categorías) | Corregido | 12. Vuelo y Maniobrabilidad | SRD: 5 clases (Perfect, Good, Average, Poor, Clumsy) dictan ángulos, hover, reversa, etc. | Motor sin modos de movimiento ni maniobrabilidad aérea. | ACCEPTED | Se eliminaron generalizaciones falsas; el motor actual no soporta maniobrabilidad. |
+| **B-04** | Caídas | Separado | 13. Caídas (Falling & Stall) | SRD: Diferencia caída por gravedad (1d6/10ft) de pérdida de sustentación (150/300ft). | Sin mecánicas de daño por caída en servidor. | ACCEPTED | Evita generalizar "150/300" a todas las caídas (solo aplica al vuelo). |
+| **B-05** | Squeezing (Espacio < 50%) | Documentado | 6. Apretujarse (Squeezing) | SRD: Inferior a la mitad requiere Escape Artist y acciones extras. | Motor aplica coste doble y -4/-4 para 2x2. | ACCEPTED | El motor solo cubre la regla general para la mitad del ancho. |
+| **B-06** | Inventario omitido (Mala visibilidad, obstáculos, etc.) | Añadido | 15. Inventario Normativo Omitido | SRD: Diversos modificadores de terreno, visibilidad, tamaños minúsculos y carga. | Motor no implementa Swim/Climb ni reducción por carga. | ACCEPTED | Se deben inventariar todas las reglas pertinentes para su futura asignación. |
+| **B-07** | Withdraw (Ceguera / Invisibilidad) | Corregido | 7. Retirada (Withdraw) | SRD: Exenciones si no se ve al enemigo. | `handleWithdraw` ignora estados de visión. | ACCEPTED | No estaba "Sin diferencias", hay un gap real en la interacción de visión. |
+| **B-08** | Large Footprints (Swept volume) | Desmentido | 14. Criaturas Grandes en el Movimiento | SRD: Terreno más difícil entre casillas ocupadas. | Motor usa swept volume (extensión D-1). | ACCEPTED | El cálculo volumétrico de ruta es una extensión del proyecto, no regla del SRD. |
+| **M-01** | Charge (AdO y línea recta) | Corregido | 9. Carga (Charge) | SRD: La acción no provoca AdO, el movimiento sí. | `buildStraightPath` y evaluación de footprints existe. | ACCEPTED | Se reconoce el avance del motor (línea recta) pero se marcan gaps de terreno/LoS. |
+| **M-02** | HELPLESS | Documentado | 5. Moverse a través de casillas ocupadas | SRD: Oponentes Helpless pueden ser atravesados. | Motor usa Helpless solo para Dying. | ACCEPTED | Falta aplicar Helpless pasivo al bypass de movimiento. |
+| **M-03** | Tumble (Velocidad normal) | Documentado | 10. Acrobacias (Tumble) | SRD: Opción de moverse a velocidad normal con -10. | Motor solo soporta mitad de velocidad (CD 15/25). | ACCEPTED | Faltaba la variante de penalizador -10 para velocidad completa. |
+| **M-04** | Propietarios | Asignados | Todo el documento | N/A | N/A | ACCEPTED | Cada gap tiene propietario claro (D-1B, Implementación futura, etc.). |
+| **M-05** | Estado documental | Ajustado | `walkthrough.md`, `PROJECT_STATUS.md` | N/A | N/A | ACCEPTED | El Research no se declara "listo/aprobado", sólo reporta hallazgos objetivos. |
 
-## Cierre Formal
-El documento `movement-rules-audit.md` se ha estructurado como una auditoría normativa según las reglas del SRD 3.5, el estado del motor y el Registry vigente. Las responsabilidades de resolución de los gaps identificados han sido asignadas a los propietarios correspondientes, cumpliendo con los requisitos del Sprint D-1B-Research R2. Queda listo para la fase de diseño del **Sprint D-1B — Normative Movement Design**.
+## Validaciones
+Se verificó `git diff --check`, la Zero Orphan Policy y Single Source of Truth, y se buscó texto prohibido como "Sin diferencias" (sólo usado cuando corresponde estrictamente) o "aprobado".
