@@ -1,4 +1,4 @@
-# Auditoría Oficial de Reglas de Movimiento (D-1B-Research R5)
+# Auditoría Oficial de Reglas de Movimiento (D-1B-Research R6)
 
 Este documento inventaría **exclusivamente las reglas oficiales del SRD 3.5 / PHB / DMG** relativas al movimiento táctico y de combate, evaluando su impacto en los sistemas del proyecto DnD-TCA y documentando qué reglas están cubiertas y cuáles constituyen huecos normativos, sin proponer algoritmos ni arquitectura nueva.
 
@@ -253,25 +253,25 @@ D-1B (Diseño de modos), D-6 (Obstáculos ambientales), Implementación futura.
 
 ## 2. Matriz de Auditoría de Cobertura
 
-> **Nota sobre autoridad documental:** La columna *Registry Status* refleja únicamente el estado declarado en `docs/rules/registry.md` para los Rule IDs que allí existen. Las filas marcadas `N/A` no poseen Rule ID en el Registry: su evaluación de cobertura es propia de este Research y **no representa un estado oficial del Registry**. Este documento no es una segunda autoridad; es una auditoría normativa del RAW completo frente al alcance implementado declarado por Registry.
+> **Nota sobre autoridad documental:** Las capacidades que no poseen Rule ID oficial en el Registry no forman parte del estado oficial del proyecto. Su evaluación dentro de esta matriz pertenece exclusivamente al alcance de este Research y no constituye una segunda autoridad documental. La columna *Registry Status* sólo puede mostrar un estado oficial (`Completo`, `Parcial`, etc.) cuando la regla posee un Rule ID en `docs/rules/registry.md`; en caso contrario, el único valor válido es `N/A (No Rule ID)`.
 
 | Regla | Registry Status | Research Scope (RAW completo) | Outstanding RAW gaps | Propietario |
 |---|---|---|---|---|
-| Movimiento Táctico | Completo | Alternancia 5-10-5-10 | Ninguno en 2D | Sin acción requerida |
-| Terreno Difícil | Completo | 15ft constantes por diagonal | Alternancia 15/20 incorrecta. Faltan modificadores. | Implementación futura |
-| Five-Foot Step | Completo | No action, no AdO, no terreno difícil | Ninguno | Sin acción requerida |
-| Minimum Movement | N/A (sin Rule ID) | Acción completa, 5ft, provoca AdO | Falta acción que ignore límite de coste | Implementación futura |
-| Aliados | Completo | Se puede cruzar, no terminar | Ninguno | Sin acción requerida |
-| Enemigos | Parcial | Atravesar por Helpless o 3 tamaños | Falta trait formal HELPLESS y excepción por tamaño | Implementación futura |
-| Squeezing | Completo | Costo x2, -4 CA/Atk; <50% requiere Escape Artist | Falta regla para <50% (Escape Artist) y Huge+ | Implementación futura |
-| Withdraw | Completo | Ignora AdO en 1ra casilla; prohibido al estar Blinded | El motor no impide Withdraw al estar Blinded | Implementación futura |
-| Correr (Run) | Completo | x4, pierde DEX, no en terreno difícil | Divergencias registradas: DT-018, DT-019 | Sin acción requerida |
-| Carga (Charge) | Completo | Línea recta, +2 Atk/-2 CA. Movimiento provoca AdO | Falta: terreno difícil bloquea; LoS inicial; Helpless no bloquea | Implementación futura |
-| Acrobacias (Tumble) | Completo | Mitad vel o normal con -10 | Falta variante normal con penalizador -10 | Implementación futura |
-| AdO por Movimiento | Completo | Provoca al abandonar. Cover bloquea | Bug: movimiento de 1 casilla omite AdO aunque no sea 5ft Step | Implementación futura |
-| Vuelo | N/A (sin Rule ID) | 5 clases con restricciones específicas | Faltan todas las mecánicas de vuelo | D-1B, D-3 |
-| Caídas | N/A (sin Rule ID) | Daño 1d6/10ft; Stall: 150/300 pies | Falta caída general y Stall por pérdida de vuelo | D-1B |
-| Large Footprints | Completo | Considera todas las celdas ocupadas | Swept Volume: extensión del proyecto, no RAW | D-1B |
+| Movimiento Táctico | Completo (`MOVE-BASIC`) | Alternancia 5-10-5-10 | Ninguno en 2D | Sin acción requerida |
+| Terreno Difícil | Completo (`MOVE-DIFFICULT-TERRAIN`) | 15ft constantes por diagonal | Alternancia 15/20 incorrecta. Faltan modificadores. | Implementación futura |
+| Five-Foot Step | Completo (`MOVE-5FT`) | No action, no AdO, no terreno difícil | Ninguno | Sin acción requerida |
+| Minimum Movement | N/A (No Rule ID) | Acción completa, 5ft, provoca AdO | Falta acción que ignore límite de coste | Implementación futura |
+| Aliados | N/A (No Rule ID) | Se puede cruzar, no terminar | Ninguno | Sin acción requerida |
+| Enemigos | N/A (No Rule ID) | Atravesar por Helpless o 3 tamaños | Falta trait formal HELPLESS y excepción por tamaño | Implementación futura |
+| Squeezing | Completo (`MOVE-SQUEEZING`) | Costo x2, -4 CA/Atk; <50% requiere Escape Artist | Falta regla para <50% (Escape Artist) y Huge+ | Implementación futura |
+| Withdraw | Completo (`MOVE-WITHDRAW`) | Ignora AdO en 1ra casilla; prohibido al estar Blinded | El motor no impide Withdraw al estar Blinded | Implementación futura |
+| Correr (Run) | Completo (`MOVE-RUN`) | x4, pierde DEX, no en terreno difícil | Divergencias registradas: DT-018, DT-019 | Sin acción requerida |
+| Carga (Charge) | N/A (No Rule ID) | Línea recta, +2 Atk/-2 CA. Movimiento provoca AdO | Falta: terreno difícil bloquea; LoS inicial; Helpless no bloquea | Implementación futura |
+| Acrobacias (Tumble) | Completo (`MOVE-ACROBATIC`) | Mitad vel o normal con -10 | Falta variante normal con penalizador -10 | Implementación futura |
+| AdO por Movimiento | N/A (No Rule ID) | Provoca al abandonar. Cover bloquea | Bug: movimiento de 1 casilla omite AdO aunque no sea 5ft Step | Implementación futura |
+| Vuelo | N/A (No Rule ID) | 5 clases con restricciones específicas | Faltan todas las mecánicas de vuelo | D-1B, D-3 |
+| Caídas | N/A (No Rule ID) | Daño 1d6/10ft; Stall: 150/300 pies | Falta caída general y Stall por pérdida de vuelo | D-1B |
+| Large Footprints | Completo (`POSITION-LARGE-FOOTPRINT`) | Considera todas las celdas ocupadas | Swept Volume: extensión del proyecto, no RAW | D-1B |
 
 ---
 
