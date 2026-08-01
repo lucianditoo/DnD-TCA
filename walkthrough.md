@@ -1,13 +1,23 @@
-# Walkthrough — Sprint D-1B-Research R6
+# Walkthrough — Sprint D-1B, Capítulo 1
 
 ## Objetivo
-Aplicar exclusivamente la corrección del último hallazgo del Gate Review: la matriz de cobertura atribuía estados del Registry a capacidades sin Rule ID oficial, violando SSOT.
 
-## Corrección aplicada
-- Se verificó en `docs/rules/registry.md` qué Rule IDs existen para cada fila de la matriz.
-- Las cuatro filas sin Rule ID que mostraban `Completo` o `Parcial` fueron corregidas a `N/A (No Rule ID)`: **Aliados**, **Enemigos**, **Carga (Charge)**, **AdO por Movimiento**.
-- Las filas con Rule ID confirmado ahora citan explícitamente su Rule ID entre paréntesis.
-- La nota documental antes de la matriz fue actualizada con el texto exacto requerido por la política SSOT.
-- No se modificó ningún otro apartado del documento.
+Definir exclusivamente el modelo abstracto y normativo de movimiento mediante Movement, Step, Route y Movement Cost, sin diseñar acciones, modos, validaciones, geometría de soporte ni implementación.
 
-READY FOR FINAL GATE REVIEW.
+## Resultado
+
+- Se creó `docs/designs/normative-movement-design.md` como NDD canónico de D-1B.
+- El capítulo formaliza Step, la regla diagonal 5/10, Route y la suma de Movement Cost.
+- El diseño preserva la separación entre Movement Cost y Spatial Distance establecida por D-1R1.
+- No se modificaron código, tests ni Rule Registry.
+- No se abrió ninguna ODR nueva; la ODR preexistente de Spatial Distance tridimensional permanece fuera de alcance.
+- El documento fue registrado en `INDEX.md` y el estado de revisión se reflejó en los snapshots documentales correspondientes.
+
+## Validación documental
+
+- Alcance del diff limitado a Markdown.
+- Enlaces internos del nuevo documento comprobados.
+- Responsabilidad única y encabezado permanente verificados.
+- `git diff --check` completado sin errores.
+
+READY FOR ARCHITECTURE REVIEW.

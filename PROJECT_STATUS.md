@@ -9,6 +9,7 @@
 - Rama de integración: `master`.
 - Última vertical funcional integrada: Sprint 055B, Ataques de Oportunidad bajo Cover y Ocultación Total.
 - Última decisión arquitectónica: Sprint D-1B-Research R6 (Auditoría de Reglas de Movimiento - SSOT Matrix Remediation).
+- Diseño en revisión: Sprint D-1B, Capítulo 1 (modelo abstracto de Movement, Step, Route y Movement Cost).
 - Último saneamiento documental: Sprint D-1B-Research R6 / Sprint D-1A-R1.
 - Baseline funcional publicada: 559/559 pruebas unitarias, 100/100 aserciones
   WebSocket y 7/7 escenarios Playwright; typecheck y build verdes.
