@@ -81,7 +81,7 @@ implementación cerrados (`large-footprints-v1-implementation-plan.md`,
   - [`docs/designs/spatial-engine-2.5d.md`](docs/designs/spatial-engine-2.5d.md): NDD Oficial del Motor Espacial 3D Discreto y Presentación 2.5D.
   - [`docs/designs/normative-spatial-geometry.md`](docs/designs/normative-spatial-geometry.md): Geometría Normativa Espacial (D-1R1).
   - [`docs/designs/normative-area-shape-projection.md`](docs/designs/normative-area-shape-projection.md): Proyección Normativa de Áreas (D-1A).
-  - [`docs/designs/normative-movement-design.md`](docs/designs/normative-movement-design.md): Modelo abstracto y normativo de movimiento (D-1B, Capítulo 1).
+  - [`docs/designs/normative-movement-design.md`](docs/designs/normative-movement-design.md): Modelo abstracto de movimiento y validación normativa de rutas (D-1B, Capítulos 1–2).
 - [`docs/audits/`](docs/audits/): auditorías y divergencias.
   - [`docs/audits/combat-rules-deviations.md`](docs/audits/combat-rules-deviations.md): Desviaciones documentadas de las reglas oficiales.
   - [`docs/audits/movement-rules-audit.md`](docs/audits/movement-rules-audit.md): Auditoría oficial de reglas de movimiento (D-1B-Research).

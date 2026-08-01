@@ -1,10 +1,10 @@
 # Normative Movement Design (D-1B)
 
-Responsabilidad: Definir qué significa moverse dentro del motor mediante los conceptos normativos de Movement, Step, Route y Movement Cost.
+Responsabilidad: Definir los contratos normativos comunes del movimiento, desde su modelo abstracto hasta la legalidad de una Route.
 Autoridad: Canónica
 Lifecycle: Diseño
 Reemplaza: —
-Complementa: `docs/designs/normative-spatial-geometry.md`, `docs/designs/spatial-engine-2.5d.md`
+Complementa: `docs/designs/normative-spatial-geometry.md`, `docs/designs/normative-area-shape-projection.md`, `docs/designs/spatial-engine-2.5d.md`
 Consumidores: Capítulos posteriores de D-1B y cualquier sistema que necesite expresar movimiento sin depender de acciones, pathfinding o presentación.
 
 ---
@@ -119,3 +119,132 @@ Los capítulos posteriores podrán consumir Movement, Step, Route y Movement Cos
 ### 1.10 ODR
 
 Este capítulo no abre ninguna ODR nueva. La ODR preexistente sobre Spatial Distance tridimensional permanece fuera de alcance y sin cambios, porque Movement Cost y Spatial Distance no son intercambiables.
+
+---
+
+## Capítulo 2 — Normative Route Validation
+
+### 2.1 Propósito y alcance
+
+Este capítulo responde exclusivamente a la pregunta:
+
+> ¿Cuándo una Route es legal?
+
+Una Route es legal cuando su secuencia completa conserva continuidad y cada uno de sus Steps constituye, en su orden, una transición legal desde la posición alcanzada por el Step anterior.
+
+La legalidad definida aquí es un veredicto normativo sobre una Route ya expresada. No descubre recorridos, no calcula su coste, no consume economía de acciones y no produce consecuencias sobre el estado del combate.
+
+### 2.2 Bases normativas
+
+Este contrato se apoya en tres autoridades existentes sin redefinirlas:
+
+- **[D-1R1](normative-spatial-geometry.md)** aporta las identidades espaciales sobre las que se expresan las posiciones y exige evaluación pura sobre estado inmutable.
+- **[D-1A](normative-area-shape-projection.md)** preserva la distinción entre una progresión ordenada por ruta y una proyección geométrica directa.
+- **[D-1B-Research](../audits/movement-rules-audit.md)** confirma que la validación de movimiento se evalúa incrementalmente y que la legalidad del recorrido no puede deducirse únicamente de sus extremos.
+
+Este capítulo toma esas premisas como entradas. No amplía sus modelos espaciales ni sus reglas particulares.
+
+### 2.3 Route bajo validación
+
+Para validar una Route se consideran normativamente:
+
+1. su posición de origen;
+2. su secuencia ordenada de Steps;
+3. su posición de destino;
+4. la entidad cuyo movimiento describe;
+5. un único CombatRulesSnapshot de referencia.
+
+La Route permanece siendo la secuencia ordenada y contigua definida en el Capítulo 1. La validación no altera su orden, no inserta Steps omitidos y no sustituye el recorrido declarado por otro.
+
+### 2.4 Validación incremental Step-by-Step
+
+La legalidad se determina recorriendo conceptualmente los Steps en su orden declarado.
+
+Para cada Step:
+
+1. su origen debe coincidir con la posición alcanzada hasta ese punto de la Route;
+2. su destino debe ser adyacente a su origen;
+3. la transición entre ambas posiciones debe ser legal bajo el mismo CombatRulesSnapshot de referencia;
+4. solo un Step legal permite considerar alcanzada su posición de destino para evaluar el Step siguiente.
+
+La validación incremental no implica ejecución parcial. Es una forma de componer el veredicto de la Route sin mutar el estado del combate.
+
+### 2.5 Legalidad de un Step
+
+Un Step es legal dentro de una Route cuando satisface simultáneamente estas condiciones:
+
+- **Origen esperado:** comienza exactamente en la posición que la Route ha alcanzado antes de ese Step.
+- **Adyacencia:** conecta posiciones adyacentes según el modelo espacial canónico.
+- **Continuidad:** no omite ninguna posición intermedia ni presupone un desplazamiento no expresado.
+- **Transición permitida:** el cambio de posición está permitido por las restricciones normativas aplicables al movimiento en el CombatRulesSnapshot de referencia.
+- **Rol ordinal válido:** satisface las restricciones que correspondan a su lugar dentro de la Route, incluida su condición de Step intermedio o final.
+
+Este capítulo define cómo se compone la legalidad, no el inventario de restricciones concretas que capítulos posteriores puedan aplicar a un Step.
+
+### 2.6 Continuidad y ausencia de saltos
+
+Una Route es continua si, para cada par consecutivo de Steps, el destino del primero coincide exactamente con el origen del segundo.
+
+Por lo tanto:
+
+- ningún Step puede comenzar desde una posición distinta de la última posición alcanzada;
+- ninguna posición intermedia necesaria puede quedar implícita;
+- la legalidad del destino no vuelve legales Steps omitidos;
+- dos extremos válidos no bastan para demostrar que la Route entre ellos sea legal.
+
+Una discontinuidad vuelve ilegal la Route completa.
+
+### 2.7 Reachability mediante transiciones legales
+
+Una posición de destino es reachable por una Route si y solo si existe una secuencia continua de Steps legales que parte del origen de la Route y termina en ese destino.
+
+Reachability es, en este capítulo, una propiedad demostrada por la Route concreta. No equivale a cercanía, distancia espacial ni posibilidad abstracta de llegar por algún recorrido diferente.
+
+Si un Step es ilegal, su destino no se considera alcanzado y ningún Step posterior puede apoyarse normativamente en él. La Route presentada recibe entonces un veredicto de ilegalidad como unidad completa.
+
+### 2.8 Inmutabilidad sobre CombatRulesSnapshot
+
+Toda la Route se valida contra un único CombatRulesSnapshot de referencia, que permanece inmutable durante la evaluación.
+
+La posición alcanzada después de cada Step es una proyección local de la propia Route, no una mutación del CombatRulesSnapshot. En consecuencia:
+
+- validar una Route no desplaza a la entidad;
+- validar un Step no compromete ni aplica los Steps anteriores;
+- una Route ilegal no deja movimiento parcial ni estado residual;
+- repetir la validación con la misma Route y el mismo CombatRulesSnapshot produce el mismo veredicto.
+
+La ejecución y cualquier cambio efectivo de estado pertenecen a una responsabilidad posterior y separada.
+
+### 2.9 Independencia respecto de Movement Cost
+
+La legalidad de una Route no depende de su Movement Cost.
+
+Una Route puede ser legal aunque su coste acumulado supere un límite disponible, y puede ser ilegal aunque su coste sea bajo. El cálculo de coste definido en el Capítulo 1 y la validación definida en este capítulo son evaluaciones separadas que pueden consumir la misma secuencia ordenada de Steps.
+
+Este capítulo no calcula, modifica ni compara Movement Cost.
+
+### 2.10 Independencia respecto de la economía de acciones
+
+La legalidad de una Route no determina si una entidad puede dedicar recursos de turno a recorrerla ni qué clase de operación podría solicitarla.
+
+La economía de acciones puede decidir si una Route legal puede ejecutarse en un contexto concreto, pero no redefine continuidad, adyacencia, legalidad de Step ni Reachability.
+
+Por ello, el mismo contrato de Route Validation permanece consumible por cualquier sistema sin incorporar reglas propias de una acción.
+
+### 2.11 Veredicto normativo
+
+Una Route es **legal** únicamente cuando:
+
+1. su origen corresponde a la posición de partida observada en el CombatRulesSnapshot;
+2. todos sus Steps son continuos;
+3. todos sus Steps son legales en su orden;
+4. su destino coincide con la posición alcanzada por el último Step;
+5. la evaluación completa no requiere mutar el CombatRulesSnapshot.
+
+Si cualquiera de estas condiciones falla, la Route presentada es **ilegal**. Un prefijo legal puede explicar hasta dónde se sostuvo la evaluación incremental, pero no convierte la Route completa en una ejecución parcial.
+
+### 2.12 Límites y ODR
+
+Este capítulo no define reglas particulares de coste, modos de desplazamiento, acciones, reacciones, percepción, trazado ni generación de rutas. Tampoco prescribe contratos de software o algoritmos de evaluación.
+
+No se abre ninguna ODR nueva. Las ODR preexistentes de los documentos complementarios permanecen fuera de alcance y sin cambios.
