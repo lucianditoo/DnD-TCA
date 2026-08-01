@@ -138,7 +138,7 @@ La legalidad definida aquí es un veredicto normativo sobre una Route ya expresa
 
 Este contrato se apoya en tres autoridades existentes sin redefinirlas:
 
-- **[D-1R1](normative-spatial-geometry.md)** aporta las identidades espaciales sobre las que se expresan las posiciones y exige evaluación pura sobre estado inmutable.
+- **[D-1R1](normative-spatial-geometry.md)** aporta las identidades espaciales explícitas que este contrato consume como dependencia normativa (Anchored Spatial Position, Volumetric Spatial Coordinate, Surface y Connection) y exige evaluación pura sobre estado inmutable. No se redefine ninguna de estas primitivas.
 - **[D-1A](normative-area-shape-projection.md)** preserva la distinción entre una progresión ordenada por ruta y una proyección geométrica directa.
 - **[D-1B-Research](../audits/movement-rules-audit.md)** confirma que la validación de movimiento se evalúa incrementalmente y que la legalidad del recorrido no puede deducirse únicamente de sus extremos.
 
@@ -243,7 +243,13 @@ Una Route es **legal** únicamente cuando:
 
 Si cualquiera de estas condiciones falla, la Route presentada es **ilegal**. Un prefijo legal puede explicar hasta dónde se sostuvo la evaluación incremental, pero no convierte la Route completa en una ejecución parcial.
 
-### 2.12 Límites y ODR
+### 2.12 Autoridad y previews
+
+La validación normativa de una Route pertenece exclusivamente al modelo autoritativo del servidor, ya definido por la arquitectura general (`RULES_ENGINE`).
+
+Los clientes pueden reutilizar helpers compartidos para calcular predicciones locales (previews), pero dichos previews nunca sustituyen ni evaden la validación autoritativa final que realiza el servidor sobre su propio snapshot inmutable.
+
+### 2.13 Límites y ODR
 
 Este capítulo no define reglas particulares de coste, modos de desplazamiento, acciones, reacciones, percepción, trazado ni generación de rutas. Tampoco prescribe contratos de software o algoritmos de evaluación.
 
