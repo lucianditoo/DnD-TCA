@@ -1,4 +1,4 @@
-# Auditoría Oficial de Reglas de Movimiento (D-1B-Research R4)
+# Auditoría Oficial de Reglas de Movimiento (D-1B-Research R5)
 
 Este documento inventaría **exclusivamente las reglas oficiales del SRD 3.5 / PHB / DMG** relativas al movimiento táctico y de combate, evaluando su impacto en los sistemas del proyecto DnD-TCA y documentando qué reglas están cubiertas y cuáles constituyen huecos normativos, sin proponer algoritmos ni arquitectura nueva.
 
@@ -101,13 +101,13 @@ Implementación futura.
 
 ## 7. Retirada (Withdraw)
 ### RAW (SRD)
-Acción de asalto completo. Permite moverse hasta el doble de la velocidad. Abandonar la casilla inicial NO provoca ataques de oportunidad por parte de los oponentes que amenacen ESE cuadrado específico. Casillas posteriores sí provocan. Si el combatiente no puede ver a su atacante (ej. ceguera, invisibilidad), la regla general de Withdraw puede no aplicarse.
+Acción de asalto completo. Permite moverse hasta el doble de la velocidad. Abandonar la casilla inicial NO provoca ataques de oportunidad por parte de los oponentes que amenacen ESE cuadrado específico. Casillas posteriores sí provocan. Withdraw no puede utilizarse mientras el combatiente esté Blinded.
 
 ### Estado actual del motor
-`handleWithdraw` permite doble movimiento y suprime la provocación de AdO al abandonar el cuadrado de inicio. No considera restricciones de visión (ceguera/invisibilidad) respecto a las amenazas evadidas.
+`handleWithdraw` permite doble movimiento y suprime la provocación de AdO al abandonar el cuadrado de inicio. No aplica la restricción de ceguera (Blinded) sobre las amenazas evadidas.
 
 ### Gap
-Falta la interacción de Withdraw con penalizadores de visión o enemigos no detectados/invisibles.
+El motor no impide utilizar Withdraw al estar Blinded ni restringe la supresión de AdO por amenazas no percibidas.
 
 ### Propietario
 Implementación futura.
@@ -138,10 +138,9 @@ Bonificadores (+2 Atk, -2 CA) están activos. El motor distingue correctamente l
 
 ### Gap
 Faltan validaciones sobre:
-- Terreno difícil en el trayecto.
-- Excepción Helpless (si bloquean o no).
-- Line of Sight inicial al declarar.
-- Simplificaciones actuales del resolver.
+- Terreno difícil en el trayecto bloqueando la carga.
+- Criaturas Helpless en el trayecto no obstaculizan el paso (RAW: se puede cargar a través de ellas).
+- Line of Sight requerida al objetivo en el momento de declarar la carga.
 
 ### Propietario
 Implementación futura.
@@ -194,16 +193,23 @@ D-1B (Contrato normativo), D-3 (Persistencia), Implementación futura.
 
 ---
 
-## 13. Caídas (Falling & Stall)
+## 13. Caídas
 ### RAW (SRD)
-- **Caída general:** Daño de 1d6 por cada 10 pies caídos. Límite 20d6. Mitigación con Tumble o Jump.
-- **Stall o pérdida de sustentación durante vuelo:** Distancia de caída en primer asalto es de 150 pies, y 300 pies en asaltos posteriores. Existen oportunidades y condiciones de recuperación.
+
+#### General Falling
+Cualquier criatura que caiga sufre 1d6 de daño por cada 10 pies caídos, hasta un máximo de 20d6. La velocidad de caída durante el movimiento general equivale aproximadamente a 500 pies por ronda. Una criatura puede mitigar el daño con una tirada exitosa de Jump o Tumble.
+
+#### Falling after Loss of Flight (Stall)
+Una criatura que pierde sustentación en vuelo (por velocidad insuficiente u otra causa) cae 150 pies el primer asalto y 300 pies en cada asalto posterior. Las condiciones de recuperación de vuelo dependen de la clase de maniobrabilidad. Si la criatura impacta antes de recuperar el vuelo, aplica el daño por caída general.
 
 ### Estado actual del motor
 El motor no evalúa pérdida de soporte físico (gravedad) ni pérdida de sustentación, y no calcula el daño por caída.
 
 ### Gap
-Faltan las mecánicas de inicio de caída (por terreno o vuelo), el daño por colisión y la recuperación en vuelo.
+- Falta la detección y activación de la caída por pérdida de superficie de apoyo.
+- Falta el cálculo de daño por impacto (1d6 por 10 pies, máx. 20d6).
+- Falta el Stall como estado de vuelo con distancias diferenciadas (150 / 300 pies).
+- Falta la recuperación de vuelo durante el Stall.
 
 ### Propietario
 D-1B.
@@ -247,23 +253,25 @@ D-1B (Diseño de modos), D-6 (Obstáculos ambientales), Implementación futura.
 
 ## 2. Matriz de Auditoría de Cobertura
 
-| Regla | Registry Status | Research Scope | Outstanding RAW gaps | Propietario |
+> **Nota sobre autoridad documental:** La columna *Registry Status* refleja únicamente el estado declarado en `docs/rules/registry.md` para los Rule IDs que allí existen. Las filas marcadas `N/A` no poseen Rule ID en el Registry: su evaluación de cobertura es propia de este Research y **no representa un estado oficial del Registry**. Este documento no es una segunda autoridad; es una auditoría normativa del RAW completo frente al alcance implementado declarado por Registry.
+
+| Regla | Registry Status | Research Scope (RAW completo) | Outstanding RAW gaps | Propietario |
 |---|---|---|---|---|
 | Movimiento Táctico | Completo | Alternancia 5-10-5-10 | Ninguno en 2D | Sin acción requerida |
 | Terreno Difícil | Completo | 15ft constantes por diagonal | Alternancia 15/20 incorrecta. Faltan modificadores. | Implementación futura |
 | Five-Foot Step | Completo | No action, no AdO, no terreno difícil | Ninguno | Sin acción requerida |
-| Minimum Movement | N/A | Acción completa, 5ft, provoca AdO | Falta acción que ignore límite de coste | Implementación futura |
+| Minimum Movement | N/A (sin Rule ID) | Acción completa, 5ft, provoca AdO | Falta acción que ignore límite de coste | Implementación futura |
 | Aliados | Completo | Se puede cruzar, no terminar | Ninguno | Sin acción requerida |
-| Enemigos | Parcial | Atravesar por Helpless o 3 tamaños | Falta regla pasiva de Helpless y tamaño | Implementación futura |
+| Enemigos | Parcial | Atravesar por Helpless o 3 tamaños | Falta trait formal HELPLESS y excepción por tamaño | Implementación futura |
 | Squeezing | Completo | Costo x2, -4 CA/Atk; <50% requiere Escape Artist | Falta regla para <50% (Escape Artist) y Huge+ | Implementación futura |
-| Withdraw | Completo | Ignora AdO en 1ra casilla; fallas por visión | Falta restringir AdO evadido por visión/ceguera | Implementación futura |
-| Correr (Run) | Completo | x4, pierde DEX, no en terreno difícil | Divergencias (DT-018, DT-019) | Sin acción requerida |
-| Carga (Charge) | Completo | Línea recta, +2 Atk/-2 CA. Movimiento provoca AdO | Falta verificar terreno difícil/LoS/Helpless en ruta | Implementación futura |
+| Withdraw | Completo | Ignora AdO en 1ra casilla; prohibido al estar Blinded | El motor no impide Withdraw al estar Blinded | Implementación futura |
+| Correr (Run) | Completo | x4, pierde DEX, no en terreno difícil | Divergencias registradas: DT-018, DT-019 | Sin acción requerida |
+| Carga (Charge) | Completo | Línea recta, +2 Atk/-2 CA. Movimiento provoca AdO | Falta: terreno difícil bloquea; LoS inicial; Helpless no bloquea | Implementación futura |
 | Acrobacias (Tumble) | Completo | Mitad vel o normal con -10 | Falta variante normal con penalizador -10 | Implementación futura |
-| AdO por Movimiento | Completo | Provoca al abandonar. Cover bloquea | Bug: movimiento de 1 casilla omite AdO | Implementación futura |
-| Vuelo | N/A | 5 clases con restricciones específicas | Faltan todas las mecánicas de vuelo | D-1B, D-3 |
-| Caídas | N/A | Daño por gravedad; pérdida de sustentación | Falta caída por gravedad y vuelo | D-1B |
-| Large Footprints | Completo | Considera todas las celdas ocupadas | Falta validación Swept Volume (extensión) | D-1B |
+| AdO por Movimiento | Completo | Provoca al abandonar. Cover bloquea | Bug: movimiento de 1 casilla omite AdO aunque no sea 5ft Step | Implementación futura |
+| Vuelo | N/A (sin Rule ID) | 5 clases con restricciones específicas | Faltan todas las mecánicas de vuelo | D-1B, D-3 |
+| Caídas | N/A (sin Rule ID) | Daño 1d6/10ft; Stall: 150/300 pies | Falta caída general y Stall por pérdida de vuelo | D-1B |
+| Large Footprints | Completo | Considera todas las celdas ocupadas | Swept Volume: extensión del proyecto, no RAW | D-1B |
 
 ---
 
