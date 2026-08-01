@@ -1,4 +1,4 @@
-# Auditoría Oficial de Reglas de Movimiento (D-1B-Research R3)
+# Auditoría Oficial de Reglas de Movimiento (D-1B-Research R4)
 
 Este documento inventaría **exclusivamente las reglas oficiales del SRD 3.5 / PHB / DMG** relativas al movimiento táctico y de combate, evaluando su impacto en los sistemas del proyecto DnD-TCA y documentando qué reglas están cubiertas y cuáles constituyen huecos normativos, sin proponer algoritmos ni arquitectura nueva.
 
@@ -54,10 +54,10 @@ Sin acción requerida.
 Acción de asalto completo que permite avanzar 5 pies cuando otros costes (terreno, carga) impedirían avanzar normalmente. No es un Five-Foot Step y provoca AdO normalmente cuando corresponde.
 
 ### Estado actual del motor
-No existe comando ni regla específica para Minimum Movement.
+No existe comando ni regla específica para Minimum Movement. Cualquier movimiento de una sola casilla actualmente podría no provocar AdO debido a una exención errónea basada únicamente en recorrer una casilla (bug productivo).
 
 ### Gap
-Falta implementar Minimum Movement como acción de asalto completo y su consecuente provocación de AdO.
+Falta implementar Minimum Movement como acción de asalto completo y corregir el bug que exime de AdO a los movimientos de 1 casilla.
 
 ### Propietario
 Implementación futura.
@@ -70,38 +70,41 @@ Implementación futura.
 - **Oponente:** No puede atravesarse, a menos que él esté Indefenso (Helpless), haya una diferencia de tamaño de 3 categorías (ej. Tiny vs Large), o se usen Acrobacias (Tumble).
 
 ### Estado actual del motor
-El motor (y sus tests) permite atravesar aliados conscientes durante la ruta, pero prohíbe terminar sobre ellos. Para enemigos, el paso mediante Acrobacias está implementado. Sin embargo, no se contemplan el tamaño pasivo ni el estado Helpless (que existe para Dying pero no se vincula aquí) como bypass automático.
+- **Aliado:** El motor permite atravesar aliados conscientes durante la ruta y prohíbe terminar sobre ellos, contando con tests explícitos que lo verifican.
+- **Enemigo:** El paso mediante Acrobacias está implementado. El motor permite atravesar y terminar sobre criaturas en estado Dying y Stable (verificando ocupación), e ignora las Dead. Sin embargo, no se contempla el tamaño pasivo ni la integración formal del trait HELPLESS.
 
 ### Gap
-Falta la regla pasiva de atravesar enemigos con diferencia de 3 tamaños o en estado Helpless.
+- **Aliado:** Sin diferencias.
+- **Enemigo:** Falta la integración del trait formal HELPLESS, y la excepción pasiva por diferencia de 3 tamaños.
+
+### Propietario
+- **Aliado:** Sin acción requerida.
+- **Enemigo:** Implementación futura.
+
+---
+
+## 6. Apretujarse (Squeezing)
+### RAW (SRD)
+- **General (Squeezing):** Una criatura puede moverse por un espacio hasta la mitad de su anchura natural. Coste de movimiento x2, sufre -4 a las tiradas de ataque y -4 a la CA.
+- **Inferior a la mitad:** Requiere usar la habilidad Escape Artist, consume acciones adicionales, y conlleva pérdida de bonificador de Destreza a la CA y prohibición de atacar.
+
+### Estado actual del motor
+Implementado efectivamente el Squeezing general (penalizadores -4 CA/-4 Ataque, costo doble) para footprint 2x2.
+
+### Gap
+Falta el comportamiento para tamaños Huge+ y la mecánica para espacio inferior a la mitad (Escape Artist, pérdida de Destreza a la CA, prohibición de ataque).
 
 ### Propietario
 Implementación futura.
 
 ---
 
-## 6. Apretujarse (Squeezing)
-### RAW (SRD)
-- **General:** Una criatura puede moverse por un espacio hasta la mitad de su anchura natural. Coste de movimiento x2, sufre -4 a las tiradas de ataque y -4 a la CA.
-- **Inferior a la mitad:** Requiere usar la habilidad Escape Artist, consume acciones adicionales, y conlleva pérdida de bonificador de Destreza a la CA y prohibición de atacar.
-
-### Estado actual del motor
-Implementado efectivamente el Squeezing general (penalizadores -4 CA/-4 Ataque, costo doble) en el footprint 2x2. No existe implementación de la regla de Escape Artist para espacios inferiores a la mitad. El comportamiento para Huge+ no está documentado en tests.
-
-### Gap
-Falta la mecánica para espacio inferior a la mitad (Escape Artist, pérdida de Destreza a la CA, prohibición de ataque) y cobertura de tamaños Huge+.
-
-### Propietario
-Implementación futura (Regla avanzada). D-1B (Squeezing vertical / Z-axis).
-
----
-
 ## 7. Retirada (Withdraw)
 ### RAW (SRD)
-Acción de asalto completo. Permite moverse hasta el doble de la velocidad. Abandonar la casilla inicial NO provoca ataques de oportunidad por parte de los oponentes que amenacen ESE cuadrado específico. Casillas posteriores sí provocan. Si el combatiente no puede ver a su atacante (ej. Blinded, invisibilidad), la regla general de Withdraw puede no aplicarse.
+Acción de asalto completo. Permite moverse hasta el doble de la velocidad. Abandonar la casilla inicial NO provoca ataques de oportunidad por parte de los oponentes que amenacen ESE cuadrado específico. Casillas posteriores sí provocan. Si el combatiente no puede ver a su atacante (ej. ceguera, invisibilidad), la regla general de Withdraw puede no aplicarse.
 
 ### Estado actual del motor
-`handleWithdraw` permite doble movimiento y suprime la provocación de AdO al abandonar el cuadrado de inicio. No considera restricciones de visión ni estados como Blinded respecto a las amenazas evadidas.
+`handleWithdraw` permite doble movimiento y suprime la provocación de AdO al abandonar el cuadrado de inicio. No considera restricciones de visión (ceguera/invisibilidad) respecto a las amenazas evadidas.
 
 ### Gap
 Falta la interacción de Withdraw con penalizadores de visión o enemigos no detectados/invisibles.
@@ -119,10 +122,10 @@ Acción de asalto completo. Movimiento en línea recta a ×4 de la velocidad (×
 `handleRun` aplica multiplicadores ×4/×3 y pérdida de DEX a la CA. No se puede realizar en terreno difícil. (Existen simplificaciones documentadas de fatiga multiasalto).
 
 ### Gap
-La falta de fatiga multiasalto es una divergencia aprobada. Restricciones menores pueden aplicar a futuro.
+Las divergencias respecto a la fatiga multiasalto y ceguera están registradas (DT-018 y DT-019 en el Registry).
 
 ### Propietario
-Sin acción requerida.
+Sin acción requerida (Divergencias pre-aprobadas).
 
 ---
 
@@ -131,10 +134,14 @@ Sin acción requerida.
 Acción de asalto completo. Movimiento en línea recta y despejada hacia el oponente, terminando en la casilla más cercana. Otorga +2 a ataques melee y -2 a CA. La acción Charge NO provoca AoO por sí misma. El movimiento realizado durante la carga puede provocar AoO normalmente si abandona casillas amenazadas.
 
 ### Estado actual del motor
-Bonificadores (+2 Atk, -2 CA) están activos. El motor distingue correctamente la acción de su movimiento para AdO. La trayectoria recta se construye (`buildStraightPath`) y se evalúan footprints.
+Bonificadores (+2 Atk, -2 CA) están activos. El motor distingue correctamente la acción de su movimiento para AdO. La trayectoria recta se construye (`buildStraightPath`) y se evalúan footprints, límites y celdas bloqueadas.
 
 ### Gap
-Falta validar la ausencia de terreno difícil o bloqueos por criaturas Helpless en el trayecto de la carga, y la Línea de Visión (LoS) inicial al declarar.
+Faltan validaciones sobre:
+- Terreno difícil en el trayecto.
+- Excepción Helpless (si bloquean o no).
+- Line of Sight inicial al declarar.
+- Simplificaciones actuales del resolver.
 
 ### Propietario
 Implementación futura.
@@ -143,13 +150,14 @@ Implementación futura.
 
 ## 10. Acrobacias (Tumble)
 ### RAW (SRD)
-Moverse a mitad de velocidad. Alternativa: moverse a velocidad normal con un penalizador de -10 a la tirada. CD 15 para no provocar AdO al moverse a través del área amenazada. CD 25 para moverse a través del espacio de un oponente.
+- Moverse a mitad de velocidad con CD 15 para no provocar AdO al moverse a través del área amenazada, y CD 25 para moverse a través del espacio de un oponente.
+- Variante: moverse a velocidad completa asumiendo un penalizador de -10 a la prueba.
 
 ### Estado actual del motor
 Implementadas las tiradas de Acrobacias (CD 15/25) a mitad de velocidad, previniendo AdOs o bloqueos si son exitosas.
 
 ### Gap
-Falta la variante de moverse a velocidad normal asumiendo el penalizador de -10 a la prueba.
+Falta la variante RAW de moverse a velocidad completa con penalizador de -10.
 
 ### Propietario
 Implementación futura.
@@ -161,22 +169,22 @@ Implementación futura.
 Se provoca AoO al abandonar una casilla amenazada. Un Five-Foot Step o ejecutar Withdraw (solo la primera casilla) no provoca. Cobertura (Cover) y Ocultación Total impiden el AdO.
 
 ### Estado actual del motor
-El motor detecta el abandono de la casilla amenazada, considera el límite por ronda, y verifica Cover y Concealment.
+El motor detecta el abandono de la casilla amenazada, considera el límite por ronda, y verifica Cover y Concealment a través de `getOpportunityAttackLegality`.
 
 ### Gap
-Sin diferencias.
+El motor omite cualquier AoO cuando la distancia total recorrida es una sola casilla, aunque NO sea un Five-Foot Step.
 
 ### Propietario
-Sin acción requerida.
+Implementación futura.
 
 ---
 
 ## 12. Vuelo y Maniobrabilidad
 ### RAW (SRD)
-Cinco clases de maniobrabilidad: Perfect, Good, Average, Poor, Clumsy. Las clases restringen la velocidad mínima frontal, el retroceso, la reversa, el radio de giro, la capacidad de hacer Hover, los ángulos de ascenso y descenso, y la velocidad de ascenso/descenso. Subir cuesta el doble; Bajar cuesta la mitad.
+Existen 5 clases de maniobrabilidad: Perfect, Good, Average, Poor, Clumsy. Las clases restringen la velocidad mínima frontal, el retroceso, la reversa, el radio de giro, la capacidad de hacer Hover, los ángulos de ascenso y descenso, y la velocidad de ascenso/descenso. Subir cuesta el doble; Bajar cuesta la mitad.
 
 ### Estado actual del motor
-No posee modos de movimiento completos ni maniobrabilidad aérea productiva.
+El motor no posee modos de movimiento completos ni maniobrabilidad aérea productiva.
 
 ### Gap
 Faltan todas las reglas de maniobrabilidad por clase, el coste asimétrico vertical y el estado de vuelo.
@@ -188,8 +196,8 @@ D-1B (Contrato normativo), D-3 (Persistencia), Implementación futura.
 
 ## 13. Caídas (Falling & Stall)
 ### RAW (SRD)
-- **Caída general:** Daño de 1d6 por cada 10 pies caídos. Existe un límite de daño. Posibilidad de mitigar daño con Tumble o Jump.
-- **Pérdida de sustentación (Stall):** En vuelo, falla en mantener velocidad mínima genera caída. Caída de 150 pies el primer asalto y 300 pies los posteriores. Hay oportunidades de recuperación.
+- **Caída general:** Daño de 1d6 por cada 10 pies caídos. Límite 20d6. Mitigación con Tumble o Jump.
+- **Stall o pérdida de sustentación durante vuelo:** Distancia de caída en primer asalto es de 150 pies, y 300 pies en asaltos posteriores. Existen oportunidades y condiciones de recuperación.
 
 ### Estado actual del motor
 El motor no evalúa pérdida de soporte físico (gravedad) ni pérdida de sustentación, y no calcula el daño por caída.
@@ -207,13 +215,13 @@ D-1B.
 El espacio ocupado y el movimiento consideran el terreno más difícil entre las casillas ocupadas en la cuadrícula 2D.
 
 ### Estado actual del motor
-El motor soporta `POSITION-LARGE-FOOTPRINT`, evaluando las celdas ocupadas. Utiliza lógicas de volumen de barrido (swept volume) o intersección de todas las celdas de la ruta.
+El motor soporta `POSITION-LARGE-FOOTPRINT`, validando footprints discretos y cada ancla de la ruta. NO existe validación continua del volumen barrido.
 
 ### Gap
-El uso de swept volume y line of effect en cada transición son extensiones propias del proyecto (D-1/D-1R1), no reglas RAW del SRD.
+Falta incorporar el análisis de "Swept Volume" (extensión de diseño a futuro, no RAW).
 
 ### Propietario
-D-1B (Como consumidor de la arquitectura del proyecto).
+D-1B (como trabajo futuro / extensión).
 
 ---
 
@@ -239,23 +247,23 @@ D-1B (Diseño de modos), D-6 (Obstáculos ambientales), Implementación futura.
 
 ## 2. Matriz de Auditoría de Cobertura
 
-| Regla | Estado | RAW | Motor | Gap | Propietario |
-|---|---|---|---|---|---|
-| Movimiento Táctico | Completo (2D) | Alternancia 5-10-5-10 | `validateMovePath` 2D con alternancia | Ninguno en 2D | Sin acción requerida |
-| Terreno Difícil | Parcial | 15ft constantes por diagonal | Alternancia 15/20 | Coste diagonal alterna en vez de 15ft. Faltan modificadores extra. | Implementación futura |
-| Five-Foot Step | Completo | No action, no AdO, no en terreno difícil | `canUseFiveFootStep` valida correctamente | Ninguno | Sin acción requerida |
-| Minimum Movement | Hueco | Acción completa, 5ft, provoca AdO | No existe | Falta acción que ignore límite de coste | Implementación futura |
-| Aliados | Completo | Se puede cruzar, no terminar | Motor permite ruta, prohíbe finalizar | Ninguno | Sin acción requerida |
-| Enemigos | Parcial | Atravesar por Helpless o 3 tamaños | Solo soporta Tumble | Falta regla pasiva de Helpless y tamaño | Implementación futura |
-| Squeezing | Parcial (Completo 50%) | Costo x2, -4 CA/Atk; <50% requiere Escape Artist | Cubre la regla de 50% con penalizadores | Falta regla para <50% (Escape Artist) y Huge+ | Implementación / D-1B |
-| Withdraw | Parcial | Ignora AdO en 1ra casilla; fallas por ceguera | Ignora AdO siempre en 1ra casilla | Falta restringir AdO evadido por visión/ceguera | Implementación futura |
-| Correr (Run) | Completo | x4, pierde DEX, no en terreno difícil | Funciona según lo diseñado (Divergencias pre-aprobadas) | Ninguno mecánicamente crítico | Sin acción requerida |
-| Carga (Charge) | Parcial | Línea recta, +2 Atk/-2 CA. Movimiento provoca AdO | `buildStraightPath` y bonificadores activos | Falta verificar terreno difícil/LoS/Helpless en ruta | Implementación futura |
-| Acrobacias (Tumble) | Parcial | Mitad de vel o normal con -10 | Implementada mitad de velocidad | Falta variante normal con penalizador -10 | Implementación futura |
-| AdO por Movimiento | Completo | Provoca al abandonar. Cover bloquea | `getOpportunityAttackLegality` lo verifica | Ninguno | Sin acción requerida |
-| Vuelo | Hueco | 5 clases con restricciones específicas | Sin implementar | Faltan todas las mecánicas de vuelo | D-1B, D-3 |
-| Caídas | Hueco | Daño por gravedad; pérdida de sustentación | Sin implementar | Falta caída por gravedad y vuelo | D-1B |
-| Large Footprints | Completo (Ext.) | Considera todas las celdas ocupadas | Validado vía `POSITION-LARGE-FOOTPRINT` | El "swept volume" es extensión, no RAW | D-1B |
+| Regla | Registry Status | Research Scope | Outstanding RAW gaps | Propietario |
+|---|---|---|---|---|
+| Movimiento Táctico | Completo | Alternancia 5-10-5-10 | Ninguno en 2D | Sin acción requerida |
+| Terreno Difícil | Completo | 15ft constantes por diagonal | Alternancia 15/20 incorrecta. Faltan modificadores. | Implementación futura |
+| Five-Foot Step | Completo | No action, no AdO, no terreno difícil | Ninguno | Sin acción requerida |
+| Minimum Movement | N/A | Acción completa, 5ft, provoca AdO | Falta acción que ignore límite de coste | Implementación futura |
+| Aliados | Completo | Se puede cruzar, no terminar | Ninguno | Sin acción requerida |
+| Enemigos | Parcial | Atravesar por Helpless o 3 tamaños | Falta regla pasiva de Helpless y tamaño | Implementación futura |
+| Squeezing | Completo | Costo x2, -4 CA/Atk; <50% requiere Escape Artist | Falta regla para <50% (Escape Artist) y Huge+ | Implementación futura |
+| Withdraw | Completo | Ignora AdO en 1ra casilla; fallas por visión | Falta restringir AdO evadido por visión/ceguera | Implementación futura |
+| Correr (Run) | Completo | x4, pierde DEX, no en terreno difícil | Divergencias (DT-018, DT-019) | Sin acción requerida |
+| Carga (Charge) | Completo | Línea recta, +2 Atk/-2 CA. Movimiento provoca AdO | Falta verificar terreno difícil/LoS/Helpless en ruta | Implementación futura |
+| Acrobacias (Tumble) | Completo | Mitad vel o normal con -10 | Falta variante normal con penalizador -10 | Implementación futura |
+| AdO por Movimiento | Completo | Provoca al abandonar. Cover bloquea | Bug: movimiento de 1 casilla omite AdO | Implementación futura |
+| Vuelo | N/A | 5 clases con restricciones específicas | Faltan todas las mecánicas de vuelo | D-1B, D-3 |
+| Caídas | N/A | Daño por gravedad; pérdida de sustentación | Falta caída por gravedad y vuelo | D-1B |
+| Large Footprints | Completo | Considera todas las celdas ocupadas | Falta validación Swept Volume (extensión) | D-1B |
 
 ---
 
@@ -268,7 +276,6 @@ El movimiento clásico interactúa con arquitecturas tridimensionales (D-1R1) y 
 - **Squeezing Tridimensional (D-1B/D-1):** Decisión arquitectónica sobre `Body Prisms` constreñidos verticalmente por techos.
 - **Intersección Volumétrica (D-1B):** Garantizar que un `Body Prism` grande en movimiento no colisione su volumen aéreo con obstáculos.
 - **Censura en el Pathfinding / FoW (D-2):** Manejo de colisiones sorpresa al intentar cruzar celdas bloqueadas ofuscadas por la *Participant Projection*.
-- **Ocupación Transitoria (D-1B):** Resolver la regla de atravesar aliados sin terminar el movimiento en dicha casilla (desacople validación de ruta vs destino).
 - **Interrupción Múltiple de Movimiento (D-1B):** Computación de la "retroactividad" de la ruta cuando un movimiento provoca AdO y es interrumpido.
 
 *(Fin del documento)*
