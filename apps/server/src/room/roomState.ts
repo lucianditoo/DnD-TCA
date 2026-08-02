@@ -1,4 +1,4 @@
-import { getCombatantOccupiedCells, lifeStatus, lifeStatusLabel, makeLog, type CombatRoom, type Combatant, type EffectInstance, type Position } from "@dnd-tactical/shared";
+import { getCombatantOccupiedCells, lifeStatus, lifeStatusLabel, makeLog, type CombatRoom, type Combatant, type EffectInstance, type Position, type TurnState } from "@dnd-tactical/shared";
 
 export function findCombatant(room: CombatRoom, id: string): Combatant {
   const combatant = room.combatants.find((item) => item.id === id);
@@ -47,8 +47,12 @@ export function syncEncounterPhase(room: CombatRoom): void {
  * Omitimos temporariamente effectInstances para representar la frontera de deserialización
  * de un objeto guardado antiguamente que puede no contener las propiedades modernas.
  */
-export type LegacyCombatRoom = Omit<CombatRoom, "effectInstances"> & {
+type LegacyTurnState = Omit<TurnState, "normalDiagonalStepsThisTurn"> &
+  Partial<Pick<TurnState, "normalDiagonalStepsThisTurn">>;
+
+export type LegacyCombatRoom = Omit<CombatRoom, "effectInstances" | "currentTurn"> & {
   effectInstances?: EffectInstance[];
+  currentTurn: LegacyTurnState;
 };
 
 /**
@@ -68,6 +72,7 @@ export function ensureLegacyRoomShape(legacyRoom: LegacyCombatRoom): asserts leg
   syncEncounterPhase(room);
 
   if (room.currentTurn) {
+    if (room.currentTurn.normalDiagonalStepsThisTurn === undefined) room.currentTurn.normalDiagonalStepsThisTurn = 0;
     if (room.currentTurn.usedTotalDefense === undefined) room.currentTurn.usedTotalDefense = false;
     if (room.currentTurn.usedStabilization === undefined) room.currentTurn.usedStabilization = false;
   }

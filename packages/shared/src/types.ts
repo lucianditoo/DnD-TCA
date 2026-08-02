@@ -379,7 +379,12 @@ export interface OpportunityAttack {
   requiredCd?: 15 | 25;
 }
 
-export interface TurnState { combatantId: string | null; movementUsedFeet: number; usedMoveAction: boolean; usedStandardAction: boolean; usedFullAttack: boolean; usedFiveFootStep: boolean; usedSwiftAction: boolean; usedTotalDefense: boolean; usedStabilization: boolean; attacksMade: number; attackMode: "none" | "standard" | "full"; defensiveFightingDeclared: boolean; }
+/** Estado autoritativo de movimiento cuya vida útil coincide con el turno. */
+export interface MovementContext {
+  normalDiagonalStepsThisTurn: number;
+}
+
+export interface TurnState extends MovementContext { combatantId: string | null; movementUsedFeet: number; usedMoveAction: boolean; usedStandardAction: boolean; usedFullAttack: boolean; usedFiveFootStep: boolean; usedSwiftAction: boolean; usedTotalDefense: boolean; usedStabilization: boolean; attacksMade: number; attackMode: "none" | "standard" | "full"; defensiveFightingDeclared: boolean; }
 export interface CombatLogEntry { id: string; kind: LogKind; message: string; createdAt: string; }
 export type DamageCategory = "base" | "precision" | "energy" | "other";
 export interface DamageComponent {

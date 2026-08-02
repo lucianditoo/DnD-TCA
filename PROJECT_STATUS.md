@@ -9,9 +9,9 @@
 - Rama de integración: `master`.
 - Última vertical funcional integrada: Sprint 055B, Ataques de Oportunidad bajo Cover y Ocultación Total.
 - Última decisión arquitectónica: Sprint D-1B Capítulo 7 (Integration & Implementation Contracts).
-- Diseño en revisión: NDD Completo Sprint D-1B, Capítulos 1–7.
+- Implementación en revisión: Sprint D-1B-I1, Movement Context autoritativo por turno con `normalDiagonalStepsThisTurn`; todavía no participa en cálculos ni validaciones.
 - Último saneamiento documental: Sprint D-1B Capítulo 7.
-- Baseline funcional publicada: 559/559 pruebas unitarias, 100/100 aserciones
+- Baseline funcional candidata: 563/563 pruebas unitarias, 100/100 aserciones
   WebSocket y 7/7 escenarios Playwright; typecheck y build verdes.
 - GitHub Actions sobre Windows es el gate canónico de cierre para la revisión
   publicada.
@@ -24,6 +24,7 @@ El monorepo contiene:
 - servidor Express/WebSocket autoritativo;
 - cliente React/Vite que consume las mismas proyecciones compartidas;
 - snapshots source-first sin estadísticas derivadas persistidas;
+- contexto autoritativo de movimiento por turno, inicializado y reiniciado sin modificar todavía las reglas de coste;
 - ActiveEffects, EffectReducer, EffectManager, Tick Layer y Event Bus;
 - economía de acciones, movimiento, amenaza, AdO y huellas multicasilla;
 - ataques normales, completos, de toque, críticos, daño de precisión y

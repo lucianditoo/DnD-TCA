@@ -72,6 +72,9 @@ export function advanceTurn(room: CombatRoom, diceRoller: (sides: number) => num
   const incoming = currentCombatant(room);
 
   if (incoming) {
+    // D-1B-I1: el contexto diagonal pertenece al turno y se reinicia al comenzar uno nuevo.
+    room.currentTurn.normalDiagonalStepsThisTurn = 0;
+
     // 4. [Legacy] Buffs de inicio de turno
     expireStartOfTurnBuffs(room, incoming);
 
@@ -90,5 +93,5 @@ export function ensureActiveTurn(room: CombatRoom, combatantId: string): void {
 }
 
 export function emptyTurn(combatantId: string | null): TurnState {
-  return { combatantId, movementUsedFeet: 0, usedMoveAction: false, usedStandardAction: false, usedFullAttack: false, usedFiveFootStep: false, usedSwiftAction: false, usedTotalDefense: false, usedStabilization: false, attacksMade: 0, attackMode: "none", defensiveFightingDeclared: false };
+  return { combatantId, normalDiagonalStepsThisTurn: 0, movementUsedFeet: 0, usedMoveAction: false, usedStandardAction: false, usedFullAttack: false, usedFiveFootStep: false, usedSwiftAction: false, usedTotalDefense: false, usedStabilization: false, attacksMade: 0, attackMode: "none", defensiveFightingDeclared: false };
 }

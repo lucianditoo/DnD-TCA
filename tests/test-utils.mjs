@@ -96,6 +96,7 @@ export function makeTestRoom(overrides = {}) {
     completedAt: null,
     currentTurn: { 
       combatantId: "hero-test", 
+      normalDiagonalStepsThisTurn: 0,
       movementUsedFeet: 0, 
       usedMoveAction: false, 
       usedStandardAction: false, 

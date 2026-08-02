@@ -20,7 +20,7 @@ export function createEmptyRoom(code: string): CombatRoom {
     phase: "preparation",
     outcome: "ongoing",
     completedAt: null,
-    currentTurn: { combatantId: null, movementUsedFeet: 0, usedMoveAction: false, usedStandardAction: false, usedFullAttack: false, usedFiveFootStep: false, usedSwiftAction: false, usedTotalDefense: false, usedStabilization: false, attacksMade: 0, attackMode: "none", defensiveFightingDeclared: false },
+    currentTurn: { combatantId: null, normalDiagonalStepsThisTurn: 0, movementUsedFeet: 0, usedMoveAction: false, usedStandardAction: false, usedFullAttack: false, usedFiveFootStep: false, usedSwiftAction: false, usedTotalDefense: false, usedStabilization: false, attacksMade: 0, attackMode: "none", defensiveFightingDeclared: false },
     pendingOpportunityAttacks: [],
     log: [{ id: cryptoId("log"), kind: "system", message: "Sala " + code + " creada. Preparacion: agreguen combatientes, posiciones e iniciativas.", createdAt: new Date().toISOString() }],
     activeAttackThreat: null,

@@ -1,24 +1,53 @@
-# Walkthrough — Sprint D-1B Capítulo 7
+# Walkthrough — Sprint D-1B-I1 Movement Context
 
 ## Objetivo
-Elaborar el Capítulo 7 de `normative-movement-design.md`, sirviendo como contrato final de integración de todos los componentes normativos de movimiento (Capítulos 1 a 6). Este capítulo consolida los límites, las responsabilidades, la dependencia de contratos y los invariantes globales preparatorios para la etapa de implementación en código.
 
-## Secciones añadidas
-- **7.1 Objetivo:** Establece el rol de integración del capítulo.
-- **7.2 Consumo de contratos:** Enumera el flujo de consumo ordenado, desde Movement Actions hasta Publication.
-- **7.3 Responsabilidades:** Asigna inequívocamente la autoridad de cada fase (Validar, Calcular coste, Verificar presupuesto, Resolver, Confirmar, Publicar).
-- **7.4 Dependencias:** Registra D-1R1, D-1A y el Research como fuentes, y designa a Rules Engine, Commands, Preview, UI y TurnState como futuros consumidores.
-- **7.5 Autoridad:** Reafirma al servidor como autoridad exclusiva normativa y al cliente como consumidor predictivo no autoritativo.
-- **7.6 Invariantes globales:** Consolida los 10 principios rectores supremos del sistema de movimiento normativo (un solo cálculo de coste, contador diagonal por turno, una sola topología, etc.).
-- **7.7 Límites:** Lista explícitamente lo que queda fuera del alcance del NDD para evitar fuga de responsabilidades hacia la fase de implementación o diseño de otros sistemas (TurnState, AoO, etc.).
-- **7.8 Checklist de implementación:** Un checklist normativo que orienta el futuro sprint de código, exigiendo respeto de contratos, no duplicar validadores y reutilizar matemática predictiva.
+Introducir exclusivamente el contexto autoritativo de movimiento perteneciente al turno, sin activar todavía cálculo de costes, validación de rutas, presupuesto, resolución, acciones, previews, comandos ni UI.
+
+## Implementación
+
+- `MovementContext` define el único estado nuevo: `normalDiagonalStepsThisTurn`.
+- `TurnState` incorpora ese contrato de forma plana, por lo que el contador pertenece al turno y no a una Route, acción o preview.
+- Las fábricas de sala y turno inicializan el contador en `0`.
+- `advanceTurn` lo reinicia en la frontera que comienza el siguiente turno, antes de publicar `TurnStarted`.
+- `createCombatRulesSnapshot` conserva el valor mediante su copia inmutable existente; no se agregó cálculo ni consumidor.
+- La frontera legacy completa con `0` las salas anteriores que todavía no posean el campo.
+
+## Tests estructurales
+
+`tests/movement-context.test.mjs` cubre cuatro invariantes:
+
+1. creación del contexto en las dos fábricas autoritativas;
+2. valor inicial `0`;
+3. persistencia exacta a través del snapshot sin mutación o reinicio;
+4. reinicio al comenzar un turno nuevo y compatibilidad de una sala legacy.
+
+No se agregaron pruebas ni comportamiento de coste diagonal, terreno difícil, Run, Charge, Double Move, Five-Foot Step, Forced Movement o Movement Resolution.
 
 ## Archivos modificados
-- `docs/designs/normative-movement-design.md`
+
+- `packages/shared/src/types.ts`
+- `packages/shared/src/demo-data.ts`
+- `apps/server/src/combat/turnManager.ts`
+- `apps/server/src/room/roomState.ts`
+- `tests/test-utils.mjs`
+- `tests/movement-context.test.mjs`
 - `PROJECT_STATUS.md`
+- `TODO.md`
 - `walkthrough.md`
 
 ## Validación
-- Zero Orphan Policy y SSOT cumplidos. Ninguna ODR nueva fue abierta. La estructura finaliza el diseño conceptual para dar paso a la fase de implementación.
 
-READY FOR FINAL ARCHITECTURE REVIEW
+- Tests focalizados: 4/4.
+- Suite global: 563/563.
+- Typecheck: verde.
+- Build: verde.
+- WebSocket E2E: 100/100.
+- No corresponde Playwright local: no hubo cambios de UI; el gate Windows CI ejecutará igualmente la suite canónica completa.
+- `git diff --check`: verde.
+
+## Alcance y deuda
+
+No se modificaron el NDD congelado, el Research ni el Rule Registry. No se creó una Rule ID, no se abrió una ODR y no se introdujo deuda técnica nueva. El contador es deliberadamente inerte hasta los futuros sprints propietarios de Movement Cost y Resolution.
+
+READY FOR ARCHITECTURE REVIEW
