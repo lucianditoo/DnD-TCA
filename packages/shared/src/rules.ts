@@ -10,6 +10,7 @@ import { getSizeRule } from "./sizeRules.js";
 import { SpellsCatalog } from "./spells/catalog.js";
 import type { SpellSaveDCBreakdown } from "./spells/contracts.js";
 import type { AmmunitionKind, WeaponEntry } from "./data/equipment/index.js";
+import { validateRouteLegality } from "./routeValidation.js";
 
 import { cryptoId } from "./demo-data.js";
 
@@ -771,82 +772,42 @@ export function validateMovePath<TCatalog extends Record<string, EffectDefinitio
   if (context.activeAttackThreat) return { ok: false, error: "Hay una amenaza de critico pendiente. Resolvela antes de continuar." };
   const turnCheck = canTakeTurn(combatant);
   if (!turnCheck.ok) return { ok: false, error: turnCheck.error };
-  if (path.length === 0) return { ok: false, error: "Elegi al menos una casilla de destino." };
 
-  let current = combatant.position;
-  const visited = new Set<string>();
-  const occupancyIndex = createFootprintOccupancyIndex(context);
-  const steps: MovementStepProjection[] = [];
-
-  if (isFiveFootStep && getCombatantOccupiedCellsAt(combatant, context, current).some((cell) => isDifficultTerrain(context, cell.x, cell.y))) {
+  // Reglas específicas de la acción (5-foot step) previas al movimiento
+  if (isFiveFootStep && getCombatantOccupiedCellsAt(combatant, context, combatant.position).some((cell) => isDifficultTerrain(context, cell.x, cell.y))) {
     return { ok: false, error: "No puedes dar un paso de 5 pies desde terreno dificil." };
   }
 
-  for (let index = 0; index < path.length; index++) {
-    const step = path[index];
-    const dx = Math.abs(current.x - step.x);
-    const dy = Math.abs(current.y - step.y);
-    if (dx > 1 || dy > 1 || (dx === 0 && dy === 0)) return { ok: false, error: "La ruta debe avanzar de a una casilla adyacente." };
+  // Delegación a la autoridad normativa
+  const legality = validateRouteLegality(context, combatant, path, isAcrobatic);
+  if (!legality.isLegal) {
+    return { ok: false, error: legality.error };
+  }
 
-    const projection = projectMovementFootprint(context, combatant, step, {
-      dx: Math.sign(step.x - current.x),
-      dy: Math.sign(step.y - current.y)
-    });
-    if (!projection) {
-      const naturalCells = getNaturalCombatantOccupiedCellsAt(combatant, context, step);
-      if (naturalCells.some((cell) => !isPositionInsideBoard(context, cell))) return { ok: false, error: "La ruta sale del tablero." };
-      return { ok: false, error: "La huella del combatiente colisiona con un muro u obstaculo intransitable." };
-    }
-    const stepCells = projection.occupiedCells;
-
-    if (isFiveFootStep && stepCells.some((cell) => isDifficultTerrain(context, cell.x, cell.y))) {
-      return { ok: false, error: "No puedes dar un paso de 5 pies hacia terreno dificil." };
-    }
-
-    const occupiedCombatants = getCombatantsIntersectingCells(occupancyIndex, stepCells, combatant.id)
-      .filter((other) => lifeStatus(other) !== "dead");
-    const isLast = index === path.length - 1;
-    for (const occupied of occupiedCombatants) {
-      const isAlly = occupied.type === combatant.type;
-      const occupiedStatus = lifeStatus(occupied);
-      const isHelpless = occupiedStatus === "dying" || occupiedStatus === "stable" || occupiedStatus === "dead";
-      if (isLast && !isHelpless) return { ok: false, error: "La ruta no puede terminar en la casilla ocupada por " + occupied.name + "." };
-      if (!isLast && !isAlly && !isHelpless && !isAcrobatic) return { ok: false, error: "La ruta no puede atravesar la casilla ocupada por el enemigo " + occupied.name + "." };
-    }
-
-    if (dx === 1 && dy === 1) {
-      const horizontalAnchor = { x: step.x, y: current.y, zFeet: step.zFeet ?? current.zFeet ?? 0 };
-      const verticalAnchor = { x: current.x, y: step.y, zFeet: step.zFeet ?? current.zFeet ?? 0 };
-      if (
-        isCornerAnchorBlockedByTerrain(context, combatant, horizontalAnchor) ||
-        isCornerAnchorBlockedByTerrain(context, combatant, verticalAnchor)
-      ) {
-        return { ok: false, error: "No puedes moverte en diagonal a traves de una esquina bloqueada por un obstaculo solido." };
+  // Reglas específicas de la acción (5-foot step) durante el movimiento
+  if (isFiveFootStep) {
+    for (const step of legality.steps) {
+      if (step.occupiedCells.some((cell) => isDifficultTerrain(context, cell.x, cell.y))) {
+        return { ok: false, error: "No puedes dar un paso de 5 pies hacia terreno dificil." };
       }
     }
-
-    const key = step.x + "," + step.y;
-    if (visited.has(key)) return { ok: false, error: "La ruta no puede pasar dos veces por la misma casilla." };
-    visited.add(key);
-
-    steps.push({
-      position: { ...step },
-      occupiedCells: stepCells.map((cell) => ({ ...cell })),
-      spatialMode: projection.spatialMode,
-      ...(projection.squeezingAxis ? { squeezingAxis: projection.squeezingAxis } : {}),
-      cumulativeCostFeet: 0
-    });
-    current = step;
   }
 
+  // Coste y Presupuesto
   const cumulativeCosts = calculatePathStepCostsFeet(combatant.position, path, context, isAcrobatic);
-  for (let index = 0; index < steps.length; index++) {
-    steps[index] = { ...steps[index], cumulativeCostFeet: cumulativeCosts[index] ?? 0 };
-  }
+  const steps: MovementStepProjection[] = legality.steps.map((s, index) => ({
+    position: s.position,
+    occupiedCells: [...s.occupiedCells],
+    spatialMode: s.spatialMode,
+    ...(s.squeezingAxis ? { squeezingAxis: s.squeezingAxis } : {}),
+    cumulativeCostFeet: cumulativeCosts[index] ?? 0
+  }));
+
   const distance = cumulativeCosts[cumulativeCosts.length - 1] ?? 0;
   const available = totalSpeedFeet - context.currentTurn.movementUsedFeet;
   if (distance > available) return { ok: false, error: combatant.name + " intenta mover " + distance + " pies, pero solo tiene " + available + " pies disponibles." };
   if (!isFiveFootStep && context.currentTurn.usedFiveFootStep && distance > 0) return { ok: false, error: "Ya uso paso de 5 pies este turno." };
+
   return {
     ok: true,
     value: {
@@ -1139,7 +1100,7 @@ export function getWeaponAttackTypeForTarget(room: CombatRulesSnapshot<Productio
   return distance <= weapon.meleeReachFeet ? "melee" : "ranged";
 }
 
-function getNaturalCombatantOccupiedCellsAt(
+export function getNaturalCombatantOccupiedCellsAt(
   combatant: CombatantSnapshot,
   snapshot: CombatRulesSnapshot,
   position: Position
@@ -1222,7 +1183,7 @@ function getSqueezedFootprintAt(
   return selected ? { occupiedCells: selected.cells, spatialMode: "squeezing", squeezingAxis: selected.axis } : null;
 }
 
-function projectMovementFootprint(
+export function projectMovementFootprint(
   snapshot: CombatRulesSnapshot,
   combatant: CombatantSnapshot,
   position: Position,
@@ -1405,13 +1366,13 @@ function distanceBetweenFootprintGeometriesFeet(
   );
 }
 
-function isPositionInsideBoard(snapshot: CombatRulesSnapshot, position: Pick<Position, "x" | "y">): boolean {
+export function isPositionInsideBoard(snapshot: CombatRulesSnapshot, position: Pick<Position, "x" | "y">): boolean {
   return position.x >= 0 && position.y >= 0 && position.x < snapshot.board.width && position.y < snapshot.board.height;
 }
 
 type FootprintOccupancyIndex = ReadonlyMap<string, readonly Combatant[]>;
 
-function createFootprintOccupancyIndex(snapshot: CombatRulesSnapshot): FootprintOccupancyIndex {
+export function createFootprintOccupancyIndex(snapshot: CombatRulesSnapshot): FootprintOccupancyIndex {
   const index = new Map<string, Combatant[]>();
   for (const combatant of snapshot.combatants as Combatant[]) {
     for (const cell of getCombatantOccupiedCells(combatant, snapshot)) {
@@ -1424,7 +1385,7 @@ function createFootprintOccupancyIndex(snapshot: CombatRulesSnapshot): Footprint
   return index;
 }
 
-function getCombatantsIntersectingCells(
+export function getCombatantsIntersectingCells(
   occupancyIndex: FootprintOccupancyIndex,
   cells: readonly Position[],
   exceptId?: string
@@ -1445,7 +1406,7 @@ function getCombatantsIntersectingCells(
  * obstáculo sólido (`board.impassableCells`) o el límite del tablero. Ver
  * `docs/designs/corners-geometry-design.md` (corrige una divergencia deliberada de Sprint 015).
  */
-function isCornerAnchorBlockedByTerrain(
+export function isCornerAnchorBlockedByTerrain(
   snapshot: CombatRulesSnapshot,
   combatant: Combatant,
   anchor: Position
