@@ -7,7 +7,7 @@
 ## Spatial Engine 2.5D (Nuevos NDD Hijos Requeridos)
 
 - **D-1 — Geometría Normativa Espacial:** Identidad, ocupación volumétrica, alcance 3D, distancia.
-- **D-1B — Diseño Normativo de Movimiento:** Capítulos 1–4 aprobados y congelados; Capítulo 5 redactado y pendiente de Architecture Review. Permanecen pendientes los diseños futuros para TurnState, Ataque Elástico, AoO y renderer.
+- **D-1B — Diseño Normativo de Movimiento:** Capítulos 1–4 aprobados y congelados; Capítulos 5–6 redactados y pendientes de Architecture Review. Permanecen pendientes los diseños futuros para TurnState, Ataque Elástico, AoO y renderer.
 - **D-2 — Fog of War y Participant Projection:** Filtro de visibilidad server-side.
 - **D-3 — Protocolo, Identidad, Reconexión y Persistencia Durable:** Sesiones, versionado de wire, y guardado en servidor.
 - **D-4 — Renderer, Presentación 2.5D y Cámara.**

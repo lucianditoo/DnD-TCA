@@ -828,3 +828,197 @@ Quedan expresamente fuera de este capítulo:
 - contratos TypeScript, pseudocódigo e implementación.
 
 No se abre ninguna ODR nueva. La ODR D-1B-C3-01 permanece limitada a la composición simultánea de fuentes de coste y no altera el ciclo definido en este capítulo.
+
+---
+
+## Capítulo 6 — Normative Interaction Model
+
+### 6.1 Objetivo y alcance
+
+Este capítulo responde exclusivamente a la pregunta:
+
+> ¿Cómo interactúan las operaciones que producen desplazamiento con los contratos normativos comunes de Movement?
+
+Run, Withdraw, Charge, Five-Foot Step, Minimum Movement y Forced Movement aparecen únicamente como **consumidores**. Sus reglas, requisitos, excepciones y consecuencias continúan perteneciendo a sus respectivos contratos normativos; este capítulo no los redefine, completa ni corrige.
+
+El Interaction Model establece fronteras de responsabilidad. No agrega reglas de juego, no crea variantes de Movement y no introduce un mecanismo alternativo de Validation, coste, Resolution, Commit o Publication.
+
+### 6.2 Principio de consumidor
+
+Una operación consumidora conserva la autoridad sobre:
+
+- su identidad normativa;
+- su elegibilidad y autorización;
+- sus restricciones propias;
+- la política de presupuesto que ya le corresponda;
+- sus consecuencias ajenas al desplazamiento.
+
+Para producir desplazamiento, la operación expresa una Intent compatible con el ciclo del Capítulo 5 y entrega únicamente el contexto que su propio contrato ya haya autorizado. A partir de esa frontera, consume sin redefinir:
+
+- Route y Step, conforme al Capítulo 1;
+- Route Validation, conforme al Capítulo 2;
+- Movement Cost y Movement Budget, conforme al Capítulo 3;
+- las fronteras de acciones consumidoras del Capítulo 4;
+- Resolution, Commit y Publication, conforme al Capítulo 5.
+
+El núcleo de Movement no descubre qué operación originó la Intent para cambiar su matemática. Las diferencias legítimas llegan desde el contrato propietario de la operación y permanecen trazables como contexto de consumo, no como ramas paralelas de la regla base.
+
+### 6.3 Frontera común de interacción
+
+Toda interacción sigue tres responsabilidades conceptuales:
+
+1. **Antes del ciclo común:** la operación propietaria determina su elegibilidad, sus selecciones permitidas y las restricciones específicas que autorizan la Intent.
+2. **Dentro del ciclo común:** Movement procesa la Route mediante Preview, Validation, Cost Assessment, Budget Verification, Resolution, Commit y Publication sin conocer ni reimplementar la regla particular de la operación.
+3. **Después del resultado de Movement:** la operación propietaria puede consumir el desplazamiento confirmado para resolver consecuencias que no pertenecen a Movement.
+
+La frontera evita dos duplicaciones:
+
+- una operación no mantiene su propia versión de geometría, coste o commit;
+- Movement no absorbe la economía, los efectos ofensivos, las exenciones o las consecuencias particulares de la operación.
+
+Un resultado parcial continúa siendo un prefijo ordenado de Steps confirmados conforme al Capítulo 5. El consumidor recibe ese resultado; no puede declarar confirmados Steps adicionales.
+
+### 6.4 Run como consumidor
+
+Run conserva la propiedad de su elegibilidad, autorización, restricciones y política de presupuesto.
+
+Al interactuar con Movement:
+
+- produce una Intent y una Route candidata bajo su propio contrato;
+- consume Route Validation sin crear una validación de geometría paralela;
+- consume Movement Cost sin introducir una fórmula propia por Step;
+- aporta la política de Movement Budget que su contrato haya autorizado;
+- consume Resolution, Commit y Publication comunes;
+- recibe el desplazamiento confirmado para cualquier consecuencia posterior que siga perteneciendo a Run.
+
+Este capítulo no define velocidad, trayectoria, visibilidad, terreno, duración ni consecuencias defensivas de Run.
+
+### 6.5 Withdraw como consumidor
+
+Withdraw conserva la propiedad de su elegibilidad, autorización, restricciones y cualquier interacción especial que su contrato establezca con otros subsistemas.
+
+Al interactuar con Movement:
+
+- produce una Intent y una Route candidata bajo su propio contrato;
+- consume los mismos Route Validation, Movement Cost y Movement Budget;
+- consume el ciclo común hasta Publication;
+- utiliza únicamente los Steps confirmados como evidencia del desplazamiento ocurrido;
+- deja fuera del núcleo de Movement cualquier exención o consecuencia que pertenezca a Withdraw o al sistema de Opportunity.
+
+Este capítulo no define exenciones, alcance, economía de acciones ni comportamiento de ataques de oportunidad para Withdraw.
+
+### 6.6 Charge como consumidor
+
+Charge conserva la propiedad de su elegibilidad, sus restricciones y sus consecuencias ofensivas.
+
+Su interacción con Movement queda limitada a:
+
+- producir la Intent de desplazamiento y la Route candidata autorizada por su propio contrato;
+- consumir Route Validation, Movement Cost y la política aplicable de Movement Budget;
+- consumir Resolution y Commit para determinar el desplazamiento realmente confirmado;
+- ofrecer ese resultado confirmado a las responsabilidades posteriores de Charge sin incorporar resolución de ataque dentro de Movement.
+
+Este capítulo no define trayectorias, objetivos, visibilidad, terreno, ataques, bonificadores ni penalizadores de Charge.
+
+### 6.7 Five-Foot Step como consumidor
+
+Five-Foot Step conserva su naturaleza y autorización excepcionales según su contrato propietario.
+
+Como consumidor:
+
+- produce una Intent de desplazamiento limitada por su propia autorización;
+- consume Route y Route Validation comunes;
+- utiliza Movement Cost y Budget Verification únicamente bajo la política presupuestaria que su contrato ya determine;
+- consume Resolution, Commit y Publication comunes;
+- no crea una topología, un contador diagonal ni una frontera de mutación alternativos.
+
+Este capítulo no define su coste, elegibilidad, relación con otros movimientos ni interacción con Opportunity.
+
+### 6.8 Minimum Movement como consumidor
+
+Minimum Movement conserva la propiedad de cualquier excepción normativa que permita continuar frente a una insuficiencia ordinaria de presupuesto.
+
+Como consumidor:
+
+- produce una Intent y una Route candidata;
+- exige Route Validation común;
+- conserva el Movement Cost calculado por el contrato común;
+- aporta a Budget Verification únicamente la autorización excepcional que su propio contrato establezca;
+- consume Resolution, Commit y Publication sin sustituir el coste real por una fórmula particular.
+
+Una excepción presupuestaria no convierte una Route ilegal en legal y no crea un Movement Cost alternativo. Este capítulo no define cuándo existe la excepción, qué recursos exige ni qué consecuencias produce.
+
+### 6.9 Forced Movement como consumidor
+
+Forced Movement es un consumidor no voluntario del desplazamiento común. La fuente que origina la fuerza conserva la autoridad sobre la causa, la dirección permitida, la magnitud autorizada y las consecuencias propias.
+
+Al interactuar con Movement:
+
+- la fuente produce una Intent de desplazamiento conforme a su contrato;
+- el desplazamiento consume las identidades de Route y Step y la legalidad aplicable a sus transiciones;
+- consume Movement Cost cuando otro contrato necesite medir el recorrido, sin inferir por ello un gasto voluntario;
+- consume Resolution, Commit y Publication comunes;
+- aplica posición y contexto diagonal únicamente por Steps confirmados;
+- no convierte la ausencia de Movement Budget voluntario en una segunda geometría o un segundo commit.
+
+Este capítulo no define empujes, arrastres, caídas, colisiones, resistencia, daño, presupuesto forzado ni excepciones de transición.
+
+### 6.10 Resultado compartido y consecuencias externas
+
+Todos los consumidores reciben el mismo significado de resultado de Movement:
+
+- un conjunto ordenado de Steps confirmados;
+- la posición autoritativa alcanzada;
+- el consumo de presupuesto que resulte aplicable;
+- el contexto diagonal del turno actualizado por los Steps confirmados;
+- el estado publicado después del Commit.
+
+Ese resultado no contiene una resolución duplicada de la operación consumidora. Ataques, exenciones de Opportunity, efectos defensivos, daño, duración, checks y otras consecuencias permanecen en sus contratos propietarios.
+
+Una operación puede usar el resultado confirmado como entrada para su siguiente responsabilidad, pero no puede reinterpretar retroactivamente qué Steps fueron legales, cuánto costaron o cuáles fueron aplicados.
+
+### 6.11 Autoridad y previews
+
+El servidor conserva la autoridad sobre la operación consumidora y sobre todo el ciclo autoritativo de Movement.
+
+El cliente puede previsualizar la interacción combinando la información permitida de la operación con Preview del Capítulo 5. Esa predicción:
+
+- no autoriza la operación;
+- no modifica la Route autoritativa;
+- no confirma restricciones propias de la operación;
+- no confirma Steps ni presupuesto;
+- no evita la reconstrucción completa del resultado por el servidor.
+
+La UI no implementa fórmulas particulares para Run, Withdraw, Charge, Five-Foot Step, Minimum Movement o Forced Movement. Renderiza las proyecciones compartidas y las decisiones autoritativas publicadas.
+
+### 6.12 Invariantes normativos
+
+1. Cada operación permanece propietaria de su regla; Movement permanece propietario del desplazamiento común.
+2. Ningún consumidor redefine Movement, Route o Step.
+3. Ningún consumidor redefine Route Validation.
+4. Ningún consumidor redefine Movement Cost ni mantiene una fórmula paralela por Step.
+5. Ningún consumidor crea una frontera alternativa de Resolution, Commit o Publication.
+6. Una política presupuestaria especial modifica únicamente la autorización de consumo; no modifica topología ni coste.
+7. Las restricciones particulares de una operación no se convierten en reglas generales de Movement.
+8. Las consecuencias no espaciales permanecen fuera del núcleo de Movement.
+9. Solo Steps confirmados afectan posición, presupuesto aplicable y contexto diagonal.
+10. Un resultado parcial conserva el mismo significado para todos los consumidores.
+11. El servidor es autoritativo y el cliente es únicamente predictivo.
+
+### 6.13 Límites y ODR
+
+Este capítulo no define ni modifica las reglas de Run, Withdraw, Charge, Five-Foot Step, Minimum Movement o Forced Movement.
+
+También quedan fuera de alcance:
+
+- economía de acciones y TurnState;
+- ataques y resolución ofensiva;
+- ataques de oportunidad y sus exenciones;
+- hazards, colisiones e interrupciones;
+- rollback y commit transaccional;
+- condiciones, dotes y conjuros concretos;
+- networking, WebSocket y wire protocol;
+- persistencia, renderer y UI concreta;
+- contratos TypeScript, pseudocódigo e implementación.
+
+No se abre ninguna ODR nueva. La ODR D-1B-C3-01 conserva exactamente su alcance previo y no se amplía por la interacción con estos consumidores.
