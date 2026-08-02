@@ -1,6 +1,6 @@
 # Normative Movement Design (D-1B)
 
-Responsabilidad: Definir los contratos normativos comunes del movimiento: su modelo abstracto, la legalidad de una Route y el coste que consume una Route legal.
+Responsabilidad: Definir los contratos normativos comunes del movimiento: modelo abstracto, legalidad, coste, acciones consumidoras y ciclo lógico de resolución.
 Autoridad: Canónica
 Lifecycle: Diseño
 Reemplaza: —
@@ -640,3 +640,191 @@ Quedan expresamente fuera de este capítulo el diseño de: la economía completa
 **Owner Decision (Decisión Normativa del Propietario):** El patrón de Movimiento Diagonal pertenece al turno del combatiente, no a una Route ni a una acción individual. Se formaliza que Double Move y el movimiento segmentado (como Ataque Elástico) comparten la misma paridad diagonal durante el turno, eliminando la ambigüedad detectada previamente sin requerir ODR adicional.
 
 La ODR preexistente D-1B-C3-01 sobre composición simultánea de fuentes de coste permanece abierta (el coste fijo de una diagonal difícil no participa del patrón diagonal normal, que fue la regla aclarada en el Capítulo 3).
+
+---
+
+## Capítulo 5 — Normative Movement Resolution Lifecycle
+
+### 5.1 Objetivo del capítulo
+
+Este capítulo responde exclusivamente a la pregunta:
+
+> ¿Mediante qué ciclo normativo una intención de movimiento se convierte en un desplazamiento confirmado?
+
+La respuesta define un contrato lógico de resolución. Ordena responsabilidades ya establecidas por los capítulos anteriores, pero no introduce algoritmos, estructuras de datos, contratos de software ni mecanismos de transporte.
+
+El ciclo no redefine Movement, Route, Step, Route Validation, Movement Cost ni Movement Budget. Tampoco prescribe cómo una acción concreta obtiene autorización para iniciarlo.
+
+### 5.2 Fases de resolución
+
+El ciclo normativo sigue este orden:
+
+> **Intent → Preview → Validation → Cost Assessment → Budget Verification → Resolution → Commit → Publication**
+
+Cada fase posee una responsabilidad exclusiva:
+
+1. **Intent:** expresa la voluntad de desplazar una entidad mediante una Route candidata. No contiene veredictos autoritativos de legalidad, coste, presupuesto ni resultado.
+2. **Preview:** proyecta informativamente el resultado esperable a partir del estado conocido. No concede autorización y no modifica estado.
+3. **Validation:** determina autoritativamente si la Route candidata satisface Route Validation.
+4. **Cost Assessment:** calcula cuánto Movement Cost requeriría la Route legal y proyecta el contexto diagonal resultante.
+5. **Budget Verification:** compara el coste calculado con el Movement Budget aplicable.
+6. **Resolution:** determina qué Steps legales quedan confirmados como resultado del intento.
+7. **Commit:** aplica al estado autoritativo únicamente el desplazamiento y consumo correspondientes a los Steps confirmados.
+8. **Publication:** expone el nuevo estado confirmado a sus consumidores después del Commit.
+
+Las fases se mantienen separadas aunque una futura ejecución pueda coordinarlas dentro de una misma operación. Ninguna fase puede asumir la responsabilidad normativa de otra.
+
+Este ciclo es la vista especializada de Movement dentro del [pipeline general de modificadores](modifier-pipeline-architecture.md); no lo reemplaza ni crea un segundo orquestador. Validation, Cost Assessment y Budget Verification refinan para Movement las responsabilidades generales de preflight y proyección; Resolution expresa su resolución y consecuencias de desplazamiento; Commit conserva la única frontera de mutación. Preview es una proyección predictiva sin autoridad y Publication es la exposición lógica posterior al Commit, no una segunda resolución ni un segundo commit.
+
+### 5.3 Validation
+
+La frontera de validación del ciclo consume únicamente los tres contratos canónicos de movimiento:
+
+- **Route Validation**, que determina la legalidad topológica de la Route;
+- **Movement Cost**, que será evaluado por Cost Assessment sin alterar la legalidad;
+- **Movement Budget**, que será contrastado por Budget Verification sin alterar la Route.
+
+Dentro de la fase **Validation**, solo Route Validation produce el veredicto de legalidad. Movement Cost y Movement Budget atraviesan el ciclo como contratos separados para sus fases posteriores; no se fusionan con la topología.
+
+Validation:
+
+- evalúa la Route completa contra el estado autoritativo vigente;
+- no descubre ni reemplaza la Route declarada;
+- no calcula un coste alternativo;
+- no decide suficiencia de presupuesto;
+- no consume presupuesto;
+- no mueve a la entidad;
+- no modifica estado.
+
+Una Route que no supera Validation no alcanza Cost Assessment, Budget Verification, Resolution ni Commit como desplazamiento confirmable.
+
+### 5.4 Cost Assessment
+
+Cost Assessment consume una Route que ya superó Validation y aplica exclusivamente el contrato de Movement Cost del Capítulo 3.
+
+Normativamente:
+
+1. calcula el coste de cada Step y el coste acumulado de la Route;
+2. recibe el estado inicial del contexto diagonal del turno cuando corresponde;
+3. proyecta el estado diagonal que resultaría de recorrer los Steps evaluados;
+4. conserva el desglose y la evidencia de las contribuciones aplicables;
+5. no consume Movement Budget;
+6. no cambia posición;
+7. no modifica el contexto diagonal autoritativo;
+8. no modifica ningún otro estado.
+
+El mismo Cost Assessment puede alimentar Preview y la resolución autoritativa. Su carácter proyectivo no cambia según el consumidor y no autoriza por sí solo el desplazamiento.
+
+### 5.5 Budget Verification
+
+Budget Verification compara el total producido por Cost Assessment con el Movement Budget vigente y aplicable al intento.
+
+Su único veredicto es si existe presupuesto suficiente para costear el desplazamiento evaluado bajo el contrato correspondiente.
+
+Budget Verification:
+
+- no recalcula Route Validation;
+- no recalcula Movement Cost;
+- no vuelve legal una Route ilegal;
+- no vuelve ilegal una Route legal;
+- no mueve a la entidad;
+- no descuenta presupuesto;
+- no modifica estado.
+
+La insuficiencia de presupuesto detiene el ciclo antes de Resolution y Commit, salvo que un contrato normativo futuro y explícito autorice una excepción. Este capítulo no define ninguna excepción.
+
+### 5.6 Resolution
+
+Resolution consume una Route legal cuyo coste ya fue evaluado y cuyo presupuesto ya fue considerado suficiente.
+
+Su responsabilidad es determinar cuáles de los Steps legales de esa Route quedan **confirmados** para el desplazamiento resultante.
+
+Normativamente:
+
+1. nunca confirma un Step que no haya superado Route Validation;
+2. conserva el orden de los Steps;
+3. no sustituye la Route por otra;
+4. una resolución completa confirma todos los Steps de la Route;
+5. si la ejecución termina antes de completar la Route, solo el prefijo ordenado de Steps efectivamente confirmado forma parte del resultado.
+
+El principio de confirmación parcial habilita futuras causas de terminación sin diseñarlas. Este capítulo no define ataques de oportunidad, hazards, interrupciones, rollback ni condiciones que puedan producir ese resultado parcial.
+
+### 5.7 Commit
+
+Commit es la única fase del ciclo autorizada para aplicar el resultado confirmado al estado autoritativo.
+
+Commit actualiza exclusivamente, y en correspondencia con los Steps confirmados:
+
+- la posición autoritativa alcanzada;
+- el consumo de Movement Budget;
+- el contador de diagonales normales del turno.
+
+Los Steps proyectados pero no confirmados no producen desplazamiento, no consumen presupuesto y no modifican el contador diagonal.
+
+Commit no vuelve a definir la Route, su legalidad ni su coste. Aplica el resultado de las fases anteriores y no puede ampliar el conjunto de Steps confirmados por Resolution.
+
+Este contrato describe la frontera lógica de mutación. No diseña representación de TurnState, rollback, transacciones, almacenamiento ni mecanismos de recuperación.
+
+### 5.8 Publication
+
+Publication ocurre después de un Commit exitoso y pone el nuevo estado autoritativo confirmado a disposición de los consumidores del combate.
+
+El estado publicado refleja únicamente:
+
+- la posición alcanzada por los Steps confirmados;
+- el presupuesto efectivamente consumido;
+- el contexto diagonal del turno efectivamente actualizado;
+- cualquier resultado normativo ya confirmado por las fases anteriores que corresponda exponer.
+
+Publication no recalcula, corrige ni amplía el resultado del Commit. Tampoco concede autoridad al consumidor que recibe el estado.
+
+Este capítulo no define networking, WebSocket, wire protocol, serialización, mensajes, eventos ni frecuencia de publicación.
+
+### 5.9 Autoridad
+
+El servidor es la única autoridad sobre Validation, Cost Assessment final, Budget Verification, Resolution, Commit y Publication del estado confirmado.
+
+El cliente puede producir Preview predictivo mediante los mismos contratos compartidos, mostrando Route, coste, presupuesto y contexto diagonal proyectados. Ese Preview:
+
+- no sustituye ninguna fase autoritativa;
+- no confirma Steps;
+- no consume presupuesto;
+- no modifica estado;
+- puede quedar obsoleto antes de la resolución final.
+
+Al recibir una intención, el servidor reconstruye el ciclo desde su estado autoritativo vigente y publica únicamente el resultado que haya confirmado y aplicado.
+
+### 5.10 Invariantes normativos
+
+1. Ninguna fase redefine la topología espacial.
+2. Ninguna fase redefine Route Validation.
+3. Ninguna fase redefine Movement Cost.
+4. Ninguna fase redefine Movement Budget.
+5. Preview nunca modifica estado ni concede autoridad.
+6. Validation nunca consume presupuesto ni mueve entidades.
+7. Cost Assessment calcula y proyecta; nunca consume ni muta.
+8. Budget Verification compara; nunca consume ni muta.
+9. La suficiencia o insuficiencia de presupuesto nunca modifica la legalidad topológica.
+10. Resolution confirma únicamente Steps legales y conserva su orden.
+11. Commit aplica únicamente Steps confirmados.
+12. Solo Steps confirmados consumen presupuesto y modifican el contador diagonal del turno.
+13. Publication refleja el Commit y no produce una resolución alternativa.
+14. El servidor conserva la autoridad final; el cliente conserva únicamente capacidad predictiva.
+
+### 5.11 Límites y ODR
+
+Quedan expresamente fuera de este capítulo:
+
+- ataques de oportunidad;
+- hazards y sus consecuencias;
+- causas y orquestación de interrupciones;
+- rollback;
+- commit transaccional;
+- networking, WebSocket y wire protocol;
+- serialización y persistencia;
+- representación de TurnState;
+- pathfinding;
+- renderer y presentación;
+- contratos TypeScript, pseudocódigo e implementación.
+
+No se abre ninguna ODR nueva. La ODR D-1B-C3-01 permanece limitada a la composición simultánea de fuentes de coste y no altera el ciclo definido en este capítulo.

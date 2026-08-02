@@ -1,23 +1,32 @@
-# Walkthrough — Sprint D-1B Capítulo 4R1
+# Walkthrough — Sprint D-1B Capítulo 5
 
 ## Objetivo
-Actualizar el NDD `docs/designs/normative-movement-design.md` para eliminar la ambigüedad detectada por el Gate Review sobre la continuidad del `Movimiento Diagonal` y el `Double Move`. Formalizar que el patrón diagonal pertenece al contexto del turno, definiendo su interacción con `Ataque Elástico`, interrupciones, terreno difícil y predicciones de cliente.
 
-## Secciones modificadas (NDD)
-- **3.4 Contexto diagonal por turno:** El contador diagonal pertenece al turno, no a la Route. Se reinicia al iniciar el turno.
-- **3.6 Terreno difícil:** Se aclara que un Step diagonal en terreno difícil tiene coste fijo de 15 ft y conserva la paridad del contador diagonal.
-- **3.13 Movement Cost Assessment:** Se precisa que el assessment recibe el estado diagonal inicial y proyecta el resultante sin mutarlo.
-- **3.15 Invariantes normativos:** Se agregaron invariantes prohibiendo reiniciar el contador con acciones o Steps ortogonales.
-- **4.5 Double Move:** Se define como una única dedicación del turno al movimiento, que no reinicia el contexto diagonal.
-- **4.12 Movimiento segmentado e Interrupciones (Nueva):** Establece el soporte para `Ataque Elástico` (movimiento fragmentado) reutilizando el mismo contador.
-- **4.13 Autoridad y previews:** Se detalla que el cliente proyecta y simula el coste a partir del contador autoritativo vigente.
-- **4.14 Invariantes normativos:** Invariantes añadidos para segmentación y predicción.
-- **4.15 Límites y ODR:** Se documenta la `Owner Decision` que resolvió la pertenencia del contador al turno, evitando la creación de una nueva ODR. La ODR `D-1B-C3-01` se actualizó ligeramente para reflejar que la diagonal difícil reemplaza el patrón normal.
+Incorporar al NDD canónico el ciclo normativo mediante el cual una intención de movimiento se convierte en un desplazamiento confirmado, sin diseñar implementación, estado persistido ni transporte.
 
-## Archivos modificados
-- `docs/designs/normative-movement-design.md`
-- `PROJECT_STATUS.md`
-- `walkthrough.md`
-- `TODO.md` (Para registrar TurnState y Ataque Elástico).
+## Capítulo redactado
+
+- **5.1 Objetivo:** delimita el capítulo como contrato lógico.
+- **5.2 Fases:** fija el orden Intent → Preview → Validation → Cost Assessment → Budget Verification → Resolution → Commit → Publication y una responsabilidad exclusiva por fase.
+- **5.3 Validation:** consume los contratos canónicos sin redefinir topología, coste ni presupuesto.
+- **5.4 Cost Assessment:** calcula y proyecta el contexto diagonal sin mutar ni consumir.
+- **5.5 Budget Verification:** compara coste y presupuesto sin alterar legalidad o estado.
+- **5.6 Resolution:** confirma únicamente Steps legales y reconoce el principio abstracto de resultado parcial.
+- **5.7 Commit:** aplica posición, consumo y contador diagonal únicamente para Steps confirmados.
+- **5.8 Publication:** expone el estado confirmado sin diseñar networking.
+- **5.9 Autoridad:** preserva servidor autoritativo y cliente predictivo.
+- **5.10–5.11 Invariantes y límites:** impiden redefiniciones, mutaciones prematuras y fugas hacia implementación futura.
+- El ciclo se declaró como vista especializada compatible con el pipeline general de modificadores, sin crear una autoridad u orquestador paralelo.
+
+## ODR y alcance
+
+No se abrió ninguna ODR nueva. `D-1B-C3-01` permanece limitada a la composición simultánea de fuentes de coste. No se diseñaron AoO, hazards, interrupciones, rollback, networking, TurnState, TypeScript ni cambios del Rules Engine.
+
+## Validación documental
+
+- Capítulos 1–4 preservados sin cambios semánticos.
+- Sin código ni tests modificados.
+- Enlaces y responsabilidad canónica conservados en el mismo NDD.
+- Alcance limitado a `docs/designs/normative-movement-design.md`, `PROJECT_STATUS.md`, `TODO.md` y este walkthrough rotativo.
 
 READY FOR ARCHITECTURE REVIEW
