@@ -9,14 +9,15 @@
 - Rama de integración: `master`.
 - Última vertical funcional integrada: Sprint 055B, Ataques de Oportunidad bajo Cover y Ocultación Total.
 - Última decisión arquitectónica: Sprint D-1B Capítulo 7 (Integration & Implementation Contracts).
-- Implementación en revisión: Sprint D-1B-I3R1, remediación de la dependencia
-  circular `rules.ts ↔ routeValidation.ts` detectada en la revisión de
-  Sprint D-1B-I3 — extracción a `movementGeometry.ts`/`lifeStatus.ts`,
-  ajuste de superficie pública y cobertura directa de `validateRouteLegality`
-  (Large footprints, Squeezing, repetición de casilla, bridge legacy). Sin
-  cambio de comportamiento.
-- Último saneamiento documental: Sprint D-1B-I3R1.
-- Baseline funcional candidata: 590/590 pruebas unitarias, 100/100 aserciones
+- Implementación en revisión: Sprint D-1B-I4, Movement Resolution Pipeline
+  puro (`resolveMovementPipeline` en `movementResolution.ts`) que compone
+  `validateRouteLegality → assessMovementCost → Budget Verification`,
+  completamente aislado del flujo productivo legacy. `assessMovementCost`
+  ahora también entrega evidencia inmutable por Step. Sin Commit, sin
+  Publication, sin mutación autoritativa; `validateMovePath` y los comandos
+  productivos permanecen intactos.
+- Último saneamiento documental: Sprint D-1B-I4.
+- Baseline funcional candidata: 603/603 pruebas unitarias, 100/100 aserciones
   WebSocket y 7/7 escenarios Playwright; typecheck y build verdes.
 - GitHub Actions sobre Windows es el gate canónico de cierre para la revisión
   publicada.
@@ -30,7 +31,7 @@ El monorepo contiene:
 - cliente React/Vite que consume las mismas proyecciones compartidas;
 - snapshots source-first sin estadísticas derivadas persistidas;
 - contexto autoritativo de movimiento por turno, inicializado y reiniciado, todavía sin mutación desde la resolución productiva;
-- assessment compartido y puro de Movement Cost, con diagonales normales 5/10 y costes fijos de terreno difícil, todavía desconectado de la resolución productiva;
+- assessment compartido y puro de Movement Cost, con diagonales normales 5/10, costes fijos de terreno difícil y evidencia por Step, compuesto junto a Route Validation y Budget Verification por un Movement Resolution Pipeline puro (`resolveMovementPipeline`), todavía aislado de la resolución productiva;
 - ActiveEffects, EffectReducer, EffectManager, Tick Layer y Event Bus;
 - economía de acciones, movimiento, amenaza, AdO y huellas multicasilla;
 - ataques normales, completos, de toque, críticos, daño de precisión y

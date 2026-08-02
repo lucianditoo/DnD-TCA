@@ -110,6 +110,15 @@ está en `rules.ts`, ni mutar HP/stats/logs.
 
 ---
 
+### `packages/shared/src/movementResolution.ts`
+**Responsabilidad**: Movement Resolution Pipeline puro (Sprint D-1B-I4): compone `validateRouteLegality → assessMovementCost → Budget Verification` en `resolveMovementPipeline`. Aislado del flujo productivo legacy (`validateMovePath`) — ningún comando lo consume todavía.
+
+**Podés modificar**: Ampliar la evidencia devuelta o preparar el terreno para Resolution/Commit (D-1B-I5+), sin recalcular Route Validation ni Movement Cost.
+
+**No hagas**: Mutar `context`, `combatant`, la Route o el contexto diagonal recibidos. No integrar Commit, Publication ni comandos productivos sin su propio sprint. No duplicar la determinación de terreno difícil fuera de las `occupiedCells` ya producidas por Route Validation.
+
+---
+
 ### `packages/shared/src/combatSnapshot.ts`
 **Responsabilidad**: `createCombatRulesSnapshot` — crea una vista inmutable (congelada con `Object.freeze`) de la sala para calcular reglas sin riesgo de mutación accidental.
 

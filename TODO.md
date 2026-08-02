@@ -7,7 +7,7 @@
 ## Spatial Engine 2.5D (Nuevos NDD Hijos Requeridos)
 
 - **D-1 — Geometría Normativa Espacial:** Identidad, ocupación volumétrica, alcance 3D, distancia.
-- **D-1B — Diseño Normativo de Movimiento:** NDD completo (Capítulos 1–7) aprobado y congelado. D-1B-I1 implementó el Movement Context estructural y D-1B-I2 implementa el Movement Cost Assessment puro; ambos quedan pendientes de Architecture Review. Route Validation, Budget, Resolution, acciones, preview y UI continúan pendientes de sus fases propias.
+- **D-1B — Diseño Normativo de Movimiento:** NDD completo (Capítulos 1–7) aprobado y congelado. D-1B-I1 (Movement Context), D-1B-I2 (Movement Cost Assessment), D-1B-I3/I3R1 (Route Validation SSOT, sin ciclo) y D-1B-I4 (Movement Resolution Pipeline puro hasta Budget Verification) implementados y aislados del flujo productivo, pendientes de Architecture Review. Resolution completa, Commit, Publication, acciones consumidoras, preview y UI continúan pendientes de sus fases propias.
 - **D-2 — Fog of War y Participant Projection:** Filtro de visibilidad server-side.
 - **D-3 — Protocolo, Identidad, Reconexión y Persistencia Durable:** Sesiones, versionado de wire, y guardado en servidor.
 - **D-4 — Renderer, Presentación 2.5D y Cámara.**

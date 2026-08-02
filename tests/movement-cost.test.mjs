@@ -141,7 +141,32 @@ test("Movement Cost no muta la Route ni el contexto recibidos", () => {
   });
   assert.deepEqual(assessment, {
     totalCostFeet: 10,
-    resultingContext: { normalDiagonalStepsThisTurn: 2 }
+    resultingContext: { normalDiagonalStepsThisTurn: 2 },
+    steps: [
+      { stepIndex: 0, stepCostFeet: 10, cumulativeCostFeet: 10, resultingContext: { normalDiagonalStepsThisTurn: 2 } }
+    ]
   });
   assert.notEqual(assessment.resultingContext, initialContext);
+});
+
+// --- Sprint D-1B-I4: evidencia por Step (MovementCostStepAssessment) ---
+
+test("Movement Cost conserva evidencia ordenada por Step: coste individual, acumulado y contexto resultante", () => {
+  const assessment = assessMovementCost(
+    route(
+      step(position(0, 0), position(1, 1)),
+      step(position(1, 1), position(2, 2)),
+      step(position(2, 2), position(3, 2), true)
+    ),
+    { normalDiagonalStepsThisTurn: 0 }
+  );
+
+  assert.equal(assessment.steps.length, 3);
+  assert.deepEqual(assessment.steps[0], { stepIndex: 0, stepCostFeet: 5, cumulativeCostFeet: 5, resultingContext: { normalDiagonalStepsThisTurn: 1 } });
+  assert.deepEqual(assessment.steps[1], { stepIndex: 1, stepCostFeet: 10, cumulativeCostFeet: 15, resultingContext: { normalDiagonalStepsThisTurn: 2 } });
+  assert.deepEqual(assessment.steps[2], { stepIndex: 2, stepCostFeet: 10, cumulativeCostFeet: 25, resultingContext: { normalDiagonalStepsThisTurn: 2 } });
+
+  const sumOfStepCosts = assessment.steps.reduce((sum, s) => sum + s.stepCostFeet, 0);
+  assert.equal(sumOfStepCosts, assessment.totalCostFeet);
+  assert.equal(assessment.steps.at(-1).cumulativeCostFeet, assessment.totalCostFeet);
 });
