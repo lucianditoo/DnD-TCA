@@ -8,9 +8,9 @@
 
 - Rama de integración: `master`.
 - Última vertical funcional integrada: Sprint 055B, Ataques de Oportunidad bajo Cover y Ocultación Total.
-- Última decisión arquitectónica: Sprint D-1B (Normative Movement Design, Cap 1-4).
-- Diseño en revisión: Sprint D-1B, Capítulos 1–4 (acciones de movimiento).
-- Último saneamiento documental: Sprint D-1B-Research R6 / Sprint D-1A-R1.
+- Última decisión arquitectónica: Sprint D-1B Capítulo 4R1 (Turn-Scoped Diagonal Movement).
+- Diseño en revisión: Sprint D-1B, Capítulos 1–4 (acciones de movimiento, remediación R1).
+- Último saneamiento documental: Sprint D-1B Capítulo 4R1.
 - Baseline funcional publicada: 559/559 pruebas unitarias, 100/100 aserciones
   WebSocket y 7/7 escenarios Playwright; typecheck y build verdes.
 - GitHub Actions sobre Windows es el gate canónico de cierre para la revisión

@@ -301,19 +301,28 @@ El coste no se obtiene sumando costes independientes por eje. Un cambio simultá
 
 Este contrato no utiliza `Spatial Distance 3D` para calcular Route Cost y no altera la ODR preexistente sobre la métrica de distancia espacial.
 
-### 3.4 Contador diagonal por Route
+### 3.4 Contexto diagonal por turno
 
-Cada Route mantiene conceptualmente su propia secuencia ordinal de Steps diagonales.
+Cada combatiente mantiene durante su turno un estado conceptual equivalente a `normalDiagonalStepsThisTurn`. El contador de pasos diagonales normales pertenece al contexto de movimiento del turno, no a una Route individual ni a una acción.
 
-1. el primer Step diagonal cuesta 5 ft;
-2. el segundo cuesta 10 ft;
-3. el tercero vuelve a costar 5 ft;
-4. el cuarto cuesta 10 ft;
-5. el patrón continúa como **5 / 10 / 5 / 10...** hasta terminar la Route.
+1. El contador comienza en 0 al iniciar el turno del combatiente.
+2. Persiste entre diferentes Routes, acciones (Move, Double Move, etc.) y segmentos de movimiento.
+3. Se reinicia únicamente al comenzar un nuevo turno del combatiente.
+4. Solo los pasos diagonales que utilizan el patrón ordinario modifican el contador.
 
-El contador depende exclusivamente de que el Step sea diagonal. No depende del plano, del número de ejes modificados ni de la dirección del desplazamiento. Un Step diagonal XYZ ocupa una sola posición dentro de la secuencia.
+Para cada diagonal normal ejecutada, el contador se incrementa en uno:
+- si el contador es impar, el Step cuesta **5 ft**.
+- si el contador es par, el Step cuesta **10 ft**.
 
-Los Steps ortogonales no consumen ni reinician la secuencia diagonal. Cada nueva Route inicia una secuencia propia; no hereda el ordinal de una Route anterior.
+Ejemplo:
+- Diagonal normal del turno 1: 5 ft
+- Diagonal normal del turno 2: 10 ft
+- Diagonal normal del turno 3: 5 ft
+- Diagonal normal del turno 4: 10 ft
+
+El contador depende exclusivamente de que el Step sea diagonal normal. No depende del plano, del número de ejes modificados (X/Y, X/Z, Y/Z, X/Y/Z) ni de la dirección del desplazamiento. Un Step diagonal sigue siendo una sola unidad y no se calcula un coste separado por eje.
+
+Los pasos puramente ortogonales cuestan 5 ft en terreno normal y no modifican el contador diagonal. Esto aplica a desplazamientos horizontales y verticales legales.
 
 ### 3.5 Contribuciones al coste de Step
 
@@ -333,12 +342,22 @@ Toda contribución aplicable debe ser determinista, indicar su fuente normativa,
 Para una Route ordinaria afectada por terreno difícil, el coste se determina por tipo de Step y por el terreno cruzado:
 
 - un Step ortogonal afectado cuesta **10 ft**;
-- un Step diagonal afectado cuesta **15 ft**;
-- cada Step diagonal afectado cuesta 15 ft de forma constante;
-- no existe una alternancia **15 / 20**;
-- no se obtiene el resultado duplicando mecánicamente el valor final de la secuencia diagonal ordinaria.
+- un Step diagonal afectado cuesta **15 ft**.
 
-Un Step diagonal sobre terreno difícil sigue siendo diagonal y ocupa una sola posición en el contador diagonal de su Route, aunque su coste aplicable sea el valor fijo de 15 ft.
+Una diagonal sometida al coste fijo de terreno difícil no participa del patrón ordinario de Movimiento Diagonal. Su coste normativo es siempre 15 ft y conserva sin cambios la paridad previa del contador de diagonales normales del turno. 
+
+Sigue siendo un Step diagonal (a diferencia de un ortogonal), pero utiliza una categoría de coste especial que:
+- no utiliza el patrón 5/10;
+- no incrementa el contador de diagonales normales;
+- no modifica su paridad;
+- no existe alternancia 15/20.
+
+Ejemplo:
+- Step 1 (Diagonal difícil): 15 ft. Contador posterior: 0.
+- Step 2 (Diagonal normal): 5 ft. Contador posterior: 1.
+- Step 3 (Diagonal normal): 10 ft. Contador posterior: 2.
+- Step 4 (Diagonal difícil): 15 ft. Contador posterior: 2.
+- Step 5 (Diagonal normal): 5 ft. Contador posterior: 3.
 
 Este capítulo fija la norma de coste. No declara corregido el comportamiento de ninguna implementación existente ni define prohibiciones particulares de acciones que atraviesen terreno difícil.
 
@@ -363,6 +382,8 @@ Una misma Route puede quedar afectada por más de una fuente de coste. El assess
 El corpus aprobado permite identificar adiciones, multiplicaciones, reemplazos, costes fijos y prohibiciones, pero no establece una política única y exhaustiva para componer todas sus intersecciones posibles. Por ello, este capítulo no inventa un orden universal de operaciones ni una regla de stacking.
 
 #### ODR D-1B-C3-01 — Composición simultánea de fuentes de coste
+
+**Aclaración previa:** el coste fijo de 15 ft de una diagonal difícil sustituye al patrón diagonal normal de ese Step, resolviendo su interacción directa con el Movimiento Diagonal, pero no resuelve su combinación con otros multiplicadores (ej. Squeezing).
 
 **Pregunta:** cuando un mismo Step recibe simultáneamente dos o más contribuciones de coste —por ejemplo, un coste fijo de terreno y un multiplicador por estado corporal—, ¿qué regla normativa determina su orden, acumulación y precedencia?
 
@@ -423,16 +444,17 @@ No se definen aquí objetos ambientales concretos, sensores, cargas, armaduras, 
 
 ### 3.13 Movement Cost Assessment
 
-El resultado conceptual de evaluar una Route legal debe contener, como mínimo:
+El Cost Assessment debe poder recibir conceptualmente el estado diagonal inicial del turno y proyectar el estado resultante sin mutarlo. El resultado conceptual de evaluar una Route legal debe contener, como mínimo:
 
 1. el coste total de la Route en pies;
 2. el coste de cada Step;
 3. el Base Step Cost y las contribuciones aplicadas a cada Step;
 4. el modo o los modos de desplazamiento requeridos;
-5. la fuente y evidencia normativa de cada contribución;
-6. el Movement Budget considerado para cada modo aplicable;
-7. un veredicto de presupuesto suficiente o insuficiente;
-8. cualquier prohibición normativa aplicable al consumidor evaluado.
+5. el estado proyectado del contador diagonal tras la Route;
+6. la fuente y evidencia normativa de cada contribución;
+7. el Movement Budget considerado para cada modo aplicable;
+8. un veredicto de presupuesto suficiente o insuficiente;
+9. cualquier prohibición normativa aplicable al consumidor evaluado.
 
 El assessment es proyectivo, determinista y auditable. No ejecuta el Movement, no descuenta presupuesto, no cambia la posición y no muta el CombatRulesSnapshot. Si una combinación cae dentro de una ODR bloqueante todavía no ratificada, no debe fabricarse un total autoritativo para esa combinación.
 
@@ -449,13 +471,16 @@ No se permiten fórmulas paralelas de coste por acción, resolver o frontend. La
 1. Una Route legal puede ser demasiado costosa para el presupuesto disponible.
 2. Movement Cost nunca cambia la topología ni la continuidad de una Route.
 3. Un Step diagonal constituye una sola unidad ordinal aunque cambie dos o tres ejes.
-4. Cada Step diagonal afectado por terreno difícil cuesta 15 ft constantes.
+4. Cada Step diagonal afectado por terreno difícil cuesta 15 ft constantes y conserva la paridad del contador.
 5. `Spatial Distance` y `Route Cost` son magnitudes distintas y no intercambiables.
 6. El cliente no puede confirmar autoritativamente gasto ni ejecución.
 7. Ninguna acción mantiene una fórmula paralela de Route Cost.
 8. La evaluación es determinista, trazable y auditable.
 9. El Footprint efectivo completo participa en la determinación del coste aplicable.
 10. La insuficiencia de presupuesto y una prohibición contextual no se codifican como ilegalidad topológica.
+11. El contador de diagonales normales pertenece al turno, no a la Route. Varias Routes en el mismo turno comparten la misma paridad.
+12. Solo diagonales normales ejecutadas incrementan el contador. Los pasos ortogonales no lo modifican.
+13. El contador se reinicia al comenzar el nuevo turno del combatiente.
 
 ### 3.16 Límites del capítulo
 
@@ -521,10 +546,13 @@ No se diseña aquí la economía completa de acciones (si requiere una Standard 
 
 ### 4.5 Double Move
 
-Un **Double Move** (movimiento doble) representa dos consumos consecutivos de movimiento dentro del mismo turno.
-- reutiliza exactamente el mismo sistema de Route Validation y Movement Cost;
-- consume dos porciones de presupuesto o una asignación ampliada, dependiendo de la resolución de acciones;
-- no crea un segundo algoritmo ni una lógica de validación separada.
+Un **Double Move** (movimiento doble) es una opción explícita mediante la cual el combatiente renuncia al uso ofensivo normal de su acción estándar para dedicar el turno al desplazamiento adicional. La economía de acciones exacta será formalizada posteriormente.
+- puede contener más de una porción o segmento de movimiento;
+- todas sus porciones utilizan el mismo contexto diagonal del turno, el contador no se reinicia entre dichas porciones;
+- no existe un cálculo de coste exclusivo para Double Move;
+- continúa consumiendo de manera inalterada Route Validation, Movement Cost y Movement Budget.
+
+El documento no decide todavía la representación concreta en TurnState ni el comportamiento exacto de la interfaz.
 
 ### 4.6 Run
 
@@ -573,14 +601,23 @@ El **Five-Foot Step** (paso de 5 pies) posee una naturaleza excepcional dentro d
 - no se origina por elección activa de una Movement Action ordinaria;
 - sus validaciones y colisiones quedan fuera del alcance de este capítulo.
 
-### 4.12 Autoridad y previews
+### 4.12 Movimiento segmentado e Interrupciones
+
+Capacidades que permitan dividir el movimiento durante el turno (por ejemplo, moverse antes y después de un ataque con Ataque Elástico) deben reutilizar el mismo contexto diagonal del turno. Intercalar un ataque no reinicia el contador. Crear varias Routes no reinicia el contador. Únicamente los Steps realmente ejecutados y confirmados aumentan el contador.
+
+**Interrupciones futuras:** Si una Route proyectada se ejecuta solo parcialmente, únicamente los Steps diagonales normales efectivamente confirmados modifican el contador. No se diseñan todavía las interrupciones por AoO, hazards, rollback o commit transaccional.
+
+### 4.13 Autoridad y previews
 
 Se mantiene estrictamente el contrato aprobado en el Capítulo 2:
 - el servidor actúa como autoridad normativa exclusiva;
-- los clientes o UIs pueden emplear helpers compartidos para calcular predicciones locales o trazar la ruta de una Charge/Run;
-- un preview cliente jamás confirma autoritativamente una acción. La solicitud se envía al servidor, que la valida inmutablemente contra el RULES_ENGINE.
+- el cliente puede mostrar en tiempo real un preview predictivo: coste de cada Step, coste acumulado de la Route, presupuesto proyectado y paridad diagonal proyectada;
+- el preview opera sobre una copia predictiva, comenzando desde el contador autoritativo actual del turno;
+- planear, editar o cancelar una Route no consume presupuesto ni incrementa el contador autoritativo;
+- al confirmar la intención, el servidor reconstruye la Route, recalcula partiendo del contador vigente, y solo actualiza el contador después de la resolución autoritativa;
+- un preview cliente jamás confirma autoritativamente una acción. La solicitud se envía al servidor, que la valida inmutablemente contra el `RULES_ENGINE`.
 
-### 4.13 Invariantes normativos
+### 4.14 Invariantes normativos
 
 1. Ninguna acción redefine la geometría espacial.
 2. Ninguna acción redefine el cálculo de costes ni la regla diagonal.
@@ -591,9 +628,15 @@ Se mantiene estrictamente el contrato aprobado en el Capítulo 2:
 7. Forced Movement queda fuera de este contrato.
 8. La ejecución y mutación de estado pertenecen a capítulos posteriores.
 9. El cliente nunca confirma autoritativamente una acción; el servidor es soberano.
+10. Double Move no reinicia el patrón diagonal.
+11. Intercalar ataques o acciones permitidas (movimiento segmentado) no reinicia el patrón diagonal.
+12. Los previews proyectan el contador, pero no mutan el estado.
+13. Solo los Steps confirmados autoritativamente afectan el contador.
 
-### 4.14 Límites y ODR
+### 4.15 Límites y ODR
 
-Quedan expresamente fuera de este capítulo el diseño de: la economía completa de acciones (TurnState), el pipeline de AoO, el commit transaccional, el manejo de interrupciones, la persistencia, la arquitectura de red y el renderer. No se diseñan acciones de maniobra espacial pura (bull rush, grapple, fall, flight) más allá de reconocer la existencia de Forzado/Vuelo como contextos futuros.
+Quedan expresamente fuera de este capítulo el diseño de: la economía completa de acciones (TurnState), el pipeline de AoO, el commit transaccional, el manejo de interrupciones, la persistencia, la arquitectura de red y el renderer. No se diseñan acciones de maniobra espacial pura (bull rush, grapple, fall, flight) más allá de reconocer la existencia de Forzado/Vuelo como contextos futuros. No se implementa código, UI, TurnState ni Ataque Elástico.
 
-Este capítulo no abre ninguna ODR nueva, puesto que el Research normativo (D-1B) y los capítulos aprobados no presentan contradicciones sin resolver en lo concerniente al consumo del movimiento.
+**Owner Decision (Decisión Normativa del Propietario):** El patrón de Movimiento Diagonal pertenece al turno del combatiente, no a una Route ni a una acción individual. Se formaliza que Double Move y el movimiento segmentado (como Ataque Elástico) comparten la misma paridad diagonal durante el turno, eliminando la ambigüedad detectada previamente sin requerir ODR adicional.
+
+La ODR preexistente D-1B-C3-01 sobre composición simultánea de fuentes de coste permanece abierta (el coste fijo de una diagonal difícil no participa del patrón diagonal normal, que fue la regla aclarada en el Capítulo 3).

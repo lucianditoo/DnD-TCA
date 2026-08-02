@@ -1,26 +1,23 @@
-# Walkthrough — Sprint D-1B Capítulo 4
+# Walkthrough — Sprint D-1B Capítulo 4R1
 
 ## Objetivo
-Redactar el Capítulo 4 de `normative-movement-design.md`, estableciendo el contrato normativo de las **Movement Actions** y formalizando su rol como consumidoras estrictas de Route Validation, Movement Cost y Movement Budget, sin redefinir geometría, reglas ni lógica de coste.
+Actualizar el NDD `docs/designs/normative-movement-design.md` para eliminar la ambigüedad detectada por el Gate Review sobre la continuidad del `Movimiento Diagonal` y el `Double Move`. Formalizar que el patrón diagonal pertenece al contexto del turno, definiendo su interacción con `Ataque Elástico`, interrupciones, terreno difícil y predicciones de cliente.
 
-## Secciones añadidas
-- **4.1 Propósito y alcance**
-- **4.2 Concepto de Movement Action:** Define normativamente cómo consumen presupuesto y seleccionan rutas sin redefinir topología.
-- **4.3 Action Consumers:** Impone la reutilización obligatoria de los sistemas de Route Validation y Coste, prohibiendo validaciones ad-hoc por acción.
-- **4.4 a 4.8:** Definiciones conceptuales abstractas de `Move Action`, `Double Move`, `Run`, `Withdraw` y `Charge` basadas exclusivamente en su consumo de la ruta y presupuesto.
-- **4.9 y 4.10:** Definiciones y separación conceptual entre `Five-Foot Step` (excepción al presupuesto, previene AdO, excluido en terreno difícil) y `Minimum Movement` (movimiento ordinario en situación de bajo presupuesto).
-- **4.11 Forced Movement:** Catalogado explícitamente como perteneciente a otro contrato futuro y fuera de los presupuestos ordinarios.
-- **4.12 Autoridad y previews:** Mantiene inalterado el contrato de servidor autoritativo vs predicciones locales de UI.
-- **4.13 Invariantes normativos:** Documentación de 9 invariantes clave para guiar capítulos posteriores (ej. la ejecución y mutación de estado quedan explícitamente diferidas, ninguna acción redefine la geometría).
-- **4.14 Límites y ODR:** Cierra el capítulo delineando explícitamente qué queda fuera (TurnState, AoO pipeline, transacciones, renderer).
-
-## Decisiones normativas y ODR nuevas
-- Se consolidó el modelo "Action as a Consumer", donde ninguna acción de movimiento tiene derecho a diseñar su propia topología.
-- **Ninguna ODR nueva fue abierta**, ya que la estructura preaprobada del documento y del SRD no presentan ambigüedades respecto al consumo pasivo de validación de rutas por parte de las acciones.
+## Secciones modificadas (NDD)
+- **3.4 Contexto diagonal por turno:** El contador diagonal pertenece al turno, no a la Route. Se reinicia al iniciar el turno.
+- **3.6 Terreno difícil:** Se aclara que un Step diagonal en terreno difícil tiene coste fijo de 15 ft y conserva la paridad del contador diagonal.
+- **3.13 Movement Cost Assessment:** Se precisa que el assessment recibe el estado diagonal inicial y proyecta el resultante sin mutarlo.
+- **3.15 Invariantes normativos:** Se agregaron invariantes prohibiendo reiniciar el contador con acciones o Steps ortogonales.
+- **4.5 Double Move:** Se define como una única dedicación del turno al movimiento, que no reinicia el contexto diagonal.
+- **4.12 Movimiento segmentado e Interrupciones (Nueva):** Establece el soporte para `Ataque Elástico` (movimiento fragmentado) reutilizando el mismo contador.
+- **4.13 Autoridad y previews:** Se detalla que el cliente proyecta y simula el coste a partir del contador autoritativo vigente.
+- **4.14 Invariantes normativos:** Invariantes añadidos para segmentación y predicción.
+- **4.15 Límites y ODR:** Se documenta la `Owner Decision` que resolvió la pertenencia del contador al turno, evitando la creación de una nueva ODR. La ODR `D-1B-C3-01` se actualizó ligeramente para reflejar que la diagonal difícil reemplaza el patrón normal.
 
 ## Archivos modificados
 - `docs/designs/normative-movement-design.md`
 - `PROJECT_STATUS.md`
 - `walkthrough.md`
+- `TODO.md` (Para registrar TurnState y Ataque Elástico).
 
 READY FOR ARCHITECTURE REVIEW
