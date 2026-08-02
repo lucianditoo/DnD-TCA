@@ -1063,3 +1063,97 @@ También quedan fuera de alcance:
 - contratos TypeScript, pseudocódigo e implementación.
 
 No se abre ninguna ODR nueva. La ODR D-1B-C3-01 conserva exactamente su alcance previo y no se amplía por la interacción con estos consumidores.
+
+
+## Capítulo 7 — Normative Integration & Implementation Contracts
+
+### 7.1 Objetivo
+
+El propósito de este capítulo es consolidar el contrato final de integración del sistema de movimiento normativo. Este documento:
+- integra todos los componentes definidos en los Capítulos 1 al 6;
+- establece los límites arquitectónicos previos a la fase de implementación de código;
+- no redefine ningún contrato, topología o regla ya fijada;
+- no amplía el alcance más allá de lo establecido en este NDD.
+
+### 7.2 Consumo de contratos
+
+El sistema integrado opera bajo un flujo estricto donde los componentes son consumidores ordenados de contratos preaprobados:
+- **Movement Actions (Move, Double Move, Run, Withdraw, Charge, Five-Foot Step, etc.):** consumen Route Validation, Movement Cost y Movement Budget sin proveer fórmulas o topologías propias.
+- **Route Validation:** consume las primitivas de D-1R1 y D-1A para determinar topología y continuidad.
+- **Movement Cost:** consume la Route legal y proyecta el contexto diagonal del turno.
+- **Budget Verification:** consume el coste proyectado y lo compara contra el presupuesto.
+- **Resolution:** consume la validación integral para emitir un listado ordenado de Steps confirmados.
+- **Commit:** consume la resolución final para mutar el estado.
+- **Publication:** consume el resultado del Commit para exponerlo a los sistemas dependientes.
+
+### 7.3 Responsabilidades
+
+La arquitectura asigna responsabilidades exclusivas, asegurando una única autoridad por cada dominio:
+- **Validar:** Responsabilidad exclusiva de `Route Validation` para determinar legalidad topológica y reglas de transición.
+- **Calcular coste:** Responsabilidad exclusiva de `Movement Cost`, manteniendo el desglose normativo por Step.
+- **Verificar presupuesto:** Responsabilidad exclusiva de `Budget Verification`, evaluando la suficiencia sin mutar estado ni anular la legalidad topológica.
+- **Resolver:** Responsabilidad exclusiva de `Movement Resolution`, confirmando la totalidad o un subconjunto prefijo de los Steps.
+- **Confirmar (Commit):** Responsabilidad exclusiva del ciclo de resolución servidor, mutando la posición, presupuesto y el contador diagonal del turno.
+- **Publicar:** Exposición autoritativa pos-Commit a los sistemas dependientes o clientes.
+
+### 7.4 Dependencias
+
+El diseño de movimiento normativo mantiene dependencias explícitas:
+
+**Consume como dependencias normativas:**
+- **D-1R1:** Geometría Normativa Espacial (identidad espacial, primitivas 2.5D, distancia).
+- **D-1A:** Normative Area Shape Projection (volúmenes, ocupación).
+- **Research:** `docs/audits/movement-rules-audit.md` (evidencia y reglas RAW de Movement).
+
+**Será consumido por:**
+- **Rules Engine:** quien orquestará su ciclo lógico.
+- **Commands:** capa de táctica y despachadores de acciones.
+- **Preview:** predicción local del cliente antes de enviar la intención.
+- **UI:** presentación de rutas, costes proyectados y animaciones de movimiento.
+- **Futuras acciones de movimiento y TurnState:** economía completa de acciones, Movement Actions y AoO pipeline.
+
+No se modificarán estas dependencias durante la implementación del movimiento.
+
+### 7.5 Autoridad
+
+Se reafirma la frontera de autoridad:
+- **Servidor:** Mantiene la autoridad normativa exclusiva. Es la única entidad capaz de ejecutar la validación, procesar el commit y determinar el estado final inmutable.
+- **Cliente:** Conserva capacidad predictiva para el preview en tiempo real mediante helpers matemáticos compartidos, pero carece de toda autoridad normativa. Ningún evento, botón o cálculo del cliente confirma un movimiento o gasto localmente.
+
+### 7.6 Invariantes globales
+
+La integración de los capítulos anteriores resulta en los siguientes invariantes supremos:
+1. Existe una sola autoridad normativa: el servidor.
+2. Existe una sola topología espacial para todas las acciones.
+3. Existe una sola validación de Route.
+4. Existe un solo cálculo de coste que todos los consumidores acatan.
+5. Existe un solo presupuesto normativo por acción.
+6. El contador de Movimiento Diagonal pertenece al turno y persiste entre acciones (Move, Double Move, movimiento segmentado).
+7. Los previews son estrictamente predictivos y no mutan el estado.
+8. Los commits son autoritativos y actúan únicamente sobre Steps confirmados.
+9. Las diagonales difíciles poseen coste fijo y no alteran la paridad del contador diagonal.
+10. Las Movement Actions operan únicamente como consumidoras; ninguna posee matemática propia.
+
+### 7.7 Límites
+
+Quedan explícitamente fuera del alcance de este NDD, y por ende de su inmediata implementación:
+- diseño de código, interfaces o arquitectura de clases;
+- implementación o pseudocódigo TypeScript;
+- TurnState y economía completa de acciones;
+- networking, persistencia o wire protocols;
+- pipeline de AoO y mecanismos de interrupción;
+- sistema de colisiones por Hazards;
+- motor de renderizado 2.5D o UI del cliente;
+- algoritmos de pathfinding automáticos;
+- diseño e implementación del editor de escenarios;
+- tests (ya que pertenecen a la etapa de código).
+
+### 7.8 Checklist de implementación
+
+Durante el futuro sprint de código, la implementación deberá acatar el siguiente checklist documental:
+- [ ] **Respetar contratos:** cada fase (Validation, Cost, Budget, Resolution) debe implementarse en una frontera inyectable, testeable y separada.
+- [ ] **No duplicar validadores:** Run, Charge y otros consumidores deben utilizar el validador principal, añadiendo solo restricciones.
+- [ ] **No recalcular costes fuera del módulo:** ninguna UI o helper externo implementará una fórmula de coste ajena al módulo central.
+- [ ] **No crear pipelines paralelas:** todas las Intents fluyen a través del mismo flujo de ciclo normativo común.
+- [ ] **Reutilizar helpers compartidos:** el preview del cliente consumirá la misma matemática subyacente determinista que el servidor.
+- [ ] **Preservar autoridad del servidor:** el código del cliente jamás deberá despachar mutaciones de movimiento directas, solo intenciones de consumo.

@@ -8,9 +8,9 @@
 
 - Rama de integración: `master`.
 - Última vertical funcional integrada: Sprint 055B, Ataques de Oportunidad bajo Cover y Ocultación Total.
-- Última decisión arquitectónica: Sprint D-1B Capítulo 6R1 (Interaction Model Completion).
-- Diseño en revisión: Sprint D-1B, Capítulo 6R1.
-- Último saneamiento documental: Sprint D-1B Capítulo 6R1.
+- Última decisión arquitectónica: Sprint D-1B Capítulo 7 (Integration & Implementation Contracts).
+- Diseño en revisión: NDD Completo Sprint D-1B, Capítulos 1–7.
+- Último saneamiento documental: Sprint D-1B Capítulo 7.
 - Baseline funcional publicada: 559/559 pruebas unitarias, 100/100 aserciones
   WebSocket y 7/7 escenarios Playwright; typecheck y build verdes.
 - GitHub Actions sobre Windows es el gate canónico de cierre para la revisión
