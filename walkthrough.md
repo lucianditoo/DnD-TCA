@@ -1,28 +1,21 @@
-# Walkthrough — Sprint D-1B Capítulo 6
+# Walkthrough — Sprint D-1B Capítulo 6R1
 
 ## Objetivo
+Actualizar el Capítulo 6 del NDD `docs/designs/normative-movement-design.md` para cubrir las dos dependencias estructurales exigidas por el Architecture Gate: agregar a `Move` y `Double Move` como consumidores primarios, y explicitar normativamente cómo todos los consumidores interactúan con el Turn-Scoped Diagonal Context. 
 
-Definir cómo Run, Withdraw, Charge, Five-Foot Step, Minimum Movement y Forced Movement consumen el sistema normativo común sin redefinir ninguna de esas operaciones ni crear rutas paralelas de movimiento.
+## Cambios realizados
+- **6.1 Objetivo y alcance:** Se añadió `Move` y `Double Move` explícitamente a la lista de consumidores.
+- **6.4 Move como consumidor (Nueva):** Se definió a Move como el consumidor base, confirmando que consume todos los contratos preaprobados sin redefinir geometría, contador ni resoluciones alternativas.
+- **6.5 Double Move como consumidor (Nueva):** Se aclaró que reitera el contrato exacto de Move, sin reiniciar el contador y alterando únicamente la economía de acciones, sin crear topologías o matemáticas separadas.
+- **6.13 Interacción con el contexto diagonal por turno (Nueva):** Detalla cómo Move, Double Move, el movimiento segmentado y demás consumidores emplean el contexto diagonal (que pertenece al turno y no se reinicia por las acciones).
+- **6.15 Invariantes normativos:** Se sumaron explícitamente los 7 invariantes (12 al 18) correspondientes a la interacción con Move, Double Move y el contexto diagonal, protegiendo las decisiones de R1 previas (ej. "Las diagonales difíciles no modifican la paridad").
 
-## Capítulo redactado
+## Archivos modificados
+- `docs/designs/normative-movement-design.md`
+- `PROJECT_STATUS.md`
+- `walkthrough.md`
 
-- Se fijó el principio de consumidor: cada operación conserva elegibilidad, restricciones, presupuesto autorizado y consecuencias propias.
-- Se definió una única frontera común: la operación produce Intent; Movement resuelve mediante los contratos de los Capítulos 1–5; la operación puede consumir después el resultado confirmado.
-- Las seis operaciones quedaron documentadas exclusivamente como consumidoras de Route, Route Validation, Movement Cost, Movement Budget y el ciclo Resolution–Publication cuando corresponda.
-- Se separaron las consecuencias externas —ataque, Opportunity, efectos defensivos, daño y checks— del núcleo de Movement.
-- Se reafirmaron servidor autoritativo, Preview predictivo y prohibición de fórmulas particulares en UI o consumidores.
-
-## ODR y alcance
-
-No se abrió ninguna ODR nueva. `D-1B-C3-01` conserva exactamente su alcance sobre composición simultánea de fuentes de coste.
-
-No se modificaron las reglas de Run, Withdraw, Charge, Five-Foot Step, Minimum Movement o Forced Movement. Tampoco se diseñaron TurnState, ataques, AoO, hazards, interrupciones, rollback, networking, TypeScript ni implementación.
-
-## Validación documental
-
-- Capítulos 1–5 preservados sin cambios semánticos.
-- Sin código ni tests modificados.
-- Responsabilidad canónica conservada dentro del NDD existente.
-- Alcance limitado a `docs/designs/normative-movement-design.md`, `PROJECT_STATUS.md`, `TODO.md` y este walkthrough rotativo.
+## ODR / Decisiones
+No se abrieron ODR nuevas y se respetó la Owner Decision previa que centraliza el contexto diagonal en el Turno.
 
 READY FOR ARCHITECTURE REVIEW

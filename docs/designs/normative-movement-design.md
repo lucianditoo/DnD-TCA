@@ -839,7 +839,7 @@ Este capítulo responde exclusivamente a la pregunta:
 
 > ¿Cómo interactúan las operaciones que producen desplazamiento con los contratos normativos comunes de Movement?
 
-Run, Withdraw, Charge, Five-Foot Step, Minimum Movement y Forced Movement aparecen únicamente como **consumidores**. Sus reglas, requisitos, excepciones y consecuencias continúan perteneciendo a sus respectivos contratos normativos; este capítulo no los redefine, completa ni corrige.
+Move, Double Move, Run, Withdraw, Charge, Five-Foot Step, Minimum Movement y Forced Movement aparecen únicamente como **consumidores**. Sus reglas, requisitos, excepciones y consecuencias continúan perteneciendo a sus respectivos contratos normativos; este capítulo no los redefine, completa ni corrige.
 
 El Interaction Model establece fronteras de responsabilidad. No agrega reglas de juego, no crea variantes de Movement y no introduce un mecanismo alternativo de Validation, coste, Resolution, Commit o Publication.
 
@@ -878,7 +878,28 @@ La frontera evita dos duplicaciones:
 
 Un resultado parcial continúa siendo un prefijo ordenado de Steps confirmados conforme al Capítulo 5. El consumidor recibe ese resultado; no puede declarar confirmados Steps adicionales.
 
-### 6.4 Run como consumidor
+### 6.4 Move como consumidor
+
+Move constituye el consumidor normativo base del sistema de movimiento. Como consumidor, produce una Intent y una Route candidata que consumen exactamente los contratos ya definidos:
+- Route Validation;
+- Movement Cost;
+- Movement Budget;
+- ciclo de resolución del Capítulo 5.
+
+Move no redefine geometría, topología, Movement Cost, Route, ni el contador diagonal. No crea una pipeline alternativa y no diseña implementación ni TurnState.
+
+### 6.5 Double Move como consumidor
+
+Double Move únicamente modifica la economía de acciones (renunciando a la acción estándar), pero como consumidor de movimiento:
+- consume exactamente el mismo contrato que Move;
+- reutiliza Route Validation, Movement Cost, Movement Budget y Movement Resolution;
+- comparte el mismo contexto diagonal del turno;
+- no reinicia el contador diagonal;
+- no redefine ninguna regla del contrato.
+
+No modifica la geometría, topología, validación, cálculo de coste, presupuesto o commit. No diseña aquí la economía completa de acciones.
+
+### 6.6 Run como consumidor
 
 Run conserva la propiedad de su elegibilidad, autorización, restricciones y política de presupuesto.
 
@@ -893,7 +914,7 @@ Al interactuar con Movement:
 
 Este capítulo no define velocidad, trayectoria, visibilidad, terreno, duración ni consecuencias defensivas de Run.
 
-### 6.5 Withdraw como consumidor
+### 6.7 Withdraw como consumidor
 
 Withdraw conserva la propiedad de su elegibilidad, autorización, restricciones y cualquier interacción especial que su contrato establezca con otros subsistemas.
 
@@ -907,7 +928,7 @@ Al interactuar con Movement:
 
 Este capítulo no define exenciones, alcance, economía de acciones ni comportamiento de ataques de oportunidad para Withdraw.
 
-### 6.6 Charge como consumidor
+### 6.8 Charge como consumidor
 
 Charge conserva la propiedad de su elegibilidad, sus restricciones y sus consecuencias ofensivas.
 
@@ -920,7 +941,7 @@ Su interacción con Movement queda limitada a:
 
 Este capítulo no define trayectorias, objetivos, visibilidad, terreno, ataques, bonificadores ni penalizadores de Charge.
 
-### 6.7 Five-Foot Step como consumidor
+### 6.9 Five-Foot Step como consumidor
 
 Five-Foot Step conserva su naturaleza y autorización excepcionales según su contrato propietario.
 
@@ -934,7 +955,7 @@ Como consumidor:
 
 Este capítulo no define su coste, elegibilidad, relación con otros movimientos ni interacción con Opportunity.
 
-### 6.8 Minimum Movement como consumidor
+### 6.10 Minimum Movement como consumidor
 
 Minimum Movement conserva la propiedad de cualquier excepción normativa que permita continuar frente a una insuficiencia ordinaria de presupuesto.
 
@@ -948,7 +969,7 @@ Como consumidor:
 
 Una excepción presupuestaria no convierte una Route ilegal en legal y no crea un Movement Cost alternativo. Este capítulo no define cuándo existe la excepción, qué recursos exige ni qué consecuencias produce.
 
-### 6.9 Forced Movement como consumidor
+### 6.11 Forced Movement como consumidor
 
 Forced Movement es un consumidor no voluntario del desplazamiento común. La fuente que origina la fuerza conserva la autoridad sobre la causa, la dirección permitida, la magnitud autorizada y las consecuencias propias.
 
@@ -963,7 +984,7 @@ Al interactuar con Movement:
 
 Este capítulo no define empujes, arrastres, caídas, colisiones, resistencia, daño, presupuesto forzado ni excepciones de transición.
 
-### 6.10 Resultado compartido y consecuencias externas
+### 6.12 Resultado compartido y consecuencias externas
 
 Todos los consumidores reciben el mismo significado de resultado de Movement:
 
@@ -977,7 +998,20 @@ Ese resultado no contiene una resolución duplicada de la operación consumidora
 
 Una operación puede usar el resultado confirmado como entrada para su siguiente responsabilidad, pero no puede reinterpretar retroactivamente qué Steps fueron legales, cuánto costaron o cuáles fueron aplicados.
 
-### 6.11 Autoridad y previews
+### 6.13 Interacción con el contexto diagonal por turno
+
+Esta sección documenta explícitamente cómo interactúan los consumidores con el contexto diagonal del turno aprobado en el Capítulo 4R1, sin redefinir la autoridad de dicho contador:
+
+- **Move:** utiliza el contexto diagonal vigente.
+- **Double Move:** reutiliza exactamente el mismo contexto.
+- **Movimiento segmentado (ej. Ataque Elástico):** reutiliza exactamente el mismo contexto.
+- **Varias Routes:** comparten el mismo contexto del turno.
+- **Intercalar ataques:** no reinicia el contador diagonal.
+- **Preview:** utiliza una copia predictiva del contador para no mutar el estado.
+- **Commit:** únicamente actualiza el contador mediante los Steps ejecutados.
+- **Diagonal difícil:** utiliza el coste fijo de 15 ft; no altera la paridad ni incrementa el contador de diagonales normales.
+
+### 6.14 Autoridad y previews
 
 El servidor conserva la autoridad sobre la operación consumidora y sobre todo el ciclo autoritativo de Movement.
 
@@ -991,7 +1025,7 @@ El cliente puede previsualizar la interacción combinando la información permit
 
 La UI no implementa fórmulas particulares para Run, Withdraw, Charge, Five-Foot Step, Minimum Movement o Forced Movement. Renderiza las proyecciones compartidas y las decisiones autoritativas publicadas.
 
-### 6.12 Invariantes normativos
+### 6.15 Invariantes normativos
 
 1. Cada operación permanece propietaria de su regla; Movement permanece propietario del desplazamiento común.
 2. Ningún consumidor redefine Movement, Route o Step.
@@ -1004,10 +1038,17 @@ La UI no implementa fórmulas particulares para Run, Withdraw, Charge, Five-Foot
 9. Solo Steps confirmados afectan posición, presupuesto aplicable y contexto diagonal.
 10. Un resultado parcial conserva el mismo significado para todos los consumidores.
 11. El servidor es autoritativo y el cliente es únicamente predictivo.
+12. Move consume el contrato común.
+13. Double Move consume el contrato común.
+14. Ninguna acción reinicia el contexto diagonal; el contexto diagonal pertenece al turno.
+15. Varias Routes reutilizan el mismo contexto diagonal.
+16. Los previews no mutan el estado.
+17. El Commit únicamente actualiza Steps confirmados.
+18. Las diagonales difíciles no modifican la paridad del contador normal.
 
-### 6.13 Límites y ODR
+### 6.16 Límites y ODR
 
-Este capítulo no define ni modifica las reglas de Run, Withdraw, Charge, Five-Foot Step, Minimum Movement o Forced Movement.
+Este capítulo no define ni modifica las reglas de Move, Double Move, Run, Withdraw, Charge, Five-Foot Step, Minimum Movement o Forced Movement.
 
 También quedan fuera de alcance:
 
