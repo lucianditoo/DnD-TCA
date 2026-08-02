@@ -101,6 +101,15 @@ está en `rules.ts`, ni mutar HP/stats/logs.
 
 ---
 
+### `packages/shared/src/movementGeometry.ts` y `packages/shared/src/lifeStatus.ts`
+**Responsabilidad**: Módulos inferiores (Sprint D-1B-I3R1) de geometría/ocupación (`isImpassable`, `getCombatantOccupiedCells`, `footprintCellKey`, `projectMovementFootprint`, `createFootprintOccupancyIndex`, etc.) y de estado vital (`lifeStatus`, `getLifeStateProjection`). Existen para que `rules.ts` y `routeValidation.ts` puedan consumir estos helpers sin depender uno del otro.
+
+**Podés modificar**: Agregar helpers de geometría/ocupación o de estado vital aquí si un futuro helper de `rules.ts` los necesitara sin crear un nuevo ciclo.
+
+**No hagas**: Importar desde `rules.ts` ni desde `routeValidation.ts` en ninguno de los dos — son los módulos más bajos de esta cadena. No reexportar por `index.ts` un helper sin consumidor externo real.
+
+---
+
 ### `packages/shared/src/combatSnapshot.ts`
 **Responsabilidad**: `createCombatRulesSnapshot` — crea una vista inmutable (congelada con `Object.freeze`) de la sala para calcular reglas sin riesgo de mutación accidental.
 

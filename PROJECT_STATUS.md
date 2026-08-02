@@ -9,9 +9,14 @@
 - Rama de integración: `master`.
 - Última vertical funcional integrada: Sprint 055B, Ataques de Oportunidad bajo Cover y Ocultación Total.
 - Última decisión arquitectónica: Sprint D-1B Capítulo 7 (Integration & Implementation Contracts).
-- Implementación en revisión: Sprint D-1B-I2, Movement Cost Assessment puro sobre Routes ya legales; proyecta coste y contexto diagonal sin participar todavía en validación, presupuesto ni resolución productiva.
-- Último saneamiento documental: Sprint D-1B Capítulo 7.
-- Baseline funcional candidata: 570/570 pruebas unitarias, 100/100 aserciones
+- Implementación en revisión: Sprint D-1B-I3R1, remediación de la dependencia
+  circular `rules.ts ↔ routeValidation.ts` detectada en la revisión de
+  Sprint D-1B-I3 — extracción a `movementGeometry.ts`/`lifeStatus.ts`,
+  ajuste de superficie pública y cobertura directa de `validateRouteLegality`
+  (Large footprints, Squeezing, repetición de casilla, bridge legacy). Sin
+  cambio de comportamiento.
+- Último saneamiento documental: Sprint D-1B-I3R1.
+- Baseline funcional candidata: 590/590 pruebas unitarias, 100/100 aserciones
   WebSocket y 7/7 escenarios Playwright; typecheck y build verdes.
 - GitHub Actions sobre Windows es el gate canónico de cierre para la revisión
   publicada.

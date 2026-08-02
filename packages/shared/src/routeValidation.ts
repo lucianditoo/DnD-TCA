@@ -4,16 +4,16 @@ import type {
   Position,
 } from "./types.js";
 import {
-  SpatialMode,
-  SqueezingAxis,
+  type SpatialMode,
+  type SqueezingAxis,
   projectMovementFootprint,
   createFootprintOccupancyIndex,
   getCombatantsIntersectingCells,
   isCornerAnchorBlockedByTerrain,
-  lifeStatus,
   getNaturalCombatantOccupiedCellsAt,
   isPositionInsideBoard,
-} from "./rules.js";
+} from "./movementGeometry.js";
+import { lifeStatus } from "./lifeStatus.js";
 
 export interface ValidatedRouteStep {
   readonly stepIndex: number;
@@ -38,6 +38,12 @@ export type RouteLegalityResult =
  * Validates a route incrementally step by step, following the normative rules (NDD Chapter 2).
  * It evaluates adjacency, continuity, obstacles, footprint, and occupancy.
  * It DOES NOT calculate movement costs, consume budgets, or apply action-specific rules.
+ *
+ * `isAcrobatic` represents a transit capability of the acting combatant (can it legally pass
+ * through an occupied enemy square this route?) that Route Validation consumes as an opaque
+ * boolean input — it is not itself the logic of any specific action (e.g. Tumble). The caller
+ * (today, `validateMovePath`) is responsible for deciding whether that capability applies to
+ * the current attempt; this module never branches on *why* the capability is true.
  */
 export function validateRouteLegality(
   context: CombatRulesSnapshot<any>,

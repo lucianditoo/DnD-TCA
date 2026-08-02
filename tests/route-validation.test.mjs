@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { validateRouteLegality } from "../packages/shared/dist/index.js";
+import { validateRouteLegality, validateMovePath } from "../packages/shared/dist/index.js";
 import { structuredSnapshotFields } from "./test-utils.mjs";
 
 function setupBoard(width, height) {
@@ -22,9 +22,24 @@ function createCombatant(id, x, y, size = "medium", type = "player", lifeStatus 
     size,
     isStable: lifeStatus === "stable",
     ...structuredSnapshotFields(10),
+    sizeCategory: size,
     stats: {},
     abilities: [],
     buffs: []
+  };
+}
+
+/** Contexto extendido con `currentTurn`/`activeAttackThreat`, necesario únicamente para
+ * `validateMovePath` (el orquestador legacy). `validateRouteLegality` nunca los lee. */
+function setupMoveContext(width, height) {
+  return {
+    ...setupBoard(width, height),
+    activeAttackThreat: null,
+    currentTurn: {
+      combatantId: "c1",
+      movementUsedFeet: 0,
+      usedFiveFootStep: false
+    }
   };
 }
 
@@ -194,4 +209,172 @@ test("validateRouteLegality: esquinas prohibidas", () => {
   if (!result.isLegal) {
     assert.match(result.error, /esquina bloqueada/);
   }
+});
+
+// --- Sprint D-1B-I3R1: cobertura directa de validateRouteLegality ---
+
+test("validateRouteLegality: footprint Large (2x2) - ruta legal", () => {
+  const context = setupBoard(6, 6);
+  const large = createCombatant("large1", 1, 1, "large");
+  context.combatants.push(large);
+
+  const result = validateRouteLegality(context, large, [{ x: 2, y: 1, zFeet: 0 }]);
+
+  assert.equal(result.isLegal, true, !result.isLegal ? result.error : undefined);
+  if (result.isLegal) {
+    assert.deepEqual(result.steps[0].occupiedCells, [
+      { x: 2, y: 1, zFeet: 0 },
+      { x: 3, y: 1, zFeet: 0 },
+      { x: 2, y: 2, zFeet: 0 },
+      { x: 3, y: 2, zFeet: 0 }
+    ]);
+    assert.equal(result.steps[0].spatialMode, "natural");
+  }
+});
+
+test("validateRouteLegality: footprint Large (2x2) - una celda de la huella colisiona con obstaculo", () => {
+  const context = setupBoard(6, 6);
+  // Solo una de las cuatro celdas del footprint destino (3,2) es impasable.
+  context.board.impassableCells = ["3,2"];
+  const large = createCombatant("large1", 1, 1, "large");
+  context.combatants.push(large);
+
+  const result = validateRouteLegality(context, large, [{ x: 2, y: 1, zFeet: 0 }]);
+
+  assert.equal(result.isLegal, false);
+  if (!result.isLegal) {
+    assert.match(result.error, /intransitable/);
+  }
+});
+
+test("validateRouteLegality: footprint Large (2x2) - no puede terminar sobre huella ocupada por completo", () => {
+  const context = setupBoard(6, 6);
+  const large = createCombatant("large1", 1, 1, "large");
+  // Un enemigo ocupa solo UNA de las cuatro celdas del footprint destino (2,1)-(3,2).
+  const enemy = createCombatant("enemy1", 3, 2, "medium", "monster");
+  context.combatants.push(large, enemy);
+
+  const result = validateRouteLegality(context, large, [{ x: 2, y: 1, zFeet: 0 }]);
+
+  assert.equal(result.isLegal, false, "La huella completa debe considerarse ocupada aunque el enemigo solo toque una celda.");
+  if (!result.isLegal) {
+    assert.match(result.error, /enemy1/);
+  }
+});
+
+test("validateRouteLegality: Squeezing - proyecta spatialMode 'squeezing' y conserva squeezingAxis", () => {
+  const context = setupBoard(6, 2);
+  context.board.narrowCells = ["1,0", "2,0"];
+  context.board.impassableCells = ["1,1", "2,1"];
+  const large = createCombatant("large1", 0, 0, "large");
+  context.combatants.push(large);
+
+  const result = validateRouteLegality(context, large, [{ x: 1, y: 0, zFeet: 0 }]);
+
+  assert.equal(result.isLegal, true, !result.isLegal ? result.error : undefined);
+  if (result.isLegal) {
+    assert.equal(result.steps[0].spatialMode, "squeezing");
+    assert.equal(result.steps[0].squeezingAxis, "horizontal");
+    assert.deepEqual(result.steps[0].occupiedCells, [
+      { x: 1, y: 0, zFeet: 0 },
+      { x: 2, y: 0, zFeet: 0 }
+    ]);
+  }
+});
+
+test("validateRouteLegality: Squeezing - rechaza cuando ninguna proyeccion (natural ni squeezing) es valida", () => {
+  const context = setupBoard(6, 2);
+  context.board.narrowCells = ["1,0", "2,0"];
+  // Bloquea TAMBIEN la celda estrecha candidata (2,0): ni el 2x2 natural ni el pasillo
+  // estrecho quedan disponibles.
+  context.board.impassableCells = ["1,1", "2,1", "2,0"];
+  const large = createCombatant("large1", 0, 0, "large");
+  context.combatants.push(large);
+
+  const result = validateRouteLegality(context, large, [{ x: 1, y: 0, zFeet: 0 }]);
+
+  assert.equal(result.isLegal, false);
+  if (!result.isLegal) {
+    assert.match(result.error, /intransitable/);
+  }
+});
+
+test("validateRouteLegality: repeticion de casilla - rechaza y reporta el Step fallido correcto", () => {
+  const context = setupBoard(5, 5);
+  const mover = createCombatant("c1", 1, 1);
+  context.combatants.push(mover);
+
+  const result = validateRouteLegality(context, mover, [
+    { x: 2, y: 1, zFeet: 0 },
+    { x: 2, y: 2, zFeet: 0 },
+    { x: 2, y: 1, zFeet: 0 } // revisita la primera casilla
+  ]);
+
+  assert.equal(result.isLegal, false);
+  if (!result.isLegal) {
+    assert.equal(result.failedStepIndex, 2);
+    assert.match(result.error, /no puede pasar dos veces por la misma casilla/);
+  }
+});
+
+// --- Bridge legacy: equivalencia observable validateRouteLegality <-> validateMovePath ---
+
+test("Bridge legacy: ruta legal - ambos coinciden", () => {
+  const context = setupMoveContext(5, 5);
+  const mover = createCombatant("c1", 1, 1);
+  context.combatants.push(mover);
+  const path = [{ x: 2, y: 1, zFeet: 0 }];
+
+  const direct = validateRouteLegality(context, mover, path);
+  const legacy = validateMovePath(context, mover, path, 30);
+
+  assert.equal(direct.isLegal, true);
+  assert.equal(legacy.ok, true, legacy.error);
+  assert.deepEqual(legacy.value.steps[0].position, direct.steps[0].position);
+  assert.deepEqual(legacy.value.steps[0].occupiedCells, direct.steps[0].occupiedCells);
+  assert.equal(legacy.value.steps[0].spatialMode, direct.steps[0].spatialMode);
+});
+
+test("Bridge legacy: ruta bloqueada por obstaculo - ambos coinciden", () => {
+  const context = setupMoveContext(5, 5);
+  context.board.impassableCells = ["2,1"];
+  const mover = createCombatant("c1", 1, 1);
+  context.combatants.push(mover);
+  const path = [{ x: 2, y: 1, zFeet: 0 }];
+
+  const direct = validateRouteLegality(context, mover, path);
+  const legacy = validateMovePath(context, mover, path, 30);
+
+  assert.equal(direct.isLegal, false);
+  assert.equal(legacy.ok, false);
+  assert.match(legacy.error, /intransitable/);
+});
+
+test("Bridge legacy: ocupacion por enemigo consciente - ambos coinciden", () => {
+  const context = setupMoveContext(5, 5);
+  const mover = createCombatant("c1", 1, 1);
+  const enemy = createCombatant("enemy1", 2, 1, "medium", "monster");
+  context.combatants.push(mover, enemy);
+  const path = [{ x: 2, y: 1, zFeet: 0 }];
+
+  const direct = validateRouteLegality(context, mover, path);
+  const legacy = validateMovePath(context, mover, path, 30);
+
+  assert.equal(direct.isLegal, false);
+  assert.equal(legacy.ok, false);
+});
+
+test("Bridge legacy: footprint Large efectivo - ambos coinciden", () => {
+  const context = setupMoveContext(6, 6);
+  context.board.impassableCells = ["3,2"];
+  const large = createCombatant("large1", 1, 1, "large");
+  context.combatants.push(large);
+  const path = [{ x: 2, y: 1, zFeet: 0 }];
+
+  const direct = validateRouteLegality(context, large, path);
+  const legacy = validateMovePath(context, large, path, 30);
+
+  assert.equal(direct.isLegal, false);
+  assert.equal(legacy.ok, false);
+  assert.match(legacy.error, /intransitable/);
 });
