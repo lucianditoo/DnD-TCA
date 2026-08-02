@@ -6,6 +6,7 @@ export * from "./rules.js";
 export * from "./routeValidation.js";
 export * from "./movementCost.js";
 export * from "./movementResolution.js";
+export * from "./movementCommit.js";
 export * from "./equipmentCatalog.js";
 export * from "./equipmentStats.js";
 export * from "./profileStorage.js";

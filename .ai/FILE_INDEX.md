@@ -119,6 +119,15 @@ está en `rules.ts`, ni mutar HP/stats/logs.
 
 ---
 
+### `packages/shared/src/movementCommit.ts`
+**Responsabilidad**: Authoritative Movement Commit puro (Sprint D-1B-I5): `commitMovementResolution` consume exclusivamente un `MovementResolutionResult` de kind `"ready"` (I4) y muta `room`/`combatant` de forma atómica solo si las precondiciones autoritativas (posición inicial, `movementUsedFeet`, contexto diagonal) siguen vigentes. Aislado del flujo productivo legacy — ningún comando ni `commitSpatialTransition` lo invoca todavía.
+
+**Podés modificar**: Ampliar la evidencia devuelta o preparar el terreno para Publication (D-1B-I6+), sin recalcular Route Validation, Movement Cost ni geometría.
+
+**No hagas**: Recalcular legalidad, coste, terreno difícil o `squeezingAxis` — todo eso viene de `MovementResolutionStep`. No decidir unilateralmente la sede persistente de `squeezingAxis` (ODR-D1B-I5-1, abierta). No publicar eventos ni hacer broadcast. No importar desde `apps/server` (packages/shared no depende de apps).
+
+---
+
 ### `packages/shared/src/combatSnapshot.ts`
 **Responsabilidad**: `createCombatRulesSnapshot` — crea una vista inmutable (congelada con `Object.freeze`) de la sala para calcular reglas sin riesgo de mutación accidental.
 
