@@ -476,3 +476,124 @@ Quedan expresamente fuera de este capítulo:
 - implementación, contratos TypeScript, nombres de API y pseudocódigo.
 
 La única ODR nueva es D-1B-C3-01. Las ODR preexistentes —incluida la métrica de `Spatial Distance 3D`— permanecen fuera de alcance y sin cambios.
+
+---
+
+## Capítulo 4 — Normative Movement Actions
+
+### 4.1 Propósito y alcance
+
+Este capítulo responde exclusivamente a la pregunta:
+
+> ¿Cómo consumen las distintas acciones el sistema abstracto de Route Validation y Movement Cost?
+
+El capítulo define normativamente el contrato conceptual que cada acción de movimiento debe cumplir respecto al motor espacial. No diseña la implementación, no modifica Route Validation, no redefine Movement Budget y no crea nuevas primitivas espaciales. Las acciones son tratadas aquí únicamente como consumidoras de los contratos definidos en los Capítulos 1, 2 y 3.
+
+### 4.2 Concepto de Movement Action
+
+Una **Movement Action** (acción de movimiento) es una operación autorizada por la economía de turno que permite a una entidad desplazarse.
+
+Normativamente, toda acción de movimiento:
+1. selecciona una Route candidata;
+2. exige que la Route seleccionada supere Route Validation (Capítulo 2);
+3. consume Movement Budget (Capítulo 3) para costear la Route;
+4. puede poseer restricciones propias (ej. trayectoria recta, límite visual);
+5. nunca redefine la geometría espacial, ni el coste de los pasos, ni la topología.
+
+### 4.3 Action Consumers: Reutilización obligatoria
+
+Todas las acciones formales que involucran desplazamiento voluntario (Move Action, Run, Charge, Withdraw, etc.) comparten un núcleo contractual inquebrantable:
+- **Route Validation:** la legalidad topológica y la continuidad se delegan siempre al contrato del Capítulo 2.
+- **Movement Cost:** el cálculo de coste, incluyendo la Regla de Movimiento Diagonal, se delega al contrato del Capítulo 3.
+- **Movement Budget:** el presupuesto disponible se obtiene y contrasta usando el mismo sistema.
+
+Queda estrictamente prohibido que cualquier acción implemente cálculos propios, fórmulas de coste ad-hoc o reglas paralelas de validación de ruta.
+
+### 4.4 Move Action ordinaria
+
+La **Move Action** (acción de movimiento ordinaria) es la operación estándar de desplazamiento.
+Conceptualmente:
+- consume una Route;
+- requiere que la Route sea topológicamente legal;
+- requiere que el coste total de la Route no exceda el Movement Budget normal aportado por la Speed de la entidad.
+
+No se diseña aquí la economía completa de acciones (si requiere una Standard Action o Move Action real), limitándose a describir su consumo de presupuesto.
+
+### 4.5 Double Move
+
+Un **Double Move** (movimiento doble) representa dos consumos consecutivos de movimiento dentro del mismo turno.
+- reutiliza exactamente el mismo sistema de Route Validation y Movement Cost;
+- consume dos porciones de presupuesto o una asignación ampliada, dependiendo de la resolución de acciones;
+- no crea un segundo algoritmo ni una lógica de validación separada.
+
+### 4.6 Run
+
+**Run** (Correr) es una operación avanzada con un propósito abstracto de avance acelerado.
+- **Route Validation:** la ruta debe ser validada como legal bajo el Capítulo 2.
+- **Movement Budget:** consume un presupuesto modificado (típicamente multiplicado).
+- **Restricciones propias:** la acción exige una trayectoria en línea recta y prohíbe ejecutarse a través de terreno difícil o sin visibilidad (excepciones documentadas en el Research). Estas restricciones actúan como filtros adicionales a la legalidad básica.
+
+### 4.7 Withdraw
+
+**Withdraw** (Retirada) es una operación diseñada para escapar del combate cercano.
+- **Propósito:** alejarse de las posiciones amenazadas minimizando los ataques de oportunidad (AoO).
+- **AoO:** interactúa conceptualmente suprimiendo la provocación del AdO al abandonar la casilla inicial.
+- **Route Validation y Budget:** consume una Route legal y un presupuesto (hasta el doble del Movement Budget), bajo las mismas reglas de validación y coste.
+
+El pipeline de interrupción del combate no se diseña en este capítulo.
+
+### 4.8 Charge
+
+**Charge** (Carga) es una operación agresiva que combina movimiento y ataque.
+- **Propósito:** cerrar distancia rápidamente hacia un oponente.
+- **Trayectoria especial:** requiere una Route legal en línea recta que termine en la casilla válida más cercana al objetivo.
+- **Line of Sight:** depende de la línea de visión inicial ininterrumpida hacia el objetivo al momento de declarar.
+- **Costes:** depende de Movement Budget y Route Validation, pero falla si la ruta encuentra obstáculos o terreno difícil, restricciones aplicadas sobre la misma validación de coste.
+
+El diseño de Attack Resolution (resolución de ataque) queda fuera de alcance.
+
+### 4.9 Five-Foot Step
+
+El **Five-Foot Step** (paso de 5 pies) posee una naturaleza excepcional dentro del movimiento táctico.
+- **Naturaleza:** permite ajustar la posición táctica sin provocar AoO.
+- **Presupuesto:** no consume el presupuesto habitual de Movement Budget, constituyendo su propia autorización.
+- **AdO:** exime a su consumidor de provocar ataques de oportunidad por el desplazamiento.
+- **Restricciones:** exige que no se haya realizado ningún otro movimiento en el turno y está prohibido en terreno difícil. No debe mezclarse funcional ni arquitectónicamente con el movimiento ordinario.
+
+### 4.10 Minimum Movement
+
+**Minimum Movement** (movimiento mínimo) permite avanzar una casilla cuando los costes excesivos (como terreno difícil o penalizadores) excederían el Movement Budget disponible.
+- **Diferencia conceptual:** a diferencia del Five-Foot Step, el Minimum Movement es un desplazamiento ordinario que consume recursos completos de turno, provoca AoO normalmente y no está exento de penalizadores por entorno.
+- **Naturaleza:** opera como una excepción al límite de Movement Budget estricto, no como un Five-Foot Step, y requiere ser validado explícitamente separado de aquel.
+
+### 4.11 Forced Movement
+
+**Forced Movement** (movimiento forzado, como ser empujado o caer) pertenece a otro contrato arquitectónico.
+- no consume Movement Budget normal;
+- no se origina por elección activa de una Movement Action ordinaria;
+- sus validaciones y colisiones quedan fuera del alcance de este capítulo.
+
+### 4.12 Autoridad y previews
+
+Se mantiene estrictamente el contrato aprobado en el Capítulo 2:
+- el servidor actúa como autoridad normativa exclusiva;
+- los clientes o UIs pueden emplear helpers compartidos para calcular predicciones locales o trazar la ruta de una Charge/Run;
+- un preview cliente jamás confirma autoritativamente una acción. La solicitud se envía al servidor, que la valida inmutablemente contra el RULES_ENGINE.
+
+### 4.13 Invariantes normativos
+
+1. Ninguna acción redefine la geometría espacial.
+2. Ninguna acción redefine el cálculo de costes ni la regla diagonal.
+3. Todas las acciones de movimiento consumen el mismo Route Validation.
+4. Todas las acciones ordinarias consumen Movement Budget.
+5. Five-Foot Step no es movimiento ordinario y sigue reglas segregadas.
+6. Minimum Movement no es un Five-Foot Step y no evita ataques de oportunidad.
+7. Forced Movement queda fuera de este contrato.
+8. La ejecución y mutación de estado pertenecen a capítulos posteriores.
+9. El cliente nunca confirma autoritativamente una acción; el servidor es soberano.
+
+### 4.14 Límites y ODR
+
+Quedan expresamente fuera de este capítulo el diseño de: la economía completa de acciones (TurnState), el pipeline de AoO, el commit transaccional, el manejo de interrupciones, la persistencia, la arquitectura de red y el renderer. No se diseñan acciones de maniobra espacial pura (bull rush, grapple, fall, flight) más allá de reconocer la existencia de Forzado/Vuelo como contextos futuros.
+
+Este capítulo no abre ninguna ODR nueva, puesto que el Research normativo (D-1B) y los capítulos aprobados no presentan contradicciones sin resolver en lo concerniente al consumo del movimiento.

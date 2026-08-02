@@ -1,25 +1,26 @@
-# Walkthrough — Sprint D-1B Capítulo 3
+# Walkthrough — Sprint D-1B Capítulo 4
 
 ## Objetivo
+Redactar el Capítulo 4 de `normative-movement-design.md`, estableciendo el contrato normativo de las **Movement Actions** y formalizando su rol como consumidoras estrictas de Route Validation, Movement Cost y Movement Budget, sin redefinir geometría, reglas ni lógica de coste.
 
-Definir normativamente cuánto presupuesto de movimiento consume una Route que ya fue declarada legal, sin diseñar acciones, ejecución ni contratos de implementación.
+## Secciones añadidas
+- **4.1 Propósito y alcance**
+- **4.2 Concepto de Movement Action:** Define normativamente cómo consumen presupuesto y seleccionan rutas sin redefinir topología.
+- **4.3 Action Consumers:** Impone la reutilización obligatoria de los sistemas de Route Validation y Coste, prohibiendo validaciones ad-hoc por acción.
+- **4.4 a 4.8:** Definiciones conceptuales abstractas de `Move Action`, `Double Move`, `Run`, `Withdraw` y `Charge` basadas exclusivamente en su consumo de la ruta y presupuesto.
+- **4.9 y 4.10:** Definiciones y separación conceptual entre `Five-Foot Step` (excepción al presupuesto, previene AdO, excluido en terreno difícil) y `Minimum Movement` (movimiento ordinario en situación de bajo presupuesto).
+- **4.11 Forced Movement:** Catalogado explícitamente como perteneciente a otro contrato futuro y fuera de los presupuestos ordinarios.
+- **4.12 Autoridad y previews:** Mantiene inalterado el contrato de servidor autoritativo vs predicciones locales de UI.
+- **4.13 Invariantes normativos:** Documentación de 9 invariantes clave para guiar capítulos posteriores (ej. la ejecución y mutación de estado quedan explícitamente diferidas, ninguna acción redefine la geometría).
+- **4.14 Límites y ODR:** Cierra el capítulo delineando explícitamente qué queda fuera (TurnState, AoO pipeline, transacciones, renderer).
 
-## Cambios realizados
+## Decisiones normativas y ODR nuevas
+- Se consolidó el modelo "Action as a Consumer", donde ninguna acción de movimiento tiene derecho a diseñar su propia topología.
+- **Ninguna ODR nueva fue abierta**, ya que la estructura preaprobada del documento y del SRD no presentan ambigüedades respecto al consumo pasivo de validación de rutas por parte de las acciones.
 
-- Se incorporó el concepto de **Movement Budget** y se separó de Speed, Route Cost, legalidad topológica y economía de acciones.
-- Se formalizó el Base Step Cost para Steps ortogonales, verticales y diagonales en cualquier plano válido, conservando una única secuencia diagonal 5/10 por Route.
-- Se fijó la corrección RAW de terreno difícil: 10 ft ortogonal y 15 ft constantes por Step diagonal, sin alternancia 15/20.
-- Se clasificaron las contribuciones de coste como adición, multiplicación, reemplazo, coste fijo o prohibición, sin crear una abstracción universal de modificadores.
-- Se integró el Footprint efectivo en la evaluación de coste y se mantuvo Swept Volume fuera de alcance.
-- Se delimitó el coste de Squeezing, los presupuestos por modo de desplazamiento, las fuentes de movimiento obstaculizado y la autoridad servidor/UI.
-- Se definió el contenido conceptual auditable de un Movement Cost Assessment.
-
-## Decisión abierta
-
-- **ODR D-1B-C3-01:** falta ratificar la política de composición cuando coinciden varias fuentes de coste con semánticas distintas. Es bloqueante solo para esas combinaciones; los casos de fuente única permanecen evaluables.
-
-## Alcance preservado
-
-No se modificaron código, tests, Registry ni los Capítulos 1–2. No se diseñaron acciones, pathfinding, AoO, vuelo, caída, renderer ni ejecución transaccional.
+## Archivos modificados
+- `docs/designs/normative-movement-design.md`
+- `PROJECT_STATUS.md`
+- `walkthrough.md`
 
 READY FOR ARCHITECTURE REVIEW

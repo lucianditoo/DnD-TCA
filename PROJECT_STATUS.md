@@ -8,8 +8,8 @@
 
 - Rama de integración: `master`.
 - Última vertical funcional integrada: Sprint 055B, Ataques de Oportunidad bajo Cover y Ocultación Total.
-- Última decisión arquitectónica: Sprint D-1B (Normative Movement Design, Capítulos 1–3).
-- Diseño en revisión: Sprint D-1B, Capítulo 3 (Normative Movement Cost & Modifiers); los Capítulos 1–2 permanecen aprobados y congelados.
+- Última decisión arquitectónica: Sprint D-1B (Normative Movement Design, Cap 1-4).
+- Diseño en revisión: Sprint D-1B, Capítulos 1–4 (acciones de movimiento).
 - Último saneamiento documental: Sprint D-1B-Research R6 / Sprint D-1A-R1.
 - Baseline funcional publicada: 559/559 pruebas unitarias, 100/100 aserciones
   WebSocket y 7/7 escenarios Playwright; typecheck y build verdes.
