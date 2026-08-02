@@ -1,6 +1,6 @@
 # Normative Movement Design (D-1B)
 
-Responsabilidad: Definir los contratos normativos comunes del movimiento, desde su modelo abstracto hasta la legalidad de una Route.
+Responsabilidad: Definir los contratos normativos comunes del movimiento: su modelo abstracto, la legalidad de una Route y el coste que consume una Route legal.
 Autoridad: Canónica
 Lifecycle: Diseño
 Reemplaza: —
@@ -254,3 +254,225 @@ Los clientes pueden reutilizar helpers compartidos para calcular predicciones lo
 Este capítulo no define reglas particulares de coste, modos de desplazamiento, acciones, reacciones, percepción, trazado ni generación de rutas. Tampoco prescribe contratos de software o algoritmos de evaluación.
 
 No se abre ninguna ODR nueva. Las ODR preexistentes de los documentos complementarios permanecen fuera de alcance y sin cambios.
+
+---
+
+## Capítulo 3 — Normative Movement Cost & Modifiers
+
+### 3.1 Propósito y alcance
+
+Este capítulo responde exclusivamente a la pregunta:
+
+> ¿Cuánto presupuesto de movimiento consume una Route que ya fue declarada legal?
+
+La entrada normativa es una Route legal conforme al Capítulo 2. El resultado es una evaluación de coste expresada en pies, desglosada por Step y contrastable con uno o más Movement Budgets aplicables.
+
+Este capítulo no vuelve a validar la topología de la Route, no autoriza una acción, no ejecuta el Movement y no muta el CombatRulesSnapshot. `Spatial Distance` y `Route Cost` permanecen como magnitudes distintas: la primera mide separación espacial; la segunda acumula el coste normativo de transiciones concretas.
+
+Sus bases son los Capítulos 1–2, [D-1R1](normative-spatial-geometry.md), [D-1A](normative-area-shape-projection.md) y el [Research D-1B](../audits/movement-rules-audit.md). D-1R1 y D-1A aportan identidad y geometría espacial sin convertirse en una fórmula alternativa de Route Cost; el Research aporta las reglas RAW de coste auditadas.
+
+### 3.2 Movement Budget
+
+Un **Movement Budget (Presupuesto de Movimiento)** es una cantidad de pies que un consumidor tiene disponible para costear Movement dentro de un contexto normativo determinado.
+
+Normativamente:
+
+1. el presupuesto se expresa en pies;
+2. su fuente puede ser una velocidad efectiva u otra autorización externa al cálculo de Route Cost;
+3. el presupuesto existe antes de comparar el coste de la Route y no se deriva de ese coste;
+4. el cálculo de Route Cost no consume ni modifica materialmente el presupuesto;
+5. la comparación informa si el presupuesto es suficiente, pero no decide por sí misma economía de acciones ni aplica gasto alguno.
+
+**Speed** y **Route Cost** no son sinónimos. Speed aporta capacidad de movimiento; Route Cost expresa cuánto de esa capacidad requeriría una Route concreta. Una Route legal puede resultar demasiado costosa para el presupuesto disponible. Esa insuficiencia impide costearla bajo el presupuesto evaluado, pero no la vuelve topológicamente ilegal.
+
+### 3.3 Base Step Cost
+
+El **Base Step Cost** es el coste inicial de un Step antes de considerar contribuciones aplicables.
+
+Con la celda táctica canónica de 5 pies:
+
+- un Step ortogonal cuesta **5 ft**;
+- un Step puramente vertical es ortogonal y cuesta **5 ft**;
+- un Step diagonal aplica **Movimiento Diagonal**, nombre normativo único de la regla adoptada por el proyecto;
+- una diagonal en cualquier plano válido sigue la misma regla;
+- un Step que cambia dos o tres ejes simultáneamente sigue siendo una única diagonal.
+
+El coste no se obtiene sumando costes independientes por eje. Un cambio simultáneo en `x`, `y` y `z` no representa tres unidades de coste: representa un único Step diagonal.
+
+Este contrato no utiliza `Spatial Distance 3D` para calcular Route Cost y no altera la ODR preexistente sobre la métrica de distancia espacial.
+
+### 3.4 Contador diagonal por Route
+
+Cada Route mantiene conceptualmente su propia secuencia ordinal de Steps diagonales.
+
+1. el primer Step diagonal cuesta 5 ft;
+2. el segundo cuesta 10 ft;
+3. el tercero vuelve a costar 5 ft;
+4. el cuarto cuesta 10 ft;
+5. el patrón continúa como **5 / 10 / 5 / 10...** hasta terminar la Route.
+
+El contador depende exclusivamente de que el Step sea diagonal. No depende del plano, del número de ejes modificados ni de la dirección del desplazamiento. Un Step diagonal XYZ ocupa una sola posición dentro de la secuencia.
+
+Los Steps ortogonales no consumen ni reinician la secuencia diagonal. Cada nueva Route inicia una secuencia propia; no hereda el ordinal de una Route anterior.
+
+### 3.5 Contribuciones al coste de Step
+
+El coste de un Step puede recibir contribuciones normativas después de determinar su Base Step Cost. Una contribución describe por qué una regla afecta el coste; no constituye por sí misma una regla base de movimiento ni una fórmula universal.
+
+Las familias conceptuales de contribuciones son:
+
+- **entorno:** terreno, visibilidad obstaculizada u otras propiedades externas que encarezcan el tránsito;
+- **modo de desplazamiento:** requisitos de coste propios del modo empleado para recorrer el Step;
+- **estado de la criatura:** condiciones o configuraciones corporales que alteren cuánto movimiento consume;
+- **restricción de una operación futura:** una operación consumidora puede limitar o prohibir una Route sin reescribir su coste base.
+
+Toda contribución aplicable debe ser determinista, indicar su fuente normativa, delimitar los Steps afectados y conservar evidencia suficiente para explicar el resultado. Ninguna contribución puede cambiar retrospectivamente la continuidad, adyacencia o Reachability ya resueltas por Route Validation.
+
+### 3.6 Terreno difícil
+
+Para una Route ordinaria afectada por terreno difícil, el coste se determina por tipo de Step y por el terreno cruzado:
+
+- un Step ortogonal afectado cuesta **10 ft**;
+- un Step diagonal afectado cuesta **15 ft**;
+- cada Step diagonal afectado cuesta 15 ft de forma constante;
+- no existe una alternancia **15 / 20**;
+- no se obtiene el resultado duplicando mecánicamente el valor final de la secuencia diagonal ordinaria.
+
+Un Step diagonal sobre terreno difícil sigue siendo diagonal y ocupa una sola posición en el contador diagonal de su Route, aunque su coste aplicable sea el valor fijo de 15 ft.
+
+Este capítulo fija la norma de coste. No declara corregido el comportamiento de ninguna implementación existente ni define prohibiciones particulares de acciones que atraviesen terreno difícil.
+
+### 3.7 Semánticas de alteración de coste
+
+Las reglas que afecten Movement Cost deben conservar la semántica normativa con la que alteran el Step. Este capítulo distingue:
+
+- **adición:** añade una cantidad explícita de pies al coste aplicable;
+- **multiplicación:** escala un coste o conteo conforme al alcance declarado por su fuente;
+- **reemplazo:** sustituye una regla de cálculo aplicable por otra regla;
+- **coste fijo:** establece una cantidad absoluta para el Step afectado;
+- **prohibición:** declara que el tránsito no puede costearse bajo la operación o contexto evaluados.
+
+Una prohibición no es un coste infinito ni una cifra artificial. Tampoco convierte por sí sola una Route topológicamente legal en ilegal: expresa que el consumidor evaluado no puede recorrerla bajo esa restricción.
+
+No existe una conversión automática entre estas semánticas. En particular, un multiplicador no debe degradarse a un delta opaco, y un coste fijo no debe reinterpretarse como un multiplicador si la regla normativa no lo dice.
+
+### 3.8 Composición de múltiples contribuciones
+
+Una misma Route puede quedar afectada por más de una fuente de coste. El assessment debe conservar cada contribución por separado y no puede ocultar su procedencia dentro de un total sin desglose.
+
+El corpus aprobado permite identificar adiciones, multiplicaciones, reemplazos, costes fijos y prohibiciones, pero no establece una política única y exhaustiva para componer todas sus intersecciones posibles. Por ello, este capítulo no inventa un orden universal de operaciones ni una regla de stacking.
+
+#### ODR D-1B-C3-01 — Composición simultánea de fuentes de coste
+
+**Pregunta:** cuando un mismo Step recibe simultáneamente dos o más contribuciones de coste —por ejemplo, un coste fijo de terreno y un multiplicador por estado corporal—, ¿qué regla normativa determina su orden, acumulación y precedencia?
+
+**Alternativas que requieren ratificación:**
+
+1. aplicar la convención general de multiplicadores del corpus de D&D 3.5 a todas las contribuciones multiplicativas y definir por separado la precedencia de reemplazos y costes fijos;
+2. establecer un orden cerrado por semántica —reemplazo o coste fijo, adición y multiplicación— para toda evaluación de coste;
+3. exigir una política explícita únicamente para cada combinación normativa reconocida, sin imponer una precedencia global.
+
+**Impacto:** la decisión determina el total de Routes donde coinciden terreno difícil, Squeezing, visibilidad obstaculizada u otras fuentes futuras. También gobierna la igualdad entre assessment autoritativo y preview.
+
+**Carácter:** es bloqueante para implementar combinaciones simultáneas cuyo resultado dependa del orden o stacking, pero es diferible para Routes afectadas por una sola fuente o por contribuciones cuya composición ya esté explícitamente resuelta por una regla normativa.
+
+### 3.9 Footprint efectivo y coste
+
+El coste se evalúa sobre la entidad que recorre el Step, no solo sobre su ancla. Para cada Step deben considerarse todas las celdas del **Footprint efectivo** que la entidad ocupa en el destino o en la transición cuando la regla normativa aplicable así lo requiera.
+
+Cuando distintas celdas del Footprint efectivo estén sujetas a costes de terreno diferentes, el Step adopta el coste de terreno aplicable más alto. Los costes no se suman una vez por cada celda corporal ocupada.
+
+Esta evaluación usa la distinción canónica entre Footprint natural y Footprint efectivo. No define geometría corporal, no persiste huellas derivadas y no afirma que exista validación continua de **Swept Volume**; esa extensión permanece fuera de alcance.
+
+### 3.10 Coste de Squeezing
+
+Mientras una entidad se desplaza legalmente con un Footprint efectivo de Squeezing, cada espacio recorrido cuenta como el doble para Movement Cost.
+
+Squeezing aporta una contribución multiplicativa de coste sobre los Steps afectados. El coste continúa acumulándose por Step de la Route, no por cantidad de celdas que componen la huella corporal.
+
+Este capítulo no decide cuándo Squeezing es legal, cómo se deriva su Footprint efectivo, qué penalizadores aplica a ataques o defensa ni cómo se resuelve el tránsito por un espacio menor que la mitad de la anchura natural. La variante que requiere Escape Artist permanece como dependencia futura.
+
+La combinación numérica de Squeezing con otras fuentes simultáneas queda sujeta a la ODR D-1B-C3-01.
+
+### 3.11 Modos de desplazamiento y presupuestos
+
+Los modos terrestres, Climb, Swim, Fly y Burrow representan capacidades de desplazamiento distintas. Cada modo puede tener su propia fuente de Speed y, por tanto, su propio Movement Budget aplicable.
+
+Una Route puede requerir uno o varios modos a lo largo de sus Steps. El assessment debe identificar qué modo o modos requiere cada tramo y comparar el coste con el presupuesto correspondiente, sin asumir que los presupuestos de modos diferentes son intercambiables.
+
+La existencia de presupuesto no autoriza una transición. La legalidad del modo, el cambio entre posiciones ancladas y volumétricas y el uso de Connections pertenecen a Route Validation o a capítulos futuros. Este capítulo no define maniobrabilidad aérea, pruebas de habilidad, transiciones entre modos ni fórmulas particulares de Climb, Swim, Fly o Burrow.
+
+### 3.12 Obstáculos y movimiento obstaculizado
+
+El modelo de coste debe poder recibir hechos normativos que encarezcan el movimiento sin convertirlos automáticamente en bloqueadores topológicos. Entre las fuentes reconocidas por el Research se encuentran:
+
+- obstáculos no bloqueantes que añaden coste;
+- mala visibilidad que produce movimiento obstaculizado;
+- impedimenta, carga transportada y armadura cuando alteran la Speed disponible;
+- Hazards cuyo contrato normativo establezca un coste de tránsito;
+- propiedades de terreno o de una transición espacial que afecten Steps concretos.
+
+La responsabilidad se mantiene separada:
+
+- D-6 y el modelo espacial determinan qué obstáculos o volúmenes ambientales existen y qué Steps afectan;
+- Vision y su arquitectura futura aportan el hecho perceptivo aplicable, sin calcular Movement Cost por separado;
+- Equipment y las reglas de características aportan la Speed efectiva o sus restricciones, sin recalcular la Route;
+- este capítulo consume esos hechos como presupuesto o contribuciones trazables y produce un único assessment de coste.
+
+No se definen aquí objetos ambientales concretos, sensores, cargas, armaduras, checks ni reglas de interacción.
+
+### 3.13 Movement Cost Assessment
+
+El resultado conceptual de evaluar una Route legal debe contener, como mínimo:
+
+1. el coste total de la Route en pies;
+2. el coste de cada Step;
+3. el Base Step Cost y las contribuciones aplicadas a cada Step;
+4. el modo o los modos de desplazamiento requeridos;
+5. la fuente y evidencia normativa de cada contribución;
+6. el Movement Budget considerado para cada modo aplicable;
+7. un veredicto de presupuesto suficiente o insuficiente;
+8. cualquier prohibición normativa aplicable al consumidor evaluado.
+
+El assessment es proyectivo, determinista y auditable. No ejecuta el Movement, no descuenta presupuesto, no cambia la posición y no muta el CombatRulesSnapshot. Si una combinación cae dentro de una ODR bloqueante todavía no ratificada, no debe fabricarse un total autoritativo para esa combinación.
+
+### 3.14 Autoridad y previews
+
+El servidor produce el assessment final sobre su Route y su CombatRulesSnapshot autoritativos.
+
+La UI puede consumir las mismas reglas compartidas para anticipar costes, contribuciones y suficiencia de presupuesto. El preview debe mostrar el mismo desglose y usar el mismo cálculo, pero no puede confirmar de forma autoritativa el gasto, la ejecución ni el resultado final.
+
+No se permiten fórmulas paralelas de coste por acción, resolver o frontend. Las operaciones futuras consumen el assessment común y agregan únicamente sus propias restricciones externas.
+
+### 3.15 Invariantes normativos
+
+1. Una Route legal puede ser demasiado costosa para el presupuesto disponible.
+2. Movement Cost nunca cambia la topología ni la continuidad de una Route.
+3. Un Step diagonal constituye una sola unidad ordinal aunque cambie dos o tres ejes.
+4. Cada Step diagonal afectado por terreno difícil cuesta 15 ft constantes.
+5. `Spatial Distance` y `Route Cost` son magnitudes distintas y no intercambiables.
+6. El cliente no puede confirmar autoritativamente gasto ni ejecución.
+7. Ninguna acción mantiene una fórmula paralela de Route Cost.
+8. La evaluación es determinista, trazable y auditable.
+9. El Footprint efectivo completo participa en la determinación del coste aplicable.
+10. La insuficiencia de presupuesto y una prohibición contextual no se codifican como ilegalidad topológica.
+
+### 3.16 Límites del capítulo
+
+Quedan expresamente fuera de este capítulo:
+
+- economía completa de acciones;
+- Move Action y Double Move;
+- Run, Charge y Withdraw;
+- Five-Foot Step y Minimum Movement;
+- Attacks of Opportunity;
+- Forced Movement;
+- commit transaccional o mutación de estado;
+- pathfinding y generación de Routes;
+- Fog of War;
+- renderer y presentación;
+- caída;
+- maniobrabilidad aérea;
+- implementación, contratos TypeScript, nombres de API y pseudocódigo.
+
+La única ODR nueva es D-1B-C3-01. Las ODR preexistentes —incluida la métrica de `Spatial Distance 3D`— permanecen fuera de alcance y sin cambios.
