@@ -9,9 +9,9 @@
 - Rama de integración: `master`.
 - Última vertical funcional integrada: Sprint 055B, Ataques de Oportunidad bajo Cover y Ocultación Total.
 - Última decisión arquitectónica: Sprint D-1B Capítulo 7 (Integration & Implementation Contracts).
-- Implementación en revisión: Sprint D-1B-I1, Movement Context autoritativo por turno con `normalDiagonalStepsThisTurn`; todavía no participa en cálculos ni validaciones.
+- Implementación en revisión: Sprint D-1B-I2, Movement Cost Assessment puro sobre Routes ya legales; proyecta coste y contexto diagonal sin participar todavía en validación, presupuesto ni resolución productiva.
 - Último saneamiento documental: Sprint D-1B Capítulo 7.
-- Baseline funcional candidata: 563/563 pruebas unitarias, 100/100 aserciones
+- Baseline funcional candidata: 570/570 pruebas unitarias, 100/100 aserciones
   WebSocket y 7/7 escenarios Playwright; typecheck y build verdes.
 - GitHub Actions sobre Windows es el gate canónico de cierre para la revisión
   publicada.
@@ -24,7 +24,8 @@ El monorepo contiene:
 - servidor Express/WebSocket autoritativo;
 - cliente React/Vite que consume las mismas proyecciones compartidas;
 - snapshots source-first sin estadísticas derivadas persistidas;
-- contexto autoritativo de movimiento por turno, inicializado y reiniciado sin modificar todavía las reglas de coste;
+- contexto autoritativo de movimiento por turno, inicializado y reiniciado, todavía sin mutación desde la resolución productiva;
+- assessment compartido y puro de Movement Cost, con diagonales normales 5/10 y costes fijos de terreno difícil, todavía desconectado de la resolución productiva;
 - ActiveEffects, EffectReducer, EffectManager, Tick Layer y Event Bus;
 - economía de acciones, movimiento, amenaza, AdO y huellas multicasilla;
 - ataques normales, completos, de toque, críticos, daño de precisión y
