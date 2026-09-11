@@ -1,126 +1,66 @@
-# Walkthrough — Sprint D-1B-I5 (Authoritative Movement Commit)
+# Walkthrough — Saneamiento documental posterior a D-1B-I5
 
-## Objetivo
+Responsabilidad: Registrar el saneamiento ejecutado y su validación documental.
+Autoridad: Registro
+Lifecycle: Rotativo
+Reemplaza: Walkthrough de I5, conservado en Git.
+Complementa: [PROJECT_STATUS.md](PROJECT_STATUS.md), [INDEX.md](INDEX.md)
+Consumidores: Siguiente agente y revisión del cambio documental.
 
-Implementar el Commit Autoritativo del pipeline de movimiento:
+## Alcance y baseline
 
-```
-Command → Movement Resolution → Authoritative Commit → Publication
-```
+Cambio Nivel A, autorizado por el propietario. Baseline de código auditada:
+`6dc34f2823824a3fcf523790b2a19538bc19fe29` (D-1B-I5), publicada en master con
+[Windows CI #67 verde](https://github.com/lucianditoo/DnD-TCA/actions/runs/30756609816).
+No se cambia código, tests, Rule IDs ni decisiones normativas de los NDD.
+Este saneamiento no aprueba I5 ni inicia otro sprint funcional.
 
-Estrategia: **CERO MIGRACIÓN PRODUCTIVA**. `packages/shared/src/movementCommit.ts`
-expone `commitMovementResolution`, aislado del flujo legacy. No se migró
-`handleMoveCombatant`, `handleWithdraw`, `handleRun`, `handleCharge`,
-`validateMovePath`, `calculatePathStepCostsFeet` ni `commitSpatialTransition`
-— ninguno de esos archivos fue tocado.
+## Cambios
 
-## Consumo exclusivo de I4
+- Estado distingue I1/I3 integrados de I2/I4/I5 y sus consumidores pendientes.
+- TODO conserva acciones pendientes; ROADMAP distingue contratos existentes,
+  hitos por diseñar y antecedentes que requieren revalidación.
+- INDEX apunta a los siete capítulos de D-1B y localiza el MVP histórico.
+- Master coverage incorpora evidencia de I1–I5 y distingue baseline actual
+  de cortes históricos; no presenta los conteos como una ejecución local nueva.
+- Registry conserva todas sus Rule IDs y estados, corrigiendo notas antiguas
+  de Concealment y referencias de planificación de ATTACK-FULL.
+- El manifiesto reconoce los cuatro inventarios PHB. RULES corrige anotaciones
+  verificadas de Cover/LoE/Concealment, movimiento e indefensión/Golpe de Gracia.
+- RULES_ENGINE y WORKFLOW se reducen a responsabilidades y referencias;
+  CODEX_GUIDE elimina su tabla duplicada. No se crea una nueva jerarquía documental.
+- `docs/designs/combat-engine-mvp.md` pasa a
+  [docs/archive/combat-engine-mvp.md](docs/archive/combat-engine-mvp.md):
+  cuerpo histórico conservado, cabecera de supersesión explícita y referencias
+  activas actualizadas. No se eliminan NDD vigentes ni inventarios temáticos.
+- DT-023 registra lo resuelto y mantiene explícitamente lo todavía pendiente.
 
-`commitMovementResolution` recibe únicamente un `MovementResolutionResult`
-de kind `"ready"` (producido, sin excepción, por `resolveMovementPipeline`
-de I4) y no recalcula nada: ni Route Validation, ni Movement Cost, ni
-footprints, ni terreno difícil, ni el contador diagonal, ni `squeezingAxis`.
-Toda esa evidencia se lee de `resolution.steps`/`resolution.totalCostFeet`/
-`resolution.projectedContext` tal como llega. `resolveMovementPipeline` en
-sí mismo no fue modificado.
+## Preservación del trabajo local
 
-## Precondición autoritativa (evita commits obsoletos)
-
-Antes de mutar cualquier cosa, `commitMovementResolution` verifica que el
-estado autoritativo de `room`/`combatant` siga coincidiendo con las
-condiciones bajo las que se calculó la Resolution:
-
-- `combatant.position` sigue siendo la misma que `preconditions.expectedOrigin`;
-- `room.currentTurn.movementUsedFeet` sigue siendo el mismo que
-  `preconditions.expectedMovementUsedFeet`;
-- `room.currentTurn.normalDiagonalStepsThisTurn` sigue siendo el mismo que
-  `preconditions.expectedDiagonalContext.normalDiagonalStepsThisTurn`.
-
-Si cualquiera falla, el Commit se rechaza (`kind: "rejected"`, con
-`rejectionCode` de `"stale-origin"` / `"stale-movement-used"` /
-`"stale-diagonal-context"`) **sin mutar nada y sin publicar nada** — no
-existe ningún canal de publicación en este módulo. No se implementó
-versionado global ni concurrencia optimista genérica: solo los tres valores
-mínimos que el propio sprint identificó como necesarios para detectar una
-Resolution calculada sobre estado ya superado.
-
-## Atomicidad
-
-Las tres verificaciones de precondición ocurren antes de cualquier
-mutación; si las tres se sostienen, todas las mutaciones (posición,
-`movementUsedFeet`, `distanceMovedFeet`, `normalDiagonalStepsThisTurn`,
-`EffectInstance` de Squeezing) se aplican juntas, en el mismo tramo
-síncrono, sin punto de retorno intermedio.
-
-## Estado mutado
-
-- `combatant.position` ← posición del último `MovementResolutionStep`.
-- `combatant.stats.distanceMovedFeet` ← `+= resolution.totalCostFeet`.
-- `room.currentTurn.movementUsedFeet` ← `+= resolution.totalCostFeet`.
-- `room.currentTurn.normalDiagonalStepsThisTurn` ← el valor exacto de
-  `resolution.projectedContext.normalDiagonalStepsThisTurn` (asignación
-  directa, nunca un recálculo — `resultingDiagonalCount` en el resultado
-  del Commit es ese mismo valor ya aplicado).
-- Presencia/ausencia de la `EffectInstance` `srd_squeezing`, según el
-  `spatialMode` final del último Step (igual criterio que
-  `apps/server/src/combat/spatialTransition.ts::commitSpatialTransition`,
-  reimplementado de forma autocontenida dentro de `movementCommit.ts` —
-  `packages/shared` no puede importar desde `apps/server`; es una
-  duplicación temporal y documentada, esperable mientras no exista la
-  migración productiva).
-
-## ODR-D1B-I5-1 — Sede de `squeezingAxis` (permanece ABIERTA)
-
-`commitMovementResolution` consume `squeezingAxis` directamente del último
-`MovementResolutionStep` y lo expone en el resultado del Commit
-(`result.squeezingAxis`), sin recalcularlo. **No se decidió** agregarlo a
-`EffectInstance` ni a `CombatantSnapshot` — el modelo actual no tiene una
-sede persistente para ese dato más allá del propio turno en que se calculó
-el Commit; solo la presencia/ausencia de Squeezing (el `spatialMode`) tiene
-hoy una sede clara (la `EffectInstance` `srd_squeezing`). Esta limitación
-queda registrada explícitamente aquí, sin cerrar la ODR mediante una
-decisión implícita de implementación.
-
-## Tests
-
-`tests/movement-commit.test.mjs` (17 casos): Commit exitoso; actualización
-de posición/`movementUsedFeet`/`distanceMovedFeet`; persistencia de
-`resultingDiagonalCount` recibido (no recalculado); consumo de
-`spatialMode` final y de `squeezingAxis` sin recalcularlo; ruta con
-múltiples Steps; Double Move/movimiento segmentado (dos Resolutions +
-Commits secuenciales en el mismo turno conservan la paridad diagonal
-acumulada — 5 ft, luego 10 ft); rechazo por posición inicial obsoleta,
-por `movementUsedFeet` obsoleto y por contexto diagonal obsoleto; cero
-mutación y cero publicación cuando falla una precondición; el Commit no
-vuelve a ejecutar Route Validation ni Movement Cost (dos casos con una
-Resolution fabricada a mano que contradice deliberadamente el tablero
-actual o el coste real, para demostrar que el Commit confía ciegamente en
-la evidencia recibida); y un caso de `deepFreeze` sobre `resolution`/
-`preconditions` confirmando que ninguno de los dos se muta.
-
-`packages/shared/src/index.ts` gana una única línea (`export * from
-"./movementCommit.js"`).
+El rótulo local «COMPLETADO» no estaba respaldado por un gate de DnD-TCA.
+El walkthrough local contenía notas de otro proyecto. Con aprobación expresa
+del propietario se preservó una copia byte a byte fuera del repositorio,
+verificada por SHA-256, antes de reemplazarlo. Ese contenido ajeno no se publica.
+`test.txt` y `.claude/` permanecen intactos y fuera del staging/commit;
+no se abrió ni leyó `.claude/settings.local.json`.
 
 ## Validación
 
-```
-npm test                       -> 620/620
-npm run typecheck               -> shared + web + server, sin errores
-npm run build                   -> shared + web + server, sin errores
-node scripts/e2e-websocket.mjs  -> 100/100 aserciones
-npx playwright test              -> 7/7
-git diff --check                 -> limpio
-madge --circular                 -> mismos 4 ciclos preexistentes de
-                                     types.ts/effects/*, ninguno nuevo
-```
+- Validador documental en memoria: 15 documentos y 160 enlaces locales
+  comprobados, sin archivos ni anclas faltantes.
+- Preservación del cuerpo del MVP archivado y ausencia de referencias
+  activas a la ruta retirada, salvo esta explicación de la migración.
+- 54 filas del Registry comparadas contra HEAD: Rule ID, nombre y estado
+  sin cambios.
+- `git diff --check` correcto y revisión del diff exclusivamente documental.
+- DoD local reducido de Nivel A (GOVERNANCE §5.2): no se vuelve a ejecutar
+  la suite completa localmente; Windows CI corre sobre el commit publicado.
 
-## Cierre
+## Continuidad
 
-Legacy productivo intacto (`validateMovePath`, `calculatePathStepCostsFeet`,
-`commitSpatialTransition`, `movementCommands.ts`, `tacticalCommands.ts` sin
-modificar). `resolveMovementPipeline` (I4) sin modificar. Publication no
-implementada (pertenece a una fase posterior). Sin Rule ID afectada —
-`docs/rules/registry.md` no requirió actualización. ODR-D1B-I5-1 queda
-explícitamente abierta.
+El siguiente paso funcional requiere el gate arquitectónico de I5 y la
+resolución de las decisiones abiertas que afecten su integración. No se da
+Proceed implícito a Publication, comandos, preview, renderer ni UI.
+El saneamiento no modifica D-1B-C3-01 ni cierra ODR-D1B-I5-1.
 
 READY FOR ARCHITECTURE REVIEW

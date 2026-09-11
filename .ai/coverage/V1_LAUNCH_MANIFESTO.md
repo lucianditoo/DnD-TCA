@@ -37,10 +37,23 @@ Ambas quedan **documentadas como deuda aceptada**, no como bloqueo del lanzamien
 
 ## 4. Qué NO resuelve este manifiesto
 
-- No decide el orden de sprints para cerrar la brecha de cobertura (eso corresponde a `PROJECT_STATUS.md`/`TODO.md`, actualizados con la referencia al Master Plan).
+- No decide el orden de sprints para cerrar la brecha de cobertura (el orden corresponde a [ROADMAP.md](../../ROADMAP.md) y las acciones pendientes a [TODO.md](../../TODO.md)).
 - No aprueba ninguna implementación concreta — cada dota/conjuro/objeto que pase de `[ ]` a `[x]` en los checklists de `.ai/coverage/` requiere su propia NDD, Design Review Checklist y `Proceed` explícito, exactamente igual que cualquier otro cambio de código en este proyecto.
 - No introduce un cuarto tipo de `EquipmentCatalogItem` (`"consumable"`) ni ningún otro cambio de esquema — la brecha de objetos consumibles señalada en `EQUIPMENT_PHB_CHECKLIST.md` queda registrada como candidata a una NDD futura, no resuelta aquí.
 
 ## 5. Vínculo con los checklists de control
 
-Este manifiesto es el marco; `.ai/coverage/FEATS_PHB_CHECKLIST.md`, `.ai/coverage/SPELLS_PHB_CHECKLIST.md` y `.ai/coverage/EQUIPMENT_PHB_CHECKLIST.md` son el inventario taxativo de brechas contra el que se planificará cada sprint de la V1.0. Toda fila marcada `[ ]` en esos tres archivos es, por definición, trabajo pendiente que debe entrar al pipeline Diseño → NDD → Implementation Plan → Revisión → `Proceed` → Implementación → Validación → Documentación → Auditoría antes de tocar código.
+Este manifiesto es el marco. Los cuatro inventarios taxativos de V1 son:
+
+- [Reglas de combate](RULES_PHB_CHECKLIST.md).
+- [Dotes](FEATS_PHB_CHECKLIST.md).
+- [Conjuros](SPELLS_PHB_CHECKLIST.md).
+- [Equipamiento](EQUIPMENT_PHB_CHECKLIST.md).
+
+Definen el alcance a cubrir, no una autorización de código. Las anotaciones
+de implementación se contrastan con código/tests y el
+[Registry](../../docs/rules/registry.md); una anotación histórica desactualizada
+no convierte una capacidad existente en trabajo por implementar. Los pendientes
+reales siguen el flujo de [.agents/AGENTS.md](../../.agents/AGENTS.md), con
+diseño y Proceed cuando corresponda. El precursor del MVP inicial no limita
+este alcance de V1.

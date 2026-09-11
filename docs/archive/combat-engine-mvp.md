@@ -1,6 +1,13 @@
 # MVP del Motor de Combate Táctico - D&D 3.5
 
-> **Estado Documental:** Parcialmente supersedido por `spatial-engine-2.5d.md`. Las exclusiones espaciales históricas (movimiento vertical, tamaño, cobertura total, vuelo) han sido superadas por el NDD espacial y las características funcionales subsiguientes.
+> **Lifecycle: Histórico.** Precursor del MVP inicial, conservado por trazabilidad.
+> Las secciones «Implementado», «MVP» y «Fuera de MVP» describen aquella etapa,
+> no el estado actual ni exclusiones permanentes de V1. El alcance vigente vive
+> en [V1_LAUNCH_MANIFESTO](../../.ai/coverage/V1_LAUNCH_MANIFESTO.md) y sus cuatro
+> inventarios PHB; el estado, en [PROJECT_STATUS](../../PROJECT_STATUS.md) y el
+> [Registry](../rules/registry.md); la evolución espacial, en el
+> [NDD espacial](../designs/spatial-engine-2.5d.md) y sus NDD hijos.
+> El cuerpo histórico se conserva sin reinterpretar sus reglas ni sus prioridades.
 
 Este documento define el Alcance Mínimo Viable (MVP) para que el motor táctico de combate de D&D 3.5 sea completamente utilizable por un grupo de juego (GM y jugadores) para resolver un combate táctico completo.
 

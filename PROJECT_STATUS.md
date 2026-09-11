@@ -15,16 +15,30 @@
   posición/`movementUsedFeet`/`distanceMovedFeet`/contador diagonal/estado
   de Squeezing de forma atómica, solo si una precondición autoritativa
   (posición, presupuesto y contexto diagonal vigentes) se sostiene. Sin
-  Publication; `resolveMovementPipeline`, `validateMovePath` y los comandos
-  productivos permanecen intactos (CERO MIGRACIÓN PRODUCTIVA). ODR-D1B-I5-1
+  Publication; I5 no migró los comandos productivos. El nuevo pipeline de
+  I4/I5 todavía no es llamado por esos comandos. ODR-D1B-I5-1
   (sede persistente de `squeezingAxis`) queda abierta.
-- Último saneamiento documental: Sprint D-1B-I5.
-- Baseline funcional candidata: 620/620 pruebas unitarias, 100/100 aserciones
-  WebSocket y 7/7 escenarios Playwright; typecheck y build verdes.
+- Último saneamiento documental: consolidación del estado y roadmap posterior a D-1B-I5; no cambia el estado de aprobación de I5.
+- Baseline de código: `6dc34f2` (D-1B-I5), con Windows CI confirmado en verde.
+  Conteos y evidencias se mantienen en [master-coverage.md](docs/testing/master-coverage.md), no como un segundo registro aquí.
 - GitHub Actions sobre Windows es el gate canónico de cierre para la revisión
   publicada.
 
-## Capacidades integradas
+## Integración de D-1B
+
+| Etapa | Estado comprobado en el código |
+|---|---|
+| I1 — Movement Context | Integrado en creación/reinicio de turno y snapshots; el flujo productivo todavía no incrementa el contador. |
+| I2 — Movement Cost | Assessment puro implementado; consumido por I4, no por el cálculo productivo de `validateMovePath`. |
+| I3 / I3R1 — Route Validation | Integrado: `validateMovePath` delega legalidad a `validateRouteLegality`; extracción sin el ciclo detectado en I3. |
+| I4 — Movement Resolution | Pipeline puro de validación/coste/verificación de presupuesto; probado sin consumidores productivos. |
+| I5 — Movement Commit | Aplicación autoritativa probada; sin consumidores productivos, pendiente de Architecture Review. |
+
+La presentación continúa siendo un grid 2D con huellas multicasilla. El
+modelo de superficies y volúmenes de los NDD espaciales es el destino de
+migración, no una capacidad ya integrada. CI verde no significa V1 completa.
+
+## Capacidades del código
 
 El monorepo contiene:
 

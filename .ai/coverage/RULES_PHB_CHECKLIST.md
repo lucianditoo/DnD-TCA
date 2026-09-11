@@ -2,9 +2,9 @@
 
 **Tipo de documento**: Auditoría analítica de cobertura para la V1.0, bajo el marco de `.ai/coverage/V1_LAUNCH_MANIFESTO.md`. Cuarto checklist del Master Plan, complementando dotes/conjuros/equipo con las **reglas de combate** propiamente dichas.
 
-**Diferencia clave con `combat/14_resumen_de_reglas.txt`**: aquel archivo marca ✔ las reglas *transcritas en el corpus normativo* (las 94). Este checklist marca `[x]` las reglas *implementadas en el motor* (servidor autoritativo + `rules.ts`). Son ejes ortogonales: una regla puede estar transcrita y no implementada (Retirada), o implementada con matices no transcritos (rutina iterativa, ver G-01 de `docs/audits/combat-rules-deviations.md`).
+**Diferencia clave con `combat/14_resumen_de_reglas.txt`**: aquel archivo marca ✔ las reglas *transcritas en el corpus normativo* (las 94). Este checklist marca `[x]` las reglas *implementadas en el motor* (servidor autoritativo + `rules.ts`). Son ejes ortogonales: una regla puede estar transcrita y no implementada (Desarmar), o implementada con matices no transcritos (rutina iterativa, ver G-01 de `docs/audits/combat-rules-deviations.md`).
 
-**Fuentes de verificación**: historial de sprints en `PROJECT_STATUS.md` (013-037), registro real de comandos Zod (`packages/shared/src/schemas/commands/*.ts`), `rules.ts`, `effects/catalog.ts`, y greps dirigidos ejecutados para esta auditoría. Las filas dudosas se marcaron `[ ]` con nota "PARCIAL" antes que inflar la cobertura.
+**Fuentes de verificación**: código/tests y [Rule Registry](../../docs/rules/registry.md). El inventario conserva el alcance taxativo de V1. Sus notas originales son del corte 013–037, con correcciones posteriores explícitas; no constituyen una segunda autoridad de estado. El saneamiento posterior a I5 actualiza los desfasajes comprobados, no certifica una nueva auditoría normativa exhaustiva de las 96 filas.
 
 **Estado**: `[x]` implementada y operacional · `[ ]` no implementada (o parcial).
 
@@ -80,7 +80,7 @@
 | [x] | Correr | Sprint 041 (`MOVE-RUN`): ×4/×3 velocidad, línea recta, sin paso de 5', terreno difícil bloqueado, `FORBID_RUN` consumido, pérdida de Destreza/Esquiva salvo dote. Parcial respecto de la resistencia multi-asalto (Constitución/CD creciente/descanso), diferida — ver `docs/technical-debt.md`. |
 | [x] | Movimiento diagonal | 1-2-1-2 (Sprint 015). |
 | [x] | Distancia | Distancia entre footprints O(1) (Sprint 027). |
-| [x] | Terreno difícil | Coste doble, 10/20 ft diagonal (Sprint 015). |
+| [x] | Terreno difícil | El movimiento productivo conserva su cálculo legacy. I2 implementa un assessment separado con ortogonal 10 ft y diagonal 15 ft constante, consumido por I4 pero no por comandos productivos. Ver [estado de integración](../../PROJECT_STATUS.md) y [Research](../../docs/audits/movement-rules-audit.md); no confundir contrato nuevo con migración ya terminada. |
 | [x] | Obstáculos | `isImpassable` + esquinas corregidas (Sprint 037, MOVE-05). |
 | [x] | Apretujarse (Squeezing) | `srd_squeezing` dinámico 2×1 (Sprint 028). |
 | [x] | Criaturas grandes y pequeñas | Footprints multicelda completos (Sprints 025-A/027/028). |
@@ -92,16 +92,16 @@
 
 | Estado | Regla | Evidencia / Nota |
 |---|---|---|
-| [ ] | Modificadores de combate (Tablas 8-5/8-6 completas) | PARCIAL: flanqueo, tumbado, cobertura y desprevenido sí; deslumbrado, enmarañado, estremecido, gateando, sentado no. |
+| [ ] | Modificadores de combate (Tablas 8-5/8-6 completas) | PARCIAL: flanqueo, tumbado, cobertura y desprevenido sí; Entangled Core está implementado (falta Concentration); otros modificadores siguen pendientes según Registry. |
 | [ ] | Modificadores a la tirada de ataque (Tabla 8-5) | Subconjunto (flanqueo +2, prone -4 vía condicionales). |
 | [ ] | Modificadores a la CA (Tabla 8-6) | Subconjunto (prone, flat-footed). |
-| [x] | Cobertura | **Sprint 042**: +4 CA efímera mediante `CoverAssessment`, calculada exclusivamente en `getAttackContextModifiers`. Preserva criatura interpuesta y añade obstáculo completo de `impassableCells`; footprints deterministas, sin apilar fuentes, consumido por armas, touch/conjuros, AdO, maniobras y preview React. Sin `hasObstacleInterception` legacy. Tests focalizados 58/58. |
+| [x] | Cobertura | `DEFENSE-COVER`: +4 CA por interposición de criaturas. Desde 052B `impassableCells` solo bloquea movimiento y no concede Cover. En 055B Cover también bloquea la legalidad de AdO. Evidencia: `cover-reach.test.mjs`, `opportunity-attack-legality.test.mjs`; alcance oficial en Registry. |
 | [ ] | Cobertura mejorada | Sin grados de cobertura. |
-| [ ] | Cobertura total | Sin bloqueo de ataque por cobertura total. |
-| [ ] | Ocultación | El contrato `CONCEALMENT` (con %) existe en `Modifier`, pero sin consumidor verificado en `rules.ts` — la tirada de fallo porcentual no está cableada. |
-| [ ] | Ocultación total | Sin implementar. |
+| [ ] | Cobertura total | PARCIAL: `DEFENSE-LINE-OF-EFFECT` bloquea ataques físicos ordinarios y AdO mediante `lineOfEffectBlockingCells`; conjuros/AoE pendientes. Tests `line-of-effect.test.mjs`, `line-of-effect-server.test.mjs` y `opportunity-attack-legality.test.mjs`. |
+| [ ] | Ocultación | PARCIAL: `DEFENSE-CONCEALMENT` tiene assessment y d100 autoritativo consumidos; fuentes Blinded/Vision implementadas. Niebla/humo/invisibilidad pendientes. El marker antiguo `Modifier.CONCEALMENT` no es el contrato vigente. Tests `concealment-core.test.mjs` y `vision-core.test.mjs`. |
+| [ ] | Ocultación total | PARCIAL dentro de `DEFENSE-CONCEALMENT`/`DEFENSE-VISION`: 50%, targeting por casilla y bloqueo de AdO implementados para las fuentes actuales; no todas las fuentes PHB. Tests `blind-targeting-server.test.mjs` y `opportunity-attack-legality.test.mjs`. |
 | [x] | Flanquear | +2 por caras opuestas con excepción multicasilla (Sprints 025-A/027). |
-| [ ] | Defensores indefensos | PARCIAL: trait `HELPLESS` declarado y `srd_paralyzed` existe; la matemática -4 CA cuerpo a cuerpo / Des efectiva 0 no verificada como implementada. |
+| [ ] | Defensores indefensos | Proyección defensiva implementada mediante `getDefensiveAbilityProjection` y trait `HELPLESS`; no debe describirse como matemática ausente. El alcance de las fuentes y la interacción con estados vitales requieren distinguirse, según `helpless-combat.md` y D-1B-Research. |
 | [x] | Disparar/lanzar a combate cuerpo a cuerpo (-4) | **Sprint ATK-RANGED-INTO-MELEE**: `getRangedIntoMeleeAssessment` (helper puro en `rules.ts`) integrado en `getAttackContextModifiers.byAttackType.ranged` — consumido isomórficamente por servidor (armas + conjuros con tirada de ataque) y UI. Formulación RAW "either threatens" (ver D-11), excepción de 10 ft por footprints, exención declarativa de Disparo Preciso. Tests: `tests/ranged-into-melee.test.mjs` (13 casos). |
 | [x] | Combatir a la defensiva | Buff legado "Luchar a la Defensiva" (-4 ataque / +2 CA). |
 | [ ] | Combate montado | Sin sistema de monturas. |
@@ -141,15 +141,19 @@
 | [ ] | Daño no letal | Sin implementar (bloquea también golpe desarmado RAW y grogui). |
 | [ ] | Retrasar | Sin comando. |
 | [ ] | Preparar una acción | Sin comando (sin sistema de acciones disparadas). |
-| [ ] | Golpe de gracia | Sin comando (regla presente en el corpus, `10`/`11`). |
+| [x] | Golpe de gracia | `MANEUVER-COUP-DE-GRACE`, Sprint 048: `handleCoupDeGrace`/reanudación, crítico automático y salvación; evidencia en E2E WebSocket y Registry. |
 | [x] | Defensa total | Comando `total-defense`. |
 
-## Resumen de cobertura (cifras inequívocas, 2ª pasada de auditoría)
+## Lectura de cobertura
 
-- **Reglas auditadas**: 96 filas (las 94 del índice normativo `combat/14` + Golpe de gracia y Defensa total, presentes en el corpus pero ausentes de aquel índice).
-- **Completas** (implementadas sin salvedad): **61** (Disparar a combate cuerpo a cuerpo -4 por ATK-RANGED-INTO-MELEE; Retirada por MOVE-WITHDRAW).
-- **Parciales**: **5** — 1 contabilizada como `[x]` en el dashboard con nota explícita ("Acciones en combate", economía sustancial pero sin contador formal estándar+movimiento), y 4 contabilizadas como `[ ]` (Ataques sin armas; Modificadores de combate Tablas 8-5/8-6; Defensores indefensos; Ataques especiales agregado).
-- **No implementadas**: **30**.
-- **Cifra del dashboard (oficial, calculada por el script)**: 62/96 = 65% (cuenta `[x]`, es decir, 61 completas + 1 parcial-sustancial marcada explícitamente). La política de conteo es: una parcial solo se cuenta como implementada si su fila lo declara con nota; hoy hay exactamente una en ese caso.
-- Las brechas se concentran en: modificadores situacionales de las Tablas 8-5/8-6, ocultación, acciones de iniciativa (retrasar/preparar), maniobras restantes (desarmar, arrollar, romper arma, fintar, expulsión), daño no letal/PG temporales, y todo lo montado.
-- Cada `[ ]` requiere su propia NDD y `Proceed` antes de implementarse, igual que el resto del Master Plan.
+El inventario conserva sus 96 filas. Las marcas son un indicador de
+seguimiento, no un porcentaje de cumplimiento normativo certificado:
+`[ ]` incluye parciales y `[x]` puede incluir alcances acotados explícitos.
+Las cifras históricas 61/5/30 y 65% quedan reemplazadas por esta advertencia,
+porque ya no describen las anotaciones actualizadas.
+
+Para una implementación nueva se verifica primero el
+[Registry](../../docs/rules/registry.md), la evidencia de código/tests y el
+NDD de la vertical. Una corrección de anotación no crea una regla ni concede
+Proceed. Los otros tres inventarios permanecen localizados desde el
+[manifiesto V1](V1_LAUNCH_MANIFESTO.md).

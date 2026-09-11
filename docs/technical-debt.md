@@ -1,6 +1,6 @@
 # Deuda Técnica Consolidada — D&D 3.5 Tactical Combat Engine
 
-*Documento consolidado y saneado por última vez en Sprint 054A.*
+*Consolidado en Sprint 054A; seguimiento documental DT-023 actualizado en el saneamiento posterior a D-1B-I5.*
 
 > Este documento es la fuente única de verdad para la deuda técnica. Los documentos fuente solo deben **enlazar** hacia aquí, no duplicar la información.
 
@@ -155,7 +155,7 @@ afirma que la UI carezca de toda cobertura.
 
 **Resolución (Sprint 036, verificada por código y tests en Sprint 044)**: `packages/shared/src/rules.ts` implementa `getAttackRoutine` y `getEffectiveAttackRoutine` (read-model puro que compone `getAttackRoutine` + `Rules.totalAttackBonus`), con progresión real de ataques iterativos por umbral de BAB. Confirmado en uso activo desde `attackCommands.ts` y `ActionsPanel.tsx`. Tests: `iterative-attacks-effective-routine.test.mjs` (5/5), `full-attack.test.mjs`. Ver Rule ID `ATTACK-FULL` en `docs/rules/registry.md` (Completo).
 
-**Alcance pendiente, no confundir con esta deuda**: Disparo Rápido, Haste
+**Alcance pendiente, no confundir con esta deuda**: el componente iterativo está completo; `ATTACK-FULL` global permanece **Parcial** según Registry. Disparo Rápido, Haste
 real y otros productores de ataques extra siguen pendientes como componentes
 de la única regla `ATTACK-FULL`. No existe ni debe restaurarse una Rule ID de
 versión. El estado oficial de `ATTACK-FULL` vive en el Registry.
@@ -385,7 +385,7 @@ Correr y Retirada; no ramificar por `effectId`.
 <a id="dt-023"></a>
 ### DT-023: Deuda documental — ambigüedades de responsabilidad detectadas en la clasificación de Sprint 054C
 
-**Descripción**: al aplicar la clasificación operativa SSOT/Derivado/Histórico/Temporal (`GOVERNANCE.md` §6.2.2, Sprint 054C) sobre el corpus documental, se detectaron las siguientes ambigüedades. Por alcance explícito del sprint, se registran **sin resolver** — no se eliminó, movió ni renombró ningún documento:
+**Descripción histórica**: al aplicar la clasificación operativa SSOT/Derivado/Histórico/Temporal (`GOVERNANCE.md` §6.2.2, Sprint 054C), se registraron estas ambigüedades sin resolver en aquel sprint. El seguimiento actual se detalla debajo de la lista:
 
 1. **`RULES_ENGINE.md`** solapa parcialmente la responsabilidad de `docs/rules/registry.md` ("reglas implementadas y pendientes") y de `PROJECT_STATUS.md`. Como vista derivada, pierde ante ambos en conflicto, pero su existencia exige mantenimiento por sprint — candidata a consolidación o reducción a puntero.
 2. **`CODEX_GUIDE.md`** solapa `PROJECT_STATUS.md` (estado/features) y `ARCHITECTURE.md` (organización técnica). `README.md` lo presenta como "guía principal del proyecto", lo que compite con la puerta de entrada oficial del Reader Pipeline.
@@ -394,7 +394,16 @@ Correr y Retirada; no ramificar por `effectId`.
 5. **`.agents/AGENTS.md` §3** exige actualizar `CODEX_GUIDE.md`, `ARCHITECTURE.md` y `RULES_ENGINE.md` en cada funcionalidad importante, pese a que §6.2.2 los clasifica como vistas derivadas — tensión entre el costo de mantenimiento por sprint y su condición de derivadas (`GOVERNANCE.md` §6.6, paso 5).
 6. **`.ai/WORKFLOW.md`** re-narra las fases de `AGENTS.md` con detalle propio (no es un mero enlace); como derivada con contenido extenso, es el punto de divergencia más probable cada vez que cambie el flujo — ya requirió sincronización manual en Sprints 052/054B.
 
-**Riesgo**: bajo — ninguna ambigüedad afecta código ni reglas; el riesgo es deriva documental futura y confusión de onboarding, exactamente lo que la metodología de §6 busca prevenir.
+**Seguimiento — saneamiento posterior a D-1B-I5**:
+
+- Puntos 1 y 6 resueltos: `RULES_ENGINE.md` deja de mantener estados/pendientes y `.ai/WORKFLOW.md` deja de duplicar fases o DoD; ambos remiten a sus autoridades.
+- Punto 2 resuelto respecto del estado/backlog: `CODEX_GUIDE.md` conserva orientación técnica, sin tabla paralela de fuentes; README lo clasifica como derivado, no como autoridad.
+- Los puntos 3 y 4 ya estaban resueltos y no se reabren.
+- Punto 5 permanece pendiente de decisión de gobernanza: no se cambia `.agents/AGENTS.md` ni su política de actualización en este saneamiento.
+- El MVP inicial se archiva como precursor, sin limitar la V1; INDEX, manifiesto, notas de Registry y evidencia de testing se sincronizan. Los cuatro inventarios PHB no se eliminan: su granularidad difiere del Registry y de master-coverage.
+- Las anotaciones históricas de los inventarios PHB requieren revalidación por vertical antes de usarse como estado de implementación. Este saneamiento corrige los desfasajes comprobados de RULES; no certifica una auditoría exhaustiva de todos los catálogos.
+
+**Riesgo**: documental; DT-023 permanece abierta por el punto 5 y el mantenimiento de anotaciones históricas no revalidadas. No se introduce deuda de código.
 
 **Módulo afectado**: solo documentación (`RULES_ENGINE.md`, `CODEX_GUIDE.md`, `README.md`, `.ai/README.md`, `.ai/WORKFLOW.md`, `INDEX.md`, `.agents/AGENTS.md` §3).
 

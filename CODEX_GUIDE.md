@@ -111,17 +111,5 @@ sandbox local no puede ejecutar servicios o Chromium.
 
 ## Fuentes documentales
 
-| Pregunta | Fuente |
-|---|---|
-| ¿Qué está integrado? | [`PROJECT_STATUS.md`](PROJECT_STATUS.md) |
-| ¿Qué queda por hacer? | [`TODO.md`](TODO.md) |
-| ¿En qué orden? | [`ROADMAP.md`](ROADMAP.md) |
-| ¿Cuál es el estado oficial de una regla? | [`docs/rules/registry.md`](docs/rules/registry.md) |
-| ¿Qué pruebas la respaldan? | [`docs/testing/master-coverage.md`](docs/testing/master-coverage.md) |
-| ¿Qué deuda está abierta? | [`docs/technical-debt.md`](docs/technical-debt.md) |
-| ¿Qué difiere del corpus? | [`docs/audits/combat-rules-deviations.md`](docs/audits/combat-rules-deviations.md) |
-| ¿Por qué se diseñó así? | NDD correspondiente en [`docs/designs/`](docs/designs/) |
-| ¿Qué cerró el último sprint? | [`walkthrough.md`](walkthrough.md) |
-
-`docs/testing/master-coverage.md` contiene evidencia de testing, no cobertura
-normativa exhaustiva del PHB. El índice completo está en [`INDEX.md`](INDEX.md).
+[INDEX.md](INDEX.md) es el único localizador de responsabilidades, estados,
+pendientes, evidencia y diseños. Esta guía no reproduce su tabla.

@@ -1,5 +1,12 @@
 # Master Testing Coverage
 
+Responsabilidad: Evidencia global de pruebas por cierre de código.
+Autoridad: Registro
+Lifecycle: Snapshot vivo
+Reemplaza: —
+Complementa: [Registry](../rules/registry.md)
+Consumidores: Revisores que verifican las validaciones de un commit.
+
 > **Responsabilidad canónica:** evidencia global de pruebas automatizadas. No
 > representa cobertura normativa completa del PHB ni reemplaza los checklists
 > temáticos. Los estados oficiales de reglas viven en
@@ -7,6 +14,38 @@
 
 Este documento consolida las directrices y el reporte de cobertura de testing
 del motor de combate D&D 3.5.
+
+## Baseline de código más reciente — D-1B-I5
+
+Código publicado: [`6dc34f2`](https://github.com/lucianditoo/DnD-TCA/commit/6dc34f2823824a3fcf523790b2a19538bc19fe29).
+[Windows CI #67](https://github.com/lucianditoo/DnD-TCA/actions/runs/30756609816)
+completado con éxito: typecheck, build, unitarias, focalizados de Cover,
+WebSocket y Playwright. El cierre versionado informa **620/620 unitarias,
+100/100 aserciones WebSocket y 7/7 escenarios UI**.
+
+Estos conteos son evidencia del cierre de código, no de una nueva ejecución
+local durante el saneamiento documental ni de cobertura PHB completa.
+La aprobación arquitectónica pendiente de I5 no se deduce del resultado del CI.
+
+### Evidencia incorporada por D-1B
+
+| Etapa | Suite | Responsabilidad verificada |
+|---|---|---|
+| I1 | [movement-context.test.mjs](../../tests/movement-context.test.mjs) | Creación, snapshot, conservación y reinicio del contexto del turno. |
+| I2 | [movement-cost.test.mjs](../../tests/movement-cost.test.mjs) | Assessment puro 5/10; ortogonal difícil 10; diagonal difícil 15; paridad proyectada. |
+| I3/I3R1 | [route-validation.test.mjs](../../tests/route-validation.test.mjs) | Legalidad, ocupación, huellas, Squeezing y puente con el validador productivo. |
+| I4 | [movement-resolution.test.mjs](../../tests/movement-resolution.test.mjs) | Composición pura y presupuesto, sin mutación; evidencia por Step. |
+| I5 | [movement-commit.test.mjs](../../tests/movement-commit.test.mjs) | 17 casos de commit, contexto diagonal, Squeezing y rechazo por precondiciones obsoletas. |
+
+Los walkthroughs conservados en Git registran la progresión de unitarias:
+I1 (`c823af5`) 563; I2 (`fbfc944`) 570; I3R1 (`2ce772b`) 590;
+I4 (`10c3521`) 603; I5 (`6dc34f2`) 620. No se atribuye esa progresión
+a nuevos flujos UI o WebSocket: I4/I5 no tienen consumidores productivos aún.
+
+## Evidencia histórica por cierre
+
+Las cifras siguientes pertenecen al sprint indicado; no sustituyen la
+baseline identificada arriba.
 
 ## Cobertura E2E (WebSocket)
 Los scripts E2E (ej. `scripts/e2e-websocket.mjs`) actúan como la prueba de integración canónica del motor, emulando a clientes conectados que envían comandos tácticos.
@@ -25,12 +64,12 @@ Reglas cubiertas obligatoriamente en E2E:
 - Diehard/Prone Eschewal: estabilización en negativos, conservación de turno, Stand Up por 0 pies sin AdO y ausencia de sangrado en la ronda siguiente.
 - Entangled Core: fuente declarativa en snapshot, velocidad efectiva 30→15 y bloqueos autoritativos de Run/Charge.
 - EFFECT-BLINDED (Core): fuente de Total Concealment perspectivo, pérdida de DEX a CA, -2 AC y mitigaciones mecánicas estáticas validada en Snapshot.
-- DEFENSE-CONCEALMENT: el esquema WebSocket rechaza porcentaje o d100 suministrados por el cliente; los recorridos productivos sin fuentes conservan assessment `none` y el servidor mantiene autoridad exclusiva.
+- DEFENSE-CONCEALMENT (corte de Sprint 046, anterior a las fuentes de Blinded/Vision): el esquema WebSocket rechaza porcentaje o d100 suministrados por el cliente; los recorridos productivos sin fuentes conservan assessment `none` y el servidor mantiene autoridad exclusiva.
 - DEFENSE-LINE-OF-EFFECT (Parcial): camino positivo (Line of Effect presente, tablero sin obstáculos) confirmado vía WebSocket. El camino de rechazo (Cobertura Total por `lineOfEffectBlockingCells`) **no** es representable en este E2E porque no existe comando ni editor para fijar el tablero de una sala viva; se cubre con integración directa de servidor en `tests/line-of-effect-server.test.mjs` (ver Sprint 052B abajo).
 - DEFENSE-VISION (Parcial, Sprints 053B/053B.2): targeting directo rechazado para un atacante Cegado con `targetId` legado (Ocultación Total exige elegir casilla), y el mismo ataque resuelto vía `target: {kind:"square"}` con **proyección segura** — el log público del ataque por casilla es genérico ("ataca a una casilla… El ataque falla/impacta.") y se verifica la ausencia de cualquier log con d20/CA/d100 (Sprint 053B.2, Anti-Metagaming).
 - DEFENSE-COVER/DEFENSE-LINE-OF-EFFECT/DEFENSE-CONCEALMENT (Sprint 055B): el escenario Blinded existente sigue en verde sin cambios (la legalidad de AdO se cubre por unitarios/integración de servidor — ver más abajo, sin un caso E2E dedicado nuevo en este sprint).
 
-Último cierre validado (Sprint 055B): **100/100** verificaciones WebSocket.
+Corte histórico de Sprint 055B: **100/100** verificaciones WebSocket.
 
 ## Cobertura Unitaria
 Los test unitarios (ej. `tests/*.test.mjs`) evalúan casos límite aislados sin necesidad del servidor WS.
@@ -45,7 +84,7 @@ Reglas cubiertas obligatoriamente:
 - derivación determinista Large/Huge, colisión parcial, flanqueo por caras opuestas y celdas abandonadas que provocan AdO.
 - proyección vital, normalización inmediata, economía Disabled en negativos, umbral fatal y perfil declarativo de Stand Up.
 
-Último cierre validado (Sprint 025-R): **290/290** pruebas.
+Corte histórico de Sprint 025-R: **290/290** pruebas.
 
 Sprint 030 eleva la cobertura a **303/303** pruebas e incorpora vínculo estricto de Presa, fórmulas de escape, mutación transaccional, restricción de armas y rechazo de payloads manipulados.
 
@@ -89,4 +128,4 @@ Sprint 030 amplía la cobertura a **5/5** escenarios Playwright con restricción
 
 **Sprint 046**: **6/6** escenarios Playwright preservados. React consume el mismo `ConcealmentAssessment` que el servidor; por alcance aprobado no existe una fuente productiva que active el indicador, y los casos deterministas 20%/50% se cubren en la suite unitaria sin introducir flags de prueba ni RNG de cliente.
 
-**Referencia a ADR**: `ADR-0006-testing-culture.md`
+**Referencia a ADR**: [ADR-0006](../adr/ADR-0006-testing-culture.md)

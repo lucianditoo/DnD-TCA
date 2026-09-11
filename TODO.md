@@ -1,19 +1,39 @@
 # TODO
 
+Responsabilidad: Acciones pendientes verificadas, sin historial de implementaciones.
+Autoridad: Canónica
+Lifecycle: Snapshot vivo
+Reemplaza: —
+Complementa: [Estado](PROJECT_STATUS.md), [orden futuro](ROADMAP.md)
+Consumidores: Agentes al retomar el proyecto y propietario al priorizar tareas.
+
 > **Responsabilidad canónica:** acciones pendientes. El historial de cierres
 > vive en Git y en `walkthrough.md`; el estado oficial de Rule IDs vive en
 > [`docs/rules/registry.md`](docs/rules/registry.md).
 
-## Spatial Engine 2.5D (Nuevos NDD Hijos Requeridos)
+## Continuidad inmediata de D-1B
 
-- **D-1 — Geometría Normativa Espacial:** Identidad, ocupación volumétrica, alcance 3D, distancia.
-- **D-1B — Diseño Normativo de Movimiento:** NDD completo (Capítulos 1–7) aprobado y congelado. D-1B-I1 (Movement Context), D-1B-I2 (Movement Cost Assessment), D-1B-I3/I3R1 (Route Validation SSOT, sin ciclo), D-1B-I4 (Movement Resolution Pipeline puro hasta Budget Verification) y D-1B-I5 (Authoritative Movement Commit con precondición de estado vigente) implementados y aislados del flujo productivo, pendientes de Architecture Review. ODR-D1B-I5-1 (sede persistente de `squeezingAxis`) abierta. Publication, migración productiva de comandos, preview y UI continúan pendientes de sus fases propias.
-- **D-2 — Fog of War y Participant Projection:** Filtro de visibilidad server-side.
-- **D-3 — Protocolo, Identidad, Reconexión y Persistencia Durable:** Sesiones, versionado de wire, y guardado en servidor.
-- **D-4 — Renderer, Presentación 2.5D y Cámara.**
-- **D-5 — Editor Táctico V2.**
-- **D-6 — Objetos Ambientales.**
-- **D-7 — TurnState e Integración de Movimiento Fragmentado:** Formalizar Ataque Elástico y persistencia intra-turno.
+- Obtener el veredicto de Architecture Review sobre I5; el estado de
+  integración por etapa se mantiene en [PROJECT_STATUS.md](PROJECT_STATUS.md).
+- Resolver ODR-D1B-I5-1: sede persistente de `squeezingAxis`, antes de asumir
+  una solución en la migración productiva.
+- Resolver las combinaciones afectadas por D-1B-C3-01 (composición de fuentes
+  de coste) cuando se delimite su implementación; el [NDD](docs/designs/normative-movement-design.md)
+  sigue siendo su autoridad.
+- Delimitar y aprobar las fases de Publication, integración productiva de
+  comandos, preview y UI. No crear otra autoridad de legalidad o coste.
+
+## Diseños espaciales pendientes
+
+Los contratos normativos D-1R1, D-1A y D-1B ya existen: no volver a pedir su
+creación como si fueran documentos ausentes.
+
+- Elaborar los NDD específicos requeridos para D-2 (FoW), D-3
+  (protocolo/identidad/persistencia), D-4 (renderer/cámara), D-5 (editor)
+  y D-6 (objetos ambientales).
+- Delimitar D-7, TurnState e integración de movimiento fragmentado, incluido
+  Ataque Elástico. Es un candidato, no una funcionalidad aprobada.
+- Coordinar las dependencias según [ROADMAP.md](ROADMAP.md).
 
 ## Vision, Line of Effect y Concealment
 

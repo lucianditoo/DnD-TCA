@@ -3,7 +3,7 @@
 Responsabilidad: Definir la arquitectura autoritativa del espacio 3D discreto, entidades espaciales y su presentación visual 2.5D.
 Autoridad: Canónica
 Lifecycle: Diseño
-Reemplaza: docs/designs/combat-engine-mvp.md (totalmente supersedido por exclusiones espaciales obsoletas)
+Reemplaza: docs/archive/combat-engine-mvp.md (precursor histórico; ruta actualizada sin alterar las decisiones de este NDD)
 Complementa: docs/architecture/combat-engine.md, docs/designs/terrain-cover-line-of-effect-decision.md, docs/designs/cover-and-dynamic-reach-design.md, docs/designs/vision-and-line-of-effect-architecture.md, docs/designs/large-footprints-core-integration-design.md
 Consumidores: Todo agente (P0) que toque reglas de movimiento, geometría, LoE, Cover, proyecciones visuales, objetos del entorno o persistencia de mapas.
 
