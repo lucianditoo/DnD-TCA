@@ -78,7 +78,8 @@ implementación cerrados (`large-footprints-v1-implementation-plan.md`,
 
 - [`docs/adr/`](docs/adr/): decisiones arquitectónicas estables.
 - [`docs/designs/`](docs/designs/): NDD y planes por vertical.
-  - [`docs/designs/scripted-combat-demo.md`](docs/designs/scripted-combat-demo.md): propuesta de demo automática por comandos reales, escenas, aislamiento y controles de reproducción; pendiente de Architecture Review.
+  - [`docs/designs/scripted-combat-demo.md`](docs/designs/scripted-combat-demo.md): NDD de demo táctica automática por comandos reales, escenas, aislamiento y controles de reproducción (aprobado).
+  - [`docs/designs/scripted-combat-demo/implementation-plan.md`](docs/designs/scripted-combat-demo/implementation-plan.md): plan de implementación ejecutable de la demo táctica automática.
   - [`docs/designs/spatial-engine-2.5d.md`](docs/designs/spatial-engine-2.5d.md): NDD Oficial del Motor Espacial 3D Discreto y Presentación 2.5D.
   - [`docs/designs/normative-spatial-geometry.md`](docs/designs/normative-spatial-geometry.md): Geometría Normativa Espacial (D-1R1).
   - [`docs/designs/normative-area-shape-projection.md`](docs/designs/normative-area-shape-projection.md): Proyección Normativa de Áreas (D-1A).
