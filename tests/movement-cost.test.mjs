@@ -141,9 +141,17 @@ test("Movement Cost no muta la Route ni el contexto recibidos", () => {
   });
   assert.deepEqual(assessment, {
     totalCostFeet: 10,
+    totalBaseRouteCostFeet: 10,
     resultingContext: { normalDiagonalStepsThisTurn: 2 },
     steps: [
-      { stepIndex: 0, stepCostFeet: 10, cumulativeCostFeet: 10, resultingContext: { normalDiagonalStepsThisTurn: 2 } }
+      {
+        stepIndex: 0,
+        stepCostFeet: 10,
+        stepBaseRouteCostFeet: 10,
+        cumulativeCostFeet: 10,
+        cumulativeBaseRouteCostFeet: 10,
+        resultingContext: { normalDiagonalStepsThisTurn: 2 }
+      }
     ]
   });
   assert.notEqual(assessment.resultingContext, initialContext);
@@ -162,11 +170,153 @@ test("Movement Cost conserva evidencia ordenada por Step: coste individual, acum
   );
 
   assert.equal(assessment.steps.length, 3);
-  assert.deepEqual(assessment.steps[0], { stepIndex: 0, stepCostFeet: 5, cumulativeCostFeet: 5, resultingContext: { normalDiagonalStepsThisTurn: 1 } });
-  assert.deepEqual(assessment.steps[1], { stepIndex: 1, stepCostFeet: 10, cumulativeCostFeet: 15, resultingContext: { normalDiagonalStepsThisTurn: 2 } });
-  assert.deepEqual(assessment.steps[2], { stepIndex: 2, stepCostFeet: 10, cumulativeCostFeet: 25, resultingContext: { normalDiagonalStepsThisTurn: 2 } });
+  assert.deepEqual(assessment.steps[0], {
+    stepIndex: 0,
+    stepCostFeet: 5,
+    stepBaseRouteCostFeet: 5,
+    cumulativeCostFeet: 5,
+    cumulativeBaseRouteCostFeet: 5,
+    resultingContext: { normalDiagonalStepsThisTurn: 1 }
+  });
+  assert.deepEqual(assessment.steps[1], {
+    stepIndex: 1,
+    stepCostFeet: 10,
+    stepBaseRouteCostFeet: 10,
+    cumulativeCostFeet: 15,
+    cumulativeBaseRouteCostFeet: 15,
+    resultingContext: { normalDiagonalStepsThisTurn: 2 }
+  });
+  assert.deepEqual(assessment.steps[2], {
+    stepIndex: 2,
+    stepCostFeet: 10,
+    stepBaseRouteCostFeet: 5,
+    cumulativeCostFeet: 25,
+    cumulativeBaseRouteCostFeet: 20,
+    resultingContext: { normalDiagonalStepsThisTurn: 2 }
+  });
 
   const sumOfStepCosts = assessment.steps.reduce((sum, s) => sum + s.stepCostFeet, 0);
   assert.equal(sumOfStepCosts, assessment.totalCostFeet);
   assert.equal(assessment.steps.at(-1).cumulativeCostFeet, assessment.totalCostFeet);
+});
+
+// --- Sprint D-1B-I5R1: Squeezing, Base Route Cost y Regresiones ---
+
+const squeezingStep = (origin, destination, isDifficultTerrain = false) => ({
+  origin,
+  destination,
+  isDifficultTerrain,
+  spatialMode: "squeezing"
+});
+
+test("Movement Cost (I5R1): Squeezing ortogonal normal: base 5 / cost 10", () => {
+  const assessment = assessMovementCost(
+    route(squeezingStep(position(0, 0), position(1, 0))),
+    { normalDiagonalStepsThisTurn: 0 }
+  );
+
+  assert.equal(assessment.totalCostFeet, 10);
+  assert.equal(assessment.totalBaseRouteCostFeet, 5);
+  assert.equal(assessment.resultingContext.normalDiagonalStepsThisTurn, 0);
+  assert.equal(assessment.steps[0].stepCostFeet, 10);
+  assert.equal(assessment.steps[0].stepBaseRouteCostFeet, 5);
+});
+
+test("Movement Cost (I5R1): Squeezing diagonal base 5: base 5 / cost 10", () => {
+  const assessment = assessMovementCost(
+    route(squeezingStep(position(0, 0), position(1, 1))),
+    { normalDiagonalStepsThisTurn: 0 }
+  );
+
+  assert.equal(assessment.totalCostFeet, 10);
+  assert.equal(assessment.totalBaseRouteCostFeet, 5);
+  assert.equal(assessment.resultingContext.normalDiagonalStepsThisTurn, 1);
+  assert.equal(assessment.steps[0].stepCostFeet, 10);
+  assert.equal(assessment.steps[0].stepBaseRouteCostFeet, 5);
+});
+
+test("Movement Cost (I5R1): Segundo diagonal bajo Squeezing: base 10 -> cost 20", () => {
+  const assessment = assessMovementCost(
+    route(squeezingStep(position(1, 1), position(2, 2))),
+    { normalDiagonalStepsThisTurn: 1 }
+  );
+
+  assert.equal(assessment.totalCostFeet, 20);
+  assert.equal(assessment.totalBaseRouteCostFeet, 10);
+  assert.equal(assessment.resultingContext.normalDiagonalStepsThisTurn, 2);
+  assert.equal(assessment.steps[0].stepCostFeet, 20);
+  assert.equal(assessment.steps[0].stepBaseRouteCostFeet, 10);
+});
+
+test("Movement Cost (I5R1): Difficult Terrain ortogonal: base 5 / cost 10", () => {
+  const assessment = assessMovementCost(
+    route(step(position(0, 0), position(1, 0), true)),
+    { normalDiagonalStepsThisTurn: 0 }
+  );
+
+  assert.equal(assessment.totalCostFeet, 10);
+  assert.equal(assessment.totalBaseRouteCostFeet, 5);
+  assert.equal(assessment.resultingContext.normalDiagonalStepsThisTurn, 0);
+  assert.equal(assessment.steps[0].stepCostFeet, 10);
+  assert.equal(assessment.steps[0].stepBaseRouteCostFeet, 5);
+});
+
+test("Movement Cost (I5R1): Regresion A: normal diagonal -> difficult diagonal -> normal diagonal", () => {
+  const assessment = assessMovementCost(
+    route(
+      step(position(0, 0), position(1, 1)),       // 1a normal diagonal: base 5, cost 5, cont 1
+      step(position(1, 1), position(2, 2), true), // diagonal dificil: base 5, cost 15, cont 1 (no altera contador)
+      step(position(2, 2), position(3, 3))        // 2a normal diagonal: base 10, cost 10, cont 2 (paridad normal preservada)
+    ),
+    { normalDiagonalStepsThisTurn: 0 }
+  );
+
+  assert.equal(assessment.steps[0].stepCostFeet, 5);
+  assert.equal(assessment.steps[0].stepBaseRouteCostFeet, 5);
+  assert.equal(assessment.steps[0].resultingContext.normalDiagonalStepsThisTurn, 1);
+
+  assert.equal(assessment.steps[1].stepCostFeet, 15);
+  assert.equal(assessment.steps[1].stepBaseRouteCostFeet, 5);
+  assert.equal(assessment.steps[1].resultingContext.normalDiagonalStepsThisTurn, 1);
+
+  assert.equal(assessment.steps[2].stepCostFeet, 10);
+  assert.equal(assessment.steps[2].stepBaseRouteCostFeet, 10);
+  assert.equal(assessment.steps[2].resultingContext.normalDiagonalStepsThisTurn, 2);
+
+  assert.equal(assessment.totalCostFeet, 30);
+  assert.equal(assessment.totalBaseRouteCostFeet, 20);
+});
+
+test("Movement Cost (I5R1): Regresion B: squeezing diagonal -> normal diagonal", () => {
+  const assessment = assessMovementCost(
+    route(
+      squeezingStep(position(0, 0), position(1, 1)), // 1a diagonal bajo squeezing: base 5, cost 10, cont 1
+      step(position(1, 1), position(2, 2))           // 2a normal diagonal: base 10, cost 10, cont 2
+    ),
+    { normalDiagonalStepsThisTurn: 0 }
+  );
+
+  assert.equal(assessment.steps[0].stepCostFeet, 10);
+  assert.equal(assessment.steps[0].stepBaseRouteCostFeet, 5);
+  assert.equal(assessment.steps[0].resultingContext.normalDiagonalStepsThisTurn, 1);
+
+  assert.equal(assessment.steps[1].stepCostFeet, 10);
+  assert.equal(assessment.steps[1].stepBaseRouteCostFeet, 10);
+  assert.equal(assessment.steps[1].resultingContext.normalDiagonalStepsThisTurn, 2);
+
+  assert.equal(assessment.totalCostFeet, 20);
+  assert.equal(assessment.totalBaseRouteCostFeet, 15);
+});
+
+test("Movement Cost (I5R1): Combinacion No Soportada: Squeezing + Difficult Terrain produce resultado tipado", () => {
+  const result = assessMovementCost(
+    route(
+      squeezingStep(position(0, 0), position(1, 0), true)
+    ),
+    { normalDiagonalStepsThisTurn: 0 }
+  );
+
+  assert.equal(result.kind, "unsupported-cost-combination");
+  assert.equal(result.failedStepIndex, 0);
+  assert.match(result.reason, /ODR-D1B-C3-01/);
 });

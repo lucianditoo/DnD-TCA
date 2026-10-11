@@ -9,40 +9,46 @@ import type { EffectInstance } from "./effects/types.js";
 import type { ProductionEffectId } from "./effects/catalog.js";
 import { EffectManager } from "./effects/manager.js";
 import { cryptoId } from "./demo-data.js";
-import type { MovementResolutionResult } from "./movementResolution.js";
+import { createCombatRulesSnapshot } from "./combatSnapshot.js";
+import {
+  createMovementStateFingerprint,
+  type MovementResolutionResult,
+} from "./movementResolution.js";
 
 /**
- * Authoritative Movement Commit (Sprint D-1B-I5).
+ * Authoritative Movement Commit (Sprint D-1B-I5/I5R1).
  *
  * Consume exclusivamente un `MovementResolutionResult` de kind "ready" ya producido por
- * `resolveMovementPipeline` (I4). No recalcula Route Validation, Movement Cost, footprints,
+ * `resolveMovementPipeline` (I4/I5R1). No recalcula Route Validation, Movement Cost, footprints,
  * geometría, terreno difícil, `squeezingAxis` ni el contador diagonal — toda esa evidencia
  * ya viene resuelta en `resolution.steps`/`resolution.projectedContext`.
+ *
+ * Valida de forma estricta las precondiciones autoritativas:
+ * - Correspondencia de actor y turno activo.
+ * - Identidad temporal de la ronda.
+ * - Origen y presupuesto previo.
+ * - Contexto diagonal vinculado a `resolution.initialContext`.
+ * - Vigencia del estado de reglas via `resolution.rulesStateFingerprint`.
  *
  * Aislado deliberadamente del flujo productivo legacy: ningún comando (`handleMoveCombatant`,
  * `handleWithdraw`, `handleRun`, `handleCharge`) ni `commitSpatialTransition` invoca todavía
  * este módulo.
  *
  * ODR-D1B-I5-1 (abierta): `squeezingAxis` se consume desde el último `MovementResolutionStep`
- * y se expone en el resultado del Commit, pero no se persiste en ninguna sede durable
- * (`EffectInstance` ni `CombatantSnapshot`). El modelo actual no define dónde debería vivir
- * ese dato más allá del propio turno en que se calculó; esta limitación se registra aquí a
- * propósito, sin decidirla implícitamente. Solo la presencia/ausencia de Squeezing (el
- * `spatialMode`) tiene hoy una sede clara: la `EffectInstance` `srd_squeezing`, igual que en
- * `apps/server/src/combat/spatialTransition.ts::commitSpatialTransition`. Este módulo
- * reimplementa ese mismo patrón de forma autocontenida (no lo importa: `packages/shared` no
- * puede depender de `apps/server`) — una duplicación temporal y documentada, esperable
- * mientras la migración productiva (`CERO MIGRACIÓN PRODUCTIVA` en este sprint) no exista
- * todavía.
+ * y se expone en el resultado del Commit, pero no se persiste en ninguna sede durable.
  */
 
 export interface MovementCommitPreconditions {
+  /** Identidad del combatiente activo del turno. */
+  readonly expectedTurnCombatantId: string | null;
+  /** Ronda del combate en la que se calculó la resolución. */
+  readonly expectedRound: number;
   /** Posición del combatiente en el momento en que se calculó la Resolution. */
   readonly expectedOrigin: Readonly<Position>;
   /** `room.currentTurn.movementUsedFeet` vigente cuando se calculó la Resolution. */
   readonly expectedMovementUsedFeet: number;
-  /** Contexto diagonal (`normalDiagonalStepsThisTurn`) vigente cuando se calculó la Resolution. */
-  readonly expectedDiagonalContext: Readonly<MovementContext>;
+  /** Contexto diagonal opcional para compatibilidad; la autoridad estricta es resolution.initialContext. */
+  readonly expectedDiagonalContext?: Readonly<MovementContext>;
 }
 
 export interface MovementCommitInput {
@@ -55,9 +61,13 @@ export interface MovementCommitInput {
 }
 
 export type MovementCommitRejectionCode =
+  | "invalid-actor"
+  | "stale-turn"
+  | "stale-round"
   | "stale-origin"
   | "stale-movement-used"
-  | "stale-diagonal-context";
+  | "stale-diagonal-context"
+  | "stale-rules-state";
 
 export type MovementCommitResult =
   | {
@@ -82,16 +92,39 @@ function positionsMatch(a: Position, b: Position): boolean {
 
 /**
  * Aplica, de forma atómica, el resultado de una Resolution ya confirmada como "ready".
- * Verifica primero las precondiciones autoritativas (posición inicial, presupuesto
- * consumido, contexto diagonal) contra el estado vigente de `room`/`combatant`; si
- * cualquiera falla, rechaza el Commit sin mutar nada. Solo si todas se sostienen aplica
+ * Verifica primero las precondiciones autoritativas contra el estado vigente de `room`/`combatant`;
+ * si cualquiera falla, rechaza el Commit sin mutar nada. Solo si todas se sostienen aplica
  * todas las mutaciones juntas y devuelve el resultado confirmado. No publica eventos ni
  * realiza broadcast — Publication pertenece a una fase posterior y separada.
  */
 export function commitMovementResolution(input: MovementCommitInput): MovementCommitResult {
   const { room, combatant, resolution, preconditions } = input;
-  const { expectedOrigin, expectedMovementUsedFeet, expectedDiagonalContext } = preconditions;
+  const {
+    expectedTurnCombatantId,
+    expectedRound,
+    expectedOrigin,
+    expectedMovementUsedFeet
+  } = preconditions;
 
+  // 1. Actor y turno
+  if (combatant.id !== expectedTurnCombatantId || room.currentTurn.combatantId !== combatant.id || room.currentTurn.combatantId !== expectedTurnCombatantId) {
+    return {
+      kind: "rejected",
+      reason: `El combatiente ${combatant.name} (${combatant.id}) no coincide con el turno activo (${room.currentTurn.combatantId}) o con el actor esperado (${expectedTurnCombatantId}).`,
+      rejectionCode: combatant.id !== expectedTurnCombatantId ? "invalid-actor" : "stale-turn"
+    };
+  }
+
+  // 2. Ronda
+  if (expectedRound !== undefined && room.round !== expectedRound) {
+    return {
+      kind: "rejected",
+      reason: `La ronda del combate cambió (esperada: ${expectedRound}, actual: ${room.round}); la resolución pertenece a un turno anterior.`,
+      rejectionCode: "stale-round"
+    };
+  }
+
+  // 3. Origen
   if (!positionsMatch(combatant.position, expectedOrigin)) {
     return {
       kind: "rejected",
@@ -100,6 +133,7 @@ export function commitMovementResolution(input: MovementCommitInput): MovementCo
     };
   }
 
+  // 4. Presupuesto consumido previo
   if (room.currentTurn.movementUsedFeet !== expectedMovementUsedFeet) {
     return {
       kind: "rejected",
@@ -108,11 +142,22 @@ export function commitMovementResolution(input: MovementCommitInput): MovementCo
     };
   }
 
-  if (room.currentTurn.normalDiagonalStepsThisTurn !== expectedDiagonalContext.normalDiagonalStepsThisTurn) {
+  // 5. Contexto diagonal vinculado estrictamente a resolution.initialContext
+  if (room.currentTurn.normalDiagonalStepsThisTurn !== resolution.initialContext.normalDiagonalStepsThisTurn) {
     return {
       kind: "rejected",
       reason: "El contexto diagonal del turno cambió desde que se calculó la Resolution.",
       rejectionCode: "stale-diagonal-context"
+    };
+  }
+
+  // 6. Fingerprint del estado de reglas del combate
+  const currentFingerprint = createMovementStateFingerprint(room);
+  if (currentFingerprint !== resolution.rulesStateFingerprint) {
+    return {
+      kind: "rejected",
+      reason: "El estado de reglas del combate (tablero, ocupantes o efectos espaciales) cambió desde que se calculó la Resolution.",
+      rejectionCode: "stale-rules-state"
     };
   }
 
@@ -143,7 +188,7 @@ export function commitMovementResolution(input: MovementCommitInput): MovementCo
   }
 
   combatant.position = { ...lastStep.position };
-  combatant.stats.distanceMovedFeet += resolution.totalCostFeet;
+  combatant.stats.distanceMovedFeet += resolution.totalBaseRouteCostFeet;
   room.currentTurn.movementUsedFeet += resolution.totalCostFeet;
   room.currentTurn.normalDiagonalStepsThisTurn = resolution.projectedContext.normalDiagonalStepsThisTurn;
 
@@ -153,7 +198,7 @@ export function commitMovementResolution(input: MovementCommitInput): MovementCo
     finalSpatialMode: lastStep.spatialMode,
     ...(lastStep.squeezingAxis ? { squeezingAxis: lastStep.squeezingAxis } : {}),
     occupiedCells: lastStep.occupiedCells.map((cell) => ({ ...cell })),
-    distanceMovedFeet: resolution.totalCostFeet,
+    distanceMovedFeet: resolution.totalBaseRouteCostFeet,
     movementUsedFeetAfter: room.currentTurn.movementUsedFeet,
     resultingDiagonalCount: room.currentTurn.normalDiagonalStepsThisTurn
   };

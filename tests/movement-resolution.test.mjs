@@ -177,11 +177,31 @@ test("Movement Resolution: footprint Large - una celda dificil bajo cualquier pa
   ]);
 });
 
-test("Movement Resolution: Squeezing - evalua terreno sobre el footprint efectivo proyectado y conserva spatialMode/squeezingAxis", () => {
+test("Movement Resolution: Squeezing + Difficult Terrain produce resultado tipado unsupported-cost-combination", () => {
   const context = setupBoard(6, 2);
   context.board.narrowCells = ["1,0", "2,0"];
   context.board.impassableCells = ["1,1", "2,1"];
   context.board.difficultTerrainCells = ["2,0"]; // solo una de las dos celdas del pasillo estrecho
+  const large = createCombatant("large1", 0, 0, "large");
+  context.combatants.push(large);
+
+  const result = resolveMovementPipeline({
+    context,
+    combatant: large,
+    path: [{ x: 1, y: 0, zFeet: 0 }],
+    availableBudgetFeet: 100,
+    initialContext: zeroContext()
+  });
+
+  assert.equal(result.kind, "unsupported-cost-combination");
+  assert.equal(result.failedStepIndex, 0);
+  assert.match(result.reason, /ODR-D1B-C3-01/);
+});
+
+test("Movement Resolution: Squeezing puro sin DT produce ready y duplica coste", () => {
+  const context = setupBoard(6, 2);
+  context.board.narrowCells = ["1,0", "2,0"];
+  context.board.impassableCells = ["1,1", "2,1"];
   const large = createCombatant("large1", 0, 0, "large");
   context.combatants.push(large);
 
@@ -200,8 +220,12 @@ test("Movement Resolution: Squeezing - evalua terreno sobre el footprint efectiv
     { x: 1, y: 0, zFeet: 0 },
     { x: 2, y: 0, zFeet: 0 }
   ]);
-  assert.equal(result.steps[0].isDifficultTerrain, true, "el footprint efectivo de Squeezing (2 celdas), no el ancla, decide terreno dificil");
+  assert.equal(result.steps[0].isDifficultTerrain, false);
   assert.equal(result.steps[0].stepCostFeet, 10);
+  assert.equal(result.steps[0].stepBaseRouteCostFeet, 5);
+  assert.equal(result.totalCostFeet, 10);
+  assert.equal(result.totalBaseRouteCostFeet, 5);
+  assert.ok(typeof result.rulesStateFingerprint === "string");
 });
 
 test("Movement Resolution: evidencia por Step coincide con coste individual, acumulado y total", () => {

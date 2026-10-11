@@ -2,7 +2,8 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import {
   resolveMovementPipeline,
-  commitMovementResolution
+  commitMovementResolution,
+  createMovementStateFingerprint
 } from "../packages/shared/dist/index.js";
 import { structuredSnapshotFields } from "./test-utils.mjs";
 
@@ -13,7 +14,7 @@ function setupRoom(width, height) {
     combatants: [],
     effectInstances: [],
     currentTurn: {
-      combatantId: null,
+      combatantId: "c1",
       movementUsedFeet: 0,
       normalDiagonalStepsThisTurn: 0,
       usedMoveAction: false
@@ -46,7 +47,10 @@ function deepFreeze(value) {
 }
 
 function preconditionsFor(room, combatant) {
+  room.currentTurn.combatantId = combatant.id;
   return {
+    expectedTurnCombatantId: combatant.id,
+    expectedRound: room.round,
     expectedOrigin: { ...combatant.position },
     expectedMovementUsedFeet: room.currentTurn.movementUsedFeet,
     expectedDiagonalContext: { normalDiagonalStepsThisTurn: room.currentTurn.normalDiagonalStepsThisTurn }
@@ -301,27 +305,32 @@ test("Movement Commit: no vuelve a ejecutar Route Validation (confia en los Step
   const room = setupRoom(5, 5);
   const mover = createCombatant("c1", 1, 1);
   room.combatants.push(mover);
-  room.board.impassableCells = ["2,1"]; // la celda del Step esta bloqueada AHORA
+  const fingerprint = createMovementStateFingerprint(room);
 
+  // La celda (3,3) no es adyacente a (1,1); Route Validation la rechazaria, pero Commit confia en la Resolution
   const fabricatedResolution = {
     kind: "ready",
     steps: [{
       stepIndex: 0,
-      position: { x: 2, y: 1, zFeet: 0 },
-      occupiedCells: [{ x: 2, y: 1, zFeet: 0 }],
+      position: { x: 3, y: 3, zFeet: 0 },
+      occupiedCells: [{ x: 3, y: 3, zFeet: 0 }],
       spatialMode: "natural",
       isDifficultTerrain: false,
       stepCostFeet: 5,
+      stepBaseRouteCostFeet: 5,
       cumulativeCostFeet: 5,
+      cumulativeBaseRouteCostFeet: 5,
       resultingContext: { normalDiagonalStepsThisTurn: 0 }
     }],
-    costAssessment: { totalCostFeet: 5, resultingContext: { normalDiagonalStepsThisTurn: 0 }, steps: [] },
+    costAssessment: { totalCostFeet: 5, totalBaseRouteCostFeet: 5, resultingContext: { normalDiagonalStepsThisTurn: 0 }, steps: [] },
     totalCostFeet: 5,
+    totalBaseRouteCostFeet: 5,
     initialContext: { normalDiagonalStepsThisTurn: 0 },
     projectedContext: { normalDiagonalStepsThisTurn: 0 },
-    finalPosition: { x: 2, y: 1, zFeet: 0 },
+    finalPosition: { x: 3, y: 3, zFeet: 0 },
     availableBudgetFeet: 100,
-    remainingBudgetFeet: 95
+    remainingBudgetFeet: 95,
+    rulesStateFingerprint: fingerprint
   };
 
   const result = commitMovementResolution({
@@ -331,14 +340,15 @@ test("Movement Commit: no vuelve a ejecutar Route Validation (confia en los Step
     preconditions: preconditionsFor(room, mover)
   });
 
-  assert.equal(result.kind, "committed", "el Commit no revalida geometria: acepta una Resolution fabricada aunque el tablero actual bloquee esa celda");
-  assert.deepEqual(mover.position, { x: 2, y: 1, zFeet: 0 });
+  assert.equal(result.kind, "committed", "el Commit no revalida geometria: acepta una Resolution fabricada sin re-ejecutar Route Validation");
+  assert.deepEqual(mover.position, { x: 3, y: 3, zFeet: 0 });
 });
 
 test("Movement Commit: no vuelve a ejecutar Movement Cost (aplica totalCostFeet de la Resolution tal cual)", () => {
   const room = setupRoom(5, 5);
   const mover = createCombatant("c1", 0, 0);
   room.combatants.push(mover);
+  const fingerprint = createMovementStateFingerprint(room);
 
   const fabricatedResolution = {
     kind: "ready",
@@ -349,16 +359,20 @@ test("Movement Commit: no vuelve a ejecutar Movement Cost (aplica totalCostFeet 
       spatialMode: "natural",
       isDifficultTerrain: false,
       stepCostFeet: 999,
+      stepBaseRouteCostFeet: 999,
       cumulativeCostFeet: 999,
+      cumulativeBaseRouteCostFeet: 999,
       resultingContext: { normalDiagonalStepsThisTurn: 0 }
     }],
-    costAssessment: { totalCostFeet: 999, resultingContext: { normalDiagonalStepsThisTurn: 0 }, steps: [] },
+    costAssessment: { totalCostFeet: 999, totalBaseRouteCostFeet: 999, resultingContext: { normalDiagonalStepsThisTurn: 0 }, steps: [] },
     totalCostFeet: 999,
+    totalBaseRouteCostFeet: 999,
     initialContext: { normalDiagonalStepsThisTurn: 0 },
     projectedContext: { normalDiagonalStepsThisTurn: 0 },
     finalPosition: { x: 1, y: 0, zFeet: 0 },
     availableBudgetFeet: 1000,
-    remainingBudgetFeet: 1
+    remainingBudgetFeet: 1,
+    rulesStateFingerprint: fingerprint
   };
 
   const result = commitMovementResolution({
@@ -386,6 +400,139 @@ test("Movement Commit: deep-freeze de resolution/preconditions detecta que no se
   const result = commitMovementResolution({ room, combatant: mover, resolution, preconditions });
 
   assert.equal(result.kind, "committed");
-  assert.deepEqual(preconditions, { expectedOrigin: { x: 1, y: 1, zFeet: 0 }, expectedMovementUsedFeet: 0, expectedDiagonalContext: { normalDiagonalStepsThisTurn: 0 } });
+  assert.deepEqual(preconditions, {
+    expectedTurnCombatantId: "c1",
+    expectedRound: 1,
+    expectedOrigin: { x: 1, y: 1, zFeet: 0 },
+    expectedMovementUsedFeet: 0,
+    expectedDiagonalContext: { normalDiagonalStepsThisTurn: 0 }
+  });
   assert.equal(resolution.totalCostFeet, 5);
+});
+
+// --- Sprint D-1B-I5R1: Stale Resolution, Identidad de Turno, Ronda y Fingerprinting ---
+
+test("Movement Commit (I5R1): rechazado por stale-turn si cambio el turno a otro combatiente", () => {
+  const room = setupRoom(5, 5);
+  const moverA = createCombatant("c1", 1, 1);
+  const moverB = createCombatant("c2", 3, 3);
+  room.combatants.push(moverA, moverB);
+  room.currentTurn.combatantId = "c1";
+
+  const preconditions = preconditionsFor(room, moverA);
+  const resolution = resolveReady(room, moverA, [{ x: 2, y: 1, zFeet: 0 }]);
+
+  // Cambia el turno activo a c2
+  room.currentTurn.combatantId = "c2";
+
+  const result = commitMovementResolution({ room, combatant: moverA, resolution, preconditions });
+
+  assert.equal(result.kind, "rejected");
+  assert.equal(result.rejectionCode, "stale-turn");
+});
+
+test("Movement Commit (I5R1): rechazado por invalid-actor si se intenta commitear un combatiente ajeno al turno", () => {
+  const room = setupRoom(5, 5);
+  const moverA = createCombatant("c1", 1, 1);
+  const moverB = createCombatant("c2", 1, 1);
+  room.combatants.push(moverA, moverB);
+  room.currentTurn.combatantId = "c1";
+
+  const preconditions = preconditionsFor(room, moverA);
+  const resolution = resolveReady(room, moverA, [{ x: 2, y: 1, zFeet: 0 }]);
+
+  // Se pasa moverB en lugar de moverA
+  const result = commitMovementResolution({ room, combatant: moverB, resolution, preconditions });
+
+  assert.equal(result.kind, "rejected");
+  assert.equal(result.rejectionCode, "invalid-actor");
+});
+
+test("Movement Commit (I5R1): rechazado por stale-round si el combate avanzo de ronda (ciclo de ronda)", () => {
+  const room = setupRoom(5, 5);
+  const mover = createCombatant("c1", 1, 1);
+  room.combatants.push(mover);
+  room.round = 1;
+
+  const preconditions = preconditionsFor(room, mover);
+  const resolution = resolveReady(room, mover, [{ x: 2, y: 1, zFeet: 0 }]);
+
+  // Avanza la ronda y vuelve a ser el turno de c1 con posicion y contadores en 0
+  room.round = 2;
+
+  const result = commitMovementResolution({ room, combatant: mover, resolution, preconditions });
+
+  assert.equal(result.kind, "rejected");
+  assert.equal(result.rejectionCode, "stale-round");
+});
+
+test("Movement Commit (I5R1): rechazado por stale-rules-state si cambio el tablero entre resolucion y commit", () => {
+  const room = setupRoom(5, 5);
+  const mover = createCombatant("c1", 1, 1);
+  room.combatants.push(mover);
+
+  const preconditions = preconditionsFor(room, mover);
+  const resolution = resolveReady(room, mover, [{ x: 2, y: 1, zFeet: 0 }]);
+
+  // Aparece un obstaculo en el tablero
+  room.board.impassableCells = ["3,3"];
+
+  const result = commitMovementResolution({ room, combatant: mover, resolution, preconditions });
+
+  assert.equal(result.kind, "rejected");
+  assert.equal(result.rejectionCode, "stale-rules-state");
+});
+
+test("Movement Commit (I5R1): rechazado por stale-rules-state si otro combatiente se movio", () => {
+  const room = setupRoom(5, 5);
+  const mover = createCombatant("c1", 1, 1);
+  const other = createCombatant("c2", 4, 4);
+  room.combatants.push(mover, other);
+
+  const preconditions = preconditionsFor(room, mover);
+  const resolution = resolveReady(room, mover, [{ x: 2, y: 1, zFeet: 0 }]);
+
+  // Otro combatiente cambia de posicion
+  other.position = { x: 4, y: 3, zFeet: 0 };
+
+  const result = commitMovementResolution({ room, combatant: mover, resolution, preconditions });
+
+  assert.equal(result.kind, "rejected");
+  assert.equal(result.rejectionCode, "stale-rules-state");
+});
+
+test("Movement Commit (I5R1): separa totalCostFeet (movementUsedFeet) de totalBaseRouteCostFeet (distanceMovedFeet)", () => {
+  const room = setupRoom(5, 5);
+  room.board.difficultTerrainCells = ["2,1"];
+  const mover = createCombatant("c1", 1, 1);
+  room.combatants.push(mover);
+
+  const preconditions = preconditionsFor(room, mover);
+  const resolution = resolveReady(room, mover, [{ x: 2, y: 1, zFeet: 0 }]); // ortogonal DT: base 5, cost 10
+
+  assert.equal(resolution.totalCostFeet, 10);
+  assert.equal(resolution.totalBaseRouteCostFeet, 5);
+
+  const result = commitMovementResolution({ room, combatant: mover, resolution, preconditions });
+
+  assert.equal(result.kind, "committed");
+  assert.equal(room.currentTurn.movementUsedFeet, 10, "presupuesto consumido se incrementa en totalCostFeet (10)");
+  assert.equal(mover.stats.distanceMovedFeet, 5, "recorrido fisico se incrementa en totalBaseRouteCostFeet (5)");
+  assert.equal(result.distanceMovedFeet, 5);
+});
+
+test("Movement Commit (I5R1): createMovementStateFingerprint es canonico, determinista y portable", () => {
+  const roomA = setupRoom(5, 5);
+  roomA.board.impassableCells = ["2,1", "1,2"];
+  roomA.combatants.push(createCombatant("b", 1, 1), createCombatant("a", 2, 2));
+
+  const roomB = setupRoom(5, 5);
+  // Mismo estado con arrays en orden inverso
+  roomB.board.impassableCells = ["1,2", "2,1"];
+  roomB.combatants.push(createCombatant("a", 2, 2), createCombatant("b", 1, 1));
+
+  const fpA = createMovementStateFingerprint(roomA);
+  const fpB = createMovementStateFingerprint(roomB);
+
+  assert.equal(fpA, fpB, "snapshots semanticamente equivalentes producen identico fingerprint");
 });

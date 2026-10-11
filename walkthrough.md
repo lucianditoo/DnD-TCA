@@ -1,66 +1,113 @@
-# Walkthrough — Saneamiento documental posterior a D-1B-I5
+# Walkthrough — Sprint D-1B-I5R1: Movement Resolution / Commit Remediation
 
-Responsabilidad: Registrar el saneamiento ejecutado y su validación documental.
+Responsabilidad: Registrar la remediación ejecutada de D-1B-I5 y su validación técnica completa.
 Autoridad: Registro
 Lifecycle: Rotativo
-Reemplaza: Walkthrough de I5, conservado en Git.
-Complementa: [PROJECT_STATUS.md](PROJECT_STATUS.md), [INDEX.md](INDEX.md)
-Consumidores: Siguiente agente y revisión del cambio documental.
+Reemplaza: Walkthrough de saneamiento documental posterior a D-1B-I5.
+Complementa: [PROJECT_STATUS.md](PROJECT_STATUS.md), [TODO.md](TODO.md), [docs/designs/normative-movement-design.md](docs/designs/normative-movement-design.md)
+Consumidores: Architecture Gate, siguiente agente y revisión técnica.
 
-## Alcance y baseline
+## 1. Alcance y Objetivos
 
-Cambio Nivel A, autorizado por el propietario. Baseline de código auditada:
-`6dc34f2823824a3fcf523790b2a19538bc19fe29` (D-1B-I5), publicada en master con
-[Windows CI #67 verde](https://github.com/lucianditoo/DnD-TCA/actions/runs/30756609816).
-No se cambia código, tests, Rule IDs ni decisiones normativas de los NDD.
-Este saneamiento no aprueba I5 ni inicia otro sprint funcional.
+Sprint D-1B-I5R1 remedia exclusivamente los hallazgos identificados en la Architecture Review de D-1B-I5:
+- **Major 1 — Stale Resolution y Vigencia:** Fortalecer el contrato Resolution → Commit para impedir que una resolución calculada sobre un estado anterior pueda commitearse tras cambios de turno, actor, ronda, posición, presupuesto, contexto diagonal o estado espacial del combate.
+- **Major 2 — Coste Normativo de Squeezing:** Implementar en `assessMovementCost` el coste doble para Squeezing (ortogonal y diagonal con paridad 5/10), y devolver resultado tipado `{ kind: "unsupported-cost-combination" }` cuando confluyan Squeezing y Terreno Difícil (ODR D-1B-C3-01 abierta).
+- **Minor — Distinción Coste vs Distancia:** Separar formalmente el presupuesto consumido (`totalCostFeet` acumulado a `room.currentTurn.movementUsedFeet`) del recorrido espacial físico (`totalBaseRouteCostFeet` acumulado a `combatant.stats.distanceMovedFeet`).
 
-## Cambios
+### Fronteras y Restricciones Respetadas
+- **Aislamiento productivo total:** Ningún comando productivo (`movementCommands.ts`, `tacticalCommands.ts`, `spatialTransition.ts`) fue modificado ni conectado al pipeline normativo. Sprint I6 permanece bloqueado.
+- **NDD congelado:** Sin alteraciones en `docs/designs/normative-movement-design.md`.
+- **ODRs abiertas:** ODR D-1B-C3-01 y ODR-D1B-I5-1 se mantienen abiertas y documentadas.
+- **Archivos protegidos:** `.claude/` y `test.txt` no fueron leídos, modificados ni incluidos.
 
-- Estado distingue I1/I3 integrados de I2/I4/I5 y sus consumidores pendientes.
-- TODO conserva acciones pendientes; ROADMAP distingue contratos existentes,
-  hitos por diseñar y antecedentes que requieren revalidación.
-- INDEX apunta a los siete capítulos de D-1B y localiza el MVP histórico.
-- Master coverage incorpora evidencia de I1–I5 y distingue baseline actual
-  de cortes históricos; no presenta los conteos como una ejecución local nueva.
-- Registry conserva todas sus Rule IDs y estados, corrigiendo notas antiguas
-  de Concealment y referencias de planificación de ATTACK-FULL.
-- El manifiesto reconoce los cuatro inventarios PHB. RULES corrige anotaciones
-  verificadas de Cover/LoE/Concealment, movimiento e indefensión/Golpe de Gracia.
-- RULES_ENGINE y WORKFLOW se reducen a responsabilidades y referencias;
-  CODEX_GUIDE elimina su tabla duplicada. No se crea una nueva jerarquía documental.
-- `docs/designs/combat-engine-mvp.md` pasa a
-  [docs/archive/combat-engine-mvp.md](docs/archive/combat-engine-mvp.md):
-  cuerpo histórico conservado, cabecera de supersesión explícita y referencias
-  activas actualizadas. No se eliminan NDD vigentes ni inventarios temáticos.
-- DT-023 registra lo resuelto y mantiene explícitamente lo todavía pendiente.
+---
 
-## Preservación del trabajo local
+## 2. Cambios Técnicos Realizados
 
-El rótulo local «COMPLETADO» no estaba respaldado por un gate de DnD-TCA.
-El walkthrough local contenía notas de otro proyecto. Con aprobación expresa
-del propietario se preservó una copia byte a byte fuera del repositorio,
-verificada por SHA-256, antes de reemplazarlo. Ese contenido ajeno no se publica.
-`test.txt` y `.claude/` permanecen intactos y fuera del staging/commit;
-no se abrió ni leyó `.claude/settings.local.json`.
+### `packages/shared/src/movementCost.ts`
+- Agregado campo opcional `spatialMode?: SpatialMode` a `MovementCostStep`.
+- Incorporados `stepBaseRouteCostFeet` y `cumulativeBaseRouteCostFeet` en `MovementCostAssessmentStep`.
+- Agregado `totalBaseRouteCostFeet` al resultado de `MovementCostAssessment`.
+- Incorporada unión discriminada `UnsupportedCostCombination` (`kind: "unsupported-cost-combination"`).
+- Implementada tabla de costes de Squeezing:
+  - Ortogonal bajo Squeezing: 10 ft (base 5 * 2).
+  - Diagonal base 5 bajo Squeezing: 10 ft (consume paridad normal y avanza contador en 1).
+  - Diagonal base 10 bajo Squeezing: 20 ft (consume paridad normal y avanza contador en 1).
+- Detección de combinación Squeezing + Difficult Terrain devolviendo `UnsupportedCostCombination` sin arrojar excepciones.
 
-## Validación
+### `packages/shared/src/movementResolution.ts`
+- Creada función pura `createMovementStateFingerprint(context)`: genera una cadena serializada y canónicamente ordenada del estado que afecta Route Validation y Movement Cost (tablero: ancho, alto, tamaño de celda, celdas intransitables, terreno difícil y estrechas; combatientes: ID, posición 3D, tamaño, tipo y estado vital; instancias activas del efecto `srd_squeezing`). Sin dependencias de Node.js (100% portable para shared y web).
+- Agregado `rulesStateFingerprint` a los resultados de `MovementResolutionResult` (`ready` e `insufficient-budget`).
+- Propagación directa de `UnsupportedCostCombination` en `resolveMovementPipeline`.
+- Agregado `stepBaseRouteCostFeet` y `cumulativeBaseRouteCostFeet` a `MovementResolutionStep`.
+- Agregado `totalBaseRouteCostFeet` a `MovementResolutionReady` e `insufficient-budget`.
 
-- Validador documental en memoria: 15 documentos y 160 enlaces locales
-  comprobados, sin archivos ni anclas faltantes.
-- Preservación del cuerpo del MVP archivado y ausencia de referencias
-  activas a la ruta retirada, salvo esta explicación de la migración.
-- 54 filas del Registry comparadas contra HEAD: Rule ID, nombre y estado
-  sin cambios.
-- `git diff --check` correcto y revisión del diff exclusivamente documental.
-- DoD local reducido de Nivel A (GOVERNANCE §5.2): no se vuelve a ejecutar
-  la suite completa localmente; Windows CI corre sobre el commit publicado.
+### `packages/shared/src/movementCommit.ts`
+- Actualizado `MovementCommitPreconditions`:
+  - `expectedTurnCombatantId: string`
+  - `expectedRound?: number`
+  - `expectedOrigin: Position`
+  - `expectedMovementUsedFeet: number`
+  - `expectedDiagonalContext: MovementContext`
+- Ampliados códigos de rechazo: `"invalid-actor"`, `"stale-round"`, `"stale-rules-state"`.
+- Implementadas precondiciones secuenciales y atómicas:
+  1. Identidad de actor y correspondencia con el turno activo (`combatant.id === expectedTurnCombatantId === room.currentTurn.combatantId`).
+  2. Ronda del combate (`expectedRound !== undefined && room.round !== expectedRound`).
+  3. Origen espacial (`positionsMatch(combatant.position, expectedOrigin)`).
+  4. Presupuesto consumido previo (`room.currentTurn.movementUsedFeet !== expectedMovementUsedFeet`).
+  5. Contexto diagonal vinculado estrictamente a `resolution.initialContext.normalDiagonalStepsThisTurn`.
+  6. Fingerprint del estado de reglas: `createMovementStateFingerprint(room) === resolution.rulesStateFingerprint`.
+- Mutación atómica autoritativa:
+  - `combatant.stats.distanceMovedFeet += resolution.totalBaseRouteCostFeet`
+  - `room.currentTurn.movementUsedFeet += resolution.totalCostFeet`
+  - `room.currentTurn.normalDiagonalStepsThisTurn = resolution.projectedContext.normalDiagonalStepsThisTurn`
 
-## Continuidad
+---
 
-El siguiente paso funcional requiere el gate arquitectónico de I5 y la
-resolución de las decisiones abiertas que afecten su integración. No se da
-Proceed implícito a Publication, comandos, preview, renderer ni UI.
-El saneamiento no modifica D-1B-C3-01 ni cierra ODR-D1B-I5-1.
+## 3. Cobertura de Pruebas
+
+### `tests/movement-cost.test.mjs`
+- Squeezing ortogonal normal: base 5 / coste 10.
+- Squeezing diagonal base 5: base 5 / coste 10.
+- Squeezing diagonal base 10: base 10 / coste 20.
+- Difficult Terrain ortogonal: base 5 / coste 10.
+- Regresión A: diagonal normal (5) → diagonal difícil (15) → diagonal normal (10).
+- Regresión B: diagonal squeezing (10, avanza contador) → diagonal normal (10).
+- Combinación no soportada: Squeezing + Difficult Terrain produce resultado tipado `unsupported-cost-combination`.
+
+### `tests/movement-resolution.test.mjs`
+- Detección y propagación tipada de Squeezing + Difficult Terrain como `unsupported-cost-combination`.
+- Squeezing puro sin DT produce resolución `ready` con coste duplicado.
+- Preservación y reporte de `totalBaseRouteCostFeet` y `rulesStateFingerprint`.
+
+### `tests/movement-commit.test.mjs`
+- Rechazo por `stale-turn` al cambiar de turno a otro combatiente.
+- Rechazo por `invalid-actor` al intentar commitear un combatiente ajeno al turno.
+- Rechazo por `stale-round` al avanzar de ronda aunque vuelva al mismo actor.
+- Rechazo por `stale-rules-state` si cambia el tablero (nuevos obstáculos/terrenos).
+- Rechazo por `stale-rules-state` si otro combatiente se desplaza.
+- Verificación de determinismo canónico de `createMovementStateFingerprint` frente a reordenamiento de arrays.
+- Separación estricta entre `totalCostFeet` (`room.currentTurn.movementUsedFeet`) y `totalBaseRouteCostFeet` (`combatant.stats.distanceMovedFeet`).
+
+---
+
+## 4. Resultado de Validaciones
+
+| Validación | Comando | Resultado |
+|---|---|---|
+| **Unit Tests** | `npm test` | **635 pass**, 0 fail (19 suites) |
+| **Typecheck** | `npm run typecheck` | **0 errors** (shared, web, server) |
+| **Build** | `npm run build` | **Exitoso** (shared dist, web dist, server dist) |
+| **E2E WebSocket** | `node scripts/e2e-websocket.mjs` | **Exitoso** (suite completa en verde contra servidor real) |
+
+---
+
+## 5. Estado de ODRs y Deuda Técnica
+
+- **ODR-D1B-C3-01:** Composición de fuentes de coste acumulativas (Squeezing + Difficult Terrain) permanece **ABIERTA**. La implementación devuelve resultado tipado `unsupported-cost-combination` sin asumir heurísticas arbitrarias.
+- **ODR-D1B-I5-1:** Sede de almacenamiento persistente de `squeezingAxis` permanece **ABIERTA**.
+- **Deuda Técnica:** No se introdujo deuda técnica nueva.
+
+---
 
 READY FOR ARCHITECTURE REVIEW

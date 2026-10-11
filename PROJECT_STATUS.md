@@ -9,17 +9,18 @@
 - Rama de integración: `master`.
 - Última vertical funcional integrada: Sprint 055B, Ataques de Oportunidad bajo Cover y Ocultación Total.
 - Última decisión arquitectónica: Sprint D-1B Capítulo 7 (Integration & Implementation Contracts).
-- Implementación en revisión: Sprint D-1B-I5, Authoritative Movement Commit
-  (`commitMovementResolution` en `movementCommit.ts`), que consume
-  exclusivamente un `MovementResolutionResult` "ready" de I4 y muta
-  posición/`movementUsedFeet`/`distanceMovedFeet`/contador diagonal/estado
-  de Squeezing de forma atómica, solo si una precondición autoritativa
-  (posición, presupuesto y contexto diagonal vigentes) se sostiene. Sin
-  Publication; I5 no migró los comandos productivos. El nuevo pipeline de
-  I4/I5 todavía no es llamado por esos comandos. ODR-D1B-I5-1
-  (sede persistente de `squeezingAxis`) queda abierta.
+- Implementación en revisión: Sprint D-1B-I5R1, Movement Resolution / Commit Remediation.
+  Remedia hallazgos de Architecture Review de I5: procedencia y vigencia estricta
+  (actor/turno, ronda, origen, presupuesto, contexto diagonal y fingerprint
+  canónico determinista del estado de reglas con `createMovementStateFingerprint`),
+  coste normativo de Squeezing puro en `assessMovementCost` (duplicación ortogonal y diagonal
+  respetando paridad 5/10), tipado explícito para combinaciones no soportadas
+  (Squeezing + Difficult Terrain bajo ODR-D1B-C3-01) y separación estricta entre
+  presupuesto consumido (`totalCostFeet` → `movementUsedFeet`) y distancia espacial
+  recorrida (`totalBaseRouteCostFeet` → `distanceMovedFeet`). Aislamiento productivo
+  intacto; ODR-D1B-I5-1 y ODR-D1B-C3-01 permanecen abiertas.
 - Último saneamiento documental: consolidación del estado y roadmap posterior a D-1B-I5; no cambia el estado de aprobación de I5.
-- Baseline de código: `6dc34f2` (D-1B-I5), con Windows CI confirmado en verde.
+- Baseline de código: Sprint D-1B-I5R1, con validaciones locales completas (635 tests unitarios, typecheck, build y e2e websocket en verde).
   Conteos y evidencias se mantienen en [master-coverage.md](docs/testing/master-coverage.md), no como un segundo registro aquí.
 - GitHub Actions sobre Windows es el gate canónico de cierre para la revisión
   publicada.
@@ -29,10 +30,10 @@
 | Etapa | Estado comprobado en el código |
 |---|---|
 | I1 — Movement Context | Integrado en creación/reinicio de turno y snapshots; el flujo productivo todavía no incrementa el contador. |
-| I2 — Movement Cost | Assessment puro implementado; consumido por I4, no por el cálculo productivo de `validateMovePath`. |
+| I2 — Movement Cost | Assessment puro implementado; soporte de Squeezing y separación base/coste agregados en I5R1; consumido por I4. |
 | I3 / I3R1 — Route Validation | Integrado: `validateMovePath` delega legalidad a `validateRouteLegality`; extracción sin el ciclo detectado en I3. |
-| I4 — Movement Resolution | Pipeline puro de validación/coste/verificación de presupuesto; probado sin consumidores productivos. |
-| I5 — Movement Commit | Aplicación autoritativa probada; sin consumidores productivos, pendiente de Architecture Review. |
+| I4 — Movement Resolution | Pipeline puro de validación/coste/verificación de presupuesto remediado en I5R1 con fingerprint de estado y propagación tipada. |
+| I5 / I5R1 — Movement Commit | Aplicación autoritativa remediada (precondiciones robustas anti-stale, separación coste/distancia, squeezing); listo para Architecture Review. |
 
 La presentación continúa siendo un grid 2D con huellas multicasilla. El
 modelo de superficies y volúmenes de los NDD espaciales es el destino de

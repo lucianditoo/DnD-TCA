@@ -13,7 +13,7 @@ Consumidores: Agentes al retomar el proyecto y propietario al priorizar tareas.
 
 ## Continuidad inmediata de D-1B
 
-- Obtener el veredicto de Architecture Review sobre I5; el estado de
+- Obtener el veredicto de Architecture Review sobre D-1B-I5R1; el estado de
   integración por etapa se mantiene en [PROJECT_STATUS.md](PROJECT_STATUS.md).
 - Resolver ODR-D1B-I5-1: sede persistente de `squeezingAxis`, antes de asumir
   una solución en la migración productiva.
