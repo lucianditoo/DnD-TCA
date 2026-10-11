@@ -7,8 +7,8 @@ Reemplaza: —
 Complementa: [Combat Engine](../architecture/combat-engine.md), [Pipeline oficial](modifier-pipeline-architecture.md).
 Consumidores: Propietario, implementador de la demo y Architecture Reviewer.
 
-**Estado: propuesta para Architecture Review; no implementada.**
-Baseline inspeccionada: `116d7e1`. I5R1 está siendo trabajado en paralelo y no es dependencia de esta propuesta. Nivel previsto de implementación: **D**, por la orquestación de comandos y el aislamiento de ejecución. Este documento no concede Proceed.
+**Estado: remediación R1, pendiente de Gate Final Acotado; no implementada.**
+Baseline original: `116d7e1`; remediación contrastada con `9a6b87d`. I5R1 no es dependencia de esta propuesta y su aprobación permanece separada. Nivel previsto de implementación: **D**, por la orquestación de comandos y el aislamiento de ejecución. Este documento no concede Proceed.
 
 ## 1. Objetivo y experiencia
 
@@ -66,9 +66,15 @@ El runner crea los mismos `ClientCommand` de combate que el cliente normal y los
 
 La entrada externa y la ejecución interna comparten esa frontera. La extensión necesaria permite pasar dependencias de ejecución de demo a los handlers que ya admiten dados inyectables; el cliente no puede seleccionar esas dependencias. No se crean versiones de las reglas ni handlers de ataque/movimiento alternativos.
 
+Las dependencias de ejecución se suministran mediante una entrada interna del dispatcher, accesible al runner del servidor. No pertenecen a `ClientCommand`, a los controles de demo ni a ningún objeto deserializado desde red. El receptor WebSocket conserva el despacho ordinario sin opciones de dados; solo la sesión interna autorizada proporciona la fuente preparada. Un payload externo no puede activar esa entrada mediante flags ni campos adicionales.
+
+Reutilizar handlers no implica que todos sean transaccionales: el movimiento productivo muta la sala directamente y el lanzamiento puede registrar AdO y retornar antes de ejecutar el conjuro. El runner debe observar esas transiciones reales, sin asumir rollback general ni reintentar comandos por falta de un efecto final.
+
 ## 5. Guion declarativo y ejecución
 
 El escenario contiene: identificador/versionado del guion, Board inicial, perfiles, aliases estables de actores, iniciativa, pasos ordenados, solicitudes de dados esperadas y checkpoints. Aliases se resuelven a IDs de la sala creada; nunca se reutilizan IDs de otra ejecución.
+
+La preparación registra la correspondencia entre cada alias y el ID generado al crear ese actor. No deduce identidad exclusivamente del nombre visible ni de la plantilla: pueden repetirse. La correspondencia es única dentro de la ejecución y se descarta al reiniciarla.
 
 Un paso declara intención, actor/objetivo por alias, parámetros permitidos por el comando normal, explicación y resultado observable esperado. No contiene callbacks normativos ni fórmulas duplicadas de ataque, defensa o movimiento. Los checkpoints verifican hechos del resultado: posición final, actor activo, fase, condición, recurso consumido o transición de HP. Los totales que se muestren provienen del servidor/proyecciones compartidas.
 
@@ -89,6 +95,8 @@ Los controles incluyen identidad de sesión/ejecución y secuencia para rechazar
 Cada escena dispone de una secuencia de tiradas del lado servidor, asociada a paso, propósito cuando exista y caras del dado. Solicitudes imprevistas, valores fuera de rango o tiradas sobrantes en un checkpoint detienen la demo; no hay fallback aleatorio silencioso.
 
 Se reutilizan `PhysicalAttackExecutionOptions`, `CastSpellExecutionOptions` y `ManeuverDiceSource`. Se identifican todas las tiradas transitivas de las acciones seleccionadas, incluidas precisión, ocultación y confirmación. Cualquier extensión necesaria se limita a transportar esa dependencia, conservando el comportamiento por defecto de las partidas normales. No parchear `Math.random` globalmente.
+
+La reproducibilidad aún no está demostrada. Por ejemplo, el AdO interruptivo en `specialManeuverCommands.ts` usa la fuente inyectada para d100, pero delega otros dados a `rollDice`. El plan debe inventariar y cubrir estas llamadas transitivas antes de aceptar la escena; disponer de una opción `diceRoller` en un handler no acredita por sí solo el aislamiento completo. Los tests deben detectar cualquier consumo mecánico fuera de la fuente preparada, sin exigir IDs o timestamps deterministas.
 
 Donde el protocolo normal ya admite tirada manual, el runner puede suministrar el valor permitido; donde el servidor tira, se inyecta la fuente preparada. Ambos casos se rotulan **Tirada preparada de demostración**. No se aceptan totales de impacto ni resultados de salvación del guion: los calcula el motor.
 
@@ -132,8 +140,12 @@ Board despejado 12×8 con dos grupos separados. Cedrick (2,2) y defensor (3,2); 
 |---|---|---|
 | 1 | Cedrick intenta Trip | Si provoca, AdO interruptivo preparado sin daño; toque y oposición reales; `srd_prone` solo si el motor lo aplica. |
 | 2 | Defensor se levanta en su turno | Retirada de Prone y resolución explícita de los AdO que realmente genere. |
-| 3 | Lanzador usa Shocking Grasp con su slot | AdO de lanzamiento si corresponde, toque melee y slot gastado. |
-| 4 | Al siguiente turno del lanzador, Hold Person | Salvación de Voluntad del servidor, efecto según resultado y segundo slot gastado. |
+| 3a | Primer `cast-spell` de Shocking Grasp desde (8,5) | El enemigo en (9,5) amenaza y dispone de un AdO. El handler registra la oportunidad y retorna: fase `opportunity-resolution`, slot intacto y conjuro todavía no ejecutado. |
+| 3b | `resolve-opportunity-attack` por el ID recibido | Tirada preparada sin daño, oportunidad resuelta y retorno a `active`; lanzador habilitado, slot aún intacto. El defensor de este fixture tiene un único AdO disponible por ronda, sin fuentes de oportunidades adicionales. |
+| 3c | Segundo `cast-spell`, con el mismo slot y objetivo | Tras comprobar que no quedan oportunidades disponibles del defensor, el comando vuelve a pasar todas las validaciones y ejecuta el toque; el slot se consume conforme al handler. |
+| 4a–4c | Al siguiente turno del lanzador, Hold Person | Si el defensor recuperó su AdO y sigue amenazando, repetir explícitamente intento → resolución del AdO sin daño → segundo lanzamiento. Solo el lanzamiento efectivo realiza la salvación de Voluntad y consume el segundo slot. |
+
+Esta secuencia describe el comportamiento productivo de `handleCastSpell`: no existe un conjuro pendiente que se reanude automáticamente. El segundo lanzamiento es un paso declarado y condicionado a los checkpoints anteriores, no un retry genérico. Cada comando puede observarse mediante Siguiente paso. Si el lanzador deja de estar habilitado, queda otra oportunidad pendiente o el slot se consumió antes de lo previsto, la demo falla y se detiene; no limpia oportunidades ni fuerza el lanzamiento. No se agrega Concentration ni otra regla para completar la escena.
 
 Los turnos intermedios se terminan legalmente; no se reinicia la economía para adelantar el guion. Los resultados preparados pretenden mostrar las ramas de éxito, pero cada fixture debe demostrar que el catálogo, inmunidades y validaciones lo permiten. La narración presenta los conjuros tal como están implementados, no certifica que todo su modelado PHB esté completo.
 
@@ -141,7 +153,11 @@ Se omiten Grapple, Bull Rush, AoE, Haste y el resto de mecánicas en esta primer
 
 ## 8. Contratos de presentación y transporte
 
-Se necesita una superficie acotada de controles de demo: iniciar por ID incorporado, pausar, continuar, avanzar, cambiar velocidad, reiniciar y salir. Sus nombres y schemas exactos se fijarán en el plan de implementación, no se reutilizan comandos GM para fingir control de reproducción.
+Se utiliza el mismo transporte WebSocket, con contratos especializados `DemoClientCommand` y `DemoServerEvent` definidos y exportados por `@dnd-tactical/shared`. Sus discriminantes son distintos de los comandos normativos de combate; se incorporan al envelope de transporte sin convertir los controles en acciones del motor. El servidor los valida con schemas Zod antes de despacharlos al controlador de sesiones demo y comprueba la conexión propietaria.
+
+La superficie comprende `start-demo`, `pause-demo`, `resume-demo`, `step-demo`, `set-demo-speed`, `restart-demo` (escena o demo) y `exit-demo`; el evento de progreso es `demo-session-state`. Inicio acepta únicamente un ID de demo incorporada. Los controles posteriores llevan identidad de sesión/ejecución y secuencia conforme a §5. El plan fijará los campos exactos y sus límites, sin cambiar esta sede única shared ni introducir un canal paralelo.
+
+Los schemas no aceptan fuentes de dados, tapes, callbacks, estados de sala ni opciones internas del dispatcher. Los comandos GM no sustituyen estos controles. Los contratos de combate existentes conservan su significado.
 
 El servidor publica estado de sesión (ejecución, escena, paso, estado, explicación y error) separado del snapshot de reglas. La sala continúa publicándose por el flujo existente; la progresión de demo correlaciona su resultado con un paso confirmado. La UI no manda el siguiente ataque ni decide que una tirada acertó.
 
@@ -174,6 +190,8 @@ Un refresh/desconexión no puede dejar comandos ejecutándose sin observador. V1
 
 Pruebas específicas: orden y pausa del runner; rechazo y timeout; doble clic; dado imprevisto; aislamiento de RNG; idempotencia de controles; desconexión; reinicio durante pausa; error de una acción; mapeo de aliases; permisos; escena completa con handlers y fixtures reales. Un modo rápido de presentación para tests elimina esperas visuales, no validaciones ni acciones.
 
+Regresiones de R1: primer lanzamiento provocador conserva slot y no aplica el conjuro; AdO confirma la transición esperada; segundo lanzamiento consume exactamente un slot; al cambiar de ronda se contempla el AdO recuperado; payload externo no puede inyectar opciones de ejecución; controles malformados fallan en Zod; aliases de personajes con nombres/plantillas repetidos conservan identidad. Las pruebas de dados incluyen las llamadas auxiliares de maniobras, no solo los resolvers principales.
+
 ## 11. Checklist arquitectónico
 
 **Irreversibilidad a 20 sprints.** El acoplamiento peligroso sería convertir los guiones en un segundo protocolo de reglas o en grabaciones de snapshots. Se conservan intenciones ordinarias, aliases y checkpoints; cada cambio futuro del motor puede invalidar explícitamente un fixture en vez de convivir con fórmulas antiguas. Versionar el guion no crea versiones de Rule IDs.
@@ -203,3 +221,13 @@ No se localizó otro NDD de reproducción automática en el índice. Este docume
 No se crea ni reemplaza `implementation_plan.md` durante esta tarea. Tras aprobar el NDD, coordinar la planificación sin sobrescribir el plan activo de Gravity. Después de su Proceed se implementará y validará la vertical completa; el diseño por sí solo no habilita el botón.
 
 **READY FOR ARCHITECTURE REVIEW**
+
+### Registro de remediación R1
+
+- MAJOR 1: §7.3 explicita el ciclo real de lanzamiento/AdO/segundo lanzamiento y sus checkpoints, también para el turno siguiente.
+- MINOR 1: §4.2 separa las dependencias internas de ejecución de cualquier payload externo.
+- MINOR 2: §8 fija transporte WebSocket existente, contratos shared discriminados y validación Zod.
+- NOTE de aliases: §5 registra identidad al crear actores, sin depender de nombres únicos.
+- Aclaración de evidencia: §4.2 y §6 no presuponen transaccionalidad ni inyección RNG completa en todos los handlers.
+
+Corrección exclusivamente documental. No se ejecutaron los fixtures, no se implementó la demo y no se aprueba I5R1. El siguiente gate verifica estas correcciones, no reabre las reglas de combate.
