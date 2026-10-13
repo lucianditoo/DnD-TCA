@@ -9,7 +9,13 @@ Consumidores: Architecture Reviewer, propietario y agentes que retoman el reposi
 
 ---
 
-## 1. Resultado y Remediaciones Ejecutadas (D-5R3)
+## 1. Veredicto de Architecture Review y Cierre Formal (D-5 MVP)
+
+- **Commit revisado**: `6fd385b42b4dc51b8dcbb195108d7051a600944f`
+- **Veredicto**: `TECHNICALLY APPROVED`
+- **Estado**: **D-5 CLOSED**. No se requiere D-5R4.
+
+## 2. Resultado y Remediaciones Ejecutadas (D-5R3)
 
 Se cerraron de forma exhaustiva todos los hallazgos restantes de Architecture Review de D-5R2, conforme al NDD canónico (`docs/designs/map-builder-mvp/design.md`) y sin alterar reglas del Rule Engine ni tocar D-1B / I5R1 / I6:
 
