@@ -10,7 +10,7 @@ import {
   type CombatRoom
 } from "@dnd-tactical/shared";
 import { requireGM } from "../auth/control.js";
-import { broadcast, createRoomCode, register, rooms, send } from "../room/roomStore.js";
+import { broadcast, createRoomCode, findParticipant, register, rooms, send } from "../room/roomStore.js";
 
 export function handleCreateRoom(socket: WebSocket, command: Extract<ClientCommand, { type: "create-room" }>): void {
   const code = createRoomCode();
@@ -30,6 +30,10 @@ export function handleJoinRoom(socket: WebSocket, command: Extract<ClientCommand
 
 export function handleUpdateBoard(room: CombatRoom, command: Extract<ClientCommand, { type: "update-board" }>): void {
   requireGM(command.actorId);
+  const participant = findParticipant(command.actorId);
+  if (participant && participant.roomCode !== room.code) {
+    throw new Error("Solo el GM de esta sala puede usar este control.");
+  }
 
   const { width, height } = command.board;
   if (!Number.isInteger(width) || width < 6 || width > 40) {
@@ -52,18 +56,16 @@ export function handleUpdateBoard(room: CombatRoom, command: Extract<ClientComma
   const rawDifficult = new Set((command.board.difficultTerrainCells ?? []).filter(isValidCoord));
   const rawNarrow = new Set((command.board.narrowCells ?? []).filter(isValidCoord));
 
-  // Exclusividad de capas: Muros > Columnas LoE > Terreno Difícil > Estrecho
-  for (const wall of rawImpassable) {
-    rawLoe.delete(wall);
-    rawDifficult.delete(wall);
-    rawNarrow.delete(wall);
-  }
-  for (const loe of rawLoe) {
-    rawDifficult.delete(loe);
-    rawNarrow.delete(loe);
-  }
-  for (const diff of rawDifficult) {
-    rawNarrow.delete(diff);
+  // Validación de límites: ningún combatiente puede quedar fuera de los nuevos límites (sin auto-clamp)
+  for (const combatant of room.combatants) {
+    const occupied = getCombatantOccupiedCells(combatant, room);
+    for (const cell of occupied) {
+      if (cell.x < 0 || cell.x >= width || cell.y < 0 || cell.y >= height) {
+        throw new Error(
+          `No se puede reducir el mapa a ${width}x${height}: ${combatant.name} quedaría fuera de los límites. Reubícalo antes de redimensionar.`
+        );
+      }
+    }
   }
 
   // Comprobar colisión de muros con combatientes existentes
@@ -78,22 +80,11 @@ export function handleUpdateBoard(room: CombatRoom, command: Extract<ClientComma
     }
   }
 
-  // Redimensionamiento seguro: auto-reubicar (clamp) a las entidades a los nuevos límites si el mapa se achicó
-  for (const combatant of room.combatants) {
-    const span = combatant.sizeCategory === "large" ? 2 : 1;
-    const maxX = Math.max(0, width - span);
-    const maxY = Math.max(0, height - span);
-    const clampedX = Math.max(0, Math.min(combatant.position.x, maxX));
-    const clampedY = Math.max(0, Math.min(combatant.position.y, maxY));
-    if (clampedX !== combatant.position.x || clampedY !== combatant.position.y) {
-      combatant.position = { ...combatant.position, x: clampedX, y: clampedY };
-    }
-  }
-
+  // cellSizeFeet se normaliza siempre a 5 (no es editable por el cliente)
   const normalizedBoard: Board = {
     width,
     height,
-    cellSizeFeet: command.board.cellSizeFeet ?? 5,
+    cellSizeFeet: 5,
     impassableCells: Array.from(rawImpassable),
     lineOfEffectBlockingCells: Array.from(rawLoe),
     difficultTerrainCells: Array.from(rawDifficult),
@@ -102,6 +93,7 @@ export function handleUpdateBoard(room: CombatRoom, command: Extract<ClientComma
     darknessCells: (command.board.darknessCells ?? []).filter(isValidCoord)
   };
 
+  // Commit atómico del nuevo tablero
   room.board = normalizedBoard;
   room.log.unshift(
     makeLog(

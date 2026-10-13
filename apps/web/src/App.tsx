@@ -16,10 +16,34 @@ import { ProfilesPage } from "./pages/ProfilesPage";
 import { applicableEffectOptions, canParticipantControlCombatant, canParticipantEditInitiative, cellKey, getActiveEffectViews, isCombatantDestinationOccupied, isLegalNextPathStep, phaseLabel, sameCell, type ActionMode, type TacticMode, getCardinalDirection } from "./viewModel";
 import { SpellsCatalog } from "@dnd-tactical/shared";
 
+export function areBoardsSemanticallyEqual(a: BoardType, b: BoardType): boolean {
+  if (a.width !== b.width || a.height !== b.height) return false;
+  if ((a.cellSizeFeet ?? 5) !== (b.cellSizeFeet ?? 5)) return false;
+
+  const compareSets = (listA?: readonly string[], listB?: readonly string[]) => {
+    const setA = new Set(listA ?? []);
+    const setB = new Set(listB ?? []);
+    if (setA.size !== setB.size) return false;
+    for (const item of setA) {
+      if (!setB.has(item)) return false;
+    }
+    return true;
+  };
+
+  return (
+    compareSets(a.impassableCells, b.impassableCells) &&
+    compareSets(a.lineOfEffectBlockingCells, b.lineOfEffectBlockingCells) &&
+    compareSets(a.difficultTerrainCells, b.difficultTerrainCells) &&
+    compareSets(a.narrowCells, b.narrowCells)
+  );
+}
+
 export function App() {
   if (window.location.pathname === "/profiles") return <ProfilesPage />;
   return <CombatApp />;
 }
+
+type MapEditorStatus = "idle" | "editing" | "saving";
 
 function CombatApp() {
   const [targetId, setTargetId] = useState<string>("");
@@ -49,11 +73,13 @@ function CombatApp() {
   const [effectToApplyId, setEffectToApplyId] = useState("");
   const [effectDurationPreset, setEffectDurationPreset] = useState<"permanent" | "until_target_turn_end">("permanent");
 
-  // D-5 Map Builder MVP State
-  const [isMapEditing, setIsMapEditing] = useState(false);
+  // D-5 Map Builder MVP State & Lifecycle
+  const [mapEditorStatus, setMapEditorStatus] = useState<MapEditorStatus>("idle");
+  const isMapEditing = mapEditorStatus !== "idle";
   const [draftBoard, setDraftBoard] = useState<BoardType | null>(null);
   const [activeBrush, setActiveBrush] = useState<MapEditorBrush>("wall");
   const [mapEditorError, setMapEditorError] = useState<string | null>(null);
+  const pendingSavedBoardRef = useRef<BoardType | null>(null);
 
   const { name, setName, roomCode, setRoomCode, mode, setMode, participant, room, catalog, selectedId, setSelectedId, selectedHeroTemplateId, setSelectedHeroTemplateId, selectedEnemyTemplateId, setSelectedEnemyTemplateId, demoSessionState, error, setError, createRoom, joinRoom, roomCommand, startDemo, pauseDemo, resumeDemo, stepDemo, setDemoSpeed, restartDemo, exitDemo } = useWebSocketRoom({
     onHello: () => setActionMode("inspect"),
@@ -67,39 +93,38 @@ function CombatApp() {
   });
   const isDemoActive = demoSessionState !== null;
 
-  const previousBoardRef = useRef<BoardType | null>(null);
   useEffect(() => {
-    if (room?.board && isMapEditing) {
-      if (previousBoardRef.current && previousBoardRef.current !== room.board) {
-        setIsMapEditing(false);
-        setDraftBoard(null);
-        setMapEditorError(null);
+    if (mapEditorStatus === "saving") {
+      if (error) {
+        setMapEditorStatus("editing");
+        setMapEditorError(error);
+        pendingSavedBoardRef.current = null;
+      } else if (room?.board && pendingSavedBoardRef.current) {
+        if (areBoardsSemanticallyEqual(room.board, pendingSavedBoardRef.current)) {
+          setMapEditorStatus("idle");
+          setDraftBoard(null);
+          setMapEditorError(null);
+          pendingSavedBoardRef.current = null;
+        }
       }
     }
-    previousBoardRef.current = room?.board ?? null;
-  }, [room?.board, isMapEditing]);
+  }, [room?.board, error, mapEditorStatus]);
 
-  useEffect(() => {
-    if (error && isMapEditing) {
-      setMapEditorError(error);
-    }
-  }, [error, isMapEditing]);
-
-  const effectiveRoom = useMemo(() => {
+  const presentationRoom = useMemo(() => {
     if (isMapEditing && draftBoard && room) {
       return { ...room, board: draftBoard };
     }
     return room;
   }, [room, isMapEditing, draftBoard]);
 
-  const rulesSnapshot = useMemo(() => effectiveRoom ? createCombatRulesSnapshot(effectiveRoom) : null, [effectiveRoom]);
+  const rulesSnapshot = useMemo(() => room ? createCombatRulesSnapshot(room) : null, [room]);
   const activeEffects = useMemo(() => (room && selectedId) ? getActiveEffectViews(room, selectedId) : [], [room, selectedId]);
   const { active, selected, targets, enemyTargets, aidAllies, pendingAidBuffs, gmMoveTarget, selectedAbility, abilityTargets, targetDistanceFeet, rangePreview, pendingOpportunities, hasPendingOpportunities, chargePreviewPath, bullRushPreviewPath, displayedPath, movementPathCost, displayedPathCosts, highlightedCells } = useBoardSelection({ room, snapshot: rulesSnapshot, selectedId, participant, actionMode, tacticMode, selectedAbilityId, movementPath, gmMoveMode, gmMoveTargetId, targetId, withdrawArmed, runArmed, isDemoActive });
   const { getD20Roll, getDamageRoll } = useCombatActions({ autoD20, d20Roll, setD20Roll, autoDamage, damage, setDamage });
   const { heroes: savedHeroProfiles, enemies: savedEnemyProfiles, toCombatTemplate } = useStoredProfiles();
   const [selectedProfileId, setSelectedProfileId] = useState("");
-  const canControlSelected = !isDemoActive && canParticipantControlCombatant(participant, selected);
-  const canEndCurrentTurn = !isDemoActive && (participant?.role === "gm" || canParticipantControlCombatant(participant, active));
+  const canControlSelected = !isDemoActive && !isMapEditing && canParticipantControlCombatant(participant, selected);
+  const canEndCurrentTurn = !isDemoActive && !isMapEditing && (participant?.role === "gm" || canParticipantControlCombatant(participant, active));
 
   function addCatalogCombatant(category: "heroes" | "enemies") {
     if (!room || !participant) return;
@@ -141,26 +166,29 @@ function CombatApp() {
   }
 
   function moveSelected(to: Position, path?: Position[]) {
-    if (!room || !participant || !selected) return;
+    if (isMapEditing || !room || !participant || !selected) return;
     roomCommand({ type: "move-combatant", roomCode: room.code, actorId: participant.id, combatantId: selected.id, to, path });
   }
 
   function gmMoveSelected(to: Position) {
-    if (!room || !participant || !gmMoveTarget) return;
+    if (isMapEditing || !room || !participant || !gmMoveTarget) return;
     roomCommand({ type: "gm-move-combatant", roomCode: room.code, actorId: participant.id, combatantId: gmMoveTarget.id, to });
   }
 
   function startMapEditing() {
     if (!room || participant?.role !== "gm") return;
+    clearActionOverlays();
     setDraftBoard(JSON.parse(JSON.stringify(room.board)));
-    setIsMapEditing(true);
+    setMapEditorStatus("editing");
     setMapEditorError(null);
+    pendingSavedBoardRef.current = null;
   }
 
   function handleCancelMapEditing() {
-    setIsMapEditing(false);
+    setMapEditorStatus("idle");
     setDraftBoard(null);
     setMapEditorError(null);
+    pendingSavedBoardRef.current = null;
   }
 
   function handleResizeBoard(width: number, height: number) {
@@ -204,6 +232,8 @@ function CombatApp() {
   function handleSaveBoard() {
     if (!room || !participant || !draftBoard) return;
     setMapEditorError(null);
+    setMapEditorStatus("saving");
+    pendingSavedBoardRef.current = JSON.parse(JSON.stringify(draftBoard));
     roomCommand({
       type: "update-board",
       roomCode: room.code,
@@ -447,7 +477,7 @@ function CombatApp() {
   }
 
   function fiveFootStep() {
-    if (!room || !participant || !selected || movementPath.length === 0) return;
+    if (isMapEditing || !room || !participant || !selected || movementPath.length === 0) return;
     const destination = movementPath[movementPath.length - 1];
     roomCommand({
       type: "use-tactical-action",
@@ -461,12 +491,12 @@ function CombatApp() {
   }
 
   function chooseAidBonus(buffId: string, choice: "attack" | "ac") {
-    if (!room || !participant || !selected) return;
+    if (isMapEditing || !room || !participant || !selected) return;
     roomCommand({ type: "choose-aid-bonus", roomCode: room.code, actorId: participant.id, combatantId: selected.id, buffId, choice });
   }
 
   function confirmMovementPath() {
-    if (!room || movementPath.length === 0) return;
+    if (isMapEditing || !room || movementPath.length === 0) return;
     const destination = movementPath[movementPath.length - 1];
     // MOVE-WITHDRAW: con la Retirada armada, la ruta dibujada se envía como intención
     // táctica; el servidor deriva presupuesto, huella exenta, AdO y economía.
@@ -741,7 +771,7 @@ function CombatApp() {
       <section className="layout">
         <CombatantsPanel room={room} snapshot={rulesSnapshot!} catalog={catalog} active={active} selected={selected} participant={participant} savedHeroProfiles={savedHeroProfiles} savedEnemyProfiles={savedEnemyProfiles} selectedProfileId={selectedProfileId} selectedHeroTemplateId={selectedHeroTemplateId} selectedEnemyTemplateId={selectedEnemyTemplateId} canEditInitiative={(combatant) => !isDemoActive && canParticipantEditInitiative(participant, combatant)} canStartCombat={!isDemoActive && participant.role === "gm"} onProfileChange={setSelectedProfileId} onAddProfileCombatant={addProfileCombatant} onHeroTemplateChange={setSelectedHeroTemplateId} onEnemyTemplateChange={setSelectedEnemyTemplateId} onAddCatalogCombatant={addCatalogCombatant} onSetInitiative={setInitiative} onSortInitiative={sortInitiative} onSelectCombatant={(id) => { setSelectedId(id); setTargetId(""); setMovementPath([]); }} attackerId={targetId || undefined} canControlSelected={canControlSelected} onDeclareDodgeTarget={declareDodgeTarget} isDemoActive={isDemoActive} />
 
-        <Board room={effectiveRoom!} snapshot={rulesSnapshot!} selected={selected} targetId={targetId} displayedPath={displayedPath} displayedPathCosts={displayedPathCosts} highlightedCells={highlightedCells} chargePreviewPath={chargePreviewPath ?? bullRushPreviewPath} routeFootprintCombatant={tacticMode === "bull-rush" ? room.combatants.find((combatant) => combatant.id === targetId) ?? null : selected} onCellClick={handleCellClick} actionMode={actionMode} selectedAbility={selectedAbility} targetPosition={targetPosition} />
+        <Board room={presentationRoom!} snapshot={rulesSnapshot!} selected={selected} targetId={targetId} displayedPath={displayedPath} displayedPathCosts={displayedPathCosts} highlightedCells={highlightedCells} chargePreviewPath={chargePreviewPath ?? bullRushPreviewPath} routeFootprintCombatant={tacticMode === "bull-rush" ? room.combatants.find((combatant) => combatant.id === targetId) ?? null : selected} onCellClick={handleCellClick} actionMode={actionMode} selectedAbility={selectedAbility} targetPosition={targetPosition} />
 
         <ActionsPanel room={room} snapshot={rulesSnapshot!} selected={selected} participantRole={isDemoActive ? "player" : participant.role} canControlSelected={canControlSelected} canEndCurrentTurn={canEndCurrentTurn} canResolveOpportunity={(attacker) => !isDemoActive && (participant.role === "gm" || canParticipantControlCombatant(participant, attacker ?? null))} actionMode={actionMode} tacticMode={tacticMode} targetId={targetId} targets={targets} enemyTargets={enemyTargets} aidAllies={aidAllies} pendingAidBuffs={pendingAidBuffs} selectedAbility={selectedAbility} abilityTargets={abilityTargets} targetDistanceFeet={targetDistanceFeet} rangePreview={rangePreview} d20Roll={d20Roll} autoD20={autoD20} damage={damage} autoDamage={autoDamage} fightingDefensively={fightingDefensively} selectedAbilityId={selectedAbilityId} stabilizationRoll={stabilizationRoll} autoStabilizationRoll={autoStabilizationRoll} healAmount={healAmount} hpOverride={hpOverride} hpMaxOverride={hpMaxOverride} gmNote={gmNote} gmMoveTarget={gmMoveTarget} gmMoveMode={gmMoveMode} movementPathLength={movementPath.length} movementPathCost={movementPathCost} isMoveDestinationOccupied={movementPath[movementPath.length - 1] && selected ? isCombatantDestinationOccupied(room, rulesSnapshot!, selected, movementPath[movementPath.length - 1]!) : false} hasPendingOpportunities={hasPendingOpportunities} pendingOpportunities={pendingOpportunities} chargePreviewPath={chargePreviewPath} error={error} onSelectActionMode={selectActionMode} onStabilizationRollChange={setStabilizationRoll} onAutoStabilizationRollChange={setAutoStabilizationRoll} onRollStabilization={rollStabilization} onUndoMovementStep={undoMovementStep} onClearMovementPath={() => setMovementPath([])} onConfirmMovementPath={confirmMovementPath} onFiveFootStep={fiveFootStep} withdrawArmed={withdrawArmed} onToggleWithdraw={() => { setWithdrawArmed((armed) => !armed); setRunArmed(false); setMovementPath([]); }} runArmed={runArmed} onToggleRun={() => { setRunArmed((armed) => !armed); setWithdrawArmed(false); setMovementPath([]); }} onStandUp={standUp} onTargetChange={setTargetId} onD20Change={setD20Roll} onAutoD20Change={setAutoD20} onDamageChange={setDamage} onAutoDamageChange={setAutoDamage} onDeclareAttackMode={declareAttackMode} onCancelAttackMode={cancelAttackMode} onToggleFightingDefensively={setFightingDefensively} onAttack={attack} onTacticModeChange={(mode) => { setTacticMode(mode); setTargetId(""); setAidAllyId(""); }} onUseTacticalAction={useTacticalAction} onCharge={charge} onTrip={trip} onBullRush={bullRush} onGrapple={grapple} onGrappleEscape={grappleEscape} aidAllyId={aidAllyId} onAidAllyChange={setAidAllyId} onAidAnother={aidAnother} onChooseAidBonus={chooseAidBonus} onSelectedAbilityChange={(id) => { setSelectedAbilityId(id); setTargetId(""); }} onHealAmountChange={setHealAmount} onUseAbility={useAbility} onCastSpell={castSpell} onEndTurn={endTurn} onGmMoveTargetChange={setGmMoveTargetId} onToggleGmMoveMode={toggleGmMoveMode} onHealSelected={healSelected} onHpOverrideChange={setHpOverride} onHpMaxOverrideChange={setHpMaxOverride} onGmSetHp={gmSetHp} onGmSetStatus={gmSetStatus} onGmClearOpportunities={gmClearOpportunities} onGmForceOutcome={gmForceOutcome} onGmNoteChange={setGmNote} onGmAddNote={gmAddNote} onResolveOpportunity={resolveOpportunity} activeEffects={activeEffects} applicableEffects={applicableEffectOptions} effectToApplyId={effectToApplyId} effectDurationPreset={effectDurationPreset} onEffectToApplyChange={setEffectToApplyId} onEffectDurationPresetChange={setEffectDurationPreset} onApplyEffect={applyEffect} onRemoveEffect={removeEffect} />
       </section>

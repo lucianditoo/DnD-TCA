@@ -11,11 +11,11 @@
 1. **`packages/shared/src/types.ts`**:
    - Definir `UpdateBoardCommand` y agregar `{ type: "update-board"; roomCode: string; actorId: string; board: Board }` a `ClientCommand`.
 2. **`packages/shared/src/schemas/commands/roomCommands.ts`**:
-   - Esquema Zod `updateBoardSchema` validando `type`, `roomCode`, `actorId` y `board`.
+   - Esquema Zod `boardCellKeySchema` (`^\d+,\d+$`) y `updateBoardSchema` validando `type`, `roomCode`, `actorId`, `cellSizeFeet` (restringido a 5) y listas de celdas con el schema de coordenadas.
 3. **`packages/shared/src/schemas/commands/index.ts`**:
    - Registro en `clientCommandSchema` y `commandSchemasMap`.
 4. **`apps/server/src/commands/roomCommands.ts`**:
-   - `handleUpdateBoard`: verificación de rol GM con `requireGM`, validación de dimensiones (6-40), integridad de coordenadas `"x,y"`, exclusividad de capas (muro > LoE > difícil > estrecho), detección de colisión de muros con combatientes vivos, auto-reubicación (clamp) de combatientes al achicar el mapa, y logging del sistema.
+   - `handleUpdateBoard`: verificación de rol GM y pertenencia de sala (`requireGM`), validación de dimensiones (6-40), integridad de coordenadas `"x,y"`, eliminación de jerarquía inventada de capas (muros conservan tanto bloqueo de paso como de LoE), detección de colisión de muros con combatientes vivos, rechazo atómico estricto (cero auto-clamping) si cualquier combatiente quedaría fuera de límites calculando su footprint canónico multicasilla, normalización autoritativa fija de `cellSizeFeet: 5`, y logging del sistema.
 5. **`apps/server/src/commands/dispatcher.ts`**:
    - Enrutamiento de `update-board` a `handleUpdateBoard`.
 6. **`apps/web/src/components/MapEditor/MapEditorToolbar.tsx`**:
@@ -23,11 +23,11 @@
 7. **`apps/web/src/styles.css`**:
    - Estilos CSS para el editor, pinceles activos y botón de apertura en topbar.
 8. **`apps/web/src/App.tsx`**:
-   - Integración de estado (`isMapEditing`, `draftBoard`, `activeBrush`, `mapEditorError`), cálculo de `effectiveRoom` y `rulesSnapshot` reactivos, intercepción de clicks en celdas para pintar con exclusividad de capas, botón en topbar para el GM, y toolbar interactivo.
+   - Integración de estado (`isMapEditing`, `mapEditorStatus`, `draftBoard`, `activeBrush`, `mapEditorError`), aislamiento estricto de `rulesSnapshot` autoritativo frente al `presentationRoom` visual del borrador, bloqueo de comandos de combate durante la edición, preservación de borrador ante errores del servidor, cierre condicionado a igualdad semántica del tablero, intercepción de clicks en celdas, y toolbar interactivo.
 9. **`tests/map-builder.test.mjs`**:
-   - Tests unitarios y de servidor para el comando `update-board` (validaciones de permisos de GM, dimensiones 6-40, exclusividad de capas, rechazo de muro sobre entidad, auto-clamping al encoger).
+   - Tests unitarios y de servidor para el comando `update-board` (validaciones de permisos de GM y sala, dimensiones 6-40, normalización de `cellSizeFeet` a 5, preservación de capas sin jerarquía artificial, rechazo atómico sin mutaciones si combatientes Medium/Large/Huge quedan fuera, conservación exacta de posiciones en resize válido, rechazo de muro sobre entidad, validación de LoE y movimiento bloqueados).
 10. **`tests-ui/map-builder.spec.ts`**:
-    - Test Playwright E2E validando apertura del editor, selección de pinceles, redimensionamiento, guardado y feedback en el log.
+    - Tests Playwright E2E validando apertura del editor, selección de pinceles, redimensionamiento, guardado, descarte mediante Cancelar, y retención del borrador ante errores de servidor.
 
 ---
 

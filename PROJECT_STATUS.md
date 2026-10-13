@@ -7,10 +7,10 @@
 ## Estado actual
 
 - Rama de integración: `master`.
-- Última vertical funcional implementada: D-5 Editor Táctico de Mapas (MVP), conforme a su [NDD](docs/designs/map-builder-mvp/design.md) y [plan](docs/designs/map-builder-mvp/implementation-plan.md); pendiente de Architecture Review.
+- Última vertical funcional implementada: D-5R1 Remediación de Arquitectura del Editor Táctico de Mapas (MVP), conforme a su [NDD canónico](docs/designs/map-builder-mvp/design.md) y [plan](docs/designs/map-builder-mvp/implementation-plan.md); lista para Architecture Review.
 - Última decisión arquitectónica: Sprint D-1B Capítulo 7 (Integration & Implementation Contracts) y NDD de Demo Táctica Automática (`f8c0e9d`).
-- Implementación en revisión: D-5 incorpora el comando autoritativo `update-board` exclusivo para el GM con control de dimensiones (6-40), auto-clamp de entidades al encoger, exclusividad estricta de capas (Muro > LoE > Terreno Difícil > Estrecho), prevención de colisión de muros con combatientes vivos, y barra de herramientas visual reactiva integrada con el renderer 2.5D de Three.js. También permanecen en revisión D-4 Renderer 2.5D, la Demo Táctica Automática y D-1B-I5R1.
-- Baseline de código: 662 tests unitarios, `typecheck`, `build`, `e2e-websocket` (107/107) y 11 tests Playwright UI en verde.
+- Implementación en revisión: D-5R1 remedia los hallazgos de Architecture Review eliminando completamente el auto-clamping y la jerarquía inventada de capas (muros conservan tanto bloqueo de paso como de LoE), normalizando `cellSizeFeet` a 5 en servidor y schema, aislando reactivamente el borrador de presentación del rules snapshot autoritativo, y garantizando rechazo atómico estricto con huellas canónicas multicasilla.
+- Baseline de código: 672 tests unitarios, `typecheck`, `build`, `e2e-websocket` (107/107) y 13 tests Playwright UI en verde.
   Conteos y evidencias se mantienen en [master-coverage.md](docs/testing/master-coverage.md), no como un segundo registro aquí.
 - GitHub Actions sobre Windows es el gate canónico de cierre para la revisión
   publicada.

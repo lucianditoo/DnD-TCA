@@ -14,6 +14,10 @@ export const joinRoomSchema = z.object({
   role: participantRoleSchema
 });
 
+export const boardCellKeySchema = z.string().regex(/^\d+,\d+$/, {
+  message: "La clave de celda debe tener el formato 'x,y' con enteros no negativos."
+});
+
 export const updateBoardSchema = z.object({
   type: z.literal("update-board"),
   roomCode: z.string().min(1),
@@ -21,12 +25,12 @@ export const updateBoardSchema = z.object({
   board: z.object({
     width: z.number().int().min(6).max(40),
     height: z.number().int().min(6).max(40),
-    cellSizeFeet: z.number().optional(),
-    difficultTerrainCells: z.array(z.string()).optional(),
-    impassableCells: z.array(z.string()).optional(),
-    narrowCells: z.array(z.string()).optional(),
-    lineOfEffectBlockingCells: z.array(z.string()).optional(),
-    dimLightCells: z.array(z.string()).optional(),
-    darknessCells: z.array(z.string()).optional()
+    cellSizeFeet: z.literal(5).optional(),
+    difficultTerrainCells: z.array(boardCellKeySchema).optional(),
+    impassableCells: z.array(boardCellKeySchema).optional(),
+    narrowCells: z.array(boardCellKeySchema).optional(),
+    lineOfEffectBlockingCells: z.array(boardCellKeySchema).optional(),
+    dimLightCells: z.array(boardCellKeySchema).optional(),
+    darknessCells: z.array(boardCellKeySchema).optional()
   })
 });
