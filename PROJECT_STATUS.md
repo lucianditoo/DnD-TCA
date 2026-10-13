@@ -7,10 +7,10 @@
 ## Estado actual
 
 - Rama de integración: `master`.
-- Última vertical funcional integrada: Demostración Táctica Automática y Guionada (`scripted_tactical_demo_v1`), conforme a [`docs/designs/scripted-combat-demo.md`](docs/designs/scripted-combat-demo.md) y [`docs/designs/scripted-combat-demo/implementation-plan.md`](docs/designs/scripted-combat-demo/implementation-plan.md).
+- Última vertical funcional integrada: Corrección de Fichas y Prototipo de Presentación Táctica 2.5D sobre la Demostración Táctica Automática y Guionada (`scripted_tactical_demo_v1`), conforme a [`docs/designs/scripted-combat-demo.md`](docs/designs/scripted-combat-demo.md) y [`docs/designs/scripted-combat-demo/implementation-plan.md`](docs/designs/scripted-combat-demo/implementation-plan.md).
 - Última decisión arquitectónica: Sprint D-1B Capítulo 7 (Integration & Implementation Contracts) y NDD de Demo Táctica Automática (`f8c0e9d`).
-- Implementación en revisión: Demostración Táctica Automática y Guionada (ejecución autoritativa en servidor reutilizando `dispatchCommandCore` + `validateClientCommand`, contador autoritativo de secuencia `sequence` anti-duplicados/post-reinicio, aislamiento estricto de salas efímeras `DM*`, transporte RNG determinista por paso sin alterar `rollDice` en partidas normales, 3 escenas completas con checkpoints de estado reales y controles de reproducción en `DemoPanel`); y Sprint D-1B-I5R1 (Movement Resolution / Commit Remediation, aún aislado del flujo productivo con ODR-D1B-I5-1 y ODR-D1B-C3-01 abiertas).
-- Baseline de código: 649 tests unitarios, `typecheck`, `build`, `e2e-websocket` y 8 tests Playwright UI en verde.
+- Implementación en revisión: Prototipo de Presentación Táctica 2.5D y corrección de fichas (reemplazo de identificadores internos de iconos por sprites SVG estáticos locales con fallback seguro, etiquetas de nombre y badges no superpuestos, modelo visual derivado y efímero `presentationModel.ts`, vista inclinada 2.5D con zócalos/espesor de losa, sombras de contacto, escenografía no normativa, selector `2.5D / 2D` y cámara determinista de 4 ángulos `NO/NE/SE/SO` + zoom local); Demostración Táctica Automática y Guionada (`a458732`, secuencia autoritativa `sequence`, salas efímeras `DM*`, RNG determinista por paso y 3 escenas completas); y Sprint D-1B-I5R1 (Movement Resolution / Commit Remediation, aún aislado del flujo productivo con ODR-D1B-I5-1 y ODR-D1B-C3-01 abiertas).
+- Baseline de código: 655 tests unitarios, `typecheck`, `build`, `e2e-websocket` (107/107) y 10 tests Playwright UI en verde.
   Conteos y evidencias se mantienen en [master-coverage.md](docs/testing/master-coverage.md), no como un segundo registro aquí.
 - GitHub Actions sobre Windows es el gate canónico de cierre para la revisión
   publicada.
@@ -25,9 +25,7 @@
 | I4 — Movement Resolution | Pipeline puro de validación/coste/verificación de presupuesto remediado en I5R1 con fingerprint de estado y propagación tipada. |
 | I5 / I5R1 — Movement Commit | Aplicación autoritativa remediada (precondiciones robustas anti-stale, separación coste/distancia, squeezing); listo para Architecture Review. |
 
-La presentación continúa siendo un grid 2D con huellas multicasilla. El
-modelo de superficies y volúmenes de los NDD espaciales es el destino de
-migración, no una capacidad ya integrada. CI verde no significa V1 completa.
+La presentación incorpora un **prototipo de presentación táctica 2.5D** (con respaldo `2D` y cámara local de 4 ángulos) estrictamente desacoplado sobre el grid autoritativo 2D con huellas multicasilla: **se trata exclusivamente de una capa de presentación 2.5D y no del motor espacial 3D definitivo**. El modelo normativo de superficies y volúmenes de los NDD espaciales sigue siendo el destino de migración futura, no una capacidad mecánica ya integrada. CI verde no significa V1 completa.
 
 ## Capacidades del código
 
@@ -36,6 +34,7 @@ El monorepo contiene:
 - paquete compartido de tipos, catálogos, reglas y proyecciones;
 - servidor Express/WebSocket autoritativo;
 - cliente React/Vite que consume las mismas proyecciones compartidas;
+- capa de presentación táctica 2.5D (`presentationModel.ts`, `sprites.tsx`, `Board.tsx`) con selector `2.5D / 2D`, cámara táctica local de 4 ángulos (`NO`, `NE`, `SE`, `SO`) y zoom acotado, sprites SVG estáticos por arquetipo con fallback gráfico seguro, sombras de contacto, losas con volumen/zócalo y elementos escénicos no normativos sin alterar reglas ni autoridad del servidor;
 - demostración táctica automática y guionada (`scripted_tactical_demo_v1`) con 3 escenas reproducibles en salas efímeras aisladas, runner autoritativo sincronizado por confirmaciones de estado y panel de observación/transporte (`DemoPanel`);
 - snapshots source-first sin estadísticas derivadas persistidas;
 - contexto autoritativo de movimiento por turno, inicializado y reiniciado, todavía sin mutación desde la resolución productiva;

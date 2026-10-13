@@ -29,7 +29,7 @@ Los contratos normativos D-1R1, D-1A y D-1B ya existen: no volver a pedir su
 creación como si fueran documentos ausentes.
 
 - Elaborar los NDD específicos requeridos para D-2 (FoW), D-3
-  (protocolo/identidad/persistencia), D-4 (renderer/cámara), D-5 (editor)
+  (protocolo/identidad/persistencia), D-4 (renderer/cámara normativo sobre superficies y volúmenes; el prototipo 2.5D actual es exclusivamente una capa de presentación local sobre el grid 2D y no reemplaza a D-4), D-5 (editor)
   y D-6 (objetos ambientales).
 - Delimitar D-7, TurnState e integración de movimiento fragmentado, incluido
   Ataque Elástico. Es un candidato, no una funcionalidad aprobada.
@@ -63,7 +63,7 @@ creación como si fueran documentos ausentes.
 
 ## Plataforma y producto
 
-- Mejorar indicadores de buffs, estados y trazas en tokens y logs.
+- Incorporar animaciones opcionales y estados visuales extendidos sobre los sprites estáticos del prototipo 2.5D, y ampliar indicadores de buffs y trazas en logs.
 - Persistir salas fuera de memoria.
 - Completar editores de encuentros/mapas y persistencia poscombate.
 - Diseñar autenticación y autorización persistentes.

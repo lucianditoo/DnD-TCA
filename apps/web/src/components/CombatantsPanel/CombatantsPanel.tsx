@@ -1,5 +1,6 @@
 import { Plus } from "lucide-react";
 import { lifeStatus, lifeStatusLabel, Rules, type CombatRoom, type Combatant, type GameCatalog, type Participant, type StoredProfile } from "@dnd-tactical/shared";
+import { CombatantAvatar } from "../Board/sprites";
 import { Collapsible, CombatantPreview } from "../common";
 import { SelectedInfo } from "../SelectedInfo/SelectedInfo";
 
@@ -27,7 +28,8 @@ export function CombatantsPanel({
   onSortInitiative,
   attackerId,
   canControlSelected,
-  onDeclareDodgeTarget
+  onDeclareDodgeTarget,
+  isDemoActive = false
 }: {
   room: CombatRoom;
   snapshot: import("@dnd-tactical/shared").CombatRulesSnapshot<import("@dnd-tactical/shared").ProductionEffectId>;
@@ -53,27 +55,30 @@ export function CombatantsPanel({
   attackerId?: string;
   canControlSelected: boolean;
   onDeclareDodgeTarget: (combatantId: string, dodgeTargetId: string | null) => void;
+  isDemoActive?: boolean;
 }) {
   return <aside className="panel roster">
     <Collapsible title="Combatientes" defaultOpen preview={room.phase === "active" && active ? <CombatantPreview combatant={active} context={snapshot} /> : undefined}>
-      <div className="catalog-picker">
-        <label>Perfiles guardados<select value={selectedProfileId} onChange={(event) => onProfileChange(event.target.value)}>
-          <option value="">Elegir perfil</option>
-          {savedHeroProfiles.map((profile) => <option key={profile.id} value={profile.id}>{profile.name}</option>)}
-          {participant.role === "gm" && savedEnemyProfiles.map((profile) => <option key={profile.id} value={profile.id}>{profile.name} (enemigo)</option>)}
-        </select></label>
-        <button onClick={onAddProfileCombatant} disabled={!selectedProfileId}><Plus size={16} /> Agregar perfil</button>
-        <a className="ghost-link" href="/profiles">Editar perfiles</a>
-        <label>Heroes<select value={selectedHeroTemplateId} onChange={(event) => onHeroTemplateChange(event.target.value)}>{catalog?.creatures.heroes.map((template) => <option key={template.id} value={template.id}>{template.name}</option>)}</select></label>
-        <button onClick={() => onAddCatalogCombatant("heroes")} disabled={!selectedHeroTemplateId}><Plus size={16} /> Agregar heroe</button>
-        {participant.role === "gm" && <><label>Enemigos<select value={selectedEnemyTemplateId} onChange={(event) => onEnemyTemplateChange(event.target.value)}>{catalog?.creatures.enemies.map((template) => <option key={template.id} value={template.id}>{template.name}</option>)}</select></label>
-        <button onClick={() => onAddCatalogCombatant("enemies")} disabled={!selectedEnemyTemplateId}><Plus size={16} /> Agregar enemigo</button></>}
-      </div>
+      {!isDemoActive && (
+        <div className="catalog-picker">
+          <label>Perfiles guardados<select value={selectedProfileId} onChange={(event) => onProfileChange(event.target.value)}>
+            <option value="">Elegir perfil</option>
+            {savedHeroProfiles.map((profile) => <option key={profile.id} value={profile.id}>{profile.name}</option>)}
+            {participant.role === "gm" && savedEnemyProfiles.map((profile) => <option key={profile.id} value={profile.id}>{profile.name} (enemigo)</option>)}
+          </select></label>
+          <button onClick={onAddProfileCombatant} disabled={!selectedProfileId}><Plus size={16} /> Agregar perfil</button>
+          <a className="ghost-link" href="/profiles">Editar perfiles</a>
+          <label>Heroes<select value={selectedHeroTemplateId} onChange={(event) => onHeroTemplateChange(event.target.value)}>{catalog?.creatures.heroes.map((template) => <option key={template.id} value={template.id}>{template.name}</option>)}</select></label>
+          <button onClick={() => onAddCatalogCombatant("heroes")} disabled={!selectedHeroTemplateId}><Plus size={16} /> Agregar heroe</button>
+          {participant.role === "gm" && <><label>Enemigos<select value={selectedEnemyTemplateId} onChange={(event) => onEnemyTemplateChange(event.target.value)}>{catalog?.creatures.enemies.map((template) => <option key={template.id} value={template.id}>{template.name}</option>)}</select></label>
+          <button onClick={() => onAddCatalogCombatant("enemies")} disabled={!selectedEnemyTemplateId}><Plus size={16} /> Agregar enemigo</button></>}
+        </div>
+      )}
       <div className="combatant-list">
         {room.combatants.map((combatant) => (
           <button key={combatant.id} className={"combatant-row " + (selected?.id === combatant.id ? "selected" : "")} onClick={() => onSelectCombatant(combatant.id)}>
-            <span className={"token-dot " + combatant.type}>{combatant.icon}</span>
-            <span><strong>{combatant.name}</strong><small>HP {combatant.hpCurrent}/{combatant.hpMax} - CA {Rules.totalArmorClass(snapshot, combatant).total} - {lifeStatusLabel(lifeStatus(combatant))}</small></span>
+            <CombatantAvatar combatant={combatant} />
+            <span className="combatant-row-details"><strong>{combatant.name}</strong><small>HP {combatant.hpCurrent}/{combatant.hpMax} - CA {Rules.totalArmorClass(snapshot, combatant).total} - {lifeStatusLabel(lifeStatus(combatant))}</small></span>
           </button>
         ))}
       </div>

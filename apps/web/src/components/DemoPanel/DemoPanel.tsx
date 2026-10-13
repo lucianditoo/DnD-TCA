@@ -47,28 +47,32 @@ export function DemoPanel({
     <section
       className="panel demo-panel"
       data-testid="demo-panel"
+      data-sequence={String(state.sequence)}
       style={{
         display: "grid",
-        gap: "12px",
+        gap: "8px",
+        padding: "10px 14px",
         borderColor: state.status === "failed" ? "#c46b4f" : "#b7a56a",
         background: "#1c2019"
       }}
     >
-      <div style={{ display: "flex", flexWrap: "wrap", alignItems: "center", justifyContent: "space-between", gap: "12px" }}>
+      <div style={{ display: "flex", flexWrap: "wrap", alignItems: "center", justifyContent: "space-between", gap: "10px" }}>
         <div>
-          <p className="eyebrow" style={{ marginBottom: "4px" }}>
+          <p className="eyebrow" style={{ marginBottom: "2px" }}>
             Demostración Táctica Automática · Escena {state.currentSceneIndex + 1} de {state.totalScenes}
           </p>
-          <h2 style={{ margin: 0, fontSize: "1.15rem", color: "#f4e3aa" }} data-testid="demo-scene-title">
+          <h2 style={{ margin: 0, fontSize: "1.05rem", color: "#f4e3aa" }} data-testid="demo-scene-title">
             {state.currentSceneTitle}
           </h2>
         </div>
 
-        <div style={{ display: "flex", alignItems: "center", gap: "10px", flexWrap: "wrap" }}>
+        <div style={{ display: "flex", alignItems: "center", gap: "8px", flexWrap: "wrap" }}>
           <span
             className="turn-pill"
             data-testid="demo-status-badge"
             style={{
+              padding: "5px 10px",
+              fontSize: "0.84rem",
               borderColor:
                 state.status === "failed"
                   ? "#c46b4f"
@@ -86,7 +90,7 @@ export function DemoPanel({
         aria-label="Progreso de la escena"
         style={{
           width: "100%",
-          height: "6px",
+          height: "5px",
           borderRadius: "999px",
           background: "#11130f",
           overflow: "hidden"
@@ -106,12 +110,13 @@ export function DemoPanel({
         className="rules-box"
         style={{
           display: "grid",
-          gap: "6px",
+          gap: "4px",
+          padding: "7px 10px",
           borderColor: "#46483e",
           background: "#141712"
         }}
       >
-        <div style={{ display: "flex", alignItems: "center", gap: "8px", flexWrap: "wrap" }}>
+        <div style={{ display: "flex", alignItems: "center", gap: "8px", flexWrap: "wrap", fontSize: "0.9rem" }}>
           <strong style={{ color: "#f4e3aa" }} data-testid="demo-actor-name">
             {state.activeActorName ?? "Sistema"}
           </strong>
@@ -120,7 +125,7 @@ export function DemoPanel({
             {state.actionSummary}
           </span>
         </div>
-        <p style={{ margin: 0, color: "#d7d1bf", fontSize: "0.92rem", lineHeight: 1.45 }} data-testid="demo-rule-explanation">
+        <p style={{ margin: 0, color: "#d7d1bf", fontSize: "0.84rem", lineHeight: 1.35 }} data-testid="demo-rule-explanation">
           {state.ruleExplanation}
         </p>
       </div>

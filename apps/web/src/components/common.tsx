@@ -1,5 +1,6 @@
 import { useState, type ReactNode } from "react";
 import { lifeStatus, lifeStatusLabel, Rules, type Combatant, type CombatRulesSnapshot, type ProductionEffectId } from "@dnd-tactical/shared";
+import { CombatantAvatar } from "./Board/sprites";
 
 export function Stat({ icon, label, value, title }: { icon: ReactNode; label: string; value: string; title?: string }) {
   return <div className="stat" title={title}>{icon}<span>{label}</span><strong>{value}</strong></div>;
@@ -7,7 +8,7 @@ export function Stat({ icon, label, value, title }: { icon: ReactNode; label: st
 
 export function CombatantPreview({ combatant, context }: { combatant: Combatant; context: CombatRulesSnapshot<ProductionEffectId> }) {
   return <div className="collapse-preview">
-    <span className={"token-dot " + combatant.type}>{combatant.icon}</span>
+    <CombatantAvatar combatant={combatant} />
     <span><strong>{combatant.name}</strong><small>HP {combatant.hpCurrent}/{combatant.hpMax} - CA {Rules.totalArmorClass(context, combatant).total} - {lifeStatusLabel(lifeStatus(combatant))}</small></span>
   </div>;
 }

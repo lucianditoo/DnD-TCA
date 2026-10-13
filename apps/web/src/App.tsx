@@ -60,7 +60,7 @@ function CombatApp() {
   const isDemoActive = demoSessionState !== null;
   const rulesSnapshot = useMemo(() => room ? createCombatRulesSnapshot(room) : null, [room]);
   const activeEffects = useMemo(() => (room && selectedId) ? getActiveEffectViews(room, selectedId) : [], [room, selectedId]);
-  const { active, selected, targets, enemyTargets, aidAllies, pendingAidBuffs, gmMoveTarget, selectedAbility, abilityTargets, targetDistanceFeet, rangePreview, pendingOpportunities, hasPendingOpportunities, chargePreviewPath, bullRushPreviewPath, displayedPath, movementPathCost, displayedPathCosts, highlightedCells } = useBoardSelection({ room, snapshot: rulesSnapshot, selectedId, participant, actionMode, tacticMode, selectedAbilityId, movementPath, gmMoveMode, gmMoveTargetId, targetId, withdrawArmed, runArmed });
+  const { active, selected, targets, enemyTargets, aidAllies, pendingAidBuffs, gmMoveTarget, selectedAbility, abilityTargets, targetDistanceFeet, rangePreview, pendingOpportunities, hasPendingOpportunities, chargePreviewPath, bullRushPreviewPath, displayedPath, movementPathCost, displayedPathCosts, highlightedCells } = useBoardSelection({ room, snapshot: rulesSnapshot, selectedId, participant, actionMode, tacticMode, selectedAbilityId, movementPath, gmMoveMode, gmMoveTargetId, targetId, withdrawArmed, runArmed, isDemoActive });
   const { getD20Roll, getDamageRoll } = useCombatActions({ autoD20, d20Roll, setD20Roll, autoDamage, damage, setDamage });
   const { heroes: savedHeroProfiles, enemies: savedEnemyProfiles, toCombatTemplate } = useStoredProfiles();
   const [selectedProfileId, setSelectedProfileId] = useState("");
@@ -579,7 +579,7 @@ function CombatApp() {
       )}
 
       <section className="layout">
-        <CombatantsPanel room={room} snapshot={rulesSnapshot!} catalog={catalog} active={active} selected={selected} participant={participant} savedHeroProfiles={savedHeroProfiles} savedEnemyProfiles={savedEnemyProfiles} selectedProfileId={selectedProfileId} selectedHeroTemplateId={selectedHeroTemplateId} selectedEnemyTemplateId={selectedEnemyTemplateId} canEditInitiative={(combatant) => !isDemoActive && canParticipantEditInitiative(participant, combatant)} canStartCombat={!isDemoActive && participant.role === "gm"} onProfileChange={setSelectedProfileId} onAddProfileCombatant={addProfileCombatant} onHeroTemplateChange={setSelectedHeroTemplateId} onEnemyTemplateChange={setSelectedEnemyTemplateId} onAddCatalogCombatant={addCatalogCombatant} onSetInitiative={setInitiative} onSortInitiative={sortInitiative} onSelectCombatant={(id) => { setSelectedId(id); setTargetId(""); setMovementPath([]); }} attackerId={targetId || undefined} canControlSelected={canControlSelected} onDeclareDodgeTarget={declareDodgeTarget} />
+        <CombatantsPanel room={room} snapshot={rulesSnapshot!} catalog={catalog} active={active} selected={selected} participant={participant} savedHeroProfiles={savedHeroProfiles} savedEnemyProfiles={savedEnemyProfiles} selectedProfileId={selectedProfileId} selectedHeroTemplateId={selectedHeroTemplateId} selectedEnemyTemplateId={selectedEnemyTemplateId} canEditInitiative={(combatant) => !isDemoActive && canParticipantEditInitiative(participant, combatant)} canStartCombat={!isDemoActive && participant.role === "gm"} onProfileChange={setSelectedProfileId} onAddProfileCombatant={addProfileCombatant} onHeroTemplateChange={setSelectedHeroTemplateId} onEnemyTemplateChange={setSelectedEnemyTemplateId} onAddCatalogCombatant={addCatalogCombatant} onSetInitiative={setInitiative} onSortInitiative={sortInitiative} onSelectCombatant={(id) => { setSelectedId(id); setTargetId(""); setMovementPath([]); }} attackerId={targetId || undefined} canControlSelected={canControlSelected} onDeclareDodgeTarget={declareDodgeTarget} isDemoActive={isDemoActive} />
 
         <Board room={room} snapshot={rulesSnapshot!} selected={selected} targetId={targetId} displayedPath={displayedPath} displayedPathCosts={displayedPathCosts} highlightedCells={highlightedCells} chargePreviewPath={chargePreviewPath ?? bullRushPreviewPath} routeFootprintCombatant={tacticMode === "bull-rush" ? room.combatants.find((combatant) => combatant.id === targetId) ?? null : selected} onCellClick={handleCellClick} actionMode={actionMode} selectedAbility={selectedAbility} targetPosition={targetPosition} />
 
@@ -588,7 +588,7 @@ function CombatApp() {
 
       <CombatLog room={room} />
 
-      {threat && room.phase === "critical-confirmation" && (
+      {!isDemoActive && threat && room.phase === "critical-confirmation" && (
         <div className="modal-overlay">
           <div className="modal-content card">
             <h2>💥 ¡Amenaza de Crítico!</h2>

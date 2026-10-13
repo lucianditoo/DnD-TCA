@@ -1,50 +1,339 @@
-import { test, expect } from "@playwright/test";
+import { test, expect, type Page } from "@playwright/test";
 
-test.describe("Demostración Táctica Automática y Guionada", () => {
-  test("inicia automáticamente al pulsar 'Empezar demo', muestra explicaciones pedagógicas y soporta controles de transporte", async ({ page }) => {
+const ARTIFACTS_DIR = "C:/Users/lucia/.gemini/antigravity/brain/5b3491cf-aed1-4825-84f4-051a7ba987a9";
+const RAW_ICON_IDS = ["shield", "swords", "sparkles", "skull", "crosshair", "footprints", "compass"];
+
+async function stepDemoOnce(page: Page) {
+  const demoPanel = page.getByTestId("demo-panel");
+  const prevSeq = await demoPanel.getAttribute("data-sequence");
+  await page.getByTestId("demo-step-btn").click();
+  await expect.poll(async () => await demoPanel.getAttribute("data-sequence")).not.toBe(prevSeq);
+}
+
+async function stepDemoUntil(page: Page, predicate: () => Promise<boolean>, maxSteps = 50) {
+  for (let i = 0; i < maxSteps; i += 1) {
+    if (await predicate()) return;
+    await stepDemoOnce(page);
+  }
+  expect(await predicate()).toBe(true);
+}
+
+test.describe("Demostración Táctica Automática y Presentación 2.5D", () => {
+  test("1. corrige fichas sin icon IDs crudos, muestra sprites y nombres legibles, soporta 4 ángulos de cámara, zoom, vista 2D y controles de transporte", async ({ page }) => {
+    const consoleErrors: string[] = [];
+    const pageErrors: string[] = [];
+    page.on("console", (msg) => {
+      if (msg.type() === "error") consoleErrors.push(msg.text());
+    });
+    page.on("pageerror", (err) => {
+      pageErrors.push(err.message);
+    });
+
     await page.goto("/");
 
     const startDemoBtn = page.getByTestId("start-demo-btn");
     await expect(startDemoBtn).toBeVisible();
-    await expect(startDemoBtn).toContainText("Empezar demo");
-
     await startDemoBtn.click();
 
     const demoPanel = page.getByTestId("demo-panel");
     await expect(demoPanel).toBeVisible();
     await expect(page.getByTestId("demo-scene-title")).toContainText("Escena A");
 
-    // Pausar la demostración
+    // Pausar la demostración para inspeccionar fichas y cámara
     const pauseBtn = page.getByTestId("demo-pause-btn");
-    await expect(pauseBtn).toBeVisible();
     await pauseBtn.click();
-
     const statusBadge = page.getByTestId("demo-status-badge");
     await expect(statusBadge).toContainText("En pausa");
 
-    // Verificar que el botón 'Siguiente paso' avanza exactamente un paso manteniendo la pausa
-    const badgeBeforeStep = await statusBadge.textContent();
-    const stepBtn = page.getByTestId("demo-step-btn");
-    await expect(stepBtn).toBeEnabled();
-    await stepBtn.click();
+    // 1. Ninguna ficha ni fila lateral muestra los strings internos shield/swords/sparkles/skull
+    const tokenTexts = await page.locator(".board-token").allInnerTexts();
+    expect(tokenTexts.length).toBeGreaterThanOrEqual(4);
+    for (const rawText of tokenTexts) {
+      const normalized = rawText.trim().toLowerCase();
+      for (const rawIcon of RAW_ICON_IDS) {
+        expect(normalized).not.toBe(rawIcon);
+        expect(normalized.split(/\s+/)).not.toContain(rawIcon);
+      }
+    }
 
+    const rosterTexts = await page.locator(".combatant-row").allInnerTexts();
+    for (const rawText of rosterTexts) {
+      const tokens = rawText.trim().toLowerCase().split(/\s+/);
+      for (const rawIcon of RAW_ICON_IDS) {
+        expect(tokens).not.toContain(rawIcon);
+      }
+    }
+
+    // 2. Cada combatiente de la Escena A muestra su nombre real y sprite diferenciado sin solaparse
+    const expectedSceneAActors = [
+      { name: "Cedrick", archetype: "cedrick" },
+      { name: "Jefe Orco", archetype: "orc_leader" },
+      { name: "Bane", archetype: "bane" },
+      { name: "Elaen", archetype: "elaen" }
+    ];
+
+    for (const actor of expectedSceneAActors) {
+      const namePlate = page.locator(`[data-combatant-nameplate="${actor.name}"]`);
+      await expect(namePlate).toBeVisible();
+      await expect(namePlate).toContainText(actor.name);
+
+      const tokenEl = page.locator(`[data-combatant-name="${actor.name}"]`);
+      await expect(tokenEl).toHaveAttribute("data-sprite-archetype", actor.archetype);
+
+      const spriteEl = tokenEl.locator(".combatant-sprite-svg");
+      await expect(spriteEl).toHaveAttribute("data-sprite-archetype", actor.archetype);
+      await expect(spriteEl).toHaveAttribute("data-sprite-fallback", "false");
+
+      // Verificar que la etiqueta de nombre y el sprite tienen cajas válidas y legibles
+      const nameBox = await namePlate.boundingBox();
+      const spriteBox = await spriteEl.boundingBox();
+      expect(nameBox).not.toBeNull();
+      expect(spriteBox).not.toBeNull();
+      expect(nameBox!.width).toBeGreaterThan(24);
+      expect(nameBox!.height).toBeGreaterThan(10);
+    }
+
+    // 3. Seleccionar a Cedrick haciendo click en su celda (3,3) y verificar que rotar los 4 ángulos preserva la selección y no altera la sala
+    const cedrickToken = page.locator('[data-combatant-name="Cedrick"]');
+    await page.getByTestId("cell-3-3").click();
+    await expect(cedrickToken).toHaveClass(/selected-token/);
+
+    const statusBeforeCamera = await statusBadge.textContent();
+    const seqBeforeCamera = await demoPanel.getAttribute("data-sequence");
+    const boardStage = page.getByTestId("board-stage");
+    await expect(boardStage).toHaveAttribute("data-view-mode", "2.5d");
+    await expect(boardStage).toHaveAttribute("data-camera-angle", "nw");
+
+    await page.screenshot({ path: `${ARTIFACTS_DIR}/demo_25d_angle_nw.png` });
+
+    for (const angle of ["ne", "se", "sw", "nw"] as const) {
+      await page.getByTestId(`camera-angle-${angle}`).click();
+      await expect(boardStage).toHaveAttribute("data-camera-angle", angle);
+      await expect(cedrickToken).toHaveClass(/selected-token/);
+      await expect(statusBadge).toHaveText(statusBeforeCamera ?? "");
+      await expect(demoPanel).toHaveAttribute("data-sequence", seqBeforeCamera ?? "");
+      if (angle !== "nw") {
+        await page.screenshot({ path: `${ARTIFACTS_DIR}/demo_25d_angle_${angle}.png` });
+      }
+    }
+
+    // 4. Zoom +/- y Restablecer no envían comandos ni alteran la sala
+    await page.getByTestId("camera-zoom-in").click();
+    await expect(boardStage).toHaveAttribute("data-camera-zoom", "1.125");
+    await page.getByTestId("camera-zoom-out").click();
+    await expect(boardStage).toHaveAttribute("data-camera-zoom", "1");
+    await page.getByTestId("camera-zoom-out").click();
+    await expect(boardStage).toHaveAttribute("data-camera-zoom", "0.875");
+    await page.getByTestId("camera-reset").click();
+    await expect(boardStage).toHaveAttribute("data-camera-zoom", "1");
+    await expect(boardStage).toHaveAttribute("data-camera-angle", "nw");
+
+    // 5. Toggle a vista 2D de respaldo y regreso a 2.5D
+    await page.getByTestId("view-mode-2d").click();
+    await expect(boardStage).toHaveAttribute("data-view-mode", "2d");
+    await page.screenshot({ path: `${ARTIFACTS_DIR}/demo_2d_fallback.png` });
+
+    await page.getByTestId("view-mode-25d").click();
+    await expect(boardStage).toHaveAttribute("data-view-mode", "2.5d");
+
+    // 6. Controles de transporte de la demo: avanzar un paso, cambiar velocidad, reiniciar y salir
+    const badgeBeforeStep = await statusBadge.textContent();
+    await stepDemoOnce(page);
     await expect(statusBadge).toContainText("En pausa");
     await expect(statusBadge).not.toHaveText(badgeBeforeStep ?? "");
 
-    // Cambiar velocidad a 2x
-    const speed2xBtn = page.getByTestId("demo-speed-2x");
-    await speed2xBtn.click();
+    await page.getByTestId("demo-speed-2x").click();
 
-    // Reiniciar escena crea una nueva sala efímera DM*
     const urlBeforeRestart = page.url();
     await page.getByTestId("demo-restart-scene-btn").click();
     await expect(demoPanel).toBeVisible();
     await expect.poll(() => page.url()).not.toBe(urlBeforeRestart);
     expect(page.url()).toMatch(/\/combat\/DM/);
 
-    // Salir de la demo limpia el estado cliente y vuelve a la pantalla de conexión
     await page.getByTestId("demo-exit-btn").click();
     await expect(demoPanel).toHaveCount(0);
     await expect(page.getByTestId("start-demo-btn")).toBeVisible();
+
+    expect(consoleErrors).toEqual([]);
+    expect(pageErrors).toEqual([]);
+  });
+
+  test("2. ejecuta las 3 escenas completas en vista 2.5D validando criatura Large 2x2, Squeezing, Cobertura, Prone y Hold Person", async ({ page }) => {
+    const consoleErrors: string[] = [];
+    const pageErrors: string[] = [];
+    page.on("console", (msg) => {
+      if (msg.type() === "error") consoleErrors.push(msg.text());
+    });
+    page.on("pageerror", (err) => {
+      pageErrors.push(err.message);
+    });
+
+    await page.goto("/");
+    await page.getByTestId("start-demo-btn").click();
+    await expect(page.getByTestId("demo-panel")).toBeVisible();
+
+    const pauseBtn = page.getByTestId("demo-pause-btn");
+    await pauseBtn.click();
+    const statusBadge = page.getByTestId("demo-status-badge");
+    await expect(statusBadge).toContainText("En pausa");
+
+    // Avanzar paso a paso hasta llegar a la Escena B y que Elaen esté activa con cobertura interpuesta
+    await stepDemoUntil(page, async () => {
+      const title = (await page.getByTestId("demo-scene-title").textContent()) ?? "";
+      if (!title.includes("Escena B")) return false;
+      const count = await page.locator('[data-combatant-badges="Arquero Orco"]').count();
+      if (count === 0) return false;
+      const text = (await page.locator('[data-combatant-badges="Arquero Orco"]').textContent()) ?? "";
+      return text.includes("COV +4");
+    });
+
+    // Validar indicadores de cobertura en 2.5D (COV +4 sobre Arquero Orco e INTERP sobre Guardia Aliado)
+    await expect(page.locator('[data-combatant-badges="Arquero Orco"]')).toContainText("COV +4");
+    await expect(page.locator('[data-combatant-badges="Guardia Aliado"]')).toContainText("INTERP");
+
+    // Validar criatura Large (Guardián Coloso) con huella 2x2 e interacción en cualquiera de sus 4 celdas
+    const largeToken = page.locator('[data-combatant-name="Guardián Coloso"]');
+    await expect(largeToken).toBeVisible();
+    await expect(largeToken).toHaveAttribute("data-footprint-columns", "2");
+    await expect(largeToken).toHaveAttribute("data-footprint-rows", "2");
+
+    for (const [cx, cy] of [[0, 5], [1, 5], [0, 6], [1, 6]] as const) {
+      await page.getByTestId(`cell-${cx}-${cy}`).click();
+      await expect(largeToken).toHaveClass(/selected-token/);
+    }
+
+    await page.screenshot({ path: `${ARTIFACTS_DIR}/demo_25d_scene_b_cover_and_large.png` });
+
+    // Avanzar hasta que Guardián Coloso entre en Squeezing (SQZ)
+    await stepDemoUntil(page, async () => {
+      const badges = page.locator('[data-combatant-badges="Guardián Coloso"]');
+      if ((await badges.count()) === 0) return false;
+      return ((await badges.textContent()) ?? "").includes("SQZ");
+    });
+
+    await expect(page.locator('[data-combatant-badges="Guardián Coloso"]')).toContainText("SQZ");
+    await expect(largeToken).toHaveAttribute("data-footprint-columns", "2");
+    await expect(largeToken).toHaveAttribute("data-footprint-rows", "1");
+    await page.screenshot({ path: `${ARTIFACTS_DIR}/demo_25d_large_squeezing.png` });
+
+    // Avanzar hasta la Escena C y observar el Derribo (Prone) sobre el Duelista Orco
+    await stepDemoUntil(page, async () => {
+      const title = (await page.getByTestId("demo-scene-title").textContent()) ?? "";
+      if (!title.includes("Escena C")) return false;
+      const badges = page.locator('[data-combatant-badges="Duelista Orco"]');
+      if ((await badges.count()) === 0) return false;
+      return ((await badges.textContent()) ?? "").includes("PRN");
+    });
+
+    const defensorToken = page.locator('[data-combatant-name="Duelista Orco"]');
+    await expect(defensorToken).toHaveClass(/token-prone/);
+    await expect(page.locator('[data-combatant-badges="Duelista Orco"]')).toContainText("PRN");
+    await page.screenshot({ path: `${ARTIFACTS_DIR}/demo_25d_prone_condition.png` });
+
+    // Avanzar hasta c-16-mago-hold-person-resolves para observar Hold Person (PAR) sobre Guardia de Lanza
+    await stepDemoUntil(page, async () => {
+      const badges = page.locator('[data-combatant-badges="Guardia de Lanza"]');
+      if ((await badges.count()) === 0) return false;
+      return ((await badges.textContent()) ?? "").includes("PAR");
+    });
+
+    const guardiaLanzaToken = page.locator('[data-combatant-name="Guardia de Lanza"]');
+    await expect(guardiaLanzaToken).toHaveClass(/token-paralyzed/);
+    await expect(page.locator('[data-combatant-badges="Guardia de Lanza"]')).toContainText("PAR");
+    await page.screenshot({ path: `${ARTIFACTS_DIR}/demo_25d_hold_person_condition.png` });
+
+    // Avanzar hasta completar la demostración
+    await stepDemoUntil(page, async () => {
+      const statusText = (await statusBadge.textContent()) ?? "";
+      return statusText.includes("Completada");
+    });
+
+    await expect(statusBadge).toContainText("Completada");
+
+    expect(consoleErrors).toEqual([]);
+    expect(pageErrors).toEqual([]);
+  });
+
+  test("3. preserva overlays tácticos de movimiento (celdas alcanzables, ruta y costo por paso) y fallback gráfico de sprite en 2.5D", async ({ page }) => {
+    const customProfile = {
+      id: "profile-custom-fallback",
+      name: "Aventurero Astral",
+      type: "player",
+      controller: "player",
+      icon: "shield",
+      hpMax: 24,
+      baseAttackBonus: 3,
+      baseFortitude: 2,
+      baseReflex: 3,
+      baseWill: 2,
+      baseSpeedFeet: 30,
+      abilityScores: { strength: 14, dexterity: 16, constitution: 12, intelligence: 12, wisdom: 12, charisma: 10 },
+      sizeCategory: "medium",
+      creatureTypeId: "humanoid",
+      featureIds: [],
+      skillRanks: { escape_artist: 0 },
+      inventory: [
+        { itemId: "custom-sword", catalogId: "longsword" },
+        { itemId: "custom-armor", catalogId: "chain_shirt" }
+      ],
+      equipmentSlots: { mainHandItemId: "custom-sword", offHandItemId: null, armorItemId: "custom-armor" },
+      featIds: [],
+      intrinsicDefense: { naturalArmorBonus: 0, dodgeBonus: 0, deflectionBonus: 0, miscArmorClassBonus: 0 },
+      abilities: [],
+      buffs: [],
+      position: { x: 2, y: 2, zFeet: 0 },
+      updatedAt: new Date(0).toISOString()
+    };
+
+    await page.goto("/");
+    await page.evaluate(
+      (profile) => localStorage.setItem("dnd-tactical.profiles.v6", JSON.stringify({ version: 6, profiles: [profile] })),
+      customProfile
+    );
+    await page.reload();
+
+    await page.locator('input[type="text"], input:not([type])').first().fill("OverlayGM");
+    await page.getByRole("button", { name: "Crear sala" }).click();
+
+    await page.locator("label").filter({ hasText: "Perfiles guardados" }).locator("select").selectOption({ label: "Aventurero Astral" });
+    await page.getByRole("button", { name: "Agregar perfil" }).click();
+
+    await page.locator("label").filter({ hasText: "Enemigos" }).locator("select").selectOption({ label: "Canocrock" });
+    await page.getByRole("button", { name: "Agregar enemigo" }).click();
+
+    // Posicionar en preparación
+    await page.locator(".combatant-list button").nth(0).click();
+    await page.getByRole("button", { name: "Mover" }).click();
+    await page.getByTestId("cell-2-3").click();
+
+    await page.locator(".combatant-list button").nth(1).click();
+    await page.getByRole("button", { name: "Mover" }).click();
+    await page.getByTestId("cell-7-3").click();
+
+    // Verificar fallback gráfico para perfil personalizado desconocido
+    const customToken = page.locator('[data-sprite-archetype="fallback_player"]').first();
+    await expect(customToken).toBeVisible();
+    await expect(customToken.locator(".combatant-sprite-svg")).toHaveAttribute("data-sprite-fallback", "true");
+
+    // Iniciar combate y trazar una ruta de movimiento en 2.5D
+    await page.getByText("Iniciativa manual").click();
+    await page.locator(".initiative-list input").nth(0).fill("20");
+    await page.locator(".initiative-list input").nth(1).fill("10");
+    await page.locator(".initiative-list input").nth(1).press("Tab");
+    await page.getByRole("button", { name: "Iniciar combate" }).click();
+
+    await page.getByTestId("cell-2-3").click();
+    await page.getByRole("button", { name: "Mover" }).click();
+
+    // Verificar celdas alcanzables (.move-highlight) y trazar ruta de 3 pasos
+    await expect(page.locator(".cell.move-highlight").first()).toBeVisible();
+    await page.getByTestId("cell-3-3").click();
+    await page.getByTestId("cell-4-3").click();
+    await page.getByTestId("cell-5-3").click();
+
+    await expect(page.locator(".cell.route-cell")).toHaveCount(3);
+    await expect(page.getByTestId("cell-5-3").locator(".route-step")).toContainText("15");
+
+    await page.screenshot({ path: `${ARTIFACTS_DIR}/demo_25d_movement_overlay.png` });
   });
 });

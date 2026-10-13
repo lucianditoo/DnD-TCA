@@ -1,95 +1,355 @@
-import { getCombatantOccupiedCells, lifeStatus, type CombatRoom, type CombatRulesSnapshot, type Combatant, type Position, type ProductionEffectId, type Ability, SpellsCatalog, getCellsIntersectedByAoE, parseCellKey } from "@dnd-tactical/shared";
-import { getCardinalDirection, type ActionMode } from "../../viewModel";
-import { useState, useMemo } from "react";
-import { cellKey } from "../../viewModel";
+import { useMemo, useState } from "react";
+import type {
+  Ability,
+  CombatRoom,
+  CombatRulesSnapshot,
+  Combatant,
+  Position,
+  ProductionEffectId
+} from "@dnd-tactical/shared";
+import type { ActionMode } from "../../viewModel";
+import {
+  CAMERA_ANGLE_OPTIONS,
+  CAMERA_ZOOM_MAX,
+  CAMERA_ZOOM_MIN,
+  CAMERA_ZOOM_STEP,
+  DEFAULT_CAMERA_STATE,
+  buildBoardPresentationModel,
+  clampCameraZoom,
+  type BoardViewMode,
+  type CameraAngle
+} from "./presentationModel";
+import { CombatantSprite } from "./sprites";
 
-export function Board({ room, snapshot, selected, targetId, displayedPath, displayedPathCosts, highlightedCells, chargePreviewPath, routeFootprintCombatant, actionMode, selectedAbility, targetPosition, onCellClick }: { room: CombatRoom; snapshot: CombatRulesSnapshot<ProductionEffectId>; selected: Combatant | null; targetId: string; displayedPath: Position[]; displayedPathCosts: number[]; highlightedCells: Map<string, string>; chargePreviewPath: Position[] | null; routeFootprintCombatant?: Combatant | null; actionMode?: ActionMode; selectedAbility?: Ability | null; targetPosition?: Position | null; onCellClick: (position: Position, token: Combatant | undefined) => void }) {
+export function Board({
+  room,
+  snapshot,
+  selected,
+  targetId,
+  displayedPath,
+  displayedPathCosts,
+  highlightedCells,
+  chargePreviewPath,
+  routeFootprintCombatant,
+  actionMode,
+  selectedAbility,
+  targetPosition,
+  onCellClick
+}: {
+  room: CombatRoom;
+  snapshot: CombatRulesSnapshot<ProductionEffectId>;
+  selected: Combatant | null;
+  targetId: string;
+  displayedPath: Position[];
+  displayedPathCosts: number[];
+  highlightedCells: Map<string, string>;
+  chargePreviewPath: Position[] | null;
+  routeFootprintCombatant?: Combatant | null;
+  actionMode?: ActionMode;
+  selectedAbility?: Ability | null;
+  targetPosition?: Position | null;
+  onCellClick: (position: Position, token: Combatant | undefined) => void;
+}) {
   const [hoveredCell, setHoveredCell] = useState<Position | null>(null);
-  const occupiedByCell = new Map<string, Combatant>();
-  for (const combatant of room.combatants) {
-    for (const cell of getCombatantOccupiedCells(combatant, snapshot)) {
-      occupiedByCell.set(cellKey(cell), combatant);
-    }
+  const [viewMode, setViewMode] = useState<BoardViewMode>(DEFAULT_CAMERA_STATE.viewMode);
+  const [cameraAngle, setCameraAngle] = useState<CameraAngle>(DEFAULT_CAMERA_STATE.angle);
+  const [cameraZoom, setCameraZoom] = useState<number>(DEFAULT_CAMERA_STATE.zoom);
+
+  const presentation = useMemo(
+    () =>
+      buildBoardPresentationModel({
+        room,
+        snapshot,
+        selected,
+        targetId,
+        displayedPath,
+        displayedPathCosts,
+        highlightedCells,
+        chargePreviewPath,
+        routeFootprintCombatant,
+        actionMode,
+        selectedAbility,
+        targetPosition,
+        hoveredCell,
+        camera: {
+          viewMode,
+          angle: cameraAngle,
+          zoom: cameraZoom
+        }
+      }),
+    [
+      room,
+      snapshot,
+      selected,
+      targetId,
+      displayedPath,
+      displayedPathCosts,
+      highlightedCells,
+      chargePreviewPath,
+      routeFootprintCombatant,
+      actionMode,
+      selectedAbility,
+      targetPosition,
+      hoveredCell,
+      viewMode,
+      cameraAngle,
+      cameraZoom
+    ]
+  );
+
+  function handleResetCamera() {
+    setViewMode(DEFAULT_CAMERA_STATE.viewMode);
+    setCameraAngle(DEFAULT_CAMERA_STATE.angle);
+    setCameraZoom(DEFAULT_CAMERA_STATE.zoom);
   }
-  const routeFinal = chargePreviewPath?.at(-1);
-  const routeFootprintKeys = new Set(routeFinal && routeFootprintCombatant
-    ? getCombatantOccupiedCells({ ...routeFootprintCombatant, position: routeFinal }, snapshot).map(cellKey)
-    : []);
 
-  const aoePreviewKeys = useMemo(() => {
-    if (actionMode !== "ability" || !selected || !selectedAbility) return new Set<string>();
-    const spell = SpellsCatalog.get(selectedAbility.id);
-    if (!spell || spell.target !== "area" || !spell.aoe) return new Set<string>();
-    const targetCell = hoveredCell ?? targetPosition;
-    if (!targetCell) return new Set<string>();
-    const direction = getCardinalDirection(selected.position, targetCell);
-    const origin = spell.aoe.type === "burst" ? targetCell : selected.position;
-    const cells = getCellsIntersectedByAoE(origin, direction, spell.aoe, room.board.cellSizeFeet);
-    return new Set(cells.map(cellKey));
-  }, [actionMode, selected, selectedAbility, hoveredCell, targetPosition, room.board.cellSizeFeet]);
+  return (
+    <section
+      className={`board-wrap board-mode-${viewMode} camera-angle-${cameraAngle}`}
+      data-testid="tactical-board"
+      data-view-mode={viewMode}
+      data-camera-angle={cameraAngle}
+      data-camera-zoom={String(cameraZoom)}
+    >
+      <div className="board-toolbar" data-testid="board-camera-toolbar">
+        <div className="board-toolbar-group" role="group" aria-label="Modo de vista del tablero">
+          <span className="board-toolbar-label">Vista</span>
+          <button
+            type="button"
+            className={`board-tool-btn ${viewMode === "2.5d" ? "active" : ""}`}
+            aria-pressed={viewMode === "2.5d"}
+            data-testid="view-mode-25d"
+            onClick={() => setViewMode("2.5d")}
+          >
+            2.5D
+          </button>
+          <button
+            type="button"
+            className={`board-tool-btn ${viewMode === "2d" ? "active" : ""}`}
+            aria-pressed={viewMode === "2d"}
+            data-testid="view-mode-2d"
+            onClick={() => setViewMode("2d")}
+          >
+            2D
+          </button>
+        </div>
 
-  const aoeAffectedKeys = useMemo(() => {
-    if (aoePreviewKeys.size === 0) return new Set<string>();
-    const affected = new Set<string>();
-    for (const combatant of room.combatants) {
-      if (lifeStatus(combatant) === "dead") continue;
-      const footprint = getCombatantOccupiedCells(combatant, snapshot);
-      if (footprint.some(cell => aoePreviewKeys.has(cellKey(cell)))) {
-        footprint.forEach(cell => affected.add(cellKey(cell)));
-      }
-    }
-    return affected;
-  }, [aoePreviewKeys, room.combatants, snapshot]);
+        <div className="board-toolbar-group" role="group" aria-label="Ángulo de cámara táctica">
+          <span className="board-toolbar-label">Cámara</span>
+          {CAMERA_ANGLE_OPTIONS.map((option) => (
+            <button
+              key={option.id}
+              type="button"
+              className={`board-tool-btn ${cameraAngle === option.id ? "active" : ""}`}
+              aria-pressed={cameraAngle === option.id}
+              title={option.title}
+              data-testid={`camera-angle-${option.id}`}
+              onClick={() => setCameraAngle(option.id)}
+            >
+              {option.shortLabel}
+            </button>
+          ))}
+        </div>
 
-  // Sprint 034: overlay de peligro ambiental. Lee `targetCells` (formato canónico servidor
-  // "x,y,zFeet") directamente de los efectos de área persistentes de la sala; decodifica con
-  // el parser compartido y re-serializa con la clave local de grilla (sin lógica de reglas aquí).
-  const hazardCellKeys = useMemo(() => {
-    const keys = new Set<string>();
-    for (const instance of room.effectInstances) {
-      if (!instance.targetCells) continue;
-      for (const cellString of instance.targetCells) {
-        keys.add(cellKey(parseCellKey(cellString)));
-      }
-    }
-    return keys;
-  }, [room.effectInstances]);
+        <div className="board-toolbar-group" role="group" aria-label="Zoom y restablecimiento de cámara">
+          <button
+            type="button"
+            className="board-tool-btn"
+            title="Alejar cámara"
+            data-testid="camera-zoom-out"
+            disabled={cameraZoom <= CAMERA_ZOOM_MIN}
+            onClick={() => setCameraZoom((z) => clampCameraZoom(z - CAMERA_ZOOM_STEP))}
+          >
+            −
+          </button>
+          <span className="board-zoom-readout" data-testid="camera-zoom-label">
+            {Math.round(cameraZoom * 100)}%
+          </span>
+          <button
+            type="button"
+            className="board-tool-btn"
+            title="Acercar cámara"
+            data-testid="camera-zoom-in"
+            disabled={cameraZoom >= CAMERA_ZOOM_MAX}
+            onClick={() => setCameraZoom((z) => clampCameraZoom(z + CAMERA_ZOOM_STEP))}
+          >
+            +
+          </button>
+          <button
+            type="button"
+            className="board-tool-btn"
+            title="Restablecer cámara táctica"
+            data-testid="camera-reset"
+            onClick={handleResetCamera}
+          >
+            Restablecer
+          </button>
+        </div>
+      </div>
 
-  return <section className="board-wrap">
-    <div className="board" style={{ gridTemplateColumns: "repeat(" + room.board.width + ", minmax(32px, 1fr))", gridTemplateRows: "repeat(" + room.board.height + ", minmax(32px, 1fr))", aspectRatio: room.board.width + " / " + room.board.height }}>
-      {Array.from({ length: room.board.width * room.board.height }).map((_, index) => {
-        const x = index % room.board.width;
-        const y = Math.floor(index / room.board.width);
-        const position = { x, y, zFeet: 0 };
-        const key = cellKey(position);
-        const token = occupiedByCell.get(key);
-        const highlight = highlightedCells.get(key) ?? "";
-        const routeIndex = displayedPath.findIndex((step) => step.x === x && step.y === y);
-        const isRouteFootprint = routeFootprintKeys.has(key);
-        const isAoE = aoePreviewKeys.has(key);
-        const isAoEAffected = aoeAffectedKeys.has(key);
-        const isHazard = hazardCellKeys.has(key);
-        const routeClass = routeIndex >= 0 || isRouteFootprint ? " route-cell" + (routeIndex === displayedPath.length - 1 || isRouteFootprint ? " route-end" : "") + (chargePreviewPath ? " charge-route" : "") : "";
-        const aoeClass = isAoE ? " aoe-preview" : "";
-        const aoeAffectedClass = isAoEAffected ? " aoe-affected" : "";
-        const hazardClass = isHazard ? " hazard-cell" : "";
-        return <button key={index} className={"cell" + highlight + routeClass + aoeClass + aoeAffectedClass + hazardClass} style={{ gridColumn: x + 1, gridRow: y + 1 }} data-testid={"cell-" + x + "-" + y} onPointerEnter={() => setHoveredCell(position)} onPointerLeave={() => setHoveredCell(current => current?.x === x && current?.y === y ? null : current)} onClick={() => onCellClick(position, token)}>{routeIndex >= 0 && <span className="route-step">{displayedPathCosts[routeIndex]}</span>}</button>;
-      })}
-      {room.combatants.map((token) => {
-        const cells = getCombatantOccupiedCells(token, snapshot);
-        const columns = Math.max(...cells.map((cell) => cell.x)) - token.position.x + 1;
-        const rows = Math.max(...cells.map((cell) => cell.y)) - token.position.y + 1;
-        const selectedClass = token.id === selected?.id ? " selected-token" : "";
-        const targetClass = token.id === targetId ? " target-token" : "";
-        return <span
-          key={token.id}
-          className={"board-token " + token.type + " " + lifeStatus(token) + selectedClass + targetClass}
-          data-testid={"token-" + token.id}
-          data-footprint-columns={columns}
-          data-footprint-rows={rows}
-          style={{ gridColumn: `${token.position.x + 1} / span ${columns}`, gridRow: `${token.position.y + 1} / span ${rows}` }}
-        >{token.icon}</span>;
-      })}
-    </div>
-  </section>;
+      <div className="board-stage-viewport">
+        <div
+          className={`board-stage ${viewMode === "2.5d" ? "is-25d" : "is-2d"} angle-${cameraAngle}`}
+          data-testid="board-stage"
+          data-view-mode={viewMode}
+          data-camera-angle={cameraAngle}
+          data-camera-zoom={String(cameraZoom)}
+          style={{
+            ["--camera-zoom" as string]: String(cameraZoom)
+          }}
+        >
+          <div
+            className="board"
+            style={{
+              gridTemplateColumns: `repeat(${presentation.width}, minmax(38px, 1fr))`,
+              gridTemplateRows: `repeat(${presentation.height}, minmax(38px, 1fr))`,
+              aspectRatio: `${presentation.width} / ${presentation.height}`
+            }}
+          >
+            {presentation.cells.map((cell) => (
+              <button
+                key={cell.key}
+                type="button"
+                className={cell.className}
+                style={{
+                  gridColumn: cell.projected.gridColumn,
+                  gridRow: cell.projected.gridRow
+                }}
+                data-testid={`cell-${cell.x}-${cell.y}`}
+                data-cell-coord={`${cell.x},${cell.y}`}
+                data-scenic-prop={cell.scenicProp}
+                onPointerEnter={() => setHoveredCell(cell.position)}
+                onPointerLeave={() =>
+                  setHoveredCell((current) =>
+                    current?.x === cell.x && current?.y === cell.y ? null : current
+                  )
+                }
+                onClick={() => onCellClick(cell.position, cell.occupant)}
+              >
+                <span className="cell-surface" aria-hidden="true" />
+                <span className="cell-plinth" aria-hidden="true" />
+
+                {cell.scenicProp === "barrier-block" && (
+                  <span
+                    className="scenic-barrier-block"
+                    aria-hidden="true"
+                    title="Obstáculo escénico de movimiento (no otorga cobertura automáticamente)"
+                  />
+                )}
+                {cell.scenicProp === "rubble" && (
+                  <span className="scenic-rubble" aria-hidden="true">
+                    <span className="rubble-stone r1" />
+                    <span className="rubble-stone r2" />
+                    <span className="rubble-stone r3" />
+                  </span>
+                )}
+                {cell.scenicProp === "narrow-corridor" && (
+                  <span className="scenic-narrow-kerb" aria-hidden="true" />
+                )}
+                {cell.scenicProp === "loe-pillar" && (
+                  <span className="scenic-loe-pillar" aria-hidden="true" />
+                )}
+
+                {cell.terrainBadge && cell.routeIndex < 0 && (
+                  <span className="cell-terrain-tag" aria-hidden="true">
+                    {cell.terrainBadge}
+                  </span>
+                )}
+
+                {cell.routeIndex >= 0 && cell.routeStepCost !== null && (
+                  <span className="route-step">{cell.routeStepCost}</span>
+                )}
+              </button>
+            ))}
+
+            {presentation.tokens.map((token) => {
+              const selectedClass = token.isSelected ? " selected-token" : "";
+              const targetClass = token.isTarget ? " target-token" : "";
+              const activeTurnClass = token.isActiveTurn ? " active-turn-token" : "";
+              const proneClass = token.isProne ? " token-prone" : "";
+              const paralyzedClass = token.isParalyzed ? " token-paralyzed" : "";
+              const squeezingClass = token.isSqueezing ? " token-squeezing" : "";
+              const largeClass = token.sprite.isLarge ? " token-large" : "";
+
+              return (
+                <div
+                  key={token.id}
+                  className={
+                    `board-token ${token.type} ${token.status}` +
+                    selectedClass +
+                    targetClass +
+                    activeTurnClass +
+                    proneClass +
+                    paralyzedClass +
+                    squeezingClass +
+                    largeClass
+                  }
+                  data-testid={`token-${token.id}`}
+                  data-combatant-name={token.name}
+                  data-footprint-columns={token.footprint.columns}
+                  data-footprint-rows={token.footprint.rows}
+                  data-sprite-archetype={token.sprite.archetypeId}
+                  data-sprite-fallback={String(token.sprite.isFallback)}
+                  style={{
+                    gridColumn: token.footprint.gridColumnStyle,
+                    gridRow: token.footprint.gridRowStyle
+                  }}
+                >
+                  {token.badges.length > 0 && (
+                    <div
+                      className="token-badges"
+                      data-testid={`token-badges-${token.id}`}
+                      data-combatant-badges={token.name}
+                    >
+                      {token.badges.map((badge) => (
+                        <span
+                          key={badge.id}
+                          className={`token-badge tone-${badge.tone}`}
+                          title={badge.label}
+                          data-badge-code={badge.code}
+                        >
+                          <span className="token-badge-symbol" aria-hidden="true">
+                            {badge.symbol}
+                          </span>
+                          <span>{badge.code}</span>
+                        </span>
+                      ))}
+                    </div>
+                  )}
+
+                  <span
+                    className="token-contact-shadow"
+                    data-testid={`token-shadow-${token.id}`}
+                    aria-hidden="true"
+                  />
+                  <span className="token-pedestal" aria-hidden="true" />
+
+                  <div className="token-figure">
+                    <CombatantSprite
+                      combatant={token.combatant}
+                      mirrored={token.mirroredInCamera}
+                    />
+                  </div>
+
+                  <div
+                    className="token-nameplate"
+                    data-testid={`token-name-${token.id}`}
+                    data-combatant-nameplate={token.name}
+                  >
+                    <span className="token-name-text">{token.name}</span>
+                    <span className="token-hp-bar" aria-hidden="true">
+                      <span
+                        className="token-hp-fill"
+                        style={{ width: `${token.hpPercent}%` }}
+                      />
+                    </span>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      </div>
+    </section>
+  );
 }
