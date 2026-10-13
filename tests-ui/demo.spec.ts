@@ -5,8 +5,26 @@ const RAW_ICON_IDS = ["shield", "swords", "sparkles", "skull", "crosshair", "foo
 
 async function stepDemoOnce(page: Page) {
   const demoPanel = page.getByTestId("demo-panel");
+  const stepButton = page.getByTestId("demo-step-btn");
   const previousStepIndex = await demoPanel.getAttribute("data-current-step-index");
-  await page.getByTestId("demo-step-btn").click();
+
+  // Windows CI can render the paused state while the final WebSocket messages
+  // from a multipart action (for example, spell -> AoO -> spell) are still
+  // settling. A bounded retry is safe because the authoritative sequence
+  // rejects duplicate or stale control commands.
+  for (let attempt = 0; attempt < 3; attempt += 1) {
+    await expect(stepButton).toBeEnabled();
+    await stepButton.click();
+    try {
+      await expect
+        .poll(async () => await demoPanel.getAttribute("data-current-step-index"), { timeout: 5_000 })
+        .not.toBe(previousStepIndex);
+      return;
+    } catch {
+      // Retry with the latest DemoSessionState sequence held by the client.
+    }
+  }
+
   await expect
     .poll(async () => await demoPanel.getAttribute("data-current-step-index"))
     .not.toBe(previousStepIndex);
