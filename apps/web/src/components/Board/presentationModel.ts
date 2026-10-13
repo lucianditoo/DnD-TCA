@@ -16,10 +16,17 @@ import {
   type ProductionEffectId
 } from "@dnd-tactical/shared";
 import { cellKey, getCardinalDirection, type ActionMode } from "../../viewModel";
-import {
-  resolveCombatantSprite,
-  type CombatantSpriteDescriptor
-} from "./sprites";
+import { resolveCombatantSprite, type CombatantSpriteDescriptor } from "./sprites";
+
+/**
+ * Modelo visual derivado y efímero del tablero táctico.
+ *
+ * Consume exclusivamente el estado compartido (CombatRoom + CombatRulesSnapshot)
+ * y produce una descripción de presentación: suelo, overlays, volúmenes
+ * escénicos, unidades billboard, orden de pintura y caras visibles por cámara.
+ * Nunca muta el estado, nunca calcula reglas nuevas y nunca persiste nada.
+ * La profundidad (altura de muros, alto de sprites) es exclusivamente visual.
+ */
 
 export type BoardViewMode = "2.5d" | "2d";
 export type CameraAngle = "nw" | "ne" | "se" | "sw";
@@ -37,18 +44,27 @@ export const DEFAULT_CAMERA_STATE: CameraState = {
 };
 
 export const CAMERA_ZOOM_MIN = 0.75;
-export const CAMERA_ZOOM_MAX = 1.3;
+export const CAMERA_ZOOM_MAX = 1.5;
 export const CAMERA_ZOOM_STEP = 0.125;
+
+export const CAMERA_TILT_DEG = 55;
+
+export const CAMERA_YAW_DEG: Readonly<Record<CameraAngle, number>> = {
+  nw: -3,
+  ne: 3,
+  se: -3,
+  sw: 3
+};
 
 export const CAMERA_ANGLE_OPTIONS: ReadonlyArray<{
   readonly id: CameraAngle;
   readonly shortLabel: string;
   readonly title: string;
 }> = [
-  { id: "nw", shortLabel: "NO", title: "Vista Noroeste" },
-  { id: "ne", shortLabel: "NE", title: "Vista Noreste" },
-  { id: "se", shortLabel: "SE", title: "Vista Sudeste" },
-  { id: "sw", shortLabel: "SO", title: "Vista Sudoeste" }
+  { id: "nw", shortLabel: "NO", title: "Cámara mirando al Noroeste" },
+  { id: "ne", shortLabel: "NE", title: "Cámara mirando al Noreste" },
+  { id: "se", shortLabel: "SE", title: "Cámara mirando al Sudeste" },
+  { id: "sw", shortLabel: "SO", title: "Cámara mirando al Sudoeste" }
 ];
 
 export interface ProjectedGridCell {
@@ -67,78 +83,6 @@ export interface ProjectedGridFootprint {
   readonly rowStart: number;
   readonly gridColumnStyle: string;
   readonly gridRowStyle: string;
-}
-
-export type ScenicPropKind =
-  | "none"
-  | "barrier-block"
-  | "rubble"
-  | "narrow-corridor"
-  | "loe-pillar";
-
-export interface TacticalCellPresentation {
-  readonly x: number;
-  readonly y: number;
-  readonly position: Position;
-  readonly key: string;
-  readonly projected: ProjectedGridCell;
-  readonly occupant: Combatant | undefined;
-  readonly isImpassable: boolean;
-  readonly isDifficultTerrain: boolean;
-  readonly isNarrow: boolean;
-  readonly isLoEBlocked: boolean;
-  readonly isDimLight: boolean;
-  readonly isDarkness: boolean;
-  readonly scenicProp: ScenicPropKind;
-  readonly terrainBadge: string | null;
-  readonly className: string;
-  readonly routeIndex: number;
-  readonly routeStepCost: number | null;
-}
-
-export interface TokenBadgePresentation {
-  readonly id: string;
-  readonly symbol: string;
-  readonly code: string;
-  readonly label: string;
-  readonly tone: "amber" | "orange" | "purple" | "cyan" | "teal" | "green" | "red" | "slate";
-}
-
-export interface TacticalTokenPresentation {
-  readonly combatant: Combatant;
-  readonly id: string;
-  readonly name: string;
-  readonly type: "player" | "enemy";
-  readonly status: LifeStatus;
-  readonly hpCurrent: number;
-  readonly hpMax: number;
-  readonly hpPercent: number;
-  readonly isSelected: boolean;
-  readonly isTarget: boolean;
-  readonly isActiveTurn: boolean;
-  readonly isProne: boolean;
-  readonly isParalyzed: boolean;
-  readonly isSqueezing: boolean;
-  readonly footprint: ProjectedGridFootprint;
-  readonly occupiedCells: readonly Position[];
-  readonly sprite: CombatantSpriteDescriptor;
-  readonly mirroredInCamera: boolean;
-  readonly badges: readonly TokenBadgePresentation[];
-}
-
-export interface TacticalBoardPresentation {
-  readonly width: number;
-  readonly height: number;
-  readonly viewMode: BoardViewMode;
-  readonly cameraAngle: CameraAngle;
-  readonly cameraZoom: number;
-  readonly cells: readonly TacticalCellPresentation[];
-  readonly tokens: readonly TacticalTokenPresentation[];
-}
-
-export function clampCameraZoom(zoom: number): number {
-  const clamped = Math.min(CAMERA_ZOOM_MAX, Math.max(CAMERA_ZOOM_MIN, zoom));
-  return Math.round(clamped * 1000) / 1000;
 }
 
 export function projectCellToCameraGrid(
@@ -210,6 +154,133 @@ export function projectFootprintToCameraGrid(
   };
 }
 
+export type VolumeFace = "north" | "east" | "south" | "west";
+export const VOLUME_FACES: readonly VolumeFace[] = ["north", "east", "south", "west"];
+
+export function clampCameraZoom(zoom: number): number {
+  const clamped = Math.min(CAMERA_ZOOM_MAX, Math.max(CAMERA_ZOOM_MIN, zoom));
+  return Math.round(clamped * 1000) / 1000;
+}
+
+/**
+ * Caras verticales de un volumen orientadas hacia la cámara según el ángulo visual.
+ */
+export function getCameraFacingFaces(angle: CameraAngle, viewMode: BoardViewMode = "2.5d"): readonly VolumeFace[] {
+  if (viewMode === "2d") return [];
+  switch (angle) {
+    case "nw":
+      return ["south", "east"];
+    case "ne":
+      return ["south", "west"];
+    case "se":
+      return ["north", "west"];
+    case "sw":
+      return ["north", "east"];
+  }
+}
+
+export function getFaceShade(face: VolumeFace, angle: CameraAngle): "lit" | "shade" {
+  if (face === "south" || face === "north") {
+    return angle === "nw" || angle === "se" ? "lit" : "shade";
+  }
+  return angle === "nw" || angle === "sw" ? "shade" : "lit";
+}
+
+export type ScenicPropKind = "none" | "barrier-block" | "rubble" | "narrow-corridor" | "loe-pillar";
+
+export interface TacticalCellPresentation {
+  readonly x: number;
+  readonly y: number;
+  readonly position: Position;
+  readonly key: string;
+  readonly projected: ProjectedGridCell;
+  readonly occupant: Combatant | undefined;
+  readonly isImpassable: boolean;
+  readonly isDifficultTerrain: boolean;
+  readonly isNarrow: boolean;
+  readonly isLoEBlocked: boolean;
+  readonly isDimLight: boolean;
+  readonly isDarkness: boolean;
+  readonly scenicProp: ScenicPropKind;
+  /** Etiqueta textual de depuración (BLOQ, 5 FT…). Oculta por defecto. */
+  readonly debugLabel: string | null;
+  readonly terrainBadge: string | null;
+  readonly className: string;
+  readonly routeIndex: number;
+  readonly routeStepCost: number | null;
+}
+
+export type VolumeKind = "wall" | "pillar" | "rubble-stone" | "ledge";
+
+export interface VolumeFacePresentation {
+  readonly face: VolumeFace;
+  readonly shade: "lit" | "shade";
+}
+
+export interface TacticalVolumePresentation {
+  readonly key: string;
+  readonly kind: VolumeKind;
+  readonly cellX: number;
+  readonly cellY: number;
+  readonly projectedGridColumn: number;
+  readonly projectedGridRow: number;
+  readonly paintDepth: number;
+  readonly visibleFaces: readonly VolumeFacePresentation[];
+}
+
+export interface TokenBadgePresentation {
+  readonly id: string;
+  readonly symbol: string;
+  readonly code: string;
+  readonly text: string;
+  readonly label: string;
+  readonly tone: "amber" | "orange" | "purple" | "cyan" | "teal" | "green" | "red" | "slate";
+}
+
+export type UnitPose = "standing" | "prone" | "paralyzed" | "fallen";
+
+export interface TacticalTokenPresentation {
+  readonly combatant: Combatant;
+  readonly id: string;
+  readonly name: string;
+  readonly displayName: string;
+  readonly type: "player" | "enemy";
+  readonly status: LifeStatus;
+  readonly hpCurrent: number;
+  readonly hpMax: number;
+  readonly hpPercent: number;
+  readonly isSelected: boolean;
+  readonly isTarget: boolean;
+  readonly isActiveTurn: boolean;
+  readonly isProne: boolean;
+  readonly isParalyzed: boolean;
+  readonly isSqueezing: boolean;
+  readonly pose: UnitPose;
+  readonly footprint: ProjectedGridFootprint;
+  readonly projectedFootprint: ProjectedGridFootprint;
+  readonly occupiedCells: readonly Position[];
+  readonly paintIndex: number;
+  readonly spriteScale: number;
+  readonly widthScale: number;
+  readonly sprite: CombatantSpriteDescriptor;
+  readonly mirroredInCamera: boolean;
+  readonly badges: readonly TokenBadgePresentation[];
+}
+
+export interface TacticalBoardPresentation {
+  readonly width: number;
+  readonly height: number;
+  readonly viewMode: BoardViewMode;
+  readonly cameraAngle: CameraAngle;
+  readonly cameraZoom: number;
+  readonly yawDeg: number;
+  readonly tiltDeg: number;
+  readonly facingFaces: readonly VolumeFace[];
+  readonly cells: readonly TacticalCellPresentation[];
+  readonly volumes: readonly TacticalVolumePresentation[];
+  readonly tokens: readonly TacticalTokenPresentation[];
+}
+
 const CONDITION_BADGE_MAP: Readonly<
   Record<
     string,
@@ -233,6 +304,93 @@ const CONDITION_BADGE_MAP: Readonly<
   srd_fatigued: { symbol: "~", code: "FAT", label: "Fatigado (Fatigued)", tone: "slate" },
   srd_exhausted: { symbol: "≈", code: "EXH", label: "Exhausto (Exhausted)", tone: "orange" }
 };
+
+const SYMBOL_ONLY_CODES = new Set(["FF"]);
+const NAME_MAX_VISIBLE = 12;
+
+export function abbreviateCombatantName(name: string): string {
+  const trimmed = name.trim();
+  if (trimmed.length <= NAME_MAX_VISIBLE) return trimmed;
+  const words = trimmed.split(/\s+/);
+  if (words.length === 1) return `${trimmed.slice(0, NAME_MAX_VISIBLE - 1)}…`;
+  const first = words[0];
+  const last = words[words.length - 1];
+  return `${first} ${last.charAt(0).toUpperCase()}.`;
+}
+
+function buildVolumes(params: {
+  readonly width: number;
+  readonly height: number;
+  readonly impassable: ReadonlySet<string>;
+  readonly difficult: ReadonlySet<string>;
+  readonly narrow: ReadonlySet<string>;
+  readonly loeBlocked: ReadonlySet<string>;
+  readonly angle: CameraAngle;
+  readonly viewMode: BoardViewMode;
+}): TacticalVolumePresentation[] {
+  const { width, height, impassable, difficult, narrow, loeBlocked, angle, viewMode } = params;
+  const facing = getCameraFacingFaces(angle, viewMode);
+  const volumes: TacticalVolumePresentation[] = [];
+  const key = (x: number, y: number) => `${x},${y}`;
+
+  const faceList = () => facing.map((face) => ({ face, shade: getFaceShade(face, angle) }));
+
+  for (let y = 0; y < height; y += 1) {
+    for (let x = 0; x < width; x += 1) {
+      const k = key(x, y);
+      const projected = projectCellToCameraGrid(x, y, width, height, angle);
+      const paintDepth = 50 + projected.gridRow * 10;
+
+      if (loeBlocked.has(k)) {
+        volumes.push({
+          key: `pillar-${x}-${y}`,
+          kind: "pillar",
+          cellX: x,
+          cellY: y,
+          projectedGridColumn: projected.gridColumn,
+          projectedGridRow: projected.gridRow,
+          paintDepth,
+          visibleFaces: faceList()
+        });
+      } else if (impassable.has(k)) {
+        volumes.push({
+          key: `wall-${x}-${y}`,
+          kind: "wall",
+          cellX: x,
+          cellY: y,
+          projectedGridColumn: projected.gridColumn,
+          projectedGridRow: projected.gridRow,
+          paintDepth,
+          visibleFaces: faceList()
+        });
+      } else if (difficult.has(k)) {
+        volumes.push({
+          key: `rubble-${x}-${y}`,
+          kind: "rubble-stone",
+          cellX: x,
+          cellY: y,
+          projectedGridColumn: projected.gridColumn,
+          projectedGridRow: projected.gridRow,
+          paintDepth,
+          visibleFaces: faceList()
+        });
+      } else if (narrow.has(k)) {
+        volumes.push({
+          key: `ledge-${x}-${y}`,
+          kind: "ledge",
+          cellX: x,
+          cellY: y,
+          projectedGridColumn: projected.gridColumn,
+          projectedGridRow: projected.gridRow,
+          paintDepth,
+          visibleFaces: faceList()
+        });
+      }
+    }
+  }
+
+  return volumes;
+}
 
 export function buildBoardPresentationModel(params: {
   readonly room: CombatRoom;
@@ -336,9 +494,6 @@ export function buildBoardPresentationModel(params: {
     const highlight = highlightedCells.get(key) ?? "";
     const routeIndex = displayedPath.findIndex((step) => step.x === x && step.y === y);
     const isRouteFootprint = routeFootprintKeys.has(key);
-    const isAoE = aoePreviewKeys.has(key);
-    const isAoEAffected = aoeAffectedKeys.has(key);
-    const isHazard = hazardCellKeys.has(key);
 
     const isImpassable = impassableSet.has(key);
     const isDifficultTerrain = difficultSet.has(key);
@@ -348,18 +503,23 @@ export function buildBoardPresentationModel(params: {
     const isDarkness = darknessSet.has(key);
 
     let scenicProp: ScenicPropKind = "none";
+    let debugLabel: string | null = null;
     let terrainBadge: string | null = null;
     if (isLoEBlocked) {
       scenicProp = "loe-pillar";
+      debugLabel = "SIN LOE";
       terrainBadge = "SIN LOE";
     } else if (isImpassable) {
       scenicProp = "barrier-block";
+      debugLabel = "BLOQ";
       terrainBadge = "BLOQ";
     } else if (isDifficultTerrain) {
       scenicProp = "rubble";
+      debugLabel = "2×";
       terrainBadge = "2×";
     } else if (isNarrow) {
       scenicProp = "narrow-corridor";
+      debugLabel = "5 FT";
       terrainBadge = "5 FT";
     }
 
@@ -369,9 +529,9 @@ export function buildBoardPresentationModel(params: {
           (routeIndex === displayedPath.length - 1 || isRouteFootprint ? " route-end" : "") +
           (chargePreviewPath ? " charge-route" : "")
         : "";
-    const aoeClass = isAoE ? " aoe-preview" : "";
-    const aoeAffectedClass = isAoEAffected ? " aoe-affected" : "";
-    const hazardClass = isHazard ? " hazard-cell" : "";
+    const aoeClass = aoePreviewKeys.has(key) ? " aoe-preview" : "";
+    const aoeAffectedClass = aoeAffectedKeys.has(key) ? " aoe-affected" : "";
+    const hazardClass = hazardCellKeys.has(key) ? " hazard-cell" : "";
     const terrainClass =
       (isImpassable ? " cell-impassable" : "") +
       (isDifficultTerrain ? " cell-difficult" : "") +
@@ -396,6 +556,7 @@ export function buildBoardPresentationModel(params: {
       isDimLight,
       isDarkness,
       scenicProp,
+      debugLabel,
       terrainBadge,
       className: `cell${highlight}${routeClass}${aoeClass}${aoeAffectedClass}${hazardClass}${terrainClass}`,
       routeIndex,
@@ -403,9 +564,8 @@ export function buildBoardPresentationModel(params: {
     });
   }
 
-  // Pure read of cover context from the active/selected combatant to enemies so Scene B's creature cover is visually evident
-  const activeCombatant =
-    room.combatants.find((c) => c.id === room.currentTurn.combatantId) ?? selected ?? null;
+  // Lectura pura del contexto de cobertura del combatiente activo (badges de solo lectura).
+  const activeCombatant = room.combatants.find((c) => c.id === room.currentTurn.combatantId) ?? selected ?? null;
   const coverProtectedIds = new Set<string>();
   const coverBlockerIds = new Set<string>();
   if (activeCombatant && lifeStatus(activeCombatant) !== "dead") {
@@ -417,20 +577,19 @@ export function buildBoardPresentationModel(params: {
       const modifiers = getAttackContextModifiers(snapshot, activeCombatant, candidate).byAttackType[attackType];
       if (modifiers.cover.applies) {
         coverProtectedIds.add(candidate.id);
-        for (const blockerId of modifiers.cover.blockerIds) {
-          coverBlockerIds.add(blockerId);
-        }
+        for (const blockerId of modifiers.cover.blockerIds) coverBlockerIds.add(blockerId);
       }
     }
   }
 
   const mirroredInCamera = camera.angle === "ne" || camera.angle === "se";
 
-  const tokens: TacticalTokenPresentation[] = room.combatants.map((combatant) => {
+  const tokens: TacticalTokenPresentation[] = room.combatants.map((combatant, index) => {
     const occupiedCells = occupiedCellsByCombatant.get(combatant.id) ?? [combatant.position];
     const footprint = projectFootprintToCameraGrid(occupiedCells, width, height, camera.angle);
     const status = lifeStatus(combatant);
-    const hpPercent = combatant.hpMax > 0 ? Math.max(0, Math.min(100, Math.round((combatant.hpCurrent / combatant.hpMax) * 100))) : 0;
+    const hpPercent =
+      combatant.hpMax > 0 ? Math.max(0, Math.min(100, Math.round((combatant.hpCurrent / combatant.hpMax) * 100))) : 0;
     const sprite = resolveCombatantSprite(combatant, { forceFallback: forceSpriteFallback });
 
     const activeEffects = EffectQueries.getByTarget(room, combatant.id);
@@ -444,6 +603,7 @@ export function buildBoardPresentationModel(params: {
           id: instance.effectId,
           symbol: meta.symbol,
           code: meta.code,
+          text: SYMBOL_ONLY_CODES.has(meta.code) ? "" : meta.code,
           label: meta.label,
           tone: meta.tone
         });
@@ -455,7 +615,8 @@ export function buildBoardPresentationModel(params: {
         id: "tactical_cover_protected",
         symbol: "🛡",
         code: "COV +4",
-        label: "Cobertura por criatura (+4 CA)",
+        text: "COV +4",
+        label: "Cobertura por criatura interpuesta (+4 CA)",
         tone: "cyan"
       });
     } else if (coverBlockerIds.has(combatant.id)) {
@@ -463,32 +624,60 @@ export function buildBoardPresentationModel(params: {
         id: "tactical_cover_blocker",
         symbol: "⛨",
         code: "INTERP",
+        text: "INTERP",
         label: "Criatura interpuesta (otorga cobertura)",
         tone: "teal"
       });
     }
 
+    const isProne = effectIds.has("srd_prone");
+    const isParalyzed = effectIds.has("srd_paralyzed");
+    const isSqueezing = effectIds.has("srd_squeezing");
+    const pose: UnitPose =
+      status === "dead" ? "fallen" : isProne ? "prone" : isParalyzed ? "paralyzed" : "standing";
+    const isSelected = combatant.id === selected?.id;
+
+    // Profundidad de pintura: fila inferior en pantalla se pinta encima de la superior
+    const depthOrder = footprint.rowStart * 10 + index;
+
     return {
       combatant,
       id: combatant.id,
       name: combatant.name,
+      displayName: isSelected ? combatant.name : abbreviateCombatantName(combatant.name),
       type: combatant.type,
       status,
       hpCurrent: combatant.hpCurrent,
       hpMax: combatant.hpMax,
       hpPercent,
-      isSelected: combatant.id === selected?.id,
+      isSelected,
       isTarget: combatant.id === targetId,
       isActiveTurn: room.phase !== "preparation" && room.currentTurn.combatantId === combatant.id,
-      isProne: effectIds.has("srd_prone"),
-      isParalyzed: effectIds.has("srd_paralyzed"),
-      isSqueezing: effectIds.has("srd_squeezing"),
+      isProne,
+      isParalyzed,
+      isSqueezing,
+      pose,
       footprint,
+      projectedFootprint: footprint,
       occupiedCells,
+      paintIndex: depthOrder,
+      spriteScale: sprite.isLarge ? 1.85 : 1,
+      widthScale: isSqueezing ? 0.75 : 1,
       sprite,
       mirroredInCamera,
       badges
     };
+  });
+
+  const volumes = buildVolumes({
+    width,
+    height,
+    impassable: impassableSet,
+    difficult: difficultSet,
+    narrow: narrowSet,
+    loeBlocked: loeBlockedSet,
+    angle: camera.angle,
+    viewMode: camera.viewMode
   });
 
   return {
@@ -497,7 +686,11 @@ export function buildBoardPresentationModel(params: {
     viewMode: camera.viewMode,
     cameraAngle: camera.angle,
     cameraZoom: camera.zoom,
+    yawDeg: camera.viewMode === "2.5d" ? CAMERA_YAW_DEG[camera.angle] : 0,
+    tiltDeg: camera.viewMode === "2.5d" ? CAMERA_TILT_DEG : 0,
+    facingFaces: getCameraFacingFaces(camera.angle, camera.viewMode),
     cells,
+    volumes,
     tokens
   };
 }

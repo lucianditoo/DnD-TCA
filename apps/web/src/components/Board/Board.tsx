@@ -195,158 +195,183 @@ export function Board({
           data-camera-angle={cameraAngle}
           data-camera-zoom={String(cameraZoom)}
           style={{
-            ["--camera-zoom" as string]: String(cameraZoom)
+            ["--camera-zoom" as string]: String(cameraZoom),
+            ["--camera-yaw" as string]: `${presentation.yawDeg}deg`,
+            ["--camera-tilt" as string]: `${presentation.tiltDeg}deg`
           }}
         >
-          <div
-            className="board"
-            style={{
-              gridTemplateColumns: `repeat(${presentation.width}, minmax(38px, 1fr))`,
-              gridTemplateRows: `repeat(${presentation.height}, minmax(38px, 1fr))`,
-              aspectRatio: `${presentation.width} / ${presentation.height}`
-            }}
-          >
-            {presentation.cells.map((cell) => (
-              <button
-                key={cell.key}
-                type="button"
-                className={cell.className}
-                style={{
-                  gridColumn: cell.projected.gridColumn,
-                  gridRow: cell.projected.gridRow
-                }}
-                data-testid={`cell-${cell.x}-${cell.y}`}
-                data-cell-coord={`${cell.x},${cell.y}`}
-                data-scenic-prop={cell.scenicProp}
-                onPointerEnter={() => setHoveredCell(cell.position)}
-                onPointerLeave={() =>
-                  setHoveredCell((current) =>
-                    current?.x === cell.x && current?.y === cell.y ? null : current
-                  )
-                }
-                onClick={() => onCellClick(cell.position, cell.occupant)}
-              >
-                <span className="cell-surface" aria-hidden="true" />
-                <span className="cell-plinth" aria-hidden="true" />
+          {/* PLINTO SÓLIDO DE LA BASE */}
+          <div className="tactical-board-slab">
+            {viewMode === "2.5d" && (
+              <>
+                <div className="slab-face slab-front" aria-hidden="true" />
+                <div className="slab-face slab-side" aria-hidden="true" />
+              </>
+            )}
 
-                {cell.scenicProp === "barrier-block" && (
-                  <span
-                    className="scenic-barrier-block"
-                    aria-hidden="true"
-                    title="Obstáculo escénico de movimiento (no otorga cobertura automáticamente)"
-                  />
-                )}
-                {cell.scenicProp === "rubble" && (
-                  <span className="scenic-rubble" aria-hidden="true">
-                    <span className="rubble-stone r1" />
-                    <span className="rubble-stone r2" />
-                    <span className="rubble-stone r3" />
-                  </span>
-                )}
-                {cell.scenicProp === "narrow-corridor" && (
-                  <span className="scenic-narrow-kerb" aria-hidden="true" />
-                )}
-                {cell.scenicProp === "loe-pillar" && (
-                  <span className="scenic-loe-pillar" aria-hidden="true" />
-                )}
-
-                {cell.terrainBadge && cell.routeIndex < 0 && (
-                  <span className="cell-terrain-tag" aria-hidden="true">
-                    {cell.terrainBadge}
-                  </span>
-                )}
-
-                {cell.routeIndex >= 0 && cell.routeStepCost !== null && (
-                  <span className="route-step">{cell.routeStepCost}</span>
-                )}
-              </button>
-            ))}
-
-            {presentation.tokens.map((token) => {
-              const selectedClass = token.isSelected ? " selected-token" : "";
-              const targetClass = token.isTarget ? " target-token" : "";
-              const activeTurnClass = token.isActiveTurn ? " active-turn-token" : "";
-              const proneClass = token.isProne ? " token-prone" : "";
-              const paralyzedClass = token.isParalyzed ? " token-paralyzed" : "";
-              const squeezingClass = token.isSqueezing ? " token-squeezing" : "";
-              const largeClass = token.sprite.isLarge ? " token-large" : "";
-
-              return (
-                <div
-                  key={token.id}
-                  className={
-                    `board-token ${token.type} ${token.status}` +
-                    selectedClass +
-                    targetClass +
-                    activeTurnClass +
-                    proneClass +
-                    paralyzedClass +
-                    squeezingClass +
-                    largeClass
-                  }
-                  data-testid={`token-${token.id}`}
-                  data-combatant-name={token.name}
-                  data-footprint-columns={token.footprint.columns}
-                  data-footprint-rows={token.footprint.rows}
-                  data-sprite-archetype={token.sprite.archetypeId}
-                  data-sprite-fallback={String(token.sprite.isFallback)}
+            {/* SUPERFICIE CONTINUA DEL TABLERO */}
+            <div
+              className="board"
+              style={{
+                gridTemplateColumns: `repeat(${presentation.width}, minmax(36px, 1fr))`,
+                gridTemplateRows: `repeat(${presentation.height}, minmax(36px, 1fr))`,
+                aspectRatio: `${presentation.width} / ${presentation.height}`
+              }}
+            >
+              {/* CAPA DE CELDAS E INTERACCIÓN (Overlays en el suelo) */}
+              {presentation.cells.map((cell) => (
+                <button
+                  key={cell.key}
+                  type="button"
+                  className={cell.className}
                   style={{
-                    gridColumn: token.footprint.gridColumnStyle,
-                    gridRow: token.footprint.gridRowStyle
+                    gridColumn: cell.projected.gridColumn,
+                    gridRow: cell.projected.gridRow
                   }}
+                  data-testid={`cell-${cell.x}-${cell.y}`}
+                  data-cell-coord={`${cell.x},${cell.y}`}
+                  data-scenic-prop={cell.scenicProp}
+                  onPointerEnter={() => setHoveredCell(cell.position)}
+                  onPointerLeave={() =>
+                    setHoveredCell((current) =>
+                      current?.x === cell.x && current?.y === cell.y ? null : current
+                    )
+                  }
+                  onClick={() => onCellClick(cell.position, cell.occupant)}
                 >
-                  {token.badges.length > 0 && (
-                    <div
-                      className="token-badges"
-                      data-testid={`token-badges-${token.id}`}
-                      data-combatant-badges={token.name}
-                    >
-                      {token.badges.map((badge) => (
-                        <span
-                          key={badge.id}
-                          className={`token-badge tone-${badge.tone}`}
-                          title={badge.label}
-                          data-badge-code={badge.code}
-                        >
-                          <span className="token-badge-symbol" aria-hidden="true">
-                            {badge.symbol}
-                          </span>
-                          <span>{badge.code}</span>
-                        </span>
+                  <span className="cell-overlay-wash" aria-hidden="true" />
+
+                  {cell.routeIndex >= 0 && cell.routeStepCost !== null && (
+                    <span className="route-step">{cell.routeStepCost}</span>
+                  )}
+                </button>
+              ))}
+
+              {/* CAPA DE VOLÚMENES ESCÉNICOS (Muros, pilares, escombros, zócalos) */}
+              {viewMode === "2.5d" &&
+                presentation.volumes.map((vol) => (
+                  <div
+                    key={vol.key}
+                    className={`volumetric-prop prop-${vol.kind}`}
+                    style={{
+                      gridColumn: vol.projectedGridColumn,
+                      gridRow: vol.projectedGridRow,
+                      zIndex: vol.paintDepth
+                    }}
+                    aria-hidden="true"
+                  >
+                    <div className="prop-shadow" />
+                    <div className="prop-prism">
+                      <div className="prism-top" />
+                      {vol.visibleFaces.map((f) => (
+                        <div
+                          key={f.face}
+                          className={`prism-face face-${f.face} shade-${f.shade}`}
+                        />
                       ))}
                     </div>
-                  )}
-
-                  <span
-                    className="token-contact-shadow"
-                    data-testid={`token-shadow-${token.id}`}
-                    aria-hidden="true"
-                  />
-                  <span className="token-pedestal" aria-hidden="true" />
-
-                  <div className="token-figure">
-                    <CombatantSprite
-                      combatant={token.combatant}
-                      mirrored={token.mirroredInCamera}
-                    />
                   </div>
+                ))}
 
+              {/* CAPA DE UNIDADES BILLBOARD (Erguidas perpendicularmente al suelo) */}
+              {presentation.tokens.map((token) => {
+                const selectedClass = token.isSelected ? " selected-token" : "";
+                const targetClass = token.isTarget ? " target-token" : "";
+                const activeTurnClass = token.isActiveTurn ? " active-turn-token" : "";
+                const proneClass = token.isProne ? " token-prone" : "";
+                const paralyzedClass = token.isParalyzed ? " token-paralyzed" : "";
+                const squeezingClass = token.isSqueezing ? " token-squeezing" : "";
+                const largeClass = token.sprite.isLarge ? " token-large" : "";
+                const poseClass = ` token-pose-${token.pose}`;
+
+                return (
                   <div
-                    className="token-nameplate"
-                    data-testid={`token-name-${token.id}`}
-                    data-combatant-nameplate={token.name}
+                    key={token.id}
+                    className={
+                      `board-token ${token.type} ${token.status}` +
+                      selectedClass +
+                      targetClass +
+                      activeTurnClass +
+                      proneClass +
+                      paralyzedClass +
+                      squeezingClass +
+                      largeClass +
+                      poseClass
+                    }
+                    data-testid={`token-${token.id}`}
+                    data-combatant-name={token.name}
+                    data-footprint-columns={token.projectedFootprint.columns}
+                    data-footprint-rows={token.projectedFootprint.rows}
+                    data-sprite-archetype={token.sprite.archetypeId}
+                    data-sprite-fallback={String(token.sprite.isFallback)}
+                    style={{
+                      gridColumn: token.projectedFootprint.gridColumnStyle,
+                      gridRow: token.projectedFootprint.gridRowStyle,
+                      zIndex: 100 + token.paintIndex
+                    }}
                   >
-                    <span className="token-name-text">{token.name}</span>
-                    <span className="token-hp-bar" aria-hidden="true">
-                      <span
-                        className="token-hp-fill"
-                        style={{ width: `${token.hpPercent}%` }}
-                      />
-                    </span>
+                    {/* Sombra de contacto sobre el suelo */}
+                    <span
+                      className="token-contact-shadow"
+                      data-testid={`token-shadow-${token.id}`}
+                      aria-hidden="true"
+                    />
+
+                    {/* Marcador táctico de base */}
+                    <span className="token-ground-marker" aria-hidden="true" />
+
+                    {/* BILLBOARD STANDING FIGURE */}
+                    <div className="token-billboard">
+                      <div className="token-figure">
+                        <CombatantSprite
+                          combatant={token.combatant}
+                          mirrored={token.mirroredInCamera}
+                          variant={viewMode === "2.5d" ? "full" : "portrait"}
+                        />
+                      </div>
+
+                      {/* Placa flotante compacta con nombre y barra HP */}
+                      <div
+                        className="token-nameplate"
+                        data-testid={`token-name-${token.id}`}
+                        data-combatant-nameplate={token.name}
+                      >
+                        <span className="token-name-text">{token.displayName}</span>
+                        <span className="token-hp-bar" aria-hidden="true">
+                          <span
+                            className="token-hp-fill"
+                            style={{ width: `${token.hpPercent}%` }}
+                          />
+                        </span>
+                      </div>
+
+                      {/* Badges de condición y cobertura secundarios */}
+                      {token.badges.length > 0 && (
+                        <div
+                          className="token-badges"
+                          data-testid={`token-badges-${token.id}`}
+                          data-combatant-badges={token.name}
+                        >
+                          {token.badges.map((badge) => (
+                            <span
+                              key={badge.id}
+                              className={`token-badge tone-${badge.tone}`}
+                              title={badge.label}
+                              data-badge-code={badge.code}
+                            >
+                              <span className="token-badge-symbol" aria-hidden="true">
+                                {badge.symbol}
+                              </span>
+                              {badge.text ? <span>{badge.text}</span> : null}
+                            </span>
+                          ))}
+                        </div>
+                      )}
+                    </div>
                   </div>
-                </div>
-              );
-            })}
+                );
+              })}
+            </div>
           </div>
         </div>
       </div>

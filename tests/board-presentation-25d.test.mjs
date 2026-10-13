@@ -188,4 +188,62 @@ describe("2.5D Tactical Presentation Model & Sprite Resolution", () => {
     assert.equal(clampCameraZoom(99), CAMERA_ZOOM_MAX);
     assert.equal(clampCameraZoom(1.1), 1.1);
   });
+
+  test("7. resuelve caras visibles y sombreado determinista por ángulo para volúmenes 2.5D", async () => {
+    const { getCameraFacingFaces, getFaceShade } = await import(
+      "../apps/web/src/components/Board/presentationModel.ts"
+    );
+
+    assert.deepEqual(getCameraFacingFaces("nw", "2.5d"), ["south", "east"]);
+    assert.deepEqual(getCameraFacingFaces("ne", "2.5d"), ["south", "west"]);
+    assert.deepEqual(getCameraFacingFaces("se", "2.5d"), ["north", "west"]);
+    assert.deepEqual(getCameraFacingFaces("sw", "2.5d"), ["north", "east"]);
+    assert.deepEqual(getCameraFacingFaces("nw", "2d"), []);
+
+    assert.equal(getFaceShade("south", "nw"), "lit");
+    assert.equal(getFaceShade("east", "nw"), "shade");
+  });
+
+  test("8. genera prismas volumétricos (walls/rubble) y poses de unidades (prone/paralyzed/standing) sin alterar reglas", () => {
+    const socket = { OPEN: 1, readyState: 1, send() {} };
+    const record = startNewDemoSession(socket, SCRIPTED_TACTICAL_DEMO_ID, "TesterProps", { autoPlay: false });
+
+    try {
+      // Avanzar a escena B (índice 1) donde hay obstáculos
+      while (record.currentSceneIndex < 1 && record.status !== "completed") {
+        executeNextDemoStep(record);
+      }
+
+      const room = rooms.get(record.roomCode);
+      assert.ok(room);
+      const snapshot = createCombatRulesSnapshot(room, gameCatalog);
+      const model = buildBoardPresentationModel({
+        room,
+        snapshot,
+        selected: null,
+        targetId: "",
+        displayedPath: [],
+        displayedPathCosts: [],
+        highlightedCells: new Map(),
+        chargePreviewPath: null,
+        camera: { ...DEFAULT_CAMERA_STATE, angle: "nw" }
+      });
+
+      // Debe contener volúmenes escénicos (muros de corredor, escombros)
+      assert.ok(model.volumes.length > 0, "Debe generar prismas volumétricos en Escena B");
+      for (const prop of model.volumes) {
+        assert.ok(["wall", "pillar", "rubble-stone", "ledge"].includes(prop.kind));
+        assert.ok(prop.visibleFaces.length >= 1, "Debe contener al menos una cara visible hacia la cámara");
+        assert.ok(prop.paintDepth > 0);
+      }
+
+      // Debe haber tokens con pose y escala
+      for (const token of model.tokens) {
+        assert.ok(["standing", "prone", "paralyzed", "fallen"].includes(token.pose));
+        assert.ok(token.spriteScale > 0);
+      }
+    } finally {
+      destroyDemoSession(record.sessionId);
+    }
+  });
 });
