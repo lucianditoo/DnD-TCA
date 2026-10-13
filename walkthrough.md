@@ -1,80 +1,52 @@
-# Walkthrough — D-4 Renderer táctico 2.5D y cámara
+# Walkthrough — normalización visual de sprites 2.5D
 
 Responsabilidad: Resumen del último cierre ejecutado, sus decisiones, validaciones y límites.
 Autoridad: Registro rotativo
 Lifecycle: Temporal (se reescribe en cada cierre)
 Reemplaza: —
-Complementa: [Estado](PROJECT_STATUS.md), [NDD D-4](docs/designs/tactical-renderer-2.5d/design.md), [Plan D-4](docs/designs/tactical-renderer-2.5d/implementation-plan.md), [Evidencia](docs/testing/master-coverage.md)
+Complementa: [Estado](PROJECT_STATUS.md), [NDD D-4](docs/designs/tactical-renderer-2.5d/design.md), [Plan D-4](docs/designs/tactical-renderer-2.5d/implementation-plan.md)
 Consumidores: Architecture Reviewer, propietario y agentes que retoman el repositorio.
 
 ---
 
 ## 1. Resultado
 
-D-4 reemplaza la proyección CSS/SVG de la vista 2.5D por una escena Three.js
-real: tablero con profundidad, cámara ortográfica orbital por arrastre,
-depth buffer, meshes de obstáculos, picking de suelo y combatientes como
-billboards pixel-art. Los nombres dejan de sustituir a las figuras: solo se
-muestran como etiquetas contextuales para selección, turno o objetivo.
-La revisión visual compacta reduce la altura de las figuras frente a la celda,
-usa bloques de píxel y paletas más simples, asigna a Bane una silueta propia de
-pícaro y separa el feedback de estado en dos canales: pose y símbolo flotante.
-Paralizado usa un rayo, Derribado una flecha descendente con pose compacta y
-Muerto una silueta lateral desaturada con cruz.
-La cuadrícula usa divisiones independientes por ancho y alto, de modo que cada
-celda conserva un cuadrado 1×1 real; cada unidad proyecta además su footprint
-exacto dentro de las celdas ocupadas y usa un aro central reducido.
+La revisión visual detectó dos defectos presentacionales en el renderer Three.js:
+el caballero parecía menor que las demás familias y, en cámaras rasantes, las
+líneas del tablero podían dibujarse sobre los personajes.
 
-El renderer DOM 2D permanece disponible. Si WebGL no puede inicializarse, la
-UI cambia automáticamente a 2D y muestra un aviso no bloqueante.
+La causa del primer defecto era el margen transparente del PNG del caballero:
+su silueta ocupa aproximadamente un 25 % menos de altura útil que las restantes.
+El renderer aplica ahora una compensación visual de familia `1.25` al caballero,
+sin modificar su tamaño, huella o posición mecánicos.
 
-## 2. Arquitectura y archivos
+Los sprites de combatientes usan además una capa frontal explícita. La
+cuadrícula, las huellas y los overlays tácticos permanecen sobre el suelo; los
+personajes se dibujan después, y las etiquetas e indicadores de estado conservan
+sus capas superiores. Así las líneas ya no atraviesan visualmente las figuras.
 
-- `apps/web/src/components/Board/renderer/TacticalScene3D.tsx`: lifecycle de
-  Three.js, `OrthographicCamera`, `OrbitControls` sin pan, presets, zoom,
-  raycasting, volúmenes, overlays, sprites y liberación de recursos.
-- `apps/web/src/components/Board/Board.tsx`: fachada React, selector 2.5D/2D,
-  controles y fallback automático.
-- `apps/web/src/assets/sprites/*.png`: cinco familias originales de pixel art
-  transparente (caballero, maga, explorador, pícaro y orco), filtradas con
-  nearest-neighbor. Su procedencia se documenta en el README del directorio.
-- `apps/web/src/styles.css`: viewport del canvas, avisos y accesibilidad.
-- `tests-ui/demo.spec.ts`: cámara orbital, presets, sprites, escenas y estados.
-- `DemoPanel.tsx` expone el índice de paso ya autoritativo para que Playwright
-  espere el avance real del guion, no eventos WebSocket colaterales.
-- `tests-ui/smoke.spec.ts`: regresión funcional explícita sobre el fallback 2D.
-- `apps/web/package.json` y `package-lock.json`: `three` y sus tipos.
+## 2. Archivos
 
-No se modificaron reglas, snapshots, servidor ni contratos WebSocket. El
-renderer consume el modelo presentacional existente y traduce el picking a la
-callback ya autorizada; nunca decide legalidad ni consecuencias.
+- `apps/web/src/components/Board/renderer/TacticalScene3D.tsx`: compensación
+  visual del caballero y política frontal de profundidad para sprites.
+- `tests-ui/demo.spec.ts`: regresión de escala y de la política de capa frontal.
+
+No se modificaron reglas, snapshots, servidor, contratos de red ni footprints.
+`test.txt` continúa intacto, sin seguimiento y fuera de los commits.
 
 ## 3. Validación
 
 - `npm test`: 657/657.
 - `npm run typecheck`: verde en shared, web y server.
-- `npm run build`: verde en shared, web y server.
+- `npm run build`: verde en shared, web y server. La ejecución dentro del
+  sandbox encontró un bloqueo `EPERM` de OneDrive; la repetición fuera del
+  sandbox compiló correctamente.
 - `node scripts/e2e-websocket.mjs`: 107/107.
 - `npm run test:ui`: 10/10.
 - `git diff --check`: sin errores.
 
-Vite advierte que el bundle principal supera 500 kB. No afecta corrección ni
-el DoD; una división diferida del renderer queda condicionada a métricas reales
-y no se registra como deuda automática.
+## 4. Estado
 
-## 4. Límites y estado
-
-- Es presentación 2.5D sobre el Board V1; las alturas visuales no tienen
-  autoridad mecánica ni sustituyen el futuro modelo espacial normativo.
-- Los cinco assets cubren familias visuales, no un atlas completo de todos los
-  monstruos, poses o animaciones.
-- D-4 queda implementado y listo para validación visual del propietario, pero
-  no se declara cerrado hasta esa aceptación y Architecture Review.
-- `test.txt` continúa intacto, sin seguimiento y fuera del commit.
-
-## 5. Gate documental
-
-Los enlaces tocados resuelven, D-4 conserva una única sede de diseño y plan,
-el Registry no cambia porque no se agregó ninguna regla, y
-`PROJECT_STATUS.md`, `TODO.md`, `ROADMAP.md` y `master-coverage.md` reflejan el
-mismo estado: implementación completa, aceptación visual pendiente.
+Corrección de UI Nivel B lista para validación visual del propietario y
+Architecture Review. D-4 mantiene sus límites: la escena sigue siendo una
+presentación 2.5D sin autoridad sobre la simulación espacial.

@@ -460,10 +460,14 @@ export function TacticalScene3D({
         map: textures.get(family),
         transparent: true,
         alphaTest: 0.08,
-        depthTest: true,
+        // Las figuras son la capa visual frontal del tablero. Desactivar el
+        // depth test evita que la cuadrícula y los overlays del suelo se
+        // transparenten sobre el cuerpo del sprite en cámaras rasantes.
+        depthTest: false,
         depthWrite: false
       });
       const sprite = new THREE.Sprite(spriteMaterial);
+      sprite.renderOrder = 40;
       const largeScale = token.sprite.isLarge ? 1.65 : 1;
       const widthScale = token.isSqueezing ? 0.72 : 1;
       sprite.scale.set(1.22 * largeScale * widthScale * familyScale, 1.74 * largeScale * familyScale, 1);
@@ -533,6 +537,7 @@ export function TacticalScene3D({
             data-sprite-archetype={token.sprite.archetypeId}
             data-sprite-family={spriteFamily(token.sprite.archetypeId, token.combatant)}
             data-sprite-visual-scale={String(spriteFamilyScale(spriteFamily(token.sprite.archetypeId, token.combatant)))}
+            data-sprite-depth-policy="foreground"
             data-footprint-columns={token.projectedFootprint.columns}
             data-footprint-rows={token.projectedFootprint.rows}
             data-pose={token.pose}
