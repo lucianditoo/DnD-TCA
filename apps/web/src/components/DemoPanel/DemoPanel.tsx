@@ -48,6 +48,7 @@ export function DemoPanel({
       className="panel demo-panel"
       data-testid="demo-panel"
       data-sequence={String(state.sequence)}
+      data-current-step-index={String(state.currentStepIndex)}
       style={{
         display: "grid",
         gap: "8px",

@@ -32,6 +32,8 @@ UI cambia automáticamente a 2D y muestra un aviso no bloqueante.
   nearest-neighbor. Su procedencia se documenta en el README del directorio.
 - `apps/web/src/styles.css`: viewport del canvas, avisos y accesibilidad.
 - `tests-ui/demo.spec.ts`: cámara orbital, presets, sprites, escenas y estados.
+- `DemoPanel.tsx` expone el índice de paso ya autoritativo para que Playwright
+  espere el avance real del guion, no eventos WebSocket colaterales.
 - `tests-ui/smoke.spec.ts`: regresión funcional explícita sobre el fallback 2D.
 - `apps/web/package.json` y `package-lock.json`: `three` y sus tipos.
 

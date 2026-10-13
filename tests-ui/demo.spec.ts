@@ -5,9 +5,11 @@ const RAW_ICON_IDS = ["shield", "swords", "sparkles", "skull", "crosshair", "foo
 
 async function stepDemoOnce(page: Page) {
   const demoPanel = page.getByTestId("demo-panel");
-  const prevSeq = await demoPanel.getAttribute("data-sequence");
+  const previousStepIndex = await demoPanel.getAttribute("data-current-step-index");
   await page.getByTestId("demo-step-btn").click();
-  await expect.poll(async () => await demoPanel.getAttribute("data-sequence")).not.toBe(prevSeq);
+  await expect
+    .poll(async () => await demoPanel.getAttribute("data-current-step-index"))
+    .not.toBe(previousStepIndex);
 }
 
 async function stepDemoUntil(page: Page, predicate: () => Promise<boolean>, maxSteps = 50) {
