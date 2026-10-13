@@ -115,6 +115,7 @@ test.describe("Demostración Táctica Automática y Presentación 2.5D", () => {
       await expect(sceneToken).toHaveAttribute("data-sprite-family", /knight|mage|ranger|orc|rogue/);
     }
     await expect(page.locator('[data-scene-combatant="Bane"]')).toHaveAttribute("data-sprite-family", "rogue");
+    await expect(page.locator('[data-scene-combatant="Cedrick"]')).toHaveAttribute("data-sprite-visual-scale", "1.25");
 
     // 3. Seleccionar a Cedrick haciendo click en su celda (3,3) y verificar que rotar los 4 ángulos preserva la selección y no altera la sala
     const cedrickToken = page.locator('[data-scene-combatant="Cedrick"]');

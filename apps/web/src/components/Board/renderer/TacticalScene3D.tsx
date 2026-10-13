@@ -38,6 +38,12 @@ function spriteFamily(archetypeId: string, combatant: Combatant): keyof typeof S
   return "knight";
 }
 
+function spriteFamilyScale(family: keyof typeof SPRITE_URLS): number {
+  // El PNG del caballero conserva más margen transparente y su silueta opaca
+  // ocupa ~25% menos altura que las demás familias compactas.
+  return family === "knight" ? 1.25 : 1;
+}
+
 function disposeObject(object: THREE.Object3D) {
   object.traverse((child) => {
     const mesh = child as THREE.Mesh;
@@ -449,6 +455,7 @@ export function TacticalScene3D({
       group.add(ring);
 
       const family = spriteFamily(token.sprite.archetypeId, token.combatant);
+      const familyScale = spriteFamilyScale(family);
       const spriteMaterial = new THREE.SpriteMaterial({
         map: textures.get(family),
         transparent: true,
@@ -459,7 +466,7 @@ export function TacticalScene3D({
       const sprite = new THREE.Sprite(spriteMaterial);
       const largeScale = token.sprite.isLarge ? 1.65 : 1;
       const widthScale = token.isSqueezing ? 0.72 : 1;
-      sprite.scale.set(1.22 * largeScale * widthScale, 1.74 * largeScale, 1);
+      sprite.scale.set(1.22 * largeScale * widthScale * familyScale, 1.74 * largeScale * familyScale, 1);
       sprite.position.y = 0.87 * largeScale;
       if (token.pose === "prone") {
         sprite.center.set(0.5, 0.5);
@@ -525,6 +532,7 @@ export function TacticalScene3D({
             data-scene-combatant={token.name}
             data-sprite-archetype={token.sprite.archetypeId}
             data-sprite-family={spriteFamily(token.sprite.archetypeId, token.combatant)}
+            data-sprite-visual-scale={String(spriteFamilyScale(spriteFamily(token.sprite.archetypeId, token.combatant)))}
             data-footprint-columns={token.projectedFootprint.columns}
             data-footprint-rows={token.projectedFootprint.rows}
             data-pose={token.pose}
