@@ -84,6 +84,30 @@ function makeLabelTexture(text: string, border: string): THREE.CanvasTexture {
   return texture;
 }
 
+function makeBoardGrid(width: number, height: number): THREE.LineSegments {
+  const vertices: number[] = [];
+  const minX = -width / 2;
+  const maxX = width / 2;
+  const minZ = -height / 2;
+  const maxZ = height / 2;
+
+  for (let x = 0; x <= width; x += 1) {
+    const worldX = minX + x;
+    vertices.push(worldX, 0.014, minZ, worldX, 0.014, maxZ);
+  }
+  for (let y = 0; y <= height; y += 1) {
+    const worldZ = minZ + y;
+    vertices.push(minX, 0.014, worldZ, maxX, 0.014, worldZ);
+  }
+
+  const geometry = new THREE.BufferGeometry();
+  geometry.setAttribute("position", new THREE.Float32BufferAttribute(vertices, 3));
+  return new THREE.LineSegments(
+    geometry,
+    new THREE.LineBasicMaterial({ color: 0x9fa9ac, transparent: true, opacity: 0.42 })
+  );
+}
+
 function applyPreset(camera: THREE.OrthographicCamera, controls: OrbitControls, angle: CameraAngle) {
   const azimuth = CAMERA_AZIMUTH[angle];
   const polar = THREE.MathUtils.degToRad(48);
@@ -312,17 +336,7 @@ export function TacticalScene3D({
     content.add(ground);
     runtime.ground = ground;
 
-    const grid = new THREE.GridHelper(
-      Math.max(presentation.width, presentation.height),
-      Math.max(presentation.width, presentation.height),
-      0x9fa9ac,
-      0x667176
-    );
-    grid.scale.set(presentation.width / Math.max(presentation.width, presentation.height), 1, presentation.height / Math.max(presentation.width, presentation.height));
-    grid.position.y = 0.012;
-    (grid.material as THREE.Material).opacity = 0.34;
-    (grid.material as THREE.Material).transparent = true;
-    content.add(grid);
+    content.add(makeBoardGrid(presentation.width, presentation.height));
 
     for (const cell of presentation.cells) {
       const material = makeCellMaterial(cell.className);
@@ -364,10 +378,31 @@ export function TacticalScene3D({
       const group = new THREE.Group();
       group.position.set(boardX + centerX, 0.035, boardZ + centerY);
 
+      const factionColor = token.type === "player" ? 0x58e5d2 : 0xff765c;
+      for (const occupiedCell of token.occupiedCells) {
+        const footprint = new THREE.Mesh(
+          new THREE.PlaneGeometry(0.82, 0.82),
+          new THREE.MeshBasicMaterial({
+            color: token.isSelected ? 0xffd54f : factionColor,
+            transparent: true,
+            opacity: token.isSelected ? 0.34 : 0.18,
+            side: THREE.DoubleSide,
+            depthWrite: false
+          })
+        );
+        footprint.rotation.x = -Math.PI / 2;
+        footprint.position.set(
+          boardX + occupiedCell.x + 0.5 - group.position.x,
+          -0.008,
+          boardZ + occupiedCell.y + 0.5 - group.position.z
+        );
+        group.add(footprint);
+      }
+
       const ring = new THREE.Mesh(
-        new THREE.RingGeometry(token.isSelected ? 0.35 : 0.29, token.isSelected ? 0.46 : 0.38, 32),
+        new THREE.RingGeometry(token.isSelected ? 0.27 : 0.23, token.isSelected ? 0.36 : 0.31, 32),
         new THREE.MeshBasicMaterial({
-          color: token.isSelected ? 0xffd54f : token.type === "player" ? 0x58e5d2 : 0xff765c,
+          color: token.isSelected ? 0xffd54f : factionColor,
           transparent: true,
           opacity: token.isSelected ? 0.95 : 0.65,
           side: THREE.DoubleSide,

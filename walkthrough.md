@@ -16,6 +16,9 @@ real: tablero con profundidad, cámara ortográfica orbital por arrastre,
 depth buffer, meshes de obstáculos, picking de suelo y combatientes como
 billboards pixel-art. Los nombres dejan de sustituir a las figuras: solo se
 muestran como etiquetas contextuales para selección, turno o objetivo.
+La cuadrícula usa divisiones independientes por ancho y alto, de modo que cada
+celda conserva un cuadrado 1×1 real; cada unidad proyecta además su footprint
+exacto dentro de las celdas ocupadas y usa un aro central reducido.
 
 El renderer DOM 2D permanece disponible. Si WebGL no puede inicializarse, la
 UI cambia automáticamente a 2D y muestra un aviso no bloqueante.
