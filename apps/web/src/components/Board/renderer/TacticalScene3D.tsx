@@ -6,7 +6,8 @@ import knightUrl from "../../../assets/sprites/knight.png";
 import mageUrl from "../../../assets/sprites/mage.png";
 import rangerUrl from "../../../assets/sprites/ranger.png";
 import orcUrl from "../../../assets/sprites/orc.png";
-import type { CameraAngle, TacticalBoardPresentation } from "../presentationModel";
+import rogueUrl from "../../../assets/sprites/rogue.png";
+import type { CameraAngle, TacticalBoardPresentation, UnitPose } from "../presentationModel";
 
 const CELL_SIZE = 1;
 const CAMERA_POLAR_MIN = THREE.MathUtils.degToRad(24);
@@ -20,17 +21,19 @@ const CAMERA_AZIMUTH: Readonly<Record<CameraAngle, number>> = {
   sw: THREE.MathUtils.degToRad(-135)
 };
 
-const SPRITE_URLS: Readonly<Record<"knight" | "mage" | "ranger" | "orc", string>> = {
+const SPRITE_URLS: Readonly<Record<"knight" | "mage" | "ranger" | "orc" | "rogue", string>> = {
   knight: knightUrl,
   mage: mageUrl,
   ranger: rangerUrl,
-  orc: orcUrl
+  orc: orcUrl,
+  rogue: rogueUrl
 };
 
 function spriteFamily(archetypeId: string, combatant: Combatant): keyof typeof SPRITE_URLS {
   const id = archetypeId.toLowerCase();
+  if (id.includes("bane") || id.includes("rogue")) return "rogue";
   if (id.includes("mage") || id.includes("wizard") || id.includes("cleric") || id.includes("alaric")) return "mage";
-  if (id.includes("archer") || id.includes("ranger") || id.includes("rogue") || id.includes("scout") || id.includes("elaen") || id.includes("bane") || id.includes("explorer")) return "ranger";
+  if (id.includes("archer") || id.includes("ranger") || id.includes("scout") || id.includes("elaen") || id.includes("explorer")) return "ranger";
   if (combatant.type === "enemy" || id.includes("orc") || id.includes("goblin")) return "orc";
   return "knight";
 }
@@ -82,6 +85,38 @@ function makeLabelTexture(text: string, border: string): THREE.CanvasTexture {
   texture.minFilter = THREE.NearestFilter;
   texture.magFilter = THREE.NearestFilter;
   return texture;
+}
+
+function makeStatusTexture(symbol: string, fill: string): THREE.CanvasTexture {
+  const canvas = document.createElement("canvas");
+  canvas.width = 64;
+  canvas.height = 64;
+  const context = canvas.getContext("2d")!;
+  context.clearRect(0, 0, 64, 64);
+  context.fillStyle = "rgba(9, 12, 15, 0.94)";
+  context.strokeStyle = fill;
+  context.lineWidth = 5;
+  context.beginPath();
+  context.arc(32, 32, 25, 0, Math.PI * 2);
+  context.fill();
+  context.stroke();
+  context.fillStyle = fill;
+  context.font = "bold 34px system-ui";
+  context.textAlign = "center";
+  context.textBaseline = "middle";
+  context.fillText(symbol, 32, 33);
+  const texture = new THREE.CanvasTexture(canvas);
+  texture.colorSpace = THREE.SRGBColorSpace;
+  texture.minFilter = THREE.NearestFilter;
+  texture.magFilter = THREE.NearestFilter;
+  return texture;
+}
+
+function statusIndicator(pose: UnitPose): { symbol: string; code: string; fill: string } | null {
+  if (pose === "paralyzed") return { symbol: "⚡", code: "paralyzed", fill: "#d8a6ff" };
+  if (pose === "prone") return { symbol: "▼", code: "prone", fill: "#ffd45c" };
+  if (pose === "fallen") return { symbol: "†", code: "fallen", fill: "#d6d9dc" };
+  return null;
 }
 
 function makeBoardGrid(width: number, height: number): THREE.LineSegments {
@@ -424,23 +459,39 @@ export function TacticalScene3D({
       const sprite = new THREE.Sprite(spriteMaterial);
       const largeScale = token.sprite.isLarge ? 1.65 : 1;
       const widthScale = token.isSqueezing ? 0.72 : 1;
-      sprite.scale.set(1.72 * largeScale * widthScale, 2.58 * largeScale, 1);
-      sprite.position.y = 1.29 * largeScale;
+      sprite.scale.set(1.22 * largeScale * widthScale, 1.74 * largeScale, 1);
+      sprite.position.y = 0.87 * largeScale;
       if (token.pose === "prone") {
         sprite.center.set(0.5, 0.5);
-        sprite.material.rotation = -Math.PI / 2;
-        sprite.scale.set(2.2 * largeScale, 1.15 * largeScale, 1);
-        sprite.position.y = 0.36;
+        sprite.material.rotation = -0.18;
+        sprite.scale.set(1.26 * largeScale, 0.9 * largeScale, 1);
+        sprite.position.y = 0.45 * largeScale;
       }
-      if (token.pose === "paralyzed") sprite.material.color.set(0xc895ff);
+      if (token.pose === "paralyzed") sprite.material.color.set(0xe2ccff);
+      if (token.pose === "fallen") {
+        sprite.material.rotation = -Math.PI / 2;
+        sprite.material.color.set(0x9aa0a4);
+        sprite.scale.set(1.3 * largeScale, 0.72 * largeScale, 1);
+        sprite.position.y = 0.3 * largeScale;
+      }
       sprite.userData.combatantId = token.id;
       group.add(sprite);
+
+      const stateIcon = statusIndicator(token.pose);
+      if (stateIcon) {
+        const texture = makeStatusTexture(stateIcon.symbol, stateIcon.fill);
+        const icon = new THREE.Sprite(new THREE.SpriteMaterial({ map: texture, transparent: true, depthTest: false }));
+        icon.scale.set(0.48, 0.48, 1);
+        icon.position.set(0, token.pose === "prone" || token.pose === "fallen" ? 1.05 : 1.94 * largeScale, 0);
+        icon.renderOrder = 60;
+        group.add(icon);
+      }
 
       if (token.isSelected || token.isActiveTurn || token.isTarget) {
         const texture = makeLabelTexture(token.name, token.type === "player" ? "#64ffda" : "#ff8a65");
         const label = new THREE.Sprite(new THREE.SpriteMaterial({ map: texture, transparent: true, depthTest: false }));
         label.scale.set(1.9, 0.48, 1);
-        label.position.y = 2.72 * largeScale;
+        label.position.y = 2.1 * largeScale;
         label.renderOrder = 50;
         group.add(label);
       }
@@ -477,6 +528,7 @@ export function TacticalScene3D({
             data-footprint-columns={token.projectedFootprint.columns}
             data-footprint-rows={token.projectedFootprint.rows}
             data-pose={token.pose}
+            data-state-icon={statusIndicator(token.pose)?.code ?? "none"}
             data-selected={String(token.isSelected)}
             data-badges={token.badges.map((badge) => `${badge.code}${badge.text ? ` ${badge.text}` : ""}`).join("|")}
           >

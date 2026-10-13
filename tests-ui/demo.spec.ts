@@ -112,8 +112,9 @@ test.describe("Demostración Táctica Automática y Presentación 2.5D", () => {
     for (const actor of expectedSceneAActors) {
       const sceneToken = page.locator(`[data-scene-combatant="${actor.name}"]`);
       await expect(sceneToken).toHaveAttribute("data-sprite-archetype", actor.archetype);
-      await expect(sceneToken).toHaveAttribute("data-sprite-family", /knight|mage|ranger|orc/);
+      await expect(sceneToken).toHaveAttribute("data-sprite-family", /knight|mage|ranger|orc|rogue/);
     }
+    await expect(page.locator('[data-scene-combatant="Bane"]')).toHaveAttribute("data-sprite-family", "rogue");
 
     // 3. Seleccionar a Cedrick haciendo click en su celda (3,3) y verificar que rotar los 4 ángulos preserva la selección y no altera la sala
     const cedrickToken = page.locator('[data-scene-combatant="Cedrick"]');
@@ -269,6 +270,7 @@ test.describe("Demostración Táctica Automática y Presentación 2.5D", () => {
 
     const defensorToken = page.locator('[data-scene-combatant="Duelista Orco"]');
     await expect(defensorToken).toHaveAttribute("data-pose", "prone");
+    await expect(defensorToken).toHaveAttribute("data-state-icon", "prone");
     await expect(defensorToken).toHaveAttribute("data-badges", /PRN/);
     await page.screenshot({ path: `${ARTIFACTS_DIR}/demo_25d_prone_condition.png` });
 
@@ -281,6 +283,7 @@ test.describe("Demostración Táctica Automática y Presentación 2.5D", () => {
 
     const guardiaLanzaToken = page.locator('[data-scene-combatant="Guardia de Lanza"]');
     await expect(guardiaLanzaToken).toHaveAttribute("data-pose", "paralyzed");
+    await expect(guardiaLanzaToken).toHaveAttribute("data-state-icon", "paralyzed");
     await expect(guardiaLanzaToken).toHaveAttribute("data-badges", /PAR/);
     await page.screenshot({ path: `${ARTIFACTS_DIR}/demo_25d_hold_person_condition.png` });
 

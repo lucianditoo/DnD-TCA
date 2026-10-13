@@ -16,6 +16,11 @@ real: tablero con profundidad, cámara ortográfica orbital por arrastre,
 depth buffer, meshes de obstáculos, picking de suelo y combatientes como
 billboards pixel-art. Los nombres dejan de sustituir a las figuras: solo se
 muestran como etiquetas contextuales para selección, turno o objetivo.
+La revisión visual compacta reduce la altura de las figuras frente a la celda,
+usa bloques de píxel y paletas más simples, asigna a Bane una silueta propia de
+pícaro y separa el feedback de estado en dos canales: pose y símbolo flotante.
+Paralizado usa un rayo, Derribado una flecha descendente con pose compacta y
+Muerto una silueta lateral desaturada con cruz.
 La cuadrícula usa divisiones independientes por ancho y alto, de modo que cada
 celda conserva un cuadrado 1×1 real; cada unidad proyecta además su footprint
 exacto dentro de las celdas ocupadas y usa un aro central reducido.
@@ -30,8 +35,8 @@ UI cambia automáticamente a 2D y muestra un aviso no bloqueante.
   raycasting, volúmenes, overlays, sprites y liberación de recursos.
 - `apps/web/src/components/Board/Board.tsx`: fachada React, selector 2.5D/2D,
   controles y fallback automático.
-- `apps/web/src/assets/sprites/*.png`: cuatro familias originales de pixel art
-  transparente (caballero, maga, explorador y orco), filtradas con
+- `apps/web/src/assets/sprites/*.png`: cinco familias originales de pixel art
+  transparente (caballero, maga, explorador, pícaro y orco), filtradas con
   nearest-neighbor. Su procedencia se documenta en el README del directorio.
 - `apps/web/src/styles.css`: viewport del canvas, avisos y accesibilidad.
 - `tests-ui/demo.spec.ts`: cámara orbital, presets, sprites, escenas y estados.
@@ -61,7 +66,7 @@ y no se registra como deuda automática.
 
 - Es presentación 2.5D sobre el Board V1; las alturas visuales no tienen
   autoridad mecánica ni sustituyen el futuro modelo espacial normativo.
-- Los cuatro assets cubren familias visuales, no un atlas completo de todos los
+- Los cinco assets cubren familias visuales, no un atlas completo de todos los
   monstruos, poses o animaciones.
 - D-4 queda implementado y listo para validación visual del propietario, pero
   no se declara cerrado hasta esa aceptación y Architecture Review.
