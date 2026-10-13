@@ -7,10 +7,10 @@
 ## Estado actual
 
 - Rama de integración: `master`.
-- Última vertical funcional implementada: D-5R2 Remediación Final de Arquitectura del Editor Táctico de Mapas (MVP), conforme a su [NDD canónico](docs/designs/map-builder-mvp/design.md) y [plan](docs/designs/map-builder-mvp/implementation-plan.md); lista para Architecture Review.
+- Última vertical funcional implementada: D-5R3 Remediación y Cierre Final de Arquitectura del Editor Táctico de Mapas (MVP), conforme a su [NDD canónico](docs/designs/map-builder-mvp/design.md) y [plan](docs/designs/map-builder-mvp/implementation-plan.md); lista para Architecture Review.
 - Última decisión arquitectónica: Sprint D-1B Capítulo 7 (Integration & Implementation Contracts) y NDD de Demo Táctica Automática (`f8c0e9d`).
-- Implementación en revisión: D-5R2 remedia todos los hallazgos restantes de Architecture Review: Candidate Board Validation puro (sin evaluar sobre tablero viejo, validando invariantes espaciales de huella y compresión `srd_squeezing` en el snapshot candidato con rechazo atómico y cero mutación); semántica visual canónica de muros (`barrier-block`/`wall`) diferenciada de pilares (`loe-pillar`/`pillar`); congelamiento total de borrador durante guardado (`isSaving`); ciclo de vida ACK con cierre condicionado a igualdad semántica profunda de tableros (sin cierres espurios por room-updates ajenos); bloqueo completo de interacciones de combate en la UI durante edición; y tests UI Playwright deterministas sin condicionales.
-- Baseline de código: 677 tests unitarios, `typecheck`, `build`, `e2e-websocket` (107/107) y 15 tests Playwright UI al 100% en verde.
+- Implementación en revisión: D-5R3 cierra exhaustivamente todos los hallazgos restantes de Architecture Review: invariante estricta de compresión `srd_squeezing` (comparación canónica de coordenadas `x, y, zFeet` sin permitir rotación o desplazamiento de la huella comprimida); máquina de estados Save/Error/ACK con limpieza de errores viejos y verificación de `room-update` posterior a la petición; gating del modal de confirmación crítica durante la edición del mapa; métricas y logs de pilares corregidos a `loe-only` (excluyendo muros); y suite E2E WebSocket con cobertura de `update-board`.
+- Baseline de código: 681 tests unitarios, `typecheck`, `build`, `e2e-websocket` (110/110) y 16 tests Playwright UI al 100% en verde.
   Conteos y evidencias se mantienen en [master-coverage.md](docs/testing/master-coverage.md), no como un segundo registro aquí.
 - GitHub Actions sobre Windows es el gate canónico de cierre para la revisión
   publicada.

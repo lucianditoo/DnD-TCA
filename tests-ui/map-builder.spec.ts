@@ -124,6 +124,68 @@ test.describe("Editor Táctico de Mapa (D-5 MVP)", () => {
     // 6. El borrador permanece intacto con sus cambios (6x6 y 1 muro)
     await expect(page.getByText("Dimensiones: 6×6")).toBeVisible();
     await expect(page.getByText(/Muros: 1/)).toBeVisible();
+
+    // 7. MAJOR 2 (Retry after rejection): Corregir dimensiones a un tamaño válido (10x10) que contenga a Canocrock (8, 4)
+    await page.getByTestId("map-editor-width").fill("10");
+    await page.getByTestId("map-editor-height").fill("10");
+    await page.getByTestId("map-editor-apply-dims").click();
+    await expect(page.getByText("Dimensiones: 10×10")).toBeVisible();
+
+    // 8. Volver a guardar: no debe fallar por el error anterior stale
+    await page.getByTestId("map-editor-save").click();
+
+    // 9. Debe completarse con éxito: editor se cierra y tablero refleja la corrección
+    await expect(toolbar).not.toBeVisible();
+    await expect(page.getByText(/El GM actualizó el mapa táctico \(10x10/)).toBeVisible();
+  });
+
+  test("un room-update ajeno (ej. segundo jugador se une) no elimina un borrador de edición abierto", async ({ browser }) => {
+    // Contexto del GM
+    const gmContext = await browser.newContext();
+    const gmPage = await gmContext.newPage();
+    await gmPage.goto("/");
+    await gmPage.getByLabel("Nombre").fill("GM Multi");
+    await gmPage.getByRole("button", { name: /Crear sala/i }).click();
+
+    await expect(gmPage.getByRole("heading", { name: "Preparacion" })).toBeVisible();
+
+    // Extraer código de sala
+    const roomHeader = await gmPage.locator("header, h1, p").filter({ hasText: /Sala/ }).first().textContent();
+    const roomCodeMatch = roomHeader?.match(/Sala\s+([A-Z0-9]+)/i);
+    const roomCode = roomCodeMatch ? roomCodeMatch[1] : "";
+
+    // Abrir editor y modificar borrador (ej. 14x12 y 1 muro)
+    await gmPage.getByTestId("view-mode-2d").click();
+    await gmPage.getByTestId("map-editor-open-btn").click();
+    const toolbar = gmPage.getByTestId("map-editor-toolbar");
+    await expect(toolbar).toBeVisible();
+
+    await gmPage.getByTestId("map-editor-width").fill("14");
+    await gmPage.getByTestId("map-editor-height").fill("12");
+    await gmPage.getByTestId("map-editor-apply-dims").click();
+    await expect(gmPage.getByText("Dimensiones: 14×12")).toBeVisible();
+
+    await gmPage.getByTestId("brush-wall").click();
+    await gmPage.getByTestId("cell-2-2").click();
+    await expect(gmPage.getByText(/Muros: 1/)).toBeVisible();
+
+    // Segundo cliente (Jugador se une a la sala generando un broadcast de room-update)
+    const playerContext = await browser.newContext();
+    const playerPage = await playerContext.newPage();
+    await playerPage.goto("/");
+    await playerPage.getByRole("button", { name: /Jugador/i }).click();
+    await playerPage.getByLabel("Codigo de sala").fill(roomCode);
+    await playerPage.getByLabel("Nombre").fill("Player Intruder");
+    await playerPage.getByRole("button", { name: /Unirse/i }).click();
+    await expect(playerPage.getByRole("heading", { name: "Preparacion" })).toBeVisible();
+
+    // En el GM, verificar que el toolbar sigue visible y el borrador intacto (14x12 y 1 muro)
+    await expect(toolbar).toBeVisible();
+    await expect(gmPage.getByText("Dimensiones: 14×12")).toBeVisible();
+    await expect(gmPage.getByText(/Muros: 1/)).toBeVisible();
+
+    await gmContext.close();
+    await playerContext.close();
   });
 
   test("semántica visual distingue Wall (impassable + LoE) de Pillar (LoE only) sin revertirse", async ({ page }) => {

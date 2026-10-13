@@ -65,8 +65,9 @@ export function MapEditorToolbar({
     }
   };
 
+  const impassableSet = new Set(board.impassableCells ?? []);
   const wallCount = board.impassableCells?.length ?? 0;
-  const pillarCount = board.lineOfEffectBlockingCells?.length ?? 0;
+  const pillarCount = (board.lineOfEffectBlockingCells ?? []).filter((k) => !impassableSet.has(k)).length;
   const rubbleCount = board.difficultTerrainCells?.length ?? 0;
 
   return (

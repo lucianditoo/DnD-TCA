@@ -77,8 +77,9 @@ export function handleUpdateBoard(room: CombatRoom, command: Extract<ClientComma
 
   // Validación de invariantes espaciales usando candidateRoom
   for (const combatant of room.combatants) {
+    const occupiedCurrent = getCombatantOccupiedCells(combatant, room);
+
     if (lifeStatus(combatant) !== "dead") {
-      const occupiedCurrent = getCombatantOccupiedCells(combatant, room);
       for (const cell of occupiedCurrent) {
         const key = `${cell.x},${cell.y}`;
         if (rawImpassable.has(key)) {
@@ -94,12 +95,25 @@ export function handleUpdateBoard(room: CombatRoom, command: Extract<ClientComma
     // Derivar huella sobre el candidateRoom
     const occupiedCandidate = getCombatantOccupiedCells(combatant, candidateRoom);
 
-    // Si la entidad estaba comprimida (srd_squeezing), verificar que la compresión sigue siendo válida
-    // getCombatantOccupiedCells devuelve la huella comprimida si el pasaje es angosto y legal; si no, devuelve la huella natural
-    if (isSqueezing && occupiedCandidate.length !== 2) {
-      throw new Error(
-        `No se puede actualizar el mapa: el nuevo tablero invalida la compresión (srd_squeezing) de ${combatant.name}. Reubícalo o restaura el corredor antes de editar.`
-      );
+    if (isSqueezing) {
+      if (occupiedCandidate.length !== 2) {
+        throw new Error(
+          `No se puede actualizar el mapa: el nuevo tablero invalida la compresión (srd_squeezing) de ${combatant.name}. Reubícalo o restaura el corredor antes de editar.`
+        );
+      }
+
+      // Comparar ambos como conjuntos canónicos de celdas (x, y, zFeet), sin depender del orden
+      const currentKeys = new Set(occupiedCurrent.map((c) => `${c.x},${c.y},${c.zFeet ?? 0}`));
+      const candidateKeys = new Set(occupiedCandidate.map((c) => `${c.x},${c.y},${c.zFeet ?? 0}`));
+      const isExactlySameFootprint =
+        currentKeys.size === candidateKeys.size &&
+        [...currentKeys].every((k) => candidateKeys.has(k));
+
+      if (!isExactlySameFootprint) {
+        throw new Error(
+          `No se puede actualizar el mapa: el cambio alteraría la huella comprimida actual de ${combatant.name}. Reubícalo o resuelve Squeezing antes de editar el corredor.`
+        );
+      }
     }
 
     // 1. Huella íntegramente dentro de los límites candidatos
@@ -124,10 +138,11 @@ export function handleUpdateBoard(room: CombatRoom, command: Extract<ClientComma
 
   // Commit atómico del nuevo tablero
   room.board = candidateBoard;
+  const purePillarCount = [...rawLoe].filter((k) => !rawImpassable.has(k)).length;
   room.log.unshift(
     makeLog(
       "system",
-      `El GM actualizó el mapa táctico (${width}x${height}, ${rawImpassable.size} muros, ${rawLoe.size} pilares, ${rawDifficult.size} escombros).`
+      `El GM actualizó el mapa táctico (${width}x${height}, ${rawImpassable.size} muros, ${purePillarCount} pilares, ${rawDifficult.size} escombros).`
     )
   );
   broadcast(room);

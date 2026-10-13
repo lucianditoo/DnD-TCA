@@ -559,5 +559,183 @@ describe("D-5R1 Map Builder Architecture Remediation", () => {
       // Diferencia en darknessCells
       assert.equal(areBoardsSemanticallyEqual(b1, { ...b2, darknessCells: [] }), false);
     });
+
+    test("D-5R3: rechaza si el CandidateBoard alteraría la orientación/huella comprimida de horizontal a vertical", () => {
+      resetAllRoomsForTest();
+      const room = createEmptyRoom("SQUEEZE_ORIENT1");
+      // Corredor horizontal inicial en (1,1) y (2,1)
+      room.board = {
+        width: 10,
+        height: 10,
+        cellSizeFeet: 5,
+        narrowCells: ["1,1", "2,1"],
+        impassableCells: ["1,0", "2,0", "1,2", "2,2"]
+      };
+
+      const large = createDemoCombatant("enemy", 1);
+      large.sizeCategory = "large";
+      large.position = { x: 1, y: 1, zFeet: 0 };
+      room.combatants = [large];
+      room.effectInstances = [
+        {
+          instanceId: "eff-squeeze-orient-1",
+          effectId: "srd_squeezing",
+          source: { type: "system" },
+          targets: [large.id],
+          appliedAtEvent: { type: "SystemInjected", round: 1 }
+        }
+      ];
+
+      const fakeSocket = { OPEN: 1, readyState: 1, send() {} };
+      const gm = register(fakeSocket, "SQUEEZE_ORIENT1", "DM", "gm");
+
+      // CandidateBoard elimina el corredor horizontal y crea uno vertical en (1,1) y (1,2)
+      // Para que (2,1) no choque con la pre-validación de muro sobre celda actual ocupada,
+      // no ponemos muro en (2,1), sino que quitamos narrowCells de (2,1) y dejamos narrowCells en (1,1) y (1,2)
+      assert.throws(
+        () => {
+          handleUpdateBoard(room, {
+            type: "update-board",
+            roomCode: "SQUEEZE_ORIENT1",
+            actorId: gm.id,
+            board: {
+              width: 10,
+              height: 10,
+              narrowCells: ["1,1", "1,2"], // Ahora vertical
+              impassableCells: ["0,1", "0,2", "2,2"] // Paredes para el pasaje vertical sin pisar (2,1)
+            }
+          });
+        },
+        /alteraría la huella comprimida actual de Canocrock/i
+      );
+
+      // Posición y tablero intactos
+      assert.deepEqual(large.position, { x: 1, y: 1, zFeet: 0 });
+      assert.deepEqual(room.board.narrowCells, ["1,1", "2,1"]);
+    });
+
+    test("D-5R3: rechaza cambio de orientación que crearía overlap sobre combatiente existente", () => {
+      resetAllRoomsForTest();
+      const room = createEmptyRoom("SQUEEZE_ORIENT2");
+      room.board = {
+        width: 10,
+        height: 10,
+        cellSizeFeet: 5,
+        narrowCells: ["1,1", "2,1"],
+        impassableCells: ["1,0", "2,0"]
+      };
+
+      const large = createDemoCombatant("enemy", 1);
+      large.sizeCategory = "large";
+      large.position = { x: 1, y: 1, zFeet: 0 };
+
+      // Otro combatiente en (1, 2)
+      const bystander = createDemoCombatant("cedrick", 2);
+      bystander.position = { x: 1, y: 2, zFeet: 0 };
+
+      room.combatants = [large, bystander];
+      room.effectInstances = [
+        {
+          instanceId: "eff-squeeze-orient-2",
+          effectId: "srd_squeezing",
+          source: { type: "system" },
+          targets: [large.id],
+          appliedAtEvent: { type: "SystemInjected", round: 1 }
+        }
+      ];
+
+      const fakeSocket = { OPEN: 1, readyState: 1, send() {} };
+      const gm = register(fakeSocket, "SQUEEZE_ORIENT2", "DM", "gm");
+
+      // Intento de forzar corredor vertical en (1,1) y (1,2)
+      assert.throws(
+        () => {
+          handleUpdateBoard(room, {
+            type: "update-board",
+            roomCode: "SQUEEZE_ORIENT2",
+            actorId: gm.id,
+            board: {
+              width: 10,
+              height: 10,
+              narrowCells: ["1,1", "1,2"],
+              impassableCells: ["0,1", "0,2", "2,2"]
+            }
+          });
+        },
+        /alteraría la huella comprimida actual de Canocrock/i
+      );
+
+      assert.deepEqual(bystander.position, { x: 1, y: 2, zFeet: 0 });
+    });
+
+    test("D-5R3: cambio no relacionado conserva la misma huella comprimida y se acepta", () => {
+      resetAllRoomsForTest();
+      const room = createEmptyRoom("SQUEEZE_ORIENT3");
+      room.board = {
+        width: 10,
+        height: 10,
+        cellSizeFeet: 5,
+        narrowCells: ["1,1", "2,1"],
+        impassableCells: ["1,0", "2,0"]
+      };
+
+      const large = createDemoCombatant("canocrock", 1);
+      large.sizeCategory = "large";
+      large.position = { x: 1, y: 1, zFeet: 0 };
+      room.combatants = [large];
+      room.effectInstances = [
+        {
+          instanceId: "eff-squeeze-orient-3",
+          effectId: "srd_squeezing",
+          source: { type: "system" },
+          targets: [large.id],
+          appliedAtEvent: { type: "SystemInjected", round: 1 }
+        }
+      ];
+
+      const fakeSocket = { OPEN: 1, readyState: 1, send() {} };
+      const gm = register(fakeSocket, "SQUEEZE_ORIENT3", "DM", "gm");
+
+      // Cambio en una casilla lejana (8,8)
+      handleUpdateBoard(room, {
+        type: "update-board",
+        roomCode: "SQUEEZE_ORIENT3",
+        actorId: gm.id,
+        board: {
+          width: 10,
+          height: 10,
+          narrowCells: ["1,1", "2,1"],
+          impassableCells: ["1,0", "2,0", "8,8"]
+        }
+      });
+
+      assert.equal(room.board.impassableCells?.includes("8,8"), true);
+      assert.deepEqual(large.position, { x: 1, y: 1, zFeet: 0 });
+    });
+
+    test("D-5R3: log del sistema calcula purePillarCount excluyendo celdas impasables", () => {
+      resetAllRoomsForTest();
+      const room = createEmptyRoom("LOG_PILLAR1");
+      const fakeSocket = { OPEN: 1, readyState: 1, send() {} };
+      const gm = register(fakeSocket, "LOG_PILLAR1", "DM", "gm");
+
+      // 1 Wall en (1,1) con impassable + LoE
+      // 1 Pillar en (2,2) con LoE solamente
+      handleUpdateBoard(room, {
+        type: "update-board",
+        roomCode: "LOG_PILLAR1",
+        actorId: gm.id,
+        board: {
+          width: 10,
+          height: 10,
+          impassableCells: ["1,1"],
+          lineOfEffectBlockingCells: ["1,1", "2,2"],
+          difficultTerrainCells: ["3,3"]
+        }
+      });
+
+      const lastLog = room.log[0]?.message ?? "";
+      assert.match(lastLog, /1 muros, 1 pilares, 1 escombros/);
+    });
   });
 });

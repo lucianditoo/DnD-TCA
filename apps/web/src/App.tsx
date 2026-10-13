@@ -1,5 +1,5 @@
 import { useState, useMemo, useRef, useEffect } from "react";
-import { lifeStatus, createCombatRulesSnapshot, type Board as BoardType, type CombatOutcome, type Combatant, type LifeStatus, type Position } from "@dnd-tactical/shared";
+import { lifeStatus, createCombatRulesSnapshot, type Board as BoardType, type CombatOutcome, type CombatRoom, type Combatant, type LifeStatus, type Position } from "@dnd-tactical/shared";
 import { ActionsPanel } from "./components/ActionsPanel/ActionsPanel";
 import { Board } from "./components/Board/Board";
 import { MapEditorToolbar, type MapEditorBrush, areBoardsSemanticallyEqual } from "./components/MapEditor/MapEditorToolbar";
@@ -60,6 +60,7 @@ function CombatApp() {
   const [activeBrush, setActiveBrush] = useState<MapEditorBrush>("wall");
   const [mapEditorError, setMapEditorError] = useState<string | null>(null);
   const pendingSavedBoardRef = useRef<BoardType | null>(null);
+  const roomAtSaveRef = useRef<CombatRoom | null>(null);
 
   const { name, setName, roomCode, setRoomCode, mode, setMode, participant, room, catalog, selectedId, setSelectedId, selectedHeroTemplateId, setSelectedHeroTemplateId, selectedEnemyTemplateId, setSelectedEnemyTemplateId, demoSessionState, error, setError, createRoom, joinRoom, roomCommand, startDemo, pauseDemo, resumeDemo, stepDemo, setDemoSpeed, restartDemo, exitDemo } = useWebSocketRoom({
     onHello: () => setActionMode("inspect"),
@@ -79,16 +80,18 @@ function CombatApp() {
         setMapEditorStatus("editing");
         setMapEditorError(error);
         pendingSavedBoardRef.current = null;
-      } else if (room?.board && pendingSavedBoardRef.current) {
+        roomAtSaveRef.current = null;
+      } else if (room?.board && pendingSavedBoardRef.current && roomAtSaveRef.current && room !== roomAtSaveRef.current) {
         if (areBoardsSemanticallyEqual(room.board, pendingSavedBoardRef.current)) {
           setMapEditorStatus("idle");
           setDraftBoard(null);
           setMapEditorError(null);
           pendingSavedBoardRef.current = null;
+          roomAtSaveRef.current = null;
         }
       }
     }
-  }, [room?.board, error, mapEditorStatus]);
+  }, [room, error, mapEditorStatus]);
 
   const presentationRoom = useMemo(() => {
     if (isMapEditing && draftBoard && room) {
@@ -212,9 +215,11 @@ function CombatApp() {
 
   function handleSaveBoard() {
     if (!room || !participant || !draftBoard || mapEditorStatus === "saving") return;
+    setError(null);
     setMapEditorError(null);
-    setMapEditorStatus("saving");
+    roomAtSaveRef.current = room;
     pendingSavedBoardRef.current = JSON.parse(JSON.stringify(draftBoard));
+    setMapEditorStatus("saving");
     roomCommand({
       type: "update-board",
       roomCode: room.code,
@@ -760,7 +765,7 @@ function CombatApp() {
 
       <CombatLog room={room} />
 
-      {!isDemoActive && threat && room.phase === "critical-confirmation" && (
+      {!isDemoActive && !isMapEditing && threat && room.phase === "critical-confirmation" && (
         <div className="modal-overlay">
           <div className="modal-content card">
             <h2>💥 ¡Amenaza de Crítico!</h2>

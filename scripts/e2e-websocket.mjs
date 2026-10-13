@@ -700,6 +700,60 @@ await send(gmLoe, { type: 'resolve-attack', roomCode: loeCode, actorId: loeGmId,
 const loeHitEnemy = gmLoe.room.combatants.find(c => c.id === loeEnemy.id);
 record('Line of Effect presente (tablero sin obstaculos) permite resolver el ataque normalmente', loeHitEnemy.hpCurrent === loeEnemy.hpCurrent - 4 && !gmLoe.errors.some(e => /Cobertura Total/i.test(e)), 'hpAntes=' + loeEnemy.hpCurrent + ' hpDespues=' + loeHitEnemy.hpCurrent + ' errors=' + gmLoe.errors.join(' | '));
 
+// D-5 MVP Map Builder: update-board WebSocket E2E
+const mapGm = await connectAndSend({ type: 'create-room', name: 'Map GM' });
+const mapCode = mapGm.room.code;
+const mapGmId = mapGm.participant.id;
+const mapPlayer = await connectAndSend({ type: 'join-room', roomCode: mapCode, name: 'Map Player', role: 'player' });
+
+// 1. Jugador intenta update-board -> rechazado
+await send(mapPlayer, {
+  type: 'update-board',
+  roomCode: mapCode,
+  actorId: mapPlayer.participant.id,
+  board: { width: 14, height: 10 }
+});
+record('Map Builder: jugador no puede usar update-board', mapPlayer.errors.some(e => /Solo el GM/i.test(e)), mapPlayer.errors.join(' | '));
+
+// 2. GM envía update-board válido con nuevas dimensiones, wall, pillar, difficult y sin cellSizeFeet (o cellSizeFeet: 5)
+await send(mapGm, {
+  type: 'update-board',
+  roomCode: mapCode,
+  actorId: mapGmId,
+  board: {
+    width: 14,
+    height: 10,
+    cellSizeFeet: 5,
+    impassableCells: ['2,2'],
+    lineOfEffectBlockingCells: ['2,2', '3,3'],
+    difficultTerrainCells: ['4,4']
+  }
+});
+
+const gmBoard = mapGm.room.board;
+const playerBoard = mapPlayer.room.board;
+record('Map Builder: GM recibe room-update con nuevo tablero y cellSizeFeet normalizado a 5',
+  gmBoard.width === 14 &&
+  gmBoard.height === 10 &&
+  gmBoard.cellSizeFeet === 5 &&
+  gmBoard.impassableCells?.includes('2,2') &&
+  gmBoard.lineOfEffectBlockingCells?.includes('2,2') &&
+  gmBoard.lineOfEffectBlockingCells?.includes('3,3') &&
+  gmBoard.difficultTerrainCells?.includes('4,4'),
+  JSON.stringify(gmBoard)
+);
+
+record('Map Builder: Player recibe broadcast sincronizado con exactamente el mismo tablero',
+  playerBoard.width === 14 &&
+  playerBoard.height === 10 &&
+  playerBoard.cellSizeFeet === 5 &&
+  playerBoard.impassableCells?.includes('2,2') &&
+  playerBoard.lineOfEffectBlockingCells?.includes('2,2') &&
+  playerBoard.lineOfEffectBlockingCells?.includes('3,3') &&
+  playerBoard.difficultTerrainCells?.includes('4,4'),
+  JSON.stringify(playerBoard)
+);
+
 // Demo Táctica Automática y Guionada (scripted_tactical_demo_v1)
 const demoClient = await connectAndSend({ type: 'start-demo', demoId: 'scripted_tactical_demo_v1' });
 await wait(60);
@@ -738,6 +792,6 @@ await send(demoClient, { type: 'exit-demo', sessionId: demoSessionId, sequence: 
 record('Demo: exit-demo destruye la sesion y emite demo-exited', demoClient.demoExited === true, 'demoExited=' + demoClient.demoExited);
 demoClient.ws.close();
 
-gm.ws.close(); ownershipGm.ws.close(); ownerA.ws.close(); ownerB.ws.close(); stabilizationGm.ws.close(); profileGm.ws.close(); profilePlayer.ws.close(); largeGm.ws.close(); diehardGm.ws.close(); gmTouch.ws.close(); player.ws.close(); gmHaste.ws.close(); gmAoo.ws.close(); gmDiagonalAoo.ws.close(); gmMultiAoo.ws.close(); gmDiagonalMelee.ws.close(); gmCharge.ws.close(); gmAid.ws.close(); gmPassThrough.ws.close(); gmFlanking.ws.close(); gmFfs.ws.close(); gmFa.ws.close(); gmDef.ws.close(); gmDisabled.ws.close(); gmStun.ws.close(); gmEntangled.ws.close(); gmBlinded.ws.close(); gmConditionPanel.ws.close(); conditionPanelPlayer.ws.close(); gmLoe.ws.close();
+gm.ws.close(); ownershipGm.ws.close(); ownerA.ws.close(); ownerB.ws.close(); stabilizationGm.ws.close(); profileGm.ws.close(); profilePlayer.ws.close(); largeGm.ws.close(); diehardGm.ws.close(); gmTouch.ws.close(); player.ws.close(); gmHaste.ws.close(); gmAoo.ws.close(); gmDiagonalAoo.ws.close(); gmMultiAoo.ws.close(); gmDiagonalMelee.ws.close(); gmCharge.ws.close(); gmAid.ws.close(); gmPassThrough.ws.close(); gmFlanking.ws.close(); gmFfs.ws.close(); gmFa.ws.close(); gmDef.ws.close(); gmDisabled.ws.close(); gmStun.ws.close(); gmEntangled.ws.close(); gmBlinded.ws.close(); gmConditionPanel.ws.close(); conditionPanelPlayer.ws.close(); gmLoe.ws.close(); mapGm.ws.close(); mapPlayer.ws.close();
 console.log(JSON.stringify(results, null, 2));
 if (results.some(r => !r.ok)) process.exitCode = 1;

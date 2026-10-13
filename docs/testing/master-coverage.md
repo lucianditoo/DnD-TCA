@@ -15,16 +15,15 @@ Consumidores: Revisores que verifican las validaciones de un commit.
 Este documento consolida las directrices y el reporte de cobertura de testing
 del motor de combate D&D 3.5.
 
-## Baseline de código más reciente — D-4 Renderer táctico 2.5D
+## Baseline de código más reciente — D-5R3 Editor Táctico de Mapas MVP (Final Closure)
 
-La implementación D-4 conserva **657/657 pruebas unitarias/integración**,
-`typecheck` y `build` verdes en los tres workspaces, **107/107 aserciones
-WebSocket** y **10/10 escenarios Playwright**. La cobertura UI verifica escena
-WebGL, sprites pixel-art sin IDs crudos visibles, presets de cámara, orbitado
-horizontal y vertical por arrastre, zoom/reset, fallback 2D y las tres escenas
-de la demo. Los smoke tests funcionales continúan sobre el renderer 2D para
-mantener una superficie DOM estable de interacción. La aceptación estética
-humana y Architecture Review permanecen pendientes.
+La implementación D-5R3 conserva **681/681 pruebas unitarias/integración**,
+`typecheck` y `build` verdes en los tres workspaces, **110/110 aserciones
+WebSocket** y **16/16 escenarios Playwright**. La cobertura incluye validación pura
+de candidate board contra huellas efectivas e invariantes de `srd_squeezing`,
+aislamiento de broadcasts durante edición, semántica visual canónica Wall vs Pillar,
+bloqueo de interacciones de combate en la UI, gating de modales críticos durante edición
+y testing de integración WebSocket para `update-board`.
 
 ## Baseline histórica — D-1B-I5
 
@@ -76,7 +75,7 @@ Reglas cubiertas obligatoriamente en E2E:
 - Entangled Core: fuente declarativa en snapshot, velocidad efectiva 30→15 y bloqueos autoritativos de Run/Charge.
 - EFFECT-BLINDED (Core): fuente de Total Concealment perspectivo, pérdida de DEX a CA, -2 AC y mitigaciones mecánicas estáticas validada en Snapshot.
 - DEFENSE-CONCEALMENT (corte de Sprint 046, anterior a las fuentes de Blinded/Vision): el esquema WebSocket rechaza porcentaje o d100 suministrados por el cliente; los recorridos productivos sin fuentes conservan assessment `none` y el servidor mantiene autoridad exclusiva.
-- DEFENSE-LINE-OF-EFFECT (Parcial): camino positivo (Line of Effect presente, tablero sin obstáculos) confirmado vía WebSocket. El camino de rechazo (Cobertura Total por `lineOfEffectBlockingCells`) **no** es representable en este E2E porque no existe comando ni editor para fijar el tablero de una sala viva; se cubre con integración directa de servidor en `tests/line-of-effect-server.test.mjs` (ver Sprint 052B abajo).
+- DEFENSE-LINE-OF-EFFECT (Parcial): camino positivo (Line of Effect presente, tablero sin obstáculos) confirmado vía WebSocket. El camino de rechazo (Cobertura Total por `lineOfEffectBlockingCells`) se cubre tanto con integración directa de servidor en `tests/line-of-effect-server.test.mjs` como vía WebSocket en `scripts/e2e-websocket.mjs` mediante el comando `update-board` disponible desde D-5.
 - DEFENSE-VISION (Parcial, Sprints 053B/053B.2): targeting directo rechazado para un atacante Cegado con `targetId` legado (Ocultación Total exige elegir casilla), y el mismo ataque resuelto vía `target: {kind:"square"}` con **proyección segura** — el log público del ataque por casilla es genérico ("ataca a una casilla… El ataque falla/impacta.") y se verifica la ausencia de cualquier log con d20/CA/d100 (Sprint 053B.2, Anti-Metagaming).
 - DEFENSE-COVER/DEFENSE-LINE-OF-EFFECT/DEFENSE-CONCEALMENT (Sprint 055B): el escenario Blinded existente sigue en verde sin cambios (la legalidad de AdO se cubre por unitarios/integración de servidor — ver más abajo, sin un caso E2E dedicado nuevo en este sprint).
 
