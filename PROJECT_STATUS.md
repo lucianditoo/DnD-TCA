@@ -7,10 +7,10 @@
 ## Estado actual
 
 - Rama de integración: `master`.
-- Última vertical funcional implementada: D-4 Renderer táctico 2.5D y cámara, conforme a su [NDD](docs/designs/tactical-renderer-2.5d/design.md) y [plan](docs/designs/tactical-renderer-2.5d/implementation-plan.md); pendiente de aceptación visual del propietario y Architecture Review.
+- Última vertical funcional implementada: D-5 Editor Táctico de Mapas (MVP), conforme a su [NDD](docs/designs/map-builder-mvp/design.md) y [plan](docs/designs/map-builder-mvp/implementation-plan.md); pendiente de Architecture Review.
 - Última decisión arquitectónica: Sprint D-1B Capítulo 7 (Integration & Implementation Contracts) y NDD de Demo Táctica Automática (`f8c0e9d`).
-- Implementación en revisión: D-4 reemplaza la ilusión CSS/SVG en la vista principal por una escena Three.js con cámara ortográfica orbital continua, picking de suelo, depth buffer, volúmenes reales y billboards pixel-art compactos originales. La escala visual está correlacionada con la celda; Bane tiene familia propia de pícaro y los estados Paralizado, Derribado y Muerto proyectan pose más icono flotante sin alterar el estado mecánico. Conserva el renderer DOM 2D como fallback automático y no modifica autoridad mecánica, snapshots ni contratos de red. También permanecen en revisión la Demo Táctica Automática y D-1B-I5R1.
-- Baseline de código: 657 tests unitarios, `typecheck`, `build`, `e2e-websocket` (107/107) y 10 tests Playwright UI en verde.
+- Implementación en revisión: D-5 incorpora el comando autoritativo `update-board` exclusivo para el GM con control de dimensiones (6-40), auto-clamp de entidades al encoger, exclusividad estricta de capas (Muro > LoE > Terreno Difícil > Estrecho), prevención de colisión de muros con combatientes vivos, y barra de herramientas visual reactiva integrada con el renderer 2.5D de Three.js. También permanecen en revisión D-4 Renderer 2.5D, la Demo Táctica Automática y D-1B-I5R1.
+- Baseline de código: 662 tests unitarios, `typecheck`, `build`, `e2e-websocket` (107/107) y 11 tests Playwright UI en verde.
   Conteos y evidencias se mantienen en [master-coverage.md](docs/testing/master-coverage.md), no como un segundo registro aquí.
 - GitHub Actions sobre Windows es el gate canónico de cierre para la revisión
   publicada.

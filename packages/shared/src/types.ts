@@ -524,6 +524,7 @@ export type ClientCommand =
   | { type: "gm-remove-effect"; roomCode: string; actorId: string; instanceId: string }
   | { type: "declare-dodge-target"; roomCode: string; actorId: string; combatantId: string; targetId: string | null }
   | { type: "gm-force-outcome"; roomCode: string; actorId: string; outcome: CombatOutcome }
+  | { type: "update-board"; roomCode: string; actorId: string; board: Board }
   | { type: "end-turn"; roomCode: string; actorId: string };
 
 export type DemoSpeedMultiplier = 0.5 | 1 | 2;

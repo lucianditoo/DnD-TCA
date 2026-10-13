@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { createRoomSchema, joinRoomSchema } from "./roomCommands.js";
+import { createRoomSchema, joinRoomSchema, updateBoardSchema } from "./roomCommands.js";
 import { addDemoCombatantSchema, addCatalogCombatantSchema, addProfileCombatantSchema } from "./combatantCommands.js";
 import { moveCombatantSchema } from "./movementCommands.js";
 import { resolveAttackSchema, resolveAttackConfirmationSchema, cancelAttackThreatSchema, resolveOpportunityAttackSchema } from "./attackCommands.js";
@@ -64,7 +64,8 @@ export const clientCommandSchema = z.union([
   resolveGrappleEscapeSchema,
   equipItemSchema,
   unequipItemSchema,
-  resumeCoupDeGraceSchema
+  resumeCoupDeGraceSchema,
+  updateBoardSchema
 ]);
 export type ClientCommandInput = z.input<typeof clientCommandSchema>;
 export type ClientCommandParsed = z.output<typeof clientCommandSchema>;
@@ -107,5 +108,6 @@ export const commandSchemasMap: Record<string, z.ZodTypeAny> = {
   "resolve-grapple-escape": resolveGrappleEscapeSchema,
   "equip-item": equipItemSchema,
   "unequip-item": unequipItemSchema,
-  "resume-coup-de-grace": resumeCoupDeGraceSchema
+  "resume-coup-de-grace": resumeCoupDeGraceSchema,
+  "update-board": updateBoardSchema
 };

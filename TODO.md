@@ -29,11 +29,12 @@ Los contratos normativos D-1R1, D-1A y D-1B ya existen: no volver a pedir su
 creación como si fueran documentos ausentes.
 
 - Elaborar los NDD específicos requeridos para D-2 (FoW), D-3
-  (protocolo/identidad/persistencia), D-5 (editor)
-  y D-6 (objetos ambientales).
+  (protocolo/identidad/persistencia) y D-6 (objetos ambientales). D-5 (editor MVP)
+  completado e implementado conforme a su [NDD](docs/designs/map-builder-mvp/design.md).
 - Validar visualmente con el propietario y obtener Architecture Review de
-  [D-4 Renderer táctico 2.5D y cámara](docs/designs/tactical-renderer-2.5d/design.md).
-  La implementación WebGL está completa; no declararla cerrada antes de esa
+  [D-4 Renderer táctico 2.5D y cámara](docs/designs/tactical-renderer-2.5d/design.md) y
+  [D-5 Editor Táctico de Mapas](docs/designs/map-builder-mvp/design.md).
+  La implementación WebGL y de edición está completa; no declararlas cerradas antes de esa
   aceptación. Evaluar separación de bundle solo si las métricas reales lo exigen.
 - Delimitar D-7, TurnState e integración de movimiento fragmentado, incluido
   Ataque Elástico. Es un candidato, no una funcionalidad aprobada.

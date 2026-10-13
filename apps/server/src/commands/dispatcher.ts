@@ -6,7 +6,7 @@ import { handleAddCatalogCombatant, handleAddDemoCombatant, handleAddProfileComb
 import { handleGmAddLog, handleGmApplyEffect, handleGmApplyEnvironmentalHazard, handleGmRemoveEffect, handleGmClearOpportunities, handleGmForceOutcome, handleGmMoveCombatant, handleGmSetHp, handleGmSetStatus, handleHealCombatant } from "./gmCommands.js";
 import { handleEndTurn, handleSetInitiative, handleSortInitiative } from "./initiativeCommands.js";
 import { handleMoveCombatant } from "./movementCommands.js";
-import { handleCreateRoom, handleJoinRoom } from "./roomCommands.js";
+import { handleCreateRoom, handleJoinRoom, handleUpdateBoard } from "./roomCommands.js";
 import { handleChooseAidBonus, handleUseTacticalAction, handleDeclareAttackMode, handleCancelAttackMode, handleResolveSavingThrow, handleDeclareDodgeTarget, handleResumeCoupDeGrace } from "./tacticalCommands.js";
 import { handleResolveGrappleEscape, handleResolveSpecialManeuver, type ManeuverDiceSource } from "./specialManeuverCommands.js";
 import { handleEquipItem, handleUnequipItem } from "./equipmentCommands.js";
@@ -99,6 +99,7 @@ function dispatchCommandCore(
     case "gm-apply-environmental-hazard": handleGmApplyEnvironmentalHazard(room, command); return;
     case "gm-remove-effect": handleGmRemoveEffect(room, command); return;
     case "gm-force-outcome": handleGmForceOutcome(room, command); return;
+    case "update-board": handleUpdateBoard(room, command); return;
     case "end-turn": handleEndTurn(room, command); return;
   }
 }
