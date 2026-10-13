@@ -56,32 +56,8 @@ export function handleUpdateBoard(room: CombatRoom, command: Extract<ClientComma
   const rawDifficult = new Set((command.board.difficultTerrainCells ?? []).filter(isValidCoord));
   const rawNarrow = new Set((command.board.narrowCells ?? []).filter(isValidCoord));
 
-  // Validación de límites: ningún combatiente puede quedar fuera de los nuevos límites (sin auto-clamp)
-  for (const combatant of room.combatants) {
-    const occupied = getCombatantOccupiedCells(combatant, room);
-    for (const cell of occupied) {
-      if (cell.x < 0 || cell.x >= width || cell.y < 0 || cell.y >= height) {
-        throw new Error(
-          `No se puede reducir el mapa a ${width}x${height}: ${combatant.name} quedaría fuera de los límites. Reubícalo antes de redimensionar.`
-        );
-      }
-    }
-  }
-
-  // Comprobar colisión de muros con combatientes existentes
-  for (const combatant of room.combatants) {
-    if (lifeStatus(combatant) === "dead") continue;
-    const occupied = getCombatantOccupiedCells(combatant, room);
-    for (const cell of occupied) {
-      const key = `${cell.x},${cell.y}`;
-      if (rawImpassable.has(key)) {
-        throw new Error(`No se puede colocar un muro en la casilla (${cell.x}, ${cell.y}) ocupada por ${combatant.name}.`);
-      }
-    }
-  }
-
   // cellSizeFeet se normaliza siempre a 5 (no es editable por el cliente)
-  const normalizedBoard: Board = {
+  const candidateBoard: Board = {
     width,
     height,
     cellSizeFeet: 5,
@@ -93,8 +69,61 @@ export function handleUpdateBoard(room: CombatRoom, command: Extract<ClientComma
     darknessCells: (command.board.darknessCells ?? []).filter(isValidCoord)
   };
 
+  // Construir una vista / snapshot candidato no mutante para validar el estado RESULTANTE
+  const candidateRoom: CombatRoom = {
+    ...room,
+    board: candidateBoard
+  };
+
+  // Validación de invariantes espaciales usando candidateRoom
+  for (const combatant of room.combatants) {
+    if (lifeStatus(combatant) !== "dead") {
+      const occupiedCurrent = getCombatantOccupiedCells(combatant, room);
+      for (const cell of occupiedCurrent) {
+        const key = `${cell.x},${cell.y}`;
+        if (rawImpassable.has(key)) {
+          throw new Error(`No se puede colocar un muro en la casilla (${cell.x}, ${cell.y}) ocupada por ${combatant.name}.`);
+        }
+      }
+    }
+
+    const isSqueezing = room.effectInstances?.some(
+      (instance) => instance.effectId === "srd_squeezing" && instance.targets?.includes(combatant.id)
+    );
+
+    // Derivar huella sobre el candidateRoom
+    const occupiedCandidate = getCombatantOccupiedCells(combatant, candidateRoom);
+
+    // Si la entidad estaba comprimida (srd_squeezing), verificar que la compresión sigue siendo válida
+    // getCombatantOccupiedCells devuelve la huella comprimida si el pasaje es angosto y legal; si no, devuelve la huella natural
+    if (isSqueezing && occupiedCandidate.length !== 2) {
+      throw new Error(
+        `No se puede actualizar el mapa: el nuevo tablero invalida la compresión (srd_squeezing) de ${combatant.name}. Reubícalo o restaura el corredor antes de editar.`
+      );
+    }
+
+    // 1. Huella íntegramente dentro de los límites candidatos
+    for (const cell of occupiedCandidate) {
+      if (cell.x < 0 || cell.x >= width || cell.y < 0 || cell.y >= height) {
+        throw new Error(
+          `No se puede reducir el mapa a ${width}x${height}: ${combatant.name} quedaría fuera de los límites. Reubícalo antes de redimensionar.`
+        );
+      }
+    }
+
+    // 2. Ningún combatiente vivo sobre una celda impassable candidata
+    if (lifeStatus(combatant) !== "dead") {
+      for (const cell of occupiedCandidate) {
+        const key = `${cell.x},${cell.y}`;
+        if (rawImpassable.has(key)) {
+          throw new Error(`No se puede colocar un muro en la casilla (${cell.x}, ${cell.y}) ocupada por ${combatant.name}.`);
+        }
+      }
+    }
+  }
+
   // Commit atómico del nuevo tablero
-  room.board = normalizedBoard;
+  room.board = candidateBoard;
   room.log.unshift(
     makeLog(
       "system",

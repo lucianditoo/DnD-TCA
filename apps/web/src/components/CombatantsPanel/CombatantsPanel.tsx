@@ -29,7 +29,8 @@ export function CombatantsPanel({
   attackerId,
   canControlSelected,
   onDeclareDodgeTarget,
-  isDemoActive = false
+  isDemoActive = false,
+  isInteractionLocked = false
 }: {
   room: CombatRoom;
   snapshot: import("@dnd-tactical/shared").CombatRulesSnapshot<import("@dnd-tactical/shared").ProductionEffectId>;
@@ -56,6 +57,7 @@ export function CombatantsPanel({
   canControlSelected: boolean;
   onDeclareDodgeTarget: (combatantId: string, dodgeTargetId: string | null) => void;
   isDemoActive?: boolean;
+  isInteractionLocked?: boolean;
 }) {
   return <aside className="panel roster">
     <Collapsible title="Combatientes" defaultOpen preview={room.phase === "active" && active ? <CombatantPreview combatant={active} context={snapshot} /> : undefined}>
@@ -66,12 +68,12 @@ export function CombatantsPanel({
             {savedHeroProfiles.map((profile) => <option key={profile.id} value={profile.id}>{profile.name}</option>)}
             {participant.role === "gm" && savedEnemyProfiles.map((profile) => <option key={profile.id} value={profile.id}>{profile.name} (enemigo)</option>)}
           </select></label>
-          <button onClick={onAddProfileCombatant} disabled={!selectedProfileId}><Plus size={16} /> Agregar perfil</button>
+          <button onClick={onAddProfileCombatant} disabled={isInteractionLocked || !selectedProfileId}><Plus size={16} /> Agregar perfil</button>
           <a className="ghost-link" href="/profiles">Editar perfiles</a>
-          <label>Heroes<select value={selectedHeroTemplateId} onChange={(event) => onHeroTemplateChange(event.target.value)}>{catalog?.creatures.heroes.map((template) => <option key={template.id} value={template.id}>{template.name}</option>)}</select></label>
-          <button onClick={() => onAddCatalogCombatant("heroes")} disabled={!selectedHeroTemplateId}><Plus size={16} /> Agregar heroe</button>
-          {participant.role === "gm" && <><label>Enemigos<select value={selectedEnemyTemplateId} onChange={(event) => onEnemyTemplateChange(event.target.value)}>{catalog?.creatures.enemies.map((template) => <option key={template.id} value={template.id}>{template.name}</option>)}</select></label>
-          <button onClick={() => onAddCatalogCombatant("enemies")} disabled={!selectedEnemyTemplateId}><Plus size={16} /> Agregar enemigo</button></>}
+          <label>Heroes<select value={selectedHeroTemplateId} disabled={isInteractionLocked} onChange={(event) => onHeroTemplateChange(event.target.value)}>{catalog?.creatures.heroes.map((template) => <option key={template.id} value={template.id}>{template.name}</option>)}</select></label>
+          <button onClick={() => onAddCatalogCombatant("heroes")} disabled={isInteractionLocked || !selectedHeroTemplateId}><Plus size={16} /> Agregar heroe</button>
+          {participant.role === "gm" && <><label>Enemigos<select value={selectedEnemyTemplateId} disabled={isInteractionLocked} onChange={(event) => onEnemyTemplateChange(event.target.value)}>{catalog?.creatures.enemies.map((template) => <option key={template.id} value={template.id}>{template.name}</option>)}</select></label>
+          <button onClick={() => onAddCatalogCombatant("enemies")} disabled={isInteractionLocked || !selectedEnemyTemplateId}><Plus size={16} /> Agregar enemigo</button></>}
         </div>
       )}
       <div className="combatant-list">
@@ -85,8 +87,8 @@ export function CombatantsPanel({
     </Collapsible>
     <Collapsible title="Iniciativa manual">
       <div className="initiative-list">
-        {room.combatants.map((combatant) => <label key={combatant.id}>{combatant.name}<input type="number" defaultValue={combatant.initiative ?? ""} disabled={!canEditInitiative(combatant)} onBlur={(event) => onSetInitiative(combatant, event.target.value)} /></label>)}
-        <button className="primary" onClick={onSortInitiative} disabled={!canStartCombat}>Iniciar combate</button>
+        {room.combatants.map((combatant) => <label key={combatant.id}>{combatant.name}<input type="number" defaultValue={combatant.initiative ?? ""} disabled={isInteractionLocked || !canEditInitiative(combatant)} onBlur={(event) => onSetInitiative(combatant, event.target.value)} /></label>)}
+        <button className="primary" onClick={onSortInitiative} disabled={isInteractionLocked || !canStartCombat}>Iniciar combate</button>
       </div>
     </Collapsible>
     {selected && <SelectedInfo combatant={selected} room={room} snapshot={snapshot} attackerId={attackerId} canControlSelected={canControlSelected} onDeclareDodgeTarget={onDeclareDodgeTarget} />}

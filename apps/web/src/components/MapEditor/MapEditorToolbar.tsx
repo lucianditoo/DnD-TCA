@@ -3,9 +3,34 @@ import type { Board } from "@dnd-tactical/shared";
 
 export type MapEditorBrush = "wall" | "pillar" | "rubble" | "clear";
 
+export function areBoardsSemanticallyEqual(a: Board, b: Board): boolean {
+  if (a.width !== b.width || a.height !== b.height) return false;
+  if ((a.cellSizeFeet ?? 5) !== (b.cellSizeFeet ?? 5)) return false;
+
+  const compareSets = (listA?: readonly string[], listB?: readonly string[]) => {
+    const setA = new Set(listA ?? []);
+    const setB = new Set(listB ?? []);
+    if (setA.size !== setB.size) return false;
+    for (const item of setA) {
+      if (!setB.has(item)) return false;
+    }
+    return true;
+  };
+
+  return (
+    compareSets(a.impassableCells, b.impassableCells) &&
+    compareSets(a.lineOfEffectBlockingCells, b.lineOfEffectBlockingCells) &&
+    compareSets(a.difficultTerrainCells, b.difficultTerrainCells) &&
+    compareSets(a.narrowCells, b.narrowCells) &&
+    compareSets(a.dimLightCells, b.dimLightCells) &&
+    compareSets(a.darknessCells, b.darknessCells)
+  );
+}
+
 export interface MapEditorToolbarProps {
   readonly board: Board;
   readonly activeBrush: MapEditorBrush;
+  readonly isSaving?: boolean;
   readonly onSelectBrush: (brush: MapEditorBrush) => void;
   readonly onResizeBoard: (width: number, height: number) => void;
   readonly onClearAllObstacles: () => void;
@@ -17,6 +42,7 @@ export interface MapEditorToolbarProps {
 export function MapEditorToolbar({
   board,
   activeBrush,
+  isSaving = false,
   onSelectBrush,
   onResizeBoard,
   onClearAllObstacles,
@@ -76,6 +102,7 @@ export function MapEditorToolbar({
               min={6}
               max={40}
               value={widthInput}
+              disabled={isSaving}
               aria-label="Ancho del mapa"
               data-testid="map-editor-width"
               onChange={(e) => setWidthInput(e.target.value)}
@@ -86,6 +113,7 @@ export function MapEditorToolbar({
               min={6}
               max={40}
               value={heightInput}
+              disabled={isSaving}
               aria-label="Alto del mapa"
               data-testid="map-editor-height"
               onChange={(e) => setHeightInput(e.target.value)}
@@ -94,6 +122,7 @@ export function MapEditorToolbar({
               type="button"
               className="btn btn-sm btn-secondary"
               data-testid="map-editor-apply-dims"
+              disabled={isSaving}
               onClick={handleApplyDimensions}
             >
               Redimensionar
@@ -109,6 +138,7 @@ export function MapEditorToolbar({
             role="radio"
             aria-checked={activeBrush === "wall"}
             data-testid="brush-wall"
+            disabled={isSaving}
             onClick={() => onSelectBrush("wall")}
           >
             🧱 Muro
@@ -119,6 +149,7 @@ export function MapEditorToolbar({
             role="radio"
             aria-checked={activeBrush === "pillar"}
             data-testid="brush-pillar"
+            disabled={isSaving}
             onClick={() => onSelectBrush("pillar")}
           >
             🏛️ Columna LoE
@@ -129,6 +160,7 @@ export function MapEditorToolbar({
             role="radio"
             aria-checked={activeBrush === "rubble"}
             data-testid="brush-rubble"
+            disabled={isSaving}
             onClick={() => onSelectBrush("rubble")}
           >
             🪨 Escombros (2×)
@@ -139,6 +171,7 @@ export function MapEditorToolbar({
             role="radio"
             aria-checked={activeBrush === "clear"}
             data-testid="brush-clear"
+            disabled={isSaving}
             onClick={() => onSelectBrush("clear")}
           >
             🧹 Borrador
@@ -150,6 +183,7 @@ export function MapEditorToolbar({
             type="button"
             className="btn btn-sm btn-secondary"
             data-testid="map-editor-clear-all"
+            disabled={isSaving}
             onClick={onClearAllObstacles}
           >
             Limpiar Todo
@@ -158,14 +192,16 @@ export function MapEditorToolbar({
             type="button"
             className="btn btn-sm btn-primary"
             data-testid="map-editor-save"
+            disabled={isSaving}
             onClick={onSave}
           >
-            Guardar y Aplicar
+            {isSaving ? "Guardando..." : "Guardar y Aplicar"}
           </button>
           <button
             type="button"
             className="btn btn-sm btn-outline"
             data-testid="map-editor-cancel"
+            disabled={isSaving}
             onClick={onCancel}
           >
             Cancelar

@@ -341,10 +341,10 @@ function buildVolumes(params: {
       const projected = projectCellToCameraGrid(x, y, width, height, angle);
       const paintDepth = 50 + projected.gridRow * 10;
 
-      if (loeBlocked.has(k)) {
+      if (impassable.has(k)) {
         volumes.push({
-          key: `pillar-${x}-${y}`,
-          kind: "pillar",
+          key: `wall-${x}-${y}`,
+          kind: "wall",
           cellX: x,
           cellY: y,
           projectedGridColumn: projected.gridColumn,
@@ -352,10 +352,10 @@ function buildVolumes(params: {
           paintDepth,
           visibleFaces: faceList()
         });
-      } else if (impassable.has(k)) {
+      } else if (loeBlocked.has(k)) {
         volumes.push({
-          key: `wall-${x}-${y}`,
-          kind: "wall",
+          key: `pillar-${x}-${y}`,
+          kind: "pillar",
           cellX: x,
           cellY: y,
           projectedGridColumn: projected.gridColumn,
@@ -505,14 +505,14 @@ export function buildBoardPresentationModel(params: {
     let scenicProp: ScenicPropKind = "none";
     let debugLabel: string | null = null;
     let terrainBadge: string | null = null;
-    if (isLoEBlocked) {
-      scenicProp = "loe-pillar";
-      debugLabel = "SIN LOE";
-      terrainBadge = "SIN LOE";
-    } else if (isImpassable) {
+    if (isImpassable) {
       scenicProp = "barrier-block";
       debugLabel = "BLOQ";
       terrainBadge = "BLOQ";
+    } else if (isLoEBlocked) {
+      scenicProp = "loe-pillar";
+      debugLabel = "SIN LOE";
+      terrainBadge = "SIN LOE";
     } else if (isDifficultTerrain) {
       scenicProp = "rubble";
       debugLabel = "2×";

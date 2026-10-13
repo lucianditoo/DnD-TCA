@@ -18,6 +18,7 @@ import {
 import {
   SCRIPTED_TACTICAL_DEMO_ID,
   createCombatRulesSnapshot,
+  createEmptyRoom,
   gameCatalog
 } from "@dnd-tactical/shared";
 import { executeNextDemoStep, startNewDemoSession } from "../apps/server/src/demo/runner.ts";
@@ -245,5 +246,62 @@ describe("2.5D Tactical Presentation Model & Sprite Resolution", () => {
     } finally {
       destroyDemoSession(record.sessionId);
     }
+  });
+
+  test("9. semántica visual mínima distingue Wall (impassable + LoE), Pillar (LoE only) y Wall legacy (impassable only)", () => {
+    const room = createEmptyRoom("VIS_SEM1");
+    room.board = {
+      width: 10,
+      height: 10,
+      cellSizeFeet: 5,
+      impassableCells: ["1,1", "3,3"],
+      lineOfEffectBlockingCells: ["1,1", "2,2"]
+    };
+    const snapshot = createCombatRulesSnapshot(room, gameCatalog);
+
+    const model = buildBoardPresentationModel({
+      room,
+      snapshot,
+      selected: null,
+      targetId: "",
+      displayedPath: [],
+      displayedPathCosts: [],
+      highlightedCells: new Map(),
+      chargePreviewPath: null,
+      camera: { ...DEFAULT_CAMERA_STATE, angle: "nw" }
+    });
+
+    // A) impassable + LoE (1,1):
+    // scenicProp -> barrier-block, volume kind -> wall
+    const cell11 = model.cells.find((c) => c.x === 1 && c.y === 1);
+    assert.ok(cell11);
+    assert.equal(cell11.isImpassable, true);
+    assert.equal(cell11.isLoEBlocked, true);
+    assert.equal(cell11.scenicProp, "barrier-block");
+    const vol11 = model.volumes.find((v) => v.cellX === 1 && v.cellY === 1);
+    assert.ok(vol11);
+    assert.equal(vol11.kind, "wall");
+
+    // B) LoE only (2,2):
+    // scenicProp -> loe-pillar, volume kind -> pillar
+    const cell22 = model.cells.find((c) => c.x === 2 && c.y === 2);
+    assert.ok(cell22);
+    assert.equal(cell22.isImpassable, false);
+    assert.equal(cell22.isLoEBlocked, true);
+    assert.equal(cell22.scenicProp, "loe-pillar");
+    const vol22 = model.volumes.find((v) => v.cellX === 2 && v.cellY === 2);
+    assert.ok(vol22);
+    assert.equal(vol22.kind, "pillar");
+
+    // C) impassable only (3,3):
+    // scenicProp -> barrier-block, volume kind -> wall
+    const cell33 = model.cells.find((c) => c.x === 3 && c.y === 3);
+    assert.ok(cell33);
+    assert.equal(cell33.isImpassable, true);
+    assert.equal(cell33.isLoEBlocked, false);
+    assert.equal(cell33.scenicProp, "barrier-block");
+    const vol33 = model.volumes.find((v) => v.cellX === 3 && v.cellY === 3);
+    assert.ok(vol33);
+    assert.equal(vol33.kind, "wall");
   });
 });

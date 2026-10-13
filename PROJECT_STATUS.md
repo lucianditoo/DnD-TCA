@@ -7,10 +7,10 @@
 ## Estado actual
 
 - Rama de integración: `master`.
-- Última vertical funcional implementada: D-5R1 Remediación de Arquitectura del Editor Táctico de Mapas (MVP), conforme a su [NDD canónico](docs/designs/map-builder-mvp/design.md) y [plan](docs/designs/map-builder-mvp/implementation-plan.md); lista para Architecture Review.
+- Última vertical funcional implementada: D-5R2 Remediación Final de Arquitectura del Editor Táctico de Mapas (MVP), conforme a su [NDD canónico](docs/designs/map-builder-mvp/design.md) y [plan](docs/designs/map-builder-mvp/implementation-plan.md); lista para Architecture Review.
 - Última decisión arquitectónica: Sprint D-1B Capítulo 7 (Integration & Implementation Contracts) y NDD de Demo Táctica Automática (`f8c0e9d`).
-- Implementación en revisión: D-5R1 remedia los hallazgos de Architecture Review eliminando completamente el auto-clamping y la jerarquía inventada de capas (muros conservan tanto bloqueo de paso como de LoE), normalizando `cellSizeFeet` a 5 en servidor y schema, aislando reactivamente el borrador de presentación del rules snapshot autoritativo, y garantizando rechazo atómico estricto con huellas canónicas multicasilla.
-- Baseline de código: 672 tests unitarios, `typecheck`, `build`, `e2e-websocket` (107/107) y 13 tests Playwright UI en verde.
+- Implementación en revisión: D-5R2 remedia todos los hallazgos restantes de Architecture Review: Candidate Board Validation puro (sin evaluar sobre tablero viejo, validando invariantes espaciales de huella y compresión `srd_squeezing` en el snapshot candidato con rechazo atómico y cero mutación); semántica visual canónica de muros (`barrier-block`/`wall`) diferenciada de pilares (`loe-pillar`/`pillar`); congelamiento total de borrador durante guardado (`isSaving`); ciclo de vida ACK con cierre condicionado a igualdad semántica profunda de tableros (sin cierres espurios por room-updates ajenos); bloqueo completo de interacciones de combate en la UI durante edición; y tests UI Playwright deterministas sin condicionales.
+- Baseline de código: 677 tests unitarios, `typecheck`, `build`, `e2e-websocket` (107/107) y 15 tests Playwright UI al 100% en verde.
   Conteos y evidencias se mantienen en [master-coverage.md](docs/testing/master-coverage.md), no como un segundo registro aquí.
 - GitHub Actions sobre Windows es el gate canónico de cierre para la revisión
   publicada.

@@ -11,6 +11,7 @@ import {
 } from "@dnd-tactical/shared";
 import { handleUpdateBoard } from "../apps/server/src/commands/roomCommands.ts";
 import { register, resetAllRoomsForTest } from "../apps/server/src/room/roomStore.ts";
+import { areBoardsSemanticallyEqual } from "../apps/web/src/components/MapEditor/MapEditorToolbar.tsx";
 
 describe("D-5R1 Map Builder Architecture Remediation", () => {
   describe("MINOR 1 — boardCellKeySchema y updateBoardSchema", () => {
@@ -372,6 +373,191 @@ describe("D-5R1 Map Builder Architecture Remediation", () => {
       assert.deepEqual(room.board.impassableCells, ["1,1"]);
       assert.deepEqual(room.board.lineOfEffectBlockingCells, ["2,2"]);
       assert.deepEqual(room.board.difficultTerrainCells, ["3,3"]);
+    });
+  });
+
+  describe("D-5R2 — Candidate Board Validation & Squeezing Invariants", () => {
+    test("rechaza actualización si un Large con srd_squeezing pierde las narrowCells de su compresión", () => {
+      resetAllRoomsForTest();
+      const room = createEmptyRoom("SQUEEZE_CAND1");
+      room.board = {
+        width: 12,
+        height: 12,
+        cellSizeFeet: 5,
+        narrowCells: ["1,0", "2,0"],
+        impassableCells: ["1,1", "2,1"]
+      };
+
+      const large = createDemoCombatant("canocrock", 1);
+      large.sizeCategory = "large";
+      large.position = { x: 1, y: 0, zFeet: 0 };
+      room.combatants = [large];
+      room.effectInstances = [
+        {
+          instanceId: "eff-squeeze-1",
+          effectId: "srd_squeezing",
+          source: { type: "system" },
+          targets: [large.id],
+          appliedAtEvent: { type: "SystemInjected", round: 1 }
+        }
+      ];
+
+      const fakeSocket = { OPEN: 1, readyState: 1, send() {} };
+      const gm = register(fakeSocket, "SQUEEZE_CAND1", "DM", "gm");
+
+      // Intento de actualización que elimina narrowCells ("1,0", "2,0")
+      // Esto hace que la entidad Large ya no pueda comprimirse en su posición actual
+      assert.throws(
+        () => {
+          handleUpdateBoard(room, {
+            type: "update-board",
+            roomCode: "SQUEEZE_CAND1",
+            actorId: gm.id,
+            board: {
+              width: 12,
+              height: 12,
+              narrowCells: [], // Eliminadas!
+              impassableCells: ["1,1", "2,1"]
+            }
+          });
+        },
+        /invalida la compresión \(srd_squeezing\)/i
+      );
+
+      // Invariantes: room.board original no cambia, posición no cambia, efectos no cambian
+      assert.deepEqual(room.board.narrowCells, ["1,0", "2,0"]);
+      assert.deepEqual(large.position, { x: 1, y: 0, zFeet: 0 });
+      assert.equal(room.effectInstances.length, 1);
+      assert.equal(room.effectInstances[0].effectId, "srd_squeezing");
+    });
+
+    test("rechaza actualización si el footprint candidato de una criatura comprimida choca con un muro candidato", () => {
+      resetAllRoomsForTest();
+      const room = createEmptyRoom("SQUEEZE_WALL1");
+      room.board = {
+        width: 12,
+        height: 12,
+        cellSizeFeet: 5,
+        narrowCells: ["1,0", "2,0"],
+        impassableCells: []
+      };
+
+      const large = createDemoCombatant("canocrock", 1);
+      large.sizeCategory = "large";
+      large.position = { x: 1, y: 0, zFeet: 0 };
+      room.combatants = [large];
+      room.effectInstances = [
+        {
+          instanceId: "eff-squeeze-2",
+          effectId: "srd_squeezing",
+          source: { type: "system" },
+          targets: [large.id],
+          appliedAtEvent: { type: "SystemInjected", round: 1 }
+        }
+      ];
+
+      const fakeSocket = { OPEN: 1, readyState: 1, send() {} };
+      const gm = register(fakeSocket, "SQUEEZE_WALL1", "DM", "gm");
+
+      // Intento de colocar un muro sobre una de las casillas comprimidas ocupadas ("2,0")
+      assert.throws(
+        () => {
+          handleUpdateBoard(room, {
+            type: "update-board",
+            roomCode: "SQUEEZE_WALL1",
+            actorId: gm.id,
+            board: {
+              width: 12,
+              height: 12,
+              narrowCells: ["1,0", "2,0"],
+              impassableCells: ["2,0"] // Colisión directa con footprint comprimido
+            }
+          });
+        },
+        /No se puede colocar un muro en la casilla \(2, 0\) ocupada por/i
+      );
+
+      assert.deepEqual(room.board.impassableCells, []);
+    });
+
+    test("rechaza actualización si el footprint candidato de una criatura comprimida queda fuera de límites candidatos", () => {
+      resetAllRoomsForTest();
+      const room = createEmptyRoom("SQUEEZE_BOUNDS1");
+      room.board = {
+        width: 12,
+        height: 12,
+        cellSizeFeet: 5,
+        narrowCells: ["6,0", "7,0"],
+        impassableCells: []
+      };
+
+      const large = createDemoCombatant("canocrock", 1);
+      large.sizeCategory = "large";
+      large.position = { x: 6, y: 0, zFeet: 0 };
+      room.combatants = [large];
+      room.effectInstances = [
+        {
+          instanceId: "eff-squeeze-3",
+          effectId: "srd_squeezing",
+          source: { type: "system" },
+          targets: [large.id],
+          appliedAtEvent: { type: "SystemInjected", round: 1 }
+        }
+      ];
+
+      const fakeSocket = { OPEN: 1, readyState: 1, send() {} };
+      const gm = register(fakeSocket, "SQUEEZE_BOUNDS1", "DM", "gm");
+
+      // Reducir ancho a 7 hace que (7,0) quede fuera de límites
+      assert.throws(
+        () => {
+          handleUpdateBoard(room, {
+            type: "update-board",
+            roomCode: "SQUEEZE_BOUNDS1",
+            actorId: gm.id,
+            board: {
+              width: 7,
+              height: 10,
+              narrowCells: ["6,0"],
+              impassableCells: []
+            }
+          });
+        },
+        /quedaría fuera de los límites|invalida la compresión/i
+      );
+    });
+
+    test("areBoardsSemanticallyEqual compara todos los campos incluyendo iluminación sin orden dependiente", () => {
+      const b1 = {
+        width: 10,
+        height: 10,
+        cellSizeFeet: 5,
+        impassableCells: ["1,1", "2,2"],
+        lineOfEffectBlockingCells: ["3,3"],
+        difficultTerrainCells: ["4,4"],
+        narrowCells: ["5,5"],
+        dimLightCells: ["6,6", "7,7"],
+        darknessCells: ["8,8"]
+      };
+
+      const b2 = {
+        width: 10,
+        height: 10,
+        cellSizeFeet: 5,
+        impassableCells: ["2,2", "1,1"], // Orden inverso
+        lineOfEffectBlockingCells: ["3,3"],
+        difficultTerrainCells: ["4,4"],
+        narrowCells: ["5,5"],
+        dimLightCells: ["7,7", "6,6"], // Orden inverso
+        darknessCells: ["8,8"]
+      };
+
+      assert.equal(areBoardsSemanticallyEqual(b1, b2), true);
+
+      // Diferencia en dimLightCells
+      assert.equal(areBoardsSemanticallyEqual(b1, { ...b2, dimLightCells: ["6,6"] }), false);
+      // Diferencia en darknessCells
+      assert.equal(areBoardsSemanticallyEqual(b1, { ...b2, darknessCells: [] }), false);
     });
   });
 });

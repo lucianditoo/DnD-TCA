@@ -13,6 +13,7 @@ export function ActionsPanel(props: {
   canControlSelected: boolean;
   canEndCurrentTurn: boolean;
   canResolveOpportunity: (attacker: Combatant | undefined) => boolean;
+  isInteractionLocked?: boolean;
   actionMode: ActionMode;
   tacticMode: TacticMode;
   targetId: string;
@@ -108,7 +109,7 @@ export function ActionsPanel(props: {
   const { room, selected, snapshot } = props;
   const [selectedSpellSlotId, setSelectedSpellSlotId] = useState<string | null>(null);
   const [grappleEscapeType, setGrappleEscapeType] = useState<GrappleEscapeType>("grapple_check");
-  const actionDisabled = !props.canControlSelected;
+  const actionDisabled = !props.canControlSelected || !!props.isInteractionLocked;
   const selectedTarget = room.combatants.find((combatant) => combatant.id === props.targetId) ?? null;
   const abilityAttackType = props.selectedAbility?.resolution.kind === "attack-roll" ? props.selectedAbility.resolution.attackType : null;
   const abilityTactical = selected && selectedTarget && abilityAttackType
@@ -528,8 +529,8 @@ export function ActionsPanel(props: {
           <div className="rules-box">Este combatiente no tiene aptitudes ni conjuros preparados.</div>
         )}
       </div>}
-      {room.phase === "active" && <button onClick={props.onEndTurn} disabled={!props.canEndCurrentTurn || props.hasPendingOpportunities}><SkipForward size={18} /> Terminar turno</button>}
-      {props.participantRole === "gm" && <GmPanel room={room} selected={selected} gmMoveTarget={props.gmMoveTarget} gmMoveMode={props.gmMoveMode} healAmount={props.healAmount} hpOverride={props.hpOverride} hpMaxOverride={props.hpMaxOverride} gmNote={props.gmNote} activeEffects={props.activeEffects} applicableEffects={props.applicableEffects} effectToApplyId={props.effectToApplyId} effectDurationPreset={props.effectDurationPreset} onGmMoveTargetChange={props.onGmMoveTargetChange} onToggleGmMoveMode={props.onToggleGmMoveMode} onHealAmountChange={props.onHealAmountChange} onHealSelected={props.onHealSelected} onHpOverrideChange={props.onHpOverrideChange} onHpMaxOverrideChange={props.onHpMaxOverrideChange} onGmSetHp={props.onGmSetHp} onGmSetStatus={props.onGmSetStatus} onGmClearOpportunities={props.onGmClearOpportunities} onGmForceOutcome={props.onGmForceOutcome} onGmNoteChange={props.onGmNoteChange} onGmAddNote={props.onGmAddNote} onEffectToApplyChange={props.onEffectToApplyChange} onEffectDurationPresetChange={props.onEffectDurationPresetChange} onApplyEffect={props.onApplyEffect} onRemoveEffect={props.onRemoveEffect} />}
+      {room.phase === "active" && <button onClick={props.onEndTurn} disabled={props.isInteractionLocked || !props.canEndCurrentTurn || props.hasPendingOpportunities}><SkipForward size={18} /> Terminar turno</button>}
+      {props.participantRole === "gm" && <GmPanel room={room} selected={selected} isInteractionLocked={props.isInteractionLocked} gmMoveTarget={props.gmMoveTarget} gmMoveMode={props.gmMoveMode} healAmount={props.healAmount} hpOverride={props.hpOverride} hpMaxOverride={props.hpMaxOverride} gmNote={props.gmNote} activeEffects={props.activeEffects} applicableEffects={props.applicableEffects} effectToApplyId={props.effectToApplyId} effectDurationPreset={props.effectDurationPreset} onGmMoveTargetChange={props.onGmMoveTargetChange} onToggleGmMoveMode={props.onToggleGmMoveMode} onHealAmountChange={props.onHealAmountChange} onHealSelected={props.onHealSelected} onHpOverrideChange={props.onHpOverrideChange} onHpMaxOverrideChange={props.onHpMaxOverrideChange} onGmSetHp={props.onGmSetHp} onGmSetStatus={props.onGmSetStatus} onGmClearOpportunities={props.onGmClearOpportunities} onGmForceOutcome={props.onGmForceOutcome} onGmNoteChange={props.onGmNoteChange} onGmAddNote={props.onGmAddNote} onEffectToApplyChange={props.onEffectToApplyChange} onEffectDurationPresetChange={props.onEffectDurationPresetChange} onApplyEffect={props.onApplyEffect} onRemoveEffect={props.onRemoveEffect} />}
       {props.pendingOpportunities.length > 0 && <Collapsible title="Ataques de oportunidad" defaultOpen><div className="opportunity-list">
         {props.pendingOpportunities.map((opportunity) => {
           const attacker = room.combatants.find((combatant) => combatant.id === opportunity.attackerId);
@@ -537,7 +538,7 @@ export function ActionsPanel(props: {
           return <div key={opportunity.id} className="opportunity-card">
             <strong>{attacker?.name ?? "Atacante"} contra {target?.name ?? "objetivo"}</strong>
             <small>{opportunity.reason}</small>
-            <button onClick={() => props.onResolveOpportunity(opportunity.id)} disabled={!props.canResolveOpportunity(attacker)}><Swords size={16} /> Resolver con d20/daño actual</button>
+            <button onClick={() => props.onResolveOpportunity(opportunity.id)} disabled={props.isInteractionLocked || !props.canResolveOpportunity(attacker)}><Swords size={16} /> Resolver con d20/daño actual</button>
           </div>;
         })}
       </div></Collapsible>}

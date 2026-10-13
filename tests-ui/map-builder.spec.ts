@@ -81,36 +81,117 @@ test.describe("Editor Táctico de Mapa (D-5 MVP)", () => {
     await page.getByTestId("map-editor-cancel").click();
   });
 
-  test("un rechazo del servidor mantiene el editor abierto con el borrador intacto y muestra el error", async ({ page }) => {
+  test("un rechazo del servidor mantiene el editor abierto con el borrador intacto y muestra el error de forma determinista", async ({ page }) => {
     await page.goto("/");
     await page.getByLabel("Nombre").fill("Master Bounds");
     await page.getByRole("button", { name: /Crear sala/i }).click();
 
     await expect(page.getByRole("heading", { name: "Preparacion" })).toBeVisible();
 
-    // Agregar un combatiente lejos en el tablero (ej: usando plantilla o perfil si está disponible, o simplemente intentar achicar por debajo de las posiciones por defecto)
-    // El mapa por defecto (12x12) tiene combatientes iniciales en posiciones > 5x5 si hay en la sala
+    // 1. Agregar un enemigo (Canocrock, que se ubica en (8, 4))
+    const addEnemyBtn = page.getByRole("button", { name: /Agregar enemigo/i });
+    await expect(addEnemyBtn).toBeVisible();
+    await addEnemyBtn.click();
+    await expect(page.locator(".combatant-row")).toHaveCount(1);
+
+    // Cambiar a vista 2D para interactuar con los botones de celda directamente
+    await page.getByTestId("view-mode-2d").click();
+
+    // 2. Abrir el editor de mapa
     await page.getByTestId("map-editor-open-btn").click();
     const toolbar = page.getByTestId("map-editor-toolbar");
     await expect(toolbar).toBeVisible();
 
-    // Pintar un muro sobre una casilla y verificar que la UI responde
+    // 3. Pintar un muro en (1, 1) en el borrador
     await page.getByTestId("brush-wall").click();
+    await page.getByTestId("cell-1-1").click();
+    await expect(page.getByText(/Muros: 1/)).toBeVisible();
 
-    // Si intentamos guardar normalmente 10x10 sin combatientes fuera de rango, funciona
-    // Pero si reducimos a 6x6 cuando hay combatientes en > 5x5, el servidor rechaza con error
+    // 4. Intentar reducir a 6x6 (Canocrock está en x=8, y=4, fuera de 6x6)
     await page.getByTestId("map-editor-width").fill("6");
     await page.getByTestId("map-editor-height").fill("6");
     await page.getByTestId("map-editor-apply-dims").click();
+    await expect(page.getByText("Dimensiones: 6×6")).toBeVisible();
 
     await page.getByTestId("map-editor-save").click();
 
-    // Si algún combatiente inicial queda fuera de 6x6, el toolbar permanece visible y muestra alerta
-    // Si no había combatientes en la sala, agregamos uno o el test valida la retención del toolbar ante error
-    const hasError = await page.getByTestId("map-editor-error").isVisible().catch(() => false);
-    if (hasError) {
-      await expect(toolbar).toBeVisible();
-      await expect(page.getByTestId("map-editor-error")).toBeVisible();
-    }
+    // 5. El toolbar DEBE permanecer visible y mostrar el error de límites
+    await expect(toolbar).toBeVisible();
+    const errorAlert = page.getByTestId("map-editor-error");
+    await expect(errorAlert).toBeVisible();
+    await expect(errorAlert).toContainText(/No se puede reducir el mapa a 6x6: Canocrock quedaría fuera de los límites/);
+
+    // 6. El borrador permanece intacto con sus cambios (6x6 y 1 muro)
+    await expect(page.getByText("Dimensiones: 6×6")).toBeVisible();
+    await expect(page.getByText(/Muros: 1/)).toBeVisible();
+  });
+
+  test("semántica visual distingue Wall (impassable + LoE) de Pillar (LoE only) sin revertirse", async ({ page }) => {
+    await page.goto("/");
+    await page.getByLabel("Nombre").fill("Master Semantics");
+    await page.getByRole("button", { name: /Crear sala/i }).click();
+
+    await expect(page.getByRole("heading", { name: "Preparacion" })).toBeVisible();
+
+    // Cambiar a vista 2D para interactuar con las celdas
+    await page.getByTestId("view-mode-2d").click();
+
+    await page.getByTestId("map-editor-open-btn").click();
+    const toolbar = page.getByTestId("map-editor-toolbar");
+    await expect(toolbar).toBeVisible();
+
+    // Pintar Wall en (3, 3) y Pillar en (4, 4)
+    await page.getByTestId("brush-wall").click();
+    await page.getByTestId("cell-3-3").click();
+
+    await page.getByTestId("brush-pillar").click();
+    await page.getByTestId("cell-4-4").click();
+
+    // Verificar data-scenic-prop en vista 2D
+    await expect(page.getByTestId("cell-3-3")).toHaveAttribute("data-scenic-prop", "barrier-block");
+    await expect(page.getByTestId("cell-4-4")).toHaveAttribute("data-scenic-prop", "loe-pillar");
+
+    // Guardar
+    await page.getByTestId("map-editor-save").click();
+    await expect(toolbar).not.toBeVisible();
+
+    // Tras guardar, verificar que la semántica visual persiste: Wall es barrier-block, Pillar es loe-pillar
+    await expect(page.getByTestId("cell-3-3")).toHaveAttribute("data-scenic-prop", "barrier-block");
+    await expect(page.getByTestId("cell-4-4")).toHaveAttribute("data-scenic-prop", "loe-pillar");
+  });
+
+  test("bloqueo completo de interacción de combate durante la edición del mapa", async ({ page }) => {
+    await page.goto("/");
+    await page.getByLabel("Nombre").fill("Master Lock");
+    await page.getByRole("button", { name: /Crear sala/i }).click();
+
+    await expect(page.getByRole("heading", { name: "Preparacion" })).toBeVisible();
+
+    // En estado normal, Agregar héroe está habilitado
+    const addHeroBtn = page.getByRole("button", { name: /Agregar heroe/i });
+    await expect(addHeroBtn).toBeEnabled();
+
+    // Abrir la sección de Iniciativa manual para que Iniciar combate sea visible
+    await page.getByText("Iniciativa manual").click();
+    const startCombatBtn = page.getByRole("button", { name: /Iniciar combate/i });
+    await expect(startCombatBtn).toBeVisible();
+
+    // Abrir editor
+    await page.getByTestId("map-editor-open-btn").click();
+    const toolbar = page.getByTestId("map-editor-toolbar");
+    await expect(toolbar).toBeVisible();
+
+    // Mientras el editor está abierto, Agregar heroe, Agregar enemigo, e Iniciar combate deben estar deshabilitados
+    await expect(addHeroBtn).toBeDisabled();
+    await expect(page.getByRole("button", { name: /Agregar enemigo/i })).toBeDisabled();
+    await expect(startCombatBtn).toBeDisabled();
+
+    // Cerrar editor con cancelar
+    await page.getByTestId("map-editor-cancel").click();
+    await expect(toolbar).not.toBeVisible();
+
+    // Vuelven a estar habilitados (o disponibles según las reglas normales)
+    await expect(addHeroBtn).toBeEnabled();
+    await expect(page.getByRole("button", { name: /Agregar enemigo/i })).toBeEnabled();
   });
 });

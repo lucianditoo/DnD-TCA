@@ -1,67 +1,73 @@
-# Walkthrough — D-5R1 Remediación de Arquitectura del Editor Táctico de Mapas (MVP)
+# Walkthrough — D-5R2 Remediación Final de Arquitectura del Editor Táctico de Mapas (MVP)
 
 Responsabilidad: Resumen del último cierre ejecutado, sus decisiones, validaciones y límites.
 Autoridad: Registro rotativo
 Lifecycle: Temporal (se reescribe en cada cierre)
-Reemplaza: Walkthrough — D-5 Editor Táctico de Mapas (MVP)
+Reemplaza: Walkthrough — D-5R1 Remediación de Arquitectura del Editor Táctico de Mapas (MVP)
 Complementa: [Estado](PROJECT_STATUS.md), [Roadmap](ROADMAP.md), [NDD D-5 canónico](docs/designs/map-builder-mvp/design.md)
 Consumidores: Architecture Reviewer, propietario y agentes que retoman el repositorio.
 
 ---
 
-## 1. Resultado y Remediaciones Ejecutadas (D-5R1)
+## 1. Resultado y Remediaciones Ejecutadas (D-5R2)
 
-Se remediaron íntegramente los hallazgos de Architecture Review sobre el D-5 Map Builder MVP restaurando la fidelidad total al NDD canónico (`docs/designs/map-builder-mvp/design.md`):
+Se cerraron de forma exhaustiva los hallazgos restantes de Architecture Review correspondientes a D-5R1, respetando estrictamente el NDD canónico (`docs/designs/map-builder-mvp/design.md`) y sin alterar reglas del Rule Engine ni tocar D-1B / I5R1 / I6:
 
-1. **MAJOR 1 — Eliminación Total de Auto-Clamp y Validación Atómica de Límites**:
-   - Se eliminó del servidor toda lógica de mutación tipo `combatant.position = clampedPosition` y el hardcode `sizeCategory === "large" ? 2 : 1`.
-   - Se implementó la verificación de límites atómica usando la autoridad espacial canónica del proyecto (`getCombatantOccupiedCells(combatant, room)`).
-   - Si cualquier celda ocupada por un combatiente queda fuera del rango `[0..width-1, 0..height-1]`, la operación se rechaza atómicamente antes de mutar ninguna propiedad con el mensaje explicativo: `No se puede reducir el mapa a <W>x<H>: <Nombre> quedaría fuera de los límites. Reubícalo antes de redimensionar.`
-   - No hay traslados colaterales, no hay colisiones sobre muros por achicamiento ni creación de overlaps. En un resize válido, todas las posiciones se conservan exactamente intactas.
+1. **MAJOR 1 — Validación Pura sobre Candidate Board e Invariantes Espaciales**:
+   - En `apps/server/src/commands/roomCommands.ts`, `handleUpdateBoard` construye en primer lugar el `candidateBoard` puro con `cellSizeFeet: 5` y las celdas validadas, y construye una vista/snapshot candidato no mutante `candidateRoom = { ...room, board: candidateBoard }`.
+   - Todas las validaciones espaciales del estado resultante se derivan exclusivamente sobre `candidateRoom`.
+   - Se valida que todos los combatientes conserven una huella autoritativa íntegramente dentro de los límites del `candidateBoard` (`getCombatantOccupiedCells(combatant, candidateRoom)`).
+   - Se valida que ningún combatiente vivo quede sobre una celda `impassableCells` candidata.
+   - **Invariante de Squeezing (`srd_squeezing`)**: Si una criatura está actualmente bajo el efecto `srd_squeezing`, se verifica que su huella derivada en `candidateRoom` mantenga la compresión legal. Si el `candidateBoard` elimina las `narrowCells` que sustentan la compresión, `handleUpdateBoard` rechaza atómicamente la actualización con mensaje descriptivo al GM (`No se puede actualizar el mapa: el nuevo tablero invalida la compresión (srd_squeezing) de <Nombre>...`), sin mover combatientes, sin remover efectos y sin alterar el tablero existente.
+   - Se incorporó además pre-chequeo de colisión de muros contra la huella actual antes de evaluar compresión para garantizar mensajes descriptivos inmediatos ante colocación de muros sobre casillas ocupadas.
 
-2. **MAJOR 2 — cellSizeFeet No Editable y Fijo en 5**:
-   - `cellSizeFeet` está fijado autoritativamente en `5` por el servidor (`normalizedBoard.cellSizeFeet = 5`), ignorando cualquier valor recibido del cliente.
-   - En el schema Zod (`updateBoardSchema`), `cellSizeFeet` se restringió a `z.literal(5).optional()`, rechazando en el boundary cualquier escala mecánica arbitraria.
+2. **MAJOR 2 — Semántica Visual de Muros y Pilares en el Presentation Model**:
+   - En `apps/web/src/components/Board/presentationModel.ts`, se ajustó `buildBoardPresentationModel`:
+     - Toda casilla con `impassable: true` (tenga o no `loeBlocked: true`, es decir, tanto muros duales del editor como muros impasables puros de datos legacy) resuelve `scenicProp: "barrier-block"` y genera un prisma volumétrico `volume.kind: "wall"`.
+     - Toda casilla con `loeBlocked: true` pero `!impassable` (es decir, pilares puros que bloquean LoE pero no movimiento) resuelve `scenicProp: "loe-pillar"` y genera un prisma `volume.kind: "pillar"`.
+     - Verificado mediante pruebas unitarias dedicadas en `tests/board-presentation-25d.test.mjs` y pruebas de integración Playwright en `tests-ui/map-builder.spec.ts`.
 
-3. **MAJOR 3 — Eliminación de la Jerarquía Inventada de Capas**:
-   - Se eliminó la jerarquía arbitraria `Muro > LoE > Terreno Difícil > Estrecho`.
-   - Los muros guardados conservan explícita y simultáneamente tanto `impassableCells` (bloqueo de movimiento) como `lineOfEffectBlockingCells` (bloqueo de LoE).
-   - `lineOfEffectBlockingCells` y `difficultTerrainCells` operan como capas independientes.
-   - Las reglas productivas de Movement y Line of Effect (`validateMovePath`, `getLineOfEffect`) validan correctamente los obstáculos guardados sin requerir inferencias artificiales.
+3. **MAJOR 3 — Congelamiento Total del Borrador Durante Guardado**:
+   - En `apps/web/src/components/MapEditor/MapEditorToolbar.tsx`, se introdujo la prop `isSaving?: boolean` que deshabilita: inputs numéricos de ancho y alto, botón Redimensionar, botones radio de selección de pincel, botón Limpiar Todo, botón Guardar (mostrando la etiqueta `"Guardando..."`) y botón Cancelar.
+   - En `apps/web/src/App.tsx`, las acciones `handleResizeBoard`, `handleClearAllObstacles`, `handleSaveBoard`, `handleCancelMapEditing` y `paintCell` aplican una guarda temprana `if (mapEditorStatus === "saving") return`, impidiendo cualquier mutación del borrador mientras hay un guardado en tránsito.
 
-4. **MAJOR 4 y MINOR 2 — Aislamiento del Borrador de Presentación y Bloqueo de Acciones de Combate**:
-   - En `apps/web/src/App.tsx`, `rulesSnapshot` se calcula estrictamente a partir de la sala autoritativa (`createCombatRulesSnapshot(room)`). El borrador `draftBoard` alimenta exclusivamente a `presentationRoom` para el renderizado visual de `<Board />`.
-   - Mientras `isMapEditing` está activo, se bloquea el control de combatientes, selección, fin de turno y emisión de comandos de combate.
-   - Se introdujo `mapEditorStatus: "idle" | "editing" | "saving"`. Si el servidor rechaza una actualización o emite un error, el borrador y la barra de herramientas permanecen abiertos con el mensaje de error visible para no perder el trabajo del GM.
-   - El cierre del editor tras guardar se condiciona a la confirmación semántica del tablero (`areBoardsSemanticallyEqual`).
+4. **MINOR 1 — Bloqueo Completo de Interacción de Combate Durante Edición del Mapa**:
+   - Se extendió el bloqueo interactivo a todos los paneles laterales de combate mediante `isInteractionLocked = isMapEditing`:
+     - En `CombatantsPanel.tsx`: se deshabilitan el botón "Agregar perfil", la adición de héroes y enemigos del catálogo, los selects de plantillas de héroes/enemigos, los inputs numéricos de iniciativa manual y el botón "Iniciar combate".
+     - En `GmPanel.tsx`: se deshabilitan todos los controles administrativos del GM (mover token, curar, ajuste de HP actual/máximo, botones de estado de vida, limpiar AdO, forzar victoria/TPK, nota al log, y aplicación/remoción de efectos).
+     - En `ActionsPanel.tsx`: se integró `isInteractionLocked` en `actionDisabled` para deshabilitar las acciones de turno, menús tácticos y resolución de AdO mientras el GM edita el mapa.
 
-5. **MINOR 1 — Esquema Específico para Claves de Celda**:
-   - Se exportó `boardCellKeySchema = z.string().regex(/^\d+,\d+$/)` en `@dnd-tactical/shared`, garantizando que únicamente se acepten coordenadas `"x,y"` con enteros no negativos.
+5. **Ciclo de Vida ACK e Igualdad Semántica Profunda de Tableros**:
+   - Se implementó la función pura `areBoardsSemanticallyEqual(a, b)` que compara orden-independiente `width`, `height`, `cellSizeFeet`, y los conjuntos `impassableCells`, `lineOfEffectBlockingCells`, `difficultTerrainCells`, `narrowCells`, `dimLightCells` y `darknessCells`.
+   - En `apps/web/src/App.tsx`, el editor solo se cierra cuando se recibe un `room-update` con un tablero semánticamente compatible con el borrador enviado. Actualizaciones ajenas de la sala (iniciativas, logs, notas) no descartan el borrador ni cierran el editor. Ante un rechazo del servidor, el borrador y la barra de herramientas permanecen abiertos con el error descriptivo visible.
 
-6. **Autorización y Pertenencia de Sala**:
-   - `handleUpdateBoard` verifica tanto el rol GM como que el participante pertenezca a la misma sala (`participant.roomCode === room.code`), evitando que un GM de otra sala pueda alterar el tablero.
-   - Se identificó como deuda técnica preexistente del proyecto que varios otros comandos de sala aún no validan pertenencia estricta de sala (solo rol GM global), quedando registrado formalmente.
+6. **Tests UI Playwright Deterministas**:
+   - En `tests-ui/map-builder.spec.ts`, se eliminaron todos los condicionales (`hasError`) sustituyéndolos por asertos deterministas sin ramas opcionales. Se agregaron tests de rechazo del servidor por límites con Canocrock, verificación de persistencia de semántica visual de muros vs pilares, y bloqueo completo de interacción de combate durante edición.
+
+---
 
 ## 2. Archivos Modificados
 
-- `packages/shared/src/schemas/commands/roomCommands.ts`: exportación de `boardCellKeySchema`, tipado de arrays con el schema y restricción de `cellSizeFeet: z.literal(5).optional()`.
-- `apps/server/src/commands/roomCommands.ts`: normalización fija `cellSizeFeet: 5`, eliminación de auto-clamp y hardcoding de tamaño, verificación de footprint canónico con rechazo atómico, eliminación de jerarquía de capas (muros conservan impassable + LoE), verificación de pertenencia de sala.
-- `apps/web/src/App.tsx`: aislamiento de `rulesSnapshot` autoritativo frente a `presentationRoom` de presentación, bloqueo de acciones durante edición, manejo de ciclo de vida con retención de borrador ante errores, comparador semántico de tableros.
-- `tests/map-builder.test.mjs`: reescrito con 15 pruebas unitarias y de integración exhaustivas cubriendo todos los hallazgos y contratos.
-- `tests-ui/map-builder.spec.ts`: pruebas Playwright agregadas para cancelación y retención de borrador ante rechazo del servidor.
-- `docs/designs/map-builder-mvp/implementation-plan.md`, `PROJECT_STATUS.md`, `TODO.md`: documentación sincronizada eliminando referencias a auto-clamp y jerarquía de capas.
+- `apps/server/src/commands/roomCommands.ts`: Candidate Board validation, snapshot candidato, validación de huella e invariante de squeezing, pre-chequeo de colisión de muros.
+- `apps/web/src/components/Board/presentationModel.ts`: semántica visual de muros (`barrier-block`/`wall`) vs pilares (`loe-pillar`/`pillar`).
+- `apps/web/src/components/MapEditor/MapEditorToolbar.tsx`: prop `isSaving` para congelamiento del borrador y utilidad pura `areBoardsSemanticallyEqual`.
+- `apps/web/src/components/CombatantsPanel/CombatantsPanel.tsx`: prop `isInteractionLocked` deshabilitando catálogo, iniciativas y arranque de combate.
+- `apps/web/src/components/GmPanel/GmPanel.tsx`: prop `isInteractionLocked` deshabilitando todas las acciones de GM.
+- `apps/web/src/components/ActionsPanel/ActionsPanel.tsx`: bloqueo interactivo en `actionDisabled` y resolución de AdO.
+- `apps/web/src/App.tsx`: guarda `saving` en mutaciones de borrador, integración de `isInteractionLocked`, consumo de `areBoardsSemanticallyEqual`.
+- `tests/map-builder.test.mjs`: tests para candidate board validation, invariantes de squeezing e igualdad semántica.
+- `tests/board-presentation-25d.test.mjs`: test para semántica visual de Wall vs Pillar.
+- `tests-ui/map-builder.spec.ts`: tests Playwright deterministas (rechazo, semántica visual, interaction lock).
+- `docs/designs/map-builder-mvp/implementation-plan.md`, `PROJECT_STATUS.md`, `TODO.md`: documentación sincronizada.
 
 `test.txt` permanece intacto y sin seguimiento en Git.
 
+---
+
 ## 3. Validación y Calidad
 
-- `npm test`: 672/672 tests unitarios en verde (incluye los 15 tests de `map-builder.test.mjs`).
+- `npm test`: 677/677 tests unitarios en verde (28 suites, 0 fallos).
 - `npm run typecheck`: 0 errores en todos los workspaces (`shared`, `web`, `server`).
 - `npm run build`: compilación limpia y exitosa en todos los workspaces.
-- `node scripts/e2e-websocket.mjs`: 107/107 pruebas de WebSocket aprobadas contra el servidor autoritativo.
-- `npm run test:ui`: 13/13 tests de Playwright UI pasando al 100% (demo + map-builder + smoke tests).
-- `git diff --check`: limpio, sin errores de espaciado ni conflictos.
-
-## 4. Estado
-
-Ready for Architecture Review.
+- `node scripts/e2e-websocket.mjs`: suite completa E2E WebSocket en verde (107/107).
+- `npm run test:ui`: 15/15 tests Playwright UI pasando al 100% en verde.
