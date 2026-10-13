@@ -53,7 +53,21 @@ h1 { margin: 0; font-size: clamp(1.35rem, 3vw, 2rem); letter-spacing: 0; }
 .initiative-list { display: grid; gap: 8px; padding-top: 8px; border-top: 1px solid #3d4037; }
 
 .board-wrap { min-width: 0; display: grid; grid-template-rows: auto auto; align-content: start; gap: 6px; overflow: auto; border: 1px solid #484f57; border-radius: 10px; background: radial-gradient(circle at 50% 35%, #24292e 0%, #15181c 75%, #0e1013 100%); padding: 6px 12px 10px; box-shadow: inset 0 0 48px rgba(0, 0, 0, 0.65); }
-.board-toolbar { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px; padding: 4px 10px; border: 1px solid #434952; border-radius: 8px; background: rgba(26, 30, 34, 0.94); }
+.board-toolbar {
+  position: sticky;
+  top: 0;
+  z-index: 50;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 4px 10px;
+  border: 1px solid #434952;
+  border-radius: 8px;
+  background: rgba(26, 30, 34, 0.96);
+  backdrop-filter: blur(4px);
+}
 .board-toolbar-group { display: inline-flex; align-items: center; gap: 6px; flex-wrap: wrap; }
 .board-toolbar-label { font-size: 0.72rem; font-weight: 800; text-transform: uppercase; color: #9ea7b0; margin-right: 4px; }
 .board-tool-btn { min-height: 26px; padding: 0 9px; font-size: 0.76rem; font-weight: 700; border-radius: 6px; border: 1px solid #454a52; background: #23272b; color: #e4e7eb; }
@@ -62,9 +76,23 @@ h1 { margin: 0; font-size: clamp(1.35rem, 3vw, 2rem); letter-spacing: 0; }
 .board-tool-btn:disabled { opacity: 0.45; cursor: not-allowed; }
 .board-zoom-readout { min-width: 44px; text-align: center; font-size: 0.78rem; font-weight: 800; color: #d8dee4; }
 
-.board-stage-viewport { width: 100%; display: grid; align-items: start; justify-items: center; padding: 12px 8px 16px; overflow: visible; perspective: 1200px; }
+.board-stage-viewport {
+  width: 100%;
+  display: grid;
+  align-items: start;
+  justify-items: center;
+  padding: 12px 8px 16px;
+  overflow: auto;
+  perspective: 1200px;
+  position: relative;
+  z-index: 1;
+}
 .board-stage { width: min(100%, 640px); transform-origin: center 40%; transform-style: preserve-3d; }
-.board-stage.is-2d { transform: scale(var(--camera-zoom, 1)); }
+.board-stage.is-2d {
+  transform: scale(var(--camera-zoom, 1));
+  transform-origin: top center;
+  margin-bottom: calc((var(--camera-zoom, 1) - 1) * 360px);
+}
 .board-stage.is-25d { transform: rotateX(var(--camera-tilt, 55deg)) rotateZ(var(--camera-yaw, 0deg)) scale(var(--camera-zoom, 1)); }
 
 .tactical-scene-3d {

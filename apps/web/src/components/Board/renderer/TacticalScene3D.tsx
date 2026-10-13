@@ -232,7 +232,9 @@ export function TacticalScene3D({
 
     const camera = new THREE.OrthographicCamera(-8, 8, 5, -5, 0.1, 100);
     const controls = new OrbitControls(camera, renderer.domElement);
-    controls.enablePan = false;
+    controls.enablePan = true;
+    controls.screenSpacePanning = true;
+    controls.panSpeed = 1.0;
     controls.enableZoom = false;
     controls.enableDamping = true;
     controls.dampingFactor = 0.09;
@@ -241,7 +243,7 @@ export function TacticalScene3D({
     controls.minZoom = CAMERA_ZOOM_MIN;
     controls.maxZoom = CAMERA_ZOOM_MAX;
     controls.mouseButtons.LEFT = THREE.MOUSE.ROTATE;
-    controls.mouseButtons.RIGHT = THREE.MOUSE.ROTATE;
+    controls.mouseButtons.RIGHT = THREE.MOUSE.PAN;
     controls.target.set(0, 0.35, 0);
     camera.zoom = cameraZoom;
     camera.updateProjectionMatrix();
@@ -286,6 +288,7 @@ export function TacticalScene3D({
       const travel = Math.hypot(event.clientX - pointerStart.x, event.clientY - pointerStart.y);
       pointerStart = null;
       if (travel > 5) return;
+      if (event.button !== 0) return;
       const rect = renderer.domElement.getBoundingClientRect();
       pointer.x = ((event.clientX - rect.left) / rect.width) * 2 - 1;
       pointer.y = -((event.clientY - rect.top) / rect.height) * 2 + 1;
@@ -300,9 +303,11 @@ export function TacticalScene3D({
       const cell = latest.cells.find((entry) => entry.x === x && entry.y === y);
       if (cell) click(cell.position, cell.occupant);
     };
+    const onContextMenu = (event: MouseEvent) => { event.preventDefault(); };
     renderer.domElement.addEventListener("pointerdown", onPointerDown);
     renderer.domElement.addEventListener("pointerup", onPointerUp);
     renderer.domElement.addEventListener("wheel", onWheel, { passive: false });
+    renderer.domElement.addEventListener("contextmenu", onContextMenu);
 
     const resize = new ResizeObserver(() => {
       const width = Math.max(320, mount.clientWidth);
@@ -335,6 +340,7 @@ export function TacticalScene3D({
       renderer.domElement.removeEventListener("pointerdown", onPointerDown);
       renderer.domElement.removeEventListener("pointerup", onPointerUp);
       renderer.domElement.removeEventListener("wheel", onWheel);
+      renderer.domElement.removeEventListener("contextmenu", onContextMenu);
       disposeObject(content);
       renderer.dispose();
       renderer.forceContextLoss();
@@ -346,8 +352,15 @@ export function TacticalScene3D({
   useEffect(() => {
     const runtime = runtimeRef.current;
     if (!runtime) return;
+    runtime.controls.target.set(0, 0.35, 0);
     applyPreset(runtime.camera, runtime.controls, cameraAngle);
-  }, [cameraAngle, resetRevision]);
+  }, [resetRevision]);
+
+  useEffect(() => {
+    const runtime = runtimeRef.current;
+    if (!runtime) return;
+    applyPreset(runtime.camera, runtime.controls, cameraAngle);
+  }, [cameraAngle]);
 
   useEffect(() => {
     const runtime = runtimeRef.current;
@@ -533,7 +546,7 @@ export function TacticalScene3D({
       data-camera-elevation={String(cameraTelemetry.elevation)}
     >
       {initializationError ? <p className="renderer-warning">{initializationError}</p> : null}
-      <span className="sr-only">Arrastrá para orbitar e inclinar el tablero. La rueda controla el zoom.</span>
+      <span className="sr-only">Arrastrá con botón izquierdo para orbitar e inclinar el tablero. Botón derecho para desplazar (pan). La rueda controla el zoom.</span>
       <div className="sr-only" data-testid="scene-entities" aria-live="polite">
         {presentation.tokens.map((token) => (
           <span
