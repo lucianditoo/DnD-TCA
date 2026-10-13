@@ -1,52 +1,53 @@
-# Walkthrough — normalización visual de sprites 2.5D
+# Walkthrough — Oclusión 3D de Sprites, Zoom 200% y Hoja de Ruta de Mesa Digital
 
 Responsabilidad: Resumen del último cierre ejecutado, sus decisiones, validaciones y límites.
 Autoridad: Registro rotativo
 Lifecycle: Temporal (se reescribe en cada cierre)
-Reemplaza: —
-Complementa: [Estado](PROJECT_STATUS.md), [NDD D-4](docs/designs/tactical-renderer-2.5d/design.md), [Plan D-4](docs/designs/tactical-renderer-2.5d/implementation-plan.md)
+Reemplaza: Walkthrough de normalización visual de sprites 2.5D
+Complementa: [Estado](PROJECT_STATUS.md), [Roadmap](ROADMAP.md), [NDD D-4](docs/designs/tactical-renderer-2.5d/design.md)
 Consumidores: Architecture Reviewer, propietario y agentes que retoman el repositorio.
 
 ---
 
 ## 1. Resultado
 
-La revisión visual detectó dos defectos presentacionales en el renderer Three.js:
-el caballero parecía menor que las demás familias y, en cámaras rasantes, las
-líneas del tablero podían dibujarse sobre los personajes.
+1. **Corrección de Oclusión 3D (`depthTest: true`)**:
+   - En la Escena B, cuando el Guardián Coloso avanzaba en Squeezing por el corredor estrecho, los muros en primer plano se dibujaban detrás del sprite en lugar de ocluirlo.
+   - Se restauró `depthTest: true` en `spriteMaterial` de `TacticalScene3D.tsx`.
+   - La cuadrícula del suelo se ajustó con `depthWrite: false` a `y = 0.005`, garantizando que las líneas de la cuadrícula no perforen ni compitan con los pies de las figuras, mientras que los muros y pilares (`depthWrite: true`) ocluyen limpiamente a los combatientes cuando están delante de ellos según la perspectiva de la cámara.
+   - Las placas de nombre e indicadores de estado mantienen `depthTest: false` con capas de renderizado superiores (`renderOrder: 50/60`), permaneciendo legibles por encima de los muros.
 
-La causa del primer defecto era el margen transparente del PNG del caballero:
-su silueta ocupa aproximadamente un 25 % menos de altura útil que las restantes.
-El renderer aplica ahora una compensación visual de familia `1.25` al caballero,
-sin modificar su tamaño, huella o posición mecánicos.
+2. **Ampliación de Zoom Máximo al 200%**:
+   - Se aumentó `CAMERA_ZOOM_MAX` de `1.5` a `2.0` (200%) en `presentationModel.ts`.
+   - Se actualizó el clamping en `TacticalScene3D.tsx` (rueda del ratón y controles de zoom de cámara).
 
-Los sprites de combatientes usan además una capa frontal explícita. La
-cuadrícula, las huellas y los overlays tácticos permanecen sobre el suelo; los
-personajes se dibujan después, y las etiquetas e indicadores de estado conservan
-sus capas superiores. Así las líneas ya no atraviesan visualmente las figuras.
+3. **Gobernanza y Visión Estratégica (`ROADMAP.md`)**:
+   - Se reestructuró `ROADMAP.md` alineándolo con el diseño de **Mesa Digital Táctica Híbrida (Pantalla de TV + Companion Móvil)** en 5 Fases evolutivas:
+     - **Fase 1**: Combate Libre y Editor Básico de Mapas.
+     - **Fase 2**: Creador / Gestor Guiado de Personajes SRD 3.5.
+     - **Fase 3**: Mesa Híbrida (Display TV 2.5D + Cliente Móvil 2D Ligero).
+     - **Fase 4**: Niebla de Guerra Dinámica y Ceguera Táctica (Visión compartida y reducción de visibilidad a 10 ft).
+     - **Fase 5**: Cobertura Total SRD / PHB V1.0.
 
 ## 2. Archivos
 
-- `apps/web/src/components/Board/renderer/TacticalScene3D.tsx`: compensación
-  visual del caballero y política frontal de profundidad para sprites.
-- `tests-ui/demo.spec.ts`: regresión de escala y de la política de capa frontal.
+- `apps/web/src/components/Board/renderer/TacticalScene3D.tsx`: `depthTest: true` en sprites y `depthWrite: false` en grid lines.
+- `apps/web/src/components/Board/presentationModel.ts`: `CAMERA_ZOOM_MAX = 2.0`.
+- `ROADMAP.md`: reestructuración canónica de las 5 fases estratégicas.
+- `walkthrough.md`: registro del cierre del sprint.
 
-No se modificaron reglas, snapshots, servidor, contratos de red ni footprints.
-`test.txt` continúa intacto, sin seguimiento y fuera de los commits.
+No se alteraron reglas mecánicas, snapshots, contratos de red ni autoridad del servidor.
+`test.txt` permanece intacto y sin seguimiento en Git.
 
 ## 3. Validación
 
-- `npm test`: 657/657.
-- `npm run typecheck`: verde en shared, web y server.
-- `npm run build`: verde en shared, web y server. La ejecución dentro del
-  sandbox encontró un bloqueo `EPERM` de OneDrive; la repetición fuera del
-  sandbox compiló correctamente.
-- `node scripts/e2e-websocket.mjs`: 107/107.
-- `npm run test:ui`: 10/10.
-- `git diff --check`: sin errores.
+- `npm test`: 657/657 tests unitarios en verde.
+- `npm run typecheck`: 0 errores en shared, web y server.
+- `npm run build`: compilación de producción exitosa en todos los workspaces.
+- `npx playwright test tests-ui/demo.spec.ts`: 3/3 suites completas en verde (incluye validación de Escena B con captura visual verificada).
+- `node scripts/e2e-websocket.mjs`: 107/107 pruebas de integración por WebSocket aprobadas.
+- `git diff --check`: limpio.
 
 ## 4. Estado
 
-Corrección de UI Nivel B lista para validación visual del propietario y
-Architecture Review. D-4 mantiene sus límites: la escena sigue siendo una
-presentación 2.5D sin autoridad sobre la simulación espacial.
+Ready for Architecture Review. Sprint de remediación visual y gobernanza completado con validación visual y técnica al 100%.

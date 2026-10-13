@@ -44,7 +44,7 @@ export const DEFAULT_CAMERA_STATE: CameraState = {
 };
 
 export const CAMERA_ZOOM_MIN = 0.75;
-export const CAMERA_ZOOM_MAX = 1.5;
+export const CAMERA_ZOOM_MAX = 2.0;
 export const CAMERA_ZOOM_STEP = 0.125;
 
 export const CAMERA_TILT_DEG = 55;

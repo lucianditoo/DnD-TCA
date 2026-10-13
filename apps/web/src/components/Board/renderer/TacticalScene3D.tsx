@@ -134,19 +134,22 @@ function makeBoardGrid(width: number, height: number): THREE.LineSegments {
 
   for (let x = 0; x <= width; x += 1) {
     const worldX = minX + x;
-    vertices.push(worldX, 0.014, minZ, worldX, 0.014, maxZ);
+    vertices.push(worldX, 0.005, minZ, worldX, 0.005, maxZ);
   }
   for (let y = 0; y <= height; y += 1) {
     const worldZ = minZ + y;
-    vertices.push(minX, 0.014, worldZ, maxX, 0.014, worldZ);
+    vertices.push(minX, 0.005, worldZ, maxX, 0.005, worldZ);
   }
 
   const geometry = new THREE.BufferGeometry();
   geometry.setAttribute("position", new THREE.Float32BufferAttribute(vertices, 3));
-  return new THREE.LineSegments(
-    geometry,
-    new THREE.LineBasicMaterial({ color: 0x9fa9ac, transparent: true, opacity: 0.42 })
-  );
+  const material = new THREE.LineBasicMaterial({
+    color: 0x9fa9ac,
+    transparent: true,
+    opacity: 0.38,
+    depthWrite: false
+  });
+  return new THREE.LineSegments(geometry, material);
 }
 
 function applyPreset(camera: THREE.OrthographicCamera, controls: OrbitControls, angle: CameraAngle) {
@@ -230,7 +233,7 @@ export function TacticalScene3D({
     controls.minPolarAngle = CAMERA_POLAR_MIN;
     controls.maxPolarAngle = CAMERA_POLAR_MAX;
     controls.minZoom = 0.75;
-    controls.maxZoom = 1.5;
+    controls.maxZoom = 2.0;
     controls.mouseButtons.LEFT = THREE.MOUSE.ROTATE;
     controls.mouseButtons.RIGHT = THREE.MOUSE.ROTATE;
     controls.target.set(0, 0.35, 0);
@@ -270,7 +273,7 @@ export function TacticalScene3D({
       event.preventDefault();
       const latest = propsRef.current;
       const step = event.deltaY < 0 ? 0.125 : -0.125;
-      latest.onCameraZoomChange(Math.min(1.5, Math.max(0.75, latest.cameraZoom + step)));
+      latest.onCameraZoomChange(Math.min(2.0, Math.max(0.75, latest.cameraZoom + step)));
     };
     const onPointerUp = (event: PointerEvent) => {
       if (!pointerStart) return;
@@ -460,10 +463,7 @@ export function TacticalScene3D({
         map: textures.get(family),
         transparent: true,
         alphaTest: 0.08,
-        // Las figuras son la capa visual frontal del tablero. Desactivar el
-        // depth test evita que la cuadrícula y los overlays del suelo se
-        // transparenten sobre el cuerpo del sprite en cámaras rasantes.
-        depthTest: false,
+        depthTest: true,
         depthWrite: false
       });
       const sprite = new THREE.Sprite(spriteMaterial);

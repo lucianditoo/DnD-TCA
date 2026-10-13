@@ -1,84 +1,123 @@
-# Roadmap
+# Roadmap — Mesa Digital Táctica D&D 3.5
 
-Responsabilidad: Orden tentativo de hitos y dependencias, no calendario de implementaciones aprobadas.
+Responsabilidad: Orden estratégico de hitos, arquitectura de producto y dependencias hacia la V1.0.
 Autoridad: Canónica
 Lifecycle: Snapshot vivo
 Reemplaza: —
-Complementa: [Estado](PROJECT_STATUS.md), [pendientes](TODO.md)
-Consumidores: Propietario y agentes durante la planificación.
+Complementa: [Estado](PROJECT_STATUS.md), [pendientes](TODO.md), [Manifiesto V1](.ai/coverage/V1_LAUNCH_MANIFESTO.md)
+Consumidores: Propietario y agentes durante la planificación y ejecución.
 
-## Cómo interpretar este roadmap
+---
 
-Un hito identificado no equivale a un NDD terminado, un NDD no equivale a
-un plan de código aprobado y un commit con CI verde no sustituye Architecture
-Review. El estado integrado vive en PROJECT_STATUS; las tareas concretas,
-en TODO; las Rule IDs y su cobertura oficial, en el [Registry](docs/rules/registry.md).
+## Visión del Producto: Mesa Táctica Híbrida
 
-## 1. Transición al Spatial Engine 2.5D
+El objetivo central del proyecto es dar soporte a una **Mesa Digital de Combate Táctico D&D 3.5**, compuesta por tres roles/vistas diferenciadas conectadas en tiempo real:
 
-Marco existente: [Spatial Engine & 2.5D](docs/designs/spatial-engine-2.5d.md).
-Su desarrollo normativo incluye [D-1R1](docs/designs/normative-spatial-geometry.md),
-[D-1A](docs/designs/normative-area-shape-projection.md) y
-[D-1B, capítulos 1–7](docs/designs/normative-movement-design.md).
-Son contratos de destino; no certifican una migración completa del motor.
-Los siete capítulos de D-1B permanecen aprobados y congelados; este
-saneamiento no los reabre ni convierte los pendientes en decisiones nuevas.
+1. **Pantalla Central de Mesa (TV / Battlemap)**:
+   - Tablero 2.5D tridimensional orbital en Three.js proyectado a pantalla completa, sin menús molestos que obstruyan el combate.
+   - Muestra la **visión compartida del grupo (Party Vision)**: lo que al menos un héroe consciente y vidente puede ver se revela en el escenario; lo que nadie ve permanece en penumbra o niebla.
+   - En caso de Ceguera momentánea en el turno del personaje activo, la escena simula la reducción visual a 10 pies.
+2. **Mandos Satélite de Jugador (Companion Móvil / Navegador)**:
+   - Interfaz vertical limpia y ligera para el celular/laptop de cada jugador.
+   - Tablero 2D complementario para interactuar y tocar casillas de movimiento o selección de objetivos.
+   - Panel de acciones (*Mover*, *Paso de 5 ft*, *Atacar*, *Conjurar*), estadísticas en vivo y log de eventos.
+   - Ocultación estricta de todo elemento o enemigo que el personaje individual no perciba.
+3. **Mando de Dirección (Panel del GM)**:
+   - Control omnisciente del encuentro (sin Fog of War).
+   - Editor rápido de salas y encuentros, gestión de monstruos, orden de iniciativa y administración de estados.
 
-La continuidad inmediata es el gate pendiente de la implementación D-1B y,
-según su resultado, la planificación de su integración productiva. Publication,
-comandos, preview y UI siguen siendo entregas diferenciadas por delimitar.
-No se asigna aquí una numeración nueva a esas fases ni un Proceed implícito.
+---
 
-Los siguientes hitos conservan el orden de diseño propuesto en el NDD padre.
-No se ha establecido un orden total de implementación ni planes detallados
-para todos ellos:
+## Fases de Desarrollo
 
-| Hito | Responsabilidad | Preparación documental |
-|---|---|---|
-| D-2 | Fog of War y Participant Projection | Requerido por el NDD padre; diseño específico pendiente. |
-| D-3 | Protocolo, identidad, reconexión y persistencia durable | Requerido; debe coordinarse con las proyecciones de D-2. |
-| D-4 | Renderer, presentación 2.5D y cámara | [NDD y plan](docs/designs/tactical-renderer-2.5d/design.md) implementados con Three.js; pendiente de aceptación visual y Architecture Review. Consume el Board V1 mediante un adaptador presentacional, sin anticipar autoridad espacial V2. |
-| D-5 | Editor táctico V2 | Requerido; consume superficies, formato de mapa y prefabs. |
-| D-6 | Objetos ambientales | Requerido; sus capacidades y entidades deben coordinarse con mapa/editor. |
-| D-7 | TurnState y movimiento fragmentado | Candidato registrado en TODO; sin NDD propio ni implementación aprobada de Ataque Elástico. |
+```text
+┌────────────────────────────────────────────────────────────────────────────────────────┐
+│                        ROADMAP: MESA DIGITAL TÁCTICA D&D 3.5                           │
+├────────────────────────────────────────────────────────────────────────────────────────┤
+│ FASE 1: NÚCLEO DE COMBATE Y ENTORNO INMEDIATO                                          │
+│ • Zoom ampliado al 200% y presets de cámara en el tablero 2.5D                         │
+│ • Corrección de oclusión 3D (muros ocluyen a personajes según perspectiva)             │
+│ • Creador de Mapas Básico: definir tamaño de sala y pintar muros, columnas, escombros  │
+│ • Flujo libre de combate en sala: selección, movimiento 2.5D, ataques y conjuros       │
+│                                                                                        │
+│ FASE 2: CHARACTER BUILDER GUIADO                                                       │
+│ • Creación por pasos: Selección de Raza, Clase y Nivel objetivo                        │
+│ • Cálculo automático de BAB, Salvaciones, HP y bonos de característica                 │
+│ • Asignación de competencias de equipo, dotes iniciales y conjuros preparados          │
+│                                                                                        │
+│ FASE 3: MESA DIGITAL HÍBRIDA (TV + COMPANION MÓVIL)                                    │
+│ • Modo Pantalla TV (Battlemap Espectador): render 2.5D maximizado a pantalla completa   │
+│ • Modo Jugador / Móvil: interfaz táctica 2D rápida con botones de acción y log         │
+│ • Modo GM: control omnisciente, gestión de iniciativa y estado global                  │
+│                                                                                        │
+│ FASE 4: FOG OF WAR DINÁMICA Y CEGUERA REAL                                             │
+│ • Revelado en tiempo real por Unión de Visión Grupal (Party Vision) en la TV           │
+│ • Ocultación estricta en el móvil de lo que el personaje individual no perciba         │
+│ • Mecánica de Ceguera/Oscuridad: reducción visual a 10 ft en el turno del afectado      │
+│                                                                                        │
+│ FASE 5: CATÁLOGOS COMPLETOS Y REGLAS AVANZADAS DEL PHB (V1.0)                          │
+│ • Ataque completo iterativo (BAB múltiple, combate con dos armas, disparo rápido)      │
+│ • Cobertura integral de dotes y conjuros del Manual del Jugador                        │
+└────────────────────────────────────────────────────────────────────────────────────────┘
+```
 
-La enumeración D-2–D-7 no elimina las dependencias cruzadas. Cada diseño
-debe resolver su alcance antes de programar su implementación.
+---
 
-## 2. Vision, Line of Effect y Concealment
+## 1. Fase 1: Núcleo de Combate y Entorno Inmediato
 
-- Extender Line of Effect a conjuros y áreas de efecto; AdO ya fue integrado
-  en Sprint 055B.
-- Incorporar sentidos alternativos, fuentes dinámicas de luz y fenómenos visuales.
-- Completar consecuencias de oscuridad y Concealment, coordinadas con el modelo espacial.
+- **Zoom y Cámara**: Zoom continuo de 75% a 200% (`CAMERA_ZOOM_MAX = 2.0`), presets deterministas (`NO`, `NE`, `SE`, `SO`) y órbita libre por arrastre.
+- **Oclusión Real 3D**: Ajuste del buffer de profundidad (`depthTest: true`) para que los muros y pilares ocluyan a las criaturas cuando la perspectiva de cámara los sitúa por delante, sin que las líneas del suelo corten los pies de los sprites.
+- **Editor Táctico de Mapas (D-5 MVP)**:
+  - Definición de dimensiones del tablero (ancho x alto).
+  - Herramienta de pintura de celdas para colocar muros (`impassableCells`), columnas LoE (`lineOfEffectBlockingCells`) y escombros (`difficultTerrainCells`).
+- **Integración de Movimiento D-1B y Flujo Libre**:
+  - Conectar el pipeline puro de movimiento (`resolveMovementPipeline` / `commitMovementResolution`) a partidas libres normales, eliminando la dependencia exclusiva de la demo.
 
-## 3. Conditions pendientes
+---
 
-- Concentration para Entangled.
-- Dazzled/Shaken después de skills/checks.
-- Stunned con caída de objetos.
-- Frightened/Panicked con movimiento obligatorio y escalado de miedo.
+## 2. Fase 2: Character Builder Guiado (PHB 3.5)
 
-## 4. Composición de rutinas de ataque
+- **Wizard de Creación**:
+  - **Paso 1**: Raza (Humano, Elfo, Enano, Mediano, Gnomo, Semielfo, Semiorco) y Clase (Guerrero, Pícaro, Clérigo, Mago, Explorador, Bárbaro, etc.).
+  - **Paso 2**: Nivel del Personaje (1–20):
+    - Cálculo automático del BAB según progresión (Bueno `+1/lvl`, Medio `+0.75/lvl`, Bajo `+0.5/lvl`).
+    - Cálculo automático de Salvaciones base (Fortaleza, Reflejos, Voluntad).
+    - Cálculo de Dados de Golpe y HP sugeridos.
+  - **Paso 3**: Puntuaciones de Característica: Arreglo estándar, Point Buy o tirada de dados, aplicando bonos/penalizaciones raciales.
+  - **Paso 4**: Equipamiento inicial por paquetes según competencias de clase.
+  - **Paso 5**: Selección de dotes según nivel y preparación de conjuros por slots.
 
-Rapid Shot, Haste, Two-Weapon Fighting, ataques naturales y Cleave/Great Cleave
-deben contribuir a las reglas existentes mediante el pipeline oficial.
-Existen un [diseño](docs/designs/full-attack-v2-haste-rapid-shot-design.md) y un
-[plan](docs/designs/full-attack-v2-implementation-plan.md) de Sprint 038:
-son antecedentes para revalidar, no autorización de ejecución actual.
+---
 
-## 5. Feats, Spells y Equipment
+## 3. Fase 3: Mesa Digital Híbrida (TV + Companion Móvil)
 
-Entregar lotes pequeños después de sus dependencias. Los cuatro inventarios
-PHB se localizan desde el [manifiesto V1](.ai/coverage/V1_LAUNCH_MANIFESTO.md).
-Power Attack permanece congelado hasta decisión explícita de producto.
+- **Modo Battlemap Espectador (TV)**:
+  - Vista limpia sin menús laterales para proyectar en televisión o pantalla de mesa.
+  - Controles de cámara orbital y visualización fluida de acciones, rutas y ataques.
+- **Modo Companion Móvil / Web**:
+  - Vista adaptada a smartphones (pantalla vertical).
+  - Mini-mapa táctico 2D para selección táctica precisa por casilla.
+  - Botones de acción directa (*Mover*, *Paso de 5 ft*, *Atacar*, *Conjurar*) y log de combate.
+- **Modo GM**:
+  - Control de visibilidad, iniciativa, monstruos y aplicación de condiciones.
 
-## 6. Plataforma y deuda
+---
 
-Ownership transversal, buffs de equipo, stacking y mejoras de UI se priorizan
-por riesgo según [technical-debt.md](docs/technical-debt.md).
-Persistencia, autenticación y editores se coordinan con D-3/D-5; no constituyen
-un segundo backlog espacial independiente.
+## 4. Fase 4: Fog of War Dinámica y Perspectivas de Visión
 
-Cada vertical requiere el gate de diseño y ejecución que determine
-[.agents/AGENTS.md](.agents/AGENTS.md). Este saneamiento no abre sprints funcionales.
+- **Party Vision en la TV**:
+  - Revelado de niebla en tiempo real basado en la unión de campos visuales de los miembros conscientes del grupo.
+  - Si el único personaje con visión hacia un área queda cegado o cae inconsciente, dicha área y los enemigos allí ocultos vuelven a cubrirse de niebla en la TV.
+- **Visión Individual en Companion**:
+  - El jugador solo ve en su teléfono lo que su propio personaje detecta con sus sentidos.
+- **Ceguera y Fenómenos Visuales**:
+  - En el turno de un combatiente con condición *Cegado* (*Blindness*) u oscuridad mágica, la visión se reduce a 10 ft (2 casillas) de radio auditivo/tanteo.
+  - Integración de Visión en la Penumbra (*Low-Light Vision*) y Visión en la Oscuridad (*Darkvision*).
+
+---
+
+## 5. Fase 5: Catálogos Completos y Reglas Avanzadas PHB (V1.0)
+
+- **Rutinas de Ataque Completo**: BAB múltiple (`+6/+1`), combate con dos armas (*Two-Weapon Fighting*), *Rapid Shot*, *Haste*, ataques naturales y *Cleave*.
+- **Catálogos Declarativos PHB**: Cobertura sistemática de las dotes y conjuros del Manual del Jugador conforme a [`V1_LAUNCH_MANIFESTO.md`](.ai/coverage/V1_LAUNCH_MANIFESTO.md).
+- **Consolidación Final**: Estabilidad de red, reconexión robusta y persistencia durable de campañas.
