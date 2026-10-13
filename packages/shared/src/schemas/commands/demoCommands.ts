@@ -15,34 +15,40 @@ export const startDemoSchema = z.object({
 
 export const pauseDemoSchema = z.object({
   type: z.literal("pause-demo"),
-  sessionId: z.string().min(1)
+  sessionId: z.string().min(1),
+  sequence: z.number().int().nonnegative()
 }).strict();
 
 export const resumeDemoSchema = z.object({
   type: z.literal("resume-demo"),
-  sessionId: z.string().min(1)
+  sessionId: z.string().min(1),
+  sequence: z.number().int().nonnegative()
 }).strict();
 
 export const stepDemoSchema = z.object({
   type: z.literal("step-demo"),
-  sessionId: z.string().min(1)
+  sessionId: z.string().min(1),
+  sequence: z.number().int().nonnegative()
 }).strict();
 
 export const setDemoSpeedSchema = z.object({
   type: z.literal("set-demo-speed"),
   sessionId: z.string().min(1),
+  sequence: z.number().int().nonnegative(),
   speedMultiplier: demoSpeedMultiplierSchema
 }).strict();
 
 export const restartDemoSchema = z.object({
   type: z.literal("restart-demo"),
   sessionId: z.string().min(1),
+  sequence: z.number().int().nonnegative(),
   scope: z.enum(["scene", "all"])
 }).strict();
 
 export const exitDemoSchema = z.object({
   type: z.literal("exit-demo"),
-  sessionId: z.string().min(1)
+  sessionId: z.string().min(1),
+  sequence: z.number().int().nonnegative()
 }).strict();
 
 export const demoCommandSchemasMap = {
@@ -67,6 +73,7 @@ export const demoClientCommandSchema = z.discriminatedUnion("type", [
 
 export const demoSessionStateSchema = z.object({
   sessionId: z.string().min(1),
+  sequence: z.number().int().nonnegative(),
   demoId: z.string().min(1),
   roomCode: z.string().min(1),
   status: z.enum(["starting", "preparing", "playing", "paused", "completed", "failed"]),

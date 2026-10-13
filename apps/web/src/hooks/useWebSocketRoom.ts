@@ -31,7 +31,13 @@ export function useWebSocketRoom({ onHello, onActiveTurnChanged }: { onHello: ()
   const [selectedEnemyTemplateId, setSelectedEnemyTemplateId] = useState("");
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [demoSessionState, setDemoSessionState] = useState<DemoSessionState | null>(null);
+  const demoSessionStateRef = useRef<DemoSessionState | null>(null);
   const [error, setError] = useState<string | null>(null);
+
+  function updateDemoSessionState(nextState: DemoSessionState | null) {
+    demoSessionStateRef.current = nextState;
+    setDemoSessionState(nextState);
+  }
 
   function connect(command: ClientCommand | DemoClientCommand) {
     socketRef.current?.close();
@@ -62,11 +68,11 @@ export function useWebSocketRoom({ onHello, onActiveTurnChanged }: { onHello: ()
         setError(null);
       }
       if (payload.type === "demo-session-state") {
-        setDemoSessionState(payload.state);
+        updateDemoSessionState(payload.state);
       }
       if (payload.type === "demo-exited") {
         activeCombatantIdRef.current = null;
-        setDemoSessionState(null);
+        updateDemoSessionState(null);
         setRoom(null);
         setParticipant(null);
         setSelectedId(null);
@@ -88,13 +94,13 @@ export function useWebSocketRoom({ onHello, onActiveTurnChanged }: { onHello: ()
 
   function createRoom(event: FormEvent) {
     event.preventDefault();
-    setDemoSessionState(null);
+    updateDemoSessionState(null);
     connect({ type: "create-room", name });
   }
 
   function joinRoom(event: FormEvent) {
     event.preventDefault();
-    setDemoSessionState(null);
+    updateDemoSessionState(null);
     connect({ type: "join-room", roomCode: roomCode.toUpperCase(), name, role: mode });
   }
 
@@ -103,37 +109,43 @@ export function useWebSocketRoom({ onHello, onActiveTurnChanged }: { onHello: ()
   }
 
   function pauseDemo() {
-    if (!demoSessionState) return;
-    send({ type: "pause-demo", sessionId: demoSessionState.sessionId });
+    const current = demoSessionStateRef.current;
+    if (!current) return;
+    send({ type: "pause-demo", sessionId: current.sessionId, sequence: current.sequence });
   }
 
   function resumeDemo() {
-    if (!demoSessionState) return;
-    send({ type: "resume-demo", sessionId: demoSessionState.sessionId });
+    const current = demoSessionStateRef.current;
+    if (!current) return;
+    send({ type: "resume-demo", sessionId: current.sessionId, sequence: current.sequence });
   }
 
   function stepDemo() {
-    if (!demoSessionState) return;
-    send({ type: "step-demo", sessionId: demoSessionState.sessionId });
+    const current = demoSessionStateRef.current;
+    if (!current) return;
+    send({ type: "step-demo", sessionId: current.sessionId, sequence: current.sequence });
   }
 
   function setDemoSpeed(speed: DemoSpeedMultiplier) {
-    if (!demoSessionState) return;
-    send({ type: "set-demo-speed", sessionId: demoSessionState.sessionId, speedMultiplier: speed });
+    const current = demoSessionStateRef.current;
+    if (!current) return;
+    send({ type: "set-demo-speed", sessionId: current.sessionId, sequence: current.sequence, speedMultiplier: speed });
   }
 
   function restartDemo(scope: "scene" | "all") {
-    if (!demoSessionState) return;
-    send({ type: "restart-demo", sessionId: demoSessionState.sessionId, scope });
+    const current = demoSessionStateRef.current;
+    if (!current) return;
+    send({ type: "restart-demo", sessionId: current.sessionId, sequence: current.sequence, scope });
   }
 
   function exitDemo() {
-    if (!demoSessionState) return;
-    send({ type: "exit-demo", sessionId: demoSessionState.sessionId });
+    const current = demoSessionStateRef.current;
+    if (!current) return;
+    send({ type: "exit-demo", sessionId: current.sessionId, sequence: current.sequence });
   }
 
   function roomCommand<T extends ClientCommand>(command: T) {
-    if (!room || !participant || demoSessionState) return;
+    if (!room || !participant || demoSessionStateRef.current) return;
     send(command);
   }
 

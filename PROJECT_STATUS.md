@@ -9,8 +9,8 @@
 - Rama de integración: `master`.
 - Última vertical funcional integrada: Demostración Táctica Automática y Guionada (`scripted_tactical_demo_v1`), conforme a [`docs/designs/scripted-combat-demo.md`](docs/designs/scripted-combat-demo.md) y [`docs/designs/scripted-combat-demo/implementation-plan.md`](docs/designs/scripted-combat-demo/implementation-plan.md).
 - Última decisión arquitectónica: Sprint D-1B Capítulo 7 (Integration & Implementation Contracts) y NDD de Demo Táctica Automática (`f8c0e9d`).
-- Implementación en revisión: Demostración Táctica Automática y Guionada (ejecución autoritativa en servidor reutilizando `dispatchCommandCore` + `validateClientCommand`, aislamiento estricto de salas efímeras `DM*`, transporte RNG determinista por paso sin alterar `rollDice` en partidas normales, 3 escenas completas con checkpoints de estado reales y controles de reproducción en `DemoPanel`); y Sprint D-1B-I5R1 (Movement Resolution / Commit Remediation, aún aislado del flujo productivo con ODR-D1B-I5-1 y ODR-D1B-C3-01 abiertas).
-- Baseline de código: 648 tests unitarios, `typecheck`, `build`, `e2e-websocket` y 8 tests Playwright UI en verde.
+- Implementación en revisión: Demostración Táctica Automática y Guionada (ejecución autoritativa en servidor reutilizando `dispatchCommandCore` + `validateClientCommand`, contador autoritativo de secuencia `sequence` anti-duplicados/post-reinicio, aislamiento estricto de salas efímeras `DM*`, transporte RNG determinista por paso sin alterar `rollDice` en partidas normales, 3 escenas completas con checkpoints de estado reales y controles de reproducción en `DemoPanel`); y Sprint D-1B-I5R1 (Movement Resolution / Commit Remediation, aún aislado del flujo productivo con ODR-D1B-I5-1 y ODR-D1B-C3-01 abiertas).
+- Baseline de código: 649 tests unitarios, `typecheck`, `build`, `e2e-websocket` y 8 tests Playwright UI en verde.
   Conteos y evidencias se mantienen en [master-coverage.md](docs/testing/master-coverage.md), no como un segundo registro aquí.
 - GitHub Actions sobre Windows es el gate canónico de cierre para la revisión
   publicada.

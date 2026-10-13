@@ -55,12 +55,13 @@ test("Demo isolation: demo rooms block external manual combat commands and join-
       /solo lectura/i
     );
 
-    // Another socket cannot control the demo session
+    // Another socket cannot control the demo session even with a valid sequence
     assert.throws(
       () =>
         handleDemoCommand(intruderSocket, {
           type: "pause-demo",
-          sessionId: record.sessionId
+          sessionId: record.sessionId,
+          sequence: record.sequence
         }),
       /permisos/i
     );

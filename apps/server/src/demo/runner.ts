@@ -27,6 +27,7 @@ import {
 } from "./sessionStore.js";
 
 export function emitDemoSessionState(record: DemoSessionRecord): void {
+  record.sequence += 1;
   send(record.socket, {
     type: "demo-session-state",
     state: toDemoSessionState(record)
@@ -392,6 +393,7 @@ export function startNewDemoSession(
   const initialRoom = createDemoRoomWithBoard(roomCode, firstScene.board);
   const record: DemoSessionRecord = {
     sessionId,
+    sequence: 0,
     demoId: script.id,
     script,
     socket,

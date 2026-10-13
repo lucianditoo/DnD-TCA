@@ -530,15 +530,16 @@ export type DemoSpeedMultiplier = 0.5 | 1 | 2;
 
 export type DemoClientCommand =
   | { type: "start-demo"; demoId: string; name?: string }
-  | { type: "pause-demo"; sessionId: string }
-  | { type: "resume-demo"; sessionId: string }
-  | { type: "step-demo"; sessionId: string }
-  | { type: "set-demo-speed"; sessionId: string; speedMultiplier: DemoSpeedMultiplier }
-  | { type: "restart-demo"; sessionId: string; scope: "scene" | "all" }
-  | { type: "exit-demo"; sessionId: string };
+  | { type: "pause-demo"; sessionId: string; sequence: number }
+  | { type: "resume-demo"; sessionId: string; sequence: number }
+  | { type: "step-demo"; sessionId: string; sequence: number }
+  | { type: "set-demo-speed"; sessionId: string; sequence: number; speedMultiplier: DemoSpeedMultiplier }
+  | { type: "restart-demo"; sessionId: string; sequence: number; scope: "scene" | "all" }
+  | { type: "exit-demo"; sessionId: string; sequence: number };
 
 export interface DemoSessionState {
   sessionId: string;
+  sequence: number;
   demoId: string;
   roomCode: string;
   status: "starting" | "preparing" | "playing" | "paused" | "completed" | "failed";

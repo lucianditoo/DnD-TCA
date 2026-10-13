@@ -15,13 +15,22 @@ import {
   startNewDemoSession
 } from "./runner.js";
 
-export function requireOwnedDemoSession(socket: WebSocket, sessionId: string): DemoSessionRecord {
+export function requireOwnedDemoSession(
+  socket: WebSocket,
+  sessionId: string,
+  sequence: number
+): DemoSessionRecord {
   const record = getDemoSessionById(sessionId);
   if (!record) {
     throw new Error("Sesion de demostracion no encontrada.");
   }
   if (record.socket !== socket) {
     throw new Error("No tienes permisos para controlar esta sesion de demostracion.");
+  }
+  if (sequence !== record.sequence) {
+    throw new Error(
+      `Secuencia de control de demostracion obsoleta o duplicada (recibida=${sequence}, esperada=${record.sequence}).`
+    );
   }
   return record;
 }
@@ -33,7 +42,7 @@ export function handleDemoCommand(socket: WebSocket, command: DemoClientCommand)
       return;
     }
     case "pause-demo": {
-      const record = requireOwnedDemoSession(socket, command.sessionId);
+      const record = requireOwnedDemoSession(socket, command.sessionId, command.sequence);
       if (record.status === "playing") {
         clearDemoSessionTimer(record);
         record.status = "paused";
@@ -42,7 +51,7 @@ export function handleDemoCommand(socket: WebSocket, command: DemoClientCommand)
       return;
     }
     case "resume-demo": {
-      const record = requireOwnedDemoSession(socket, command.sessionId);
+      const record = requireOwnedDemoSession(socket, command.sessionId, command.sequence);
       if (record.status === "paused") {
         record.status = "playing";
         emitDemoSessionState(record);
@@ -53,7 +62,7 @@ export function handleDemoCommand(socket: WebSocket, command: DemoClientCommand)
       return;
     }
     case "step-demo": {
-      const record = requireOwnedDemoSession(socket, command.sessionId);
+      const record = requireOwnedDemoSession(socket, command.sessionId, command.sequence);
       if (record.status !== "paused") {
         throw new Error("Solo se puede avanzar paso a paso cuando la demostracion esta en pausa.");
       }
@@ -61,7 +70,7 @@ export function handleDemoCommand(socket: WebSocket, command: DemoClientCommand)
       return;
     }
     case "set-demo-speed": {
-      const record = requireOwnedDemoSession(socket, command.sessionId);
+      const record = requireOwnedDemoSession(socket, command.sessionId, command.sequence);
       record.speedMultiplier = command.speedMultiplier;
       emitDemoSessionState(record);
       if (record.status === "playing") {
@@ -70,7 +79,7 @@ export function handleDemoCommand(socket: WebSocket, command: DemoClientCommand)
       return;
     }
     case "restart-demo": {
-      const record = requireOwnedDemoSession(socket, command.sessionId);
+      const record = requireOwnedDemoSession(socket, command.sessionId, command.sequence);
       clearDemoSessionTimer(record);
       const targetSceneIndex = command.scope === "all" ? 0 : record.currentSceneIndex;
       prepareSceneInRoom(record, targetSceneIndex, { newRoomCode: true });
@@ -80,7 +89,7 @@ export function handleDemoCommand(socket: WebSocket, command: DemoClientCommand)
       return;
     }
     case "exit-demo": {
-      const record = requireOwnedDemoSession(socket, command.sessionId);
+      const record = requireOwnedDemoSession(socket, command.sessionId, command.sequence);
       destroyDemoSession(record.sessionId);
       send(socket, { type: "demo-exited", sessionId: record.sessionId });
       return;

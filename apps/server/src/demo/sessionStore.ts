@@ -12,6 +12,7 @@ import { clients, rooms } from "../room/roomStore.js";
 
 export interface DemoSessionRecord {
   readonly sessionId: string;
+  sequence: number;
   readonly demoId: string;
   readonly script: DemoScriptDefinition;
   readonly socket: WebSocket;
@@ -147,6 +148,7 @@ export function toDemoSessionState(record: DemoSessionRecord): DemoSessionState 
   const scene = record.script.scenes[record.currentSceneIndex];
   return {
     sessionId: record.sessionId,
+    sequence: record.sequence,
     demoId: record.demoId,
     roomCode: record.roomCode,
     status: record.status,

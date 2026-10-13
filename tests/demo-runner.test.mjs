@@ -63,43 +63,109 @@ test("Demo runner: supports pause, resume, step-demo, set-demo-speed, restart-de
 
   try {
     assert.equal(record.status, "playing");
+    assert.equal(record.sequence, 1);
     const initialRoomCode = record.roomCode;
 
     // Cannot step while playing
     assert.throws(
-      () => handleDemoCommand(socket, { type: "step-demo", sessionId: record.sessionId }),
+      () => handleDemoCommand(socket, { type: "step-demo", sessionId: record.sessionId, sequence: record.sequence }),
       /en pausa/i
     );
 
     // Pause
-    handleDemoCommand(socket, { type: "pause-demo", sessionId: record.sessionId });
+    handleDemoCommand(socket, { type: "pause-demo", sessionId: record.sessionId, sequence: record.sequence });
     assert.equal(record.status, "paused");
     assert.equal(record.timerHandle, null);
+    assert.equal(record.sequence, 2);
 
     // Step 2 times while paused
-    handleDemoCommand(socket, { type: "step-demo", sessionId: record.sessionId });
+    handleDemoCommand(socket, { type: "step-demo", sessionId: record.sessionId, sequence: record.sequence });
     assert.equal(record.currentStepIndex, 1);
-    handleDemoCommand(socket, { type: "step-demo", sessionId: record.sessionId });
+    assert.equal(record.sequence, 3);
+    handleDemoCommand(socket, { type: "step-demo", sessionId: record.sessionId, sequence: record.sequence });
     assert.equal(record.currentStepIndex, 2);
+    assert.equal(record.sequence, 4);
 
     // Change speed
-    handleDemoCommand(socket, { type: "set-demo-speed", sessionId: record.sessionId, speedMultiplier: 2 });
+    handleDemoCommand(socket, {
+      type: "set-demo-speed",
+      sessionId: record.sessionId,
+      sequence: record.sequence,
+      speedMultiplier: 2
+    });
     assert.equal(record.speedMultiplier, 2);
+    assert.equal(record.sequence, 5);
 
     // Restart current scene -> creates a new ephemeral roomCode and sends hello
-    handleDemoCommand(socket, { type: "restart-demo", sessionId: record.sessionId, scope: "scene" });
+    handleDemoCommand(socket, {
+      type: "restart-demo",
+      sessionId: record.sessionId,
+      sequence: record.sequence,
+      scope: "scene"
+    });
     assert.equal(record.currentSceneIndex, 0);
     assert.equal(record.currentStepIndex, 0);
+    assert.equal(record.sequence, 6);
     assert.notEqual(record.roomCode, initialRoomCode);
     assert.equal(rooms.has(initialRoomCode), false);
     assert.equal(rooms.has(record.roomCode), true);
 
     // Exit demo
     const restartedRoomCode = record.roomCode;
-    handleDemoCommand(socket, { type: "exit-demo", sessionId: record.sessionId });
+    handleDemoCommand(socket, { type: "exit-demo", sessionId: record.sessionId, sequence: record.sequence });
     assert.equal(getDemoSessionById(record.sessionId), undefined);
     assert.equal(rooms.has(restartedRoomCode), false);
     assert.ok(socket.messages.some((m) => m.type === "demo-exited" && m.sessionId === record.sessionId));
+  } finally {
+    destroyDemoSession(record.sessionId);
+  }
+});
+
+test("Demo runner: rejects duplicate control commands and delayed messages from before restart-demo", () => {
+  const socket = createMockSocket();
+  const record = startNewDemoSession(socket, SCRIPTED_TACTICAL_DEMO_ID, "SequenceTester", { autoPlay: false });
+
+  try {
+    assert.equal(record.sequence, 1);
+
+    // First step-demo with sequence=1 succeeds and increments sequence to 2
+    const seq1 = record.sequence;
+    handleDemoCommand(socket, { type: "step-demo", sessionId: record.sessionId, sequence: seq1 });
+    assert.equal(record.currentStepIndex, 1);
+    assert.equal(record.sequence, 2);
+
+    // Duplicate step-demo with old sequence=1 is rejected and does not advance step
+    assert.throws(
+      () => handleDemoCommand(socket, { type: "step-demo", sessionId: record.sessionId, sequence: seq1 }),
+      /Secuencia de control de demostracion obsoleta o duplicada/i
+    );
+    assert.equal(record.currentStepIndex, 1);
+    assert.equal(record.sequence, 2);
+
+    // Capture sequence right before restart-demo
+    const preRestartSequence = record.sequence;
+    handleDemoCommand(socket, {
+      type: "restart-demo",
+      sessionId: record.sessionId,
+      sequence: preRestartSequence,
+      scope: "all"
+    });
+    assert.equal(record.status, "playing");
+    assert.equal(record.currentStepIndex, 0);
+    assert.ok(record.sequence > preRestartSequence);
+
+    // A delayed command belonging to the previous run (preRestartSequence) cannot pause, step, or exit the restarted run
+    assert.throws(
+      () => handleDemoCommand(socket, { type: "pause-demo", sessionId: record.sessionId, sequence: preRestartSequence }),
+      /Secuencia de control de demostracion obsoleta o duplicada/i
+    );
+    assert.equal(record.status, "playing");
+
+    assert.throws(
+      () => handleDemoCommand(socket, { type: "exit-demo", sessionId: record.sessionId, sequence: preRestartSequence }),
+      /Secuencia de control de demostracion obsoleta o duplicada/i
+    );
+    assert.ok(getDemoSessionById(record.sessionId));
   } finally {
     destroyDemoSession(record.sessionId);
   }

@@ -19,9 +19,9 @@ Implementar la **Demostración Táctica Automática y Guionada** (`scripted_tact
 
 ### 2.1 `@dnd-tactical/shared`
 - [`packages/shared/src/types.ts`](packages/shared/src/types.ts):
-  - Incorporados los contratos de red `DemoSpeedMultiplier`, `DemoClientCommand`, `DemoSessionState`, `DemoServerEvent` e integración de `DemoServerEvent` en `ServerEvent`.
+  - Incorporados los contratos de red `DemoSpeedMultiplier`, `DemoClientCommand` (incluyendo `sequence: number` obligatorio en todos los comandos de control posteriores a `start-demo`), `DemoSessionState` (incluyendo `sequence: number` autoritativo), `DemoServerEvent` e integración de `DemoServerEvent` en `ServerEvent`.
 - [`packages/shared/src/schemas/commands/demoCommands.ts`](packages/shared/src/schemas/commands/demoCommands.ts) y [`packages/shared/src/schemas/commands/index.ts`](packages/shared/src/schemas/commands/index.ts):
-  - Schemas Zod estrictos (`.strict()`) para `start-demo`, `pause-demo`, `resume-demo`, `step-demo`, `set-demo-speed`, `restart-demo`, `exit-demo` y eventos `demo-session-state` / `demo-exited`.
+  - Schemas Zod estrictos (`.strict()`) para `start-demo`, `pause-demo`, `resume-demo`, `step-demo`, `set-demo-speed`, `restart-demo`, `exit-demo` (con `sequence: z.number().int().nonnegative()`) y eventos `demo-session-state` / `demo-exited`.
 - [`packages/shared/src/demo/types.ts`](packages/shared/src/demo/types.ts) y [`packages/shared/src/demo/catalog.ts`](packages/shared/src/demo/catalog.ts):
   - Tipos declarativos del guion (`DemoStepCheckpoint`, `DemoStepCommandSpec`, `DemoManeuverRolls`, `DemoStepDefinition`, `DemoSceneDefinition`, `DemoScriptDefinition`) y catálogo `scripted_tactical_demo_v1` con perfiles source-first y las tres escenas completas:
     - **Escena A — La Emboscada**: Iniciativa, `srd_flat_footed`, ataque melee, posicionamiento de flanqueo (+2), Ataque Furtivo (+2d6), amenaza y confirmación de crítico (multiplicando el daño del arma sin multiplicar los dados de precisión) y disparo con arco largo consumiendo munición.
@@ -35,7 +35,8 @@ Implementar la **Demostración Táctica Automática y Guionada** (`scripted_tact
 - [`apps/server/src/commands/specialManeuverCommands.ts`](apps/server/src/commands/specialManeuverCommands.ts):
   - Extendido `ManeuverDiceSource` con `rollDie?(sides: number): number` opcional y propagado a `resolveInterruptingOpportunityAttack`.
 - [`apps/server/src/demo/sessionStore.ts`](apps/server/src/demo/sessionStore.ts), [`apps/server/src/demo/runner.ts`](apps/server/src/demo/runner.ts) y [`apps/server/src/demo/demoCommands.ts`](apps/server/src/demo/demoCommands.ts):
-  - Almacén efímero de sesiones de demo vinculadas a su `socket` propietario y sala clonada (`structuredClone(scene.board)`), con limpieza determinista al salir (`exit-demo`), reiniciar (`restart-demo`) o desconectar (`close`) sin tocar otras salas ni invocar `/api/test/reset`.
+  - Almacén efímero de sesiones de demo vinculadas a su `socket` propietario, contador autoritativo `sequence` incrementado monotónicamente en cada emisión de `DemoSessionState` (incluyendo tras `restart-demo`) y sala clonada (`structuredClone(scene.board)`), con limpieza determinista al salir (`exit-demo`), reiniciar (`restart-demo`) o desconectar (`close`) sin tocar otras salas ni invocar `/api/test/reset`.
+  - Validación de propiedad y secuencia (`requireOwnedDemoSession(socket, sessionId, sequence)`) que rechaza determinísticamente cualquier comando de control duplicado o perteneciente a una ejecución anterior al reinicio.
   - Runner autoritativo secuencial con bandera `commandInFlight`, inyección RNG determinista por paso (`createStepRngContext`) que verifica consumo exacto de todas las tiradas preparadas, y validador de checkpoints (`verifyStepCheckpoint`) que transiciona a `failed` ante cualquier desviación.
 - [`apps/server/src/index.ts`](apps/server/src/index.ts):
   - Enrutamiento de `DemoClientCommand` hacia `validateDemoCommand` + `handleDemoCommand` y limpieza automática con `destroyDemoSessionBySocket(socket)` en `socket.on("close")`.
@@ -44,16 +45,16 @@ Implementar la **Demostración Táctica Automática y Guionada** (`scripted_tact
 - [`apps/web/src/components/DemoPanel/DemoPanel.tsx`](apps/web/src/components/DemoPanel/DemoPanel.tsx):
   - Panel de progreso de escena/paso, actor activo, resumen de acción, explicación pedagógica de la regla y controles de transporte (`Pausar`/`Continuar`, `Siguiente paso`, selector `0.5x`/`1x`/`2x`, `Reiniciar escena`, `Reiniciar demo`, `Salir de la demo`).
 - [`apps/web/src/hooks/useWebSocketRoom.ts`](apps/web/src/hooks/useWebSocketRoom.ts), [`apps/web/src/components/ConnectionPanel/ConnectionPanel.tsx`](apps/web/src/components/ConnectionPanel/ConnectionPanel.tsx) y [`apps/web/src/App.tsx`](apps/web/src/App.tsx):
-  - Botón **"Empezar demo"** en `ConnectionPanel`, suscripción a `demo-session-state` y `demo-exited`, e inspección pasiva de fichas/celdas durante la demo bloqueando la emisión de comandos manuales de combate.
+  - Botón **"Empezar demo"** en `ConnectionPanel`, suscripción a `demo-session-state` y `demo-exited`, envío de `sequence` vigente en cada control emitido desde React, e inspección pasiva de fichas/celdas durante la demo bloqueando la emisión de comandos manuales de combate.
 
 ---
 
 ## 3. Validaciones Ejecutadas
 
-- `npm test`: **648/648 pruebas en verde** (incluyendo `tests/demo-contracts.test.mjs`, `tests/demo-isolation.test.mjs`, `tests/demo-rng.test.mjs` y `tests/demo-runner.test.mjs`).
+- `npm test`: **649/649 pruebas en verde** (incluyendo `tests/demo-contracts.test.mjs`, `tests/demo-isolation.test.mjs`, `tests/demo-rng.test.mjs` y `tests/demo-runner.test.mjs` con regresiones explícitas para comandos duplicados y mensajes retrasados previos a `restart-demo`).
 - `npm run typecheck`: **0 errores** (`shared`, `web`, `server`).
 - `npm run build`: **0 errores** (`shared`, `web`, `server`).
-- `node scripts/e2e-websocket.mjs`: **106/106 aserciones en verde** (exit 0).
+- `node scripts/e2e-websocket.mjs`: **107/107 aserciones en verde** (exit 0).
 - `npm run test:ui`: **8/8 escenarios Playwright en verde** (incluyendo `tests-ui/demo.spec.ts`).
 
 ---

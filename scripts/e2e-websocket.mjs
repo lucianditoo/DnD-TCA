@@ -705,13 +705,17 @@ const demoClient = await connectAndSend({ type: 'start-demo', demoId: 'scripted_
 await wait(60);
 const demoSessionId = demoClient.demoSession?.sessionId;
 const demoRoomCode = demoClient.room?.code;
-record('Demo: start-demo inicializa hello + demo-session-state en sala efimera', !!demoSessionId && demoRoomCode?.startsWith('DM') && demoClient.participant?.role === 'gm' && demoClient.demoSession?.status === 'playing', JSON.stringify({ roomCode: demoRoomCode, session: demoClient.demoSession }));
+record('Demo: start-demo inicializa hello + demo-session-state en sala efimera', !!demoSessionId && demoRoomCode?.startsWith('DM') && demoClient.participant?.role === 'gm' && demoClient.demoSession?.status === 'playing' && typeof demoClient.demoSession?.sequence === 'number', JSON.stringify({ roomCode: demoRoomCode, session: demoClient.demoSession }));
 
-await send(demoClient, { type: 'pause-demo', sessionId: demoSessionId }, 80);
+const seqBeforePause = demoClient.demoSession?.sequence ?? 0;
+await send(demoClient, { type: 'pause-demo', sessionId: demoSessionId, sequence: seqBeforePause }, 80);
 const stepBeforeAdvance = demoClient.demoSession?.currentStepIndex ?? -1;
-record('Demo: pause-demo detiene la ejecucion automatica', demoClient.demoSession?.status === 'paused', JSON.stringify(demoClient.demoSession));
+record('Demo: pause-demo detiene la ejecucion automatica', demoClient.demoSession?.status === 'paused' && (demoClient.demoSession?.sequence ?? 0) > seqBeforePause, JSON.stringify(demoClient.demoSession));
 
-await send(demoClient, { type: 'step-demo', sessionId: demoSessionId }, 80);
+await send(demoClient, { type: 'step-demo', sessionId: demoSessionId, sequence: seqBeforePause }, 80);
+record('Demo: rechaza control con sequence obsoleta o duplicada', demoClient.errors.some(e => /Secuencia de control de demostracion obsoleta o duplicada/i.test(e)) && demoClient.demoSession?.currentStepIndex === stepBeforeAdvance, demoClient.errors.join(' | '));
+
+await send(demoClient, { type: 'step-demo', sessionId: demoSessionId, sequence: demoClient.demoSession?.sequence }, 80);
 record('Demo: step-demo avanza exactamente un paso en pausa', demoClient.demoSession?.status === 'paused' && demoClient.demoSession?.currentStepIndex === stepBeforeAdvance + 1, JSON.stringify(demoClient.demoSession));
 
 await send(demoClient, { type: 'end-turn', roomCode: demoRoomCode, actorId: demoClient.participant.id }, 80);
@@ -730,7 +734,7 @@ await new Promise((resolve, reject) => {
 record('Demo: sala demo bloquea join-room de terceros', intruderErrors.some(e => /No se permite unirse manualmente/i.test(e)), intruderErrors.join(' | '));
 demoIntruder.close();
 
-await send(demoClient, { type: 'exit-demo', sessionId: demoSessionId }, 80);
+await send(demoClient, { type: 'exit-demo', sessionId: demoSessionId, sequence: demoClient.demoSession?.sequence }, 80);
 record('Demo: exit-demo destruye la sesion y emite demo-exited', demoClient.demoExited === true, 'demoExited=' + demoClient.demoExited);
 demoClient.ws.close();
 

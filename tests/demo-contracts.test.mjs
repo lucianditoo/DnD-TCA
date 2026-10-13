@@ -12,15 +12,15 @@ test("Demo contracts: accepts all valid DemoClientCommand payloads", () => {
   const validPayloads = [
     { type: "start-demo", demoId: SCRIPTED_TACTICAL_DEMO_ID },
     { type: "start-demo", demoId: SCRIPTED_TACTICAL_DEMO_ID, name: "Observador" },
-    { type: "pause-demo", sessionId: "demo-123" },
-    { type: "resume-demo", sessionId: "demo-123" },
-    { type: "step-demo", sessionId: "demo-123" },
-    { type: "set-demo-speed", sessionId: "demo-123", speedMultiplier: 0.5 },
-    { type: "set-demo-speed", sessionId: "demo-123", speedMultiplier: 1 },
-    { type: "set-demo-speed", sessionId: "demo-123", speedMultiplier: 2 },
-    { type: "restart-demo", sessionId: "demo-123", scope: "scene" },
-    { type: "restart-demo", sessionId: "demo-123", scope: "all" },
-    { type: "exit-demo", sessionId: "demo-123" }
+    { type: "pause-demo", sessionId: "demo-123", sequence: 1 },
+    { type: "resume-demo", sessionId: "demo-123", sequence: 2 },
+    { type: "step-demo", sessionId: "demo-123", sequence: 3 },
+    { type: "set-demo-speed", sessionId: "demo-123", sequence: 4, speedMultiplier: 0.5 },
+    { type: "set-demo-speed", sessionId: "demo-123", sequence: 5, speedMultiplier: 1 },
+    { type: "set-demo-speed", sessionId: "demo-123", sequence: 6, speedMultiplier: 2 },
+    { type: "restart-demo", sessionId: "demo-123", sequence: 7, scope: "scene" },
+    { type: "restart-demo", sessionId: "demo-123", sequence: 8, scope: "all" },
+    { type: "exit-demo", sessionId: "demo-123", sequence: 9 }
   ];
 
   for (const payload of validPayloads) {
@@ -29,7 +29,7 @@ test("Demo contracts: accepts all valid DemoClientCommand payloads", () => {
   }
 });
 
-test("Demo contracts: rejects unknown fields (.strict()) and invalid speed multipliers", () => {
+test("Demo contracts: rejects unknown fields (.strict()), missing/negative sequence, and invalid speed multipliers", () => {
   const withExtraField = validateDemoCommand({
     type: "start-demo",
     demoId: SCRIPTED_TACTICAL_DEMO_ID,
@@ -37,9 +37,23 @@ test("Demo contracts: rejects unknown fields (.strict()) and invalid speed multi
   });
   assert.equal(withExtraField.ok, false);
 
+  const missingSequence = validateDemoCommand({
+    type: "pause-demo",
+    sessionId: "demo-123"
+  });
+  assert.equal(missingSequence.ok, false);
+
+  const negativeSequence = validateDemoCommand({
+    type: "step-demo",
+    sessionId: "demo-123",
+    sequence: -1
+  });
+  assert.equal(negativeSequence.ok, false);
+
   const invalidSpeed = validateDemoCommand({
     type: "set-demo-speed",
     sessionId: "demo-123",
+    sequence: 1,
     speedMultiplier: 3
   });
   assert.equal(invalidSpeed.ok, false);
@@ -47,13 +61,15 @@ test("Demo contracts: rejects unknown fields (.strict()) and invalid speed multi
   const invalidScope = validateDemoCommand({
     type: "restart-demo",
     sessionId: "demo-123",
+    sequence: 1,
     scope: "step"
   });
   assert.equal(invalidScope.ok, false);
 
   const emptySession = validateDemoCommand({
     type: "pause-demo",
-    sessionId: ""
+    sessionId: "",
+    sequence: 1
   });
   assert.equal(emptySession.ok, false);
 });
@@ -63,6 +79,7 @@ test("Demo contracts: validates DemoServerEvent payloads strictly", () => {
     type: "demo-session-state",
     state: {
       sessionId: "demo-123",
+      sequence: 1,
       demoId: SCRIPTED_TACTICAL_DEMO_ID,
       roomCode: "DEMO01",
       status: "playing",
