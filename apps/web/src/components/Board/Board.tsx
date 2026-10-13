@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useCallback, useMemo, useState } from "react";
 import type {
   Ability,
   CombatRoom,
@@ -20,6 +20,7 @@ import {
   type CameraAngle
 } from "./presentationModel";
 import { CombatantSprite } from "./sprites";
+import { TacticalScene3D } from "./renderer/TacticalScene3D";
 
 export function Board({
   room,
@@ -54,6 +55,13 @@ export function Board({
   const [viewMode, setViewMode] = useState<BoardViewMode>(DEFAULT_CAMERA_STATE.viewMode);
   const [cameraAngle, setCameraAngle] = useState<CameraAngle>(DEFAULT_CAMERA_STATE.angle);
   const [cameraZoom, setCameraZoom] = useState<number>(DEFAULT_CAMERA_STATE.zoom);
+  const [cameraResetRevision, setCameraResetRevision] = useState(0);
+  const [rendererWarning, setRendererWarning] = useState<string | null>(null);
+
+  const handleRendererUnavailable = useCallback((message: string) => {
+    setRendererWarning(message);
+    setViewMode("2d");
+  }, []);
 
   const presentation = useMemo(
     () =>
@@ -101,6 +109,7 @@ export function Board({
     setViewMode(DEFAULT_CAMERA_STATE.viewMode);
     setCameraAngle(DEFAULT_CAMERA_STATE.angle);
     setCameraZoom(DEFAULT_CAMERA_STATE.zoom);
+    setCameraResetRevision((revision) => revision + 1);
   }
 
   return (
@@ -119,7 +128,10 @@ export function Board({
             className={`board-tool-btn ${viewMode === "2.5d" ? "active" : ""}`}
             aria-pressed={viewMode === "2.5d"}
             data-testid="view-mode-25d"
-            onClick={() => setViewMode("2.5d")}
+            onClick={() => {
+              setRendererWarning(null);
+              setViewMode("2.5d");
+            }}
           >
             2.5D
           </button>
@@ -187,9 +199,29 @@ export function Board({
         </div>
       </div>
 
+      {rendererWarning ? (
+        <p className="renderer-warning" role="status">
+          {rendererWarning}
+        </p>
+      ) : null}
+
       <div className="board-stage-viewport">
+        {viewMode === "2.5d" ? (
+          <TacticalScene3D
+            presentation={presentation}
+            cameraAngle={cameraAngle}
+            cameraZoom={cameraZoom}
+            resetRevision={cameraResetRevision}
+            onCellClick={onCellClick}
+            onRendererUnavailable={handleRendererUnavailable}
+            onCameraZoomChange={(zoom) => {
+              const normalized = clampCameraZoom(zoom);
+              if (normalized !== cameraZoom) setCameraZoom(normalized);
+            }}
+          />
+        ) : (
         <div
-          className={`board-stage ${viewMode === "2.5d" ? "is-25d" : "is-2d"} angle-${cameraAngle}`}
+          className="board-stage is-2d"
           data-testid="board-stage"
           data-view-mode={viewMode}
           data-camera-angle={cameraAngle}
@@ -202,13 +234,6 @@ export function Board({
         >
           {/* PLINTO SÓLIDO DE LA BASE */}
           <div className="tactical-board-slab">
-            {viewMode === "2.5d" && (
-              <>
-                <div className="slab-face slab-front" aria-hidden="true" />
-                <div className="slab-face slab-side" aria-hidden="true" />
-              </>
-            )}
-
             {/* SUPERFICIE CONTINUA DEL TABLERO */}
             <div
               className="board"
@@ -248,31 +273,6 @@ export function Board({
               ))}
 
               {/* CAPA DE VOLÚMENES ESCÉNICOS (Muros, pilares, escombros, zócalos) */}
-              {viewMode === "2.5d" &&
-                presentation.volumes.map((vol) => (
-                  <div
-                    key={vol.key}
-                    className={`volumetric-prop prop-${vol.kind}`}
-                    style={{
-                      gridColumn: vol.projectedGridColumn,
-                      gridRow: vol.projectedGridRow,
-                      zIndex: vol.paintDepth
-                    }}
-                    aria-hidden="true"
-                  >
-                    <div className="prop-shadow" />
-                    <div className="prop-prism">
-                      <div className="prism-top" />
-                      {vol.visibleFaces.map((f) => (
-                        <div
-                          key={f.face}
-                          className={`prism-face face-${f.face} shade-${f.shade}`}
-                        />
-                      ))}
-                    </div>
-                  </div>
-                ))}
-
               {/* CAPA DE UNIDADES BILLBOARD (Erguidas perpendicularmente al suelo) */}
               {presentation.tokens.map((token) => {
                 const selectedClass = token.isSelected ? " selected-token" : "";
@@ -326,7 +326,7 @@ export function Board({
                         <CombatantSprite
                           combatant={token.combatant}
                           mirrored={token.mirroredInCamera}
-                          variant={viewMode === "2.5d" ? "full" : "portrait"}
+                          variant="portrait"
                         />
                       </div>
 
@@ -374,6 +374,7 @@ export function Board({
             </div>
           </div>
         </div>
+        )}
       </div>
     </section>
   );

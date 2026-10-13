@@ -16,6 +16,7 @@ test.describe('Smoke Test Táctico Visual', () => {
     await expect(page.getByRole('heading', { name: 'Sala local de combate' })).toBeVisible();
     await page.locator('input[type="text"], input:not([type])').first().fill('TestGM'); // "Nombre"
     await page.getByRole('button', { name: 'Crear sala' }).click();
+    await page.getByTestId('view-mode-2d').click();
 
     // 2. Preparación (Panel GM de añadir combatientes)
     // Deberíamos estar en preparación
@@ -110,6 +111,7 @@ test.describe('Smoke Test Táctico Visual', () => {
     await page.goto('/');
     await page.locator('input[type="text"], input:not([type])').first().fill('FlankingGM');
     await page.getByRole('button', { name: 'Crear sala' }).click();
+    await page.getByTestId('view-mode-2d').click();
 
     const heroCatalog = page.locator('label').filter({ hasText: 'Heroes' }).locator('select');
     await heroCatalog.selectOption({ label: 'Bane' });
@@ -170,6 +172,7 @@ test.describe('Smoke Test Táctico Visual', () => {
     await page.reload();
     await page.locator('input[type="text"], input:not([type])').first().fill('AgileGM');
     await page.getByRole('button', { name: 'Crear sala' }).click();
+    await page.getByTestId('view-mode-2d').click();
 
     await page.locator('label').filter({ hasText: 'Perfiles guardados' }).locator('select').selectOption({ label: 'Agile Stand Tester' });
     await page.getByRole('button', { name: 'Agregar perfil' }).click();
@@ -227,6 +230,7 @@ test.describe('Smoke Test Táctico Visual', () => {
     await page.goto('/');
     await page.locator('input[type="text"], input:not([type])').first().fill('GrappleGM');
     await page.getByRole('button', { name: 'Crear sala' }).click();
+    await page.getByTestId('view-mode-2d').click();
 
     await page.locator('label').filter({ hasText: 'Heroes' }).locator('select').selectOption({ label: 'Cedrick' });
     await page.getByRole('button', { name: 'Agregar heroe' }).click();
@@ -273,6 +277,7 @@ test.describe('Smoke Test Táctico Visual', () => {
     await page.reload();
     await page.locator('input[type="text"], input:not([type])').first().fill('GrappleV2GM');
     await page.getByRole('button', { name: 'Crear sala' }).click();
+    await page.getByTestId('view-mode-2d').click();
     await page.locator('label').filter({ hasText: 'Perfiles guardados' }).locator('select').selectOption({ label: 'Grapple V2 Hero' });
     await page.getByRole('button', { name: 'Agregar perfil' }).click();
     await page.locator('label').filter({ hasText: 'Enemigos' }).locator('select').selectOption({ label: 'Canocrock' });
@@ -315,6 +320,7 @@ test.describe('Smoke Test Táctico Visual', () => {
     await page.goto('/');
     await page.locator('input[type="text"], input:not([type])').first().fill('EntangledGM');
     await page.getByRole('button', { name: 'Crear sala' }).click();
+    await page.getByTestId('view-mode-2d').click();
 
     await page.locator('label').filter({ hasText: 'Heroes' }).locator('select').selectOption({ label: 'Bane' });
     await page.getByRole('button', { name: 'Agregar heroe' }).click();
@@ -371,6 +377,7 @@ test.describe('Smoke Test Táctico Visual', () => {
     await page.goto('/');
     await page.locator('input[type="text"], input:not([type])').first().fill('ConditionPanelGM');
     await page.getByRole('button', { name: 'Crear sala' }).click();
+    await page.getByTestId('view-mode-2d').click();
 
     await page.locator('label').filter({ hasText: 'Heroes' }).locator('select').selectOption({ label: 'Bane' });
     await page.getByRole('button', { name: 'Agregar heroe' }).click();

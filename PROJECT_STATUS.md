@@ -7,10 +7,9 @@
 ## Estado actual
 
 - Rama de integración: `master`.
-- Última vertical funcional integrada: Remediación Visual R2 de Terreno Volumétrico y Sprites Billboard 2.5D sobre la Demostración Táctica Automática y Guionada (`scripted_tactical_demo_v1`), conforme a [`docs/designs/scripted-combat-demo.md`](docs/designs/scripted-combat-demo.md) y [`docs/designs/scripted-combat-demo/implementation-plan.md`](docs/designs/scripted-combat-demo/implementation-plan.md).
+- Última vertical funcional implementada: D-4 Renderer táctico 2.5D y cámara, conforme a su [NDD](docs/designs/tactical-renderer-2.5d/design.md) y [plan](docs/designs/tactical-renderer-2.5d/implementation-plan.md); pendiente de aceptación visual del propietario y Architecture Review.
 - Última decisión arquitectónica: Sprint D-1B Capítulo 7 (Integration & Implementation Contracts) y NDD de Demo Táctica Automática (`f8c0e9d`).
-- Diseño en Architecture Review: D-4 Renderer táctico 2.5D y cámara propone reemplazar la proyección CSS/SVG por una escena Three.js con cámara ortográfica orbital, picking presentacional y sprites pixel-art, preservando el renderer 2D y la autoridad del servidor. No existe `Proceed` de implementación ni dependencia nueva instalada.
-- Implementación en revisión: Remediación Visual R2 de Presentación Táctica 2.5D (plano continuo de losa de piedra con zócalo y espesor, cuadrícula sobria superpuesta, prismas volumétricos para muros, pilares y escombros con sombreado de caras orientado a cámara, sprites billboard erguidos de cuerpo completo perpendicular al suelo con sombra de contacto y base táctica, postura de derribo inclinada sobre el suelo y aura púrpura de parálisis, escala 1.85x para criaturas Large y badges flotantes discretos); Demostración Táctica Automática y Guionada (`a458732`, secuencia autoritativa `sequence`, salas efímeras `DM*`, RNG determinista por paso y 3 escenas completas); y Sprint D-1B-I5R1 (Movement Resolution / Commit Remediation, aún aislado del flujo productivo con ODR-D1B-I5-1 y ODR-D1B-C3-01 abiertas).
+- Implementación en revisión: D-4 reemplaza la ilusión CSS/SVG en la vista principal por una escena Three.js con cámara ortográfica orbital continua, picking de suelo, depth buffer, volúmenes reales y billboards pixel-art originales. Conserva el renderer DOM 2D como fallback automático y no modifica autoridad mecánica, snapshots ni contratos de red. También permanecen en revisión la Demo Táctica Automática y D-1B-I5R1.
 - Baseline de código: 657 tests unitarios, `typecheck`, `build`, `e2e-websocket` (107/107) y 10 tests Playwright UI en verde.
   Conteos y evidencias se mantienen en [master-coverage.md](docs/testing/master-coverage.md), no como un segundo registro aquí.
 - GitHub Actions sobre Windows es el gate canónico de cierre para la revisión
@@ -26,7 +25,7 @@
 | I4 — Movement Resolution | Pipeline puro de validación/coste/verificación de presupuesto remediado en I5R1 con fingerprint de estado y propagación tipada. |
 | I5 / I5R1 — Movement Commit | Aplicación autoritativa remediada (precondiciones robustas anti-stale, separación coste/distancia, squeezing); listo para Architecture Review. |
 
-La presentación incorpora un **prototipo de presentación táctica 2.5D** (con respaldo `2D` y cámara local de 4 ángulos) estrictamente desacoplado sobre el grid autoritativo 2D con huellas multicasilla: **se trata exclusivamente de una capa de presentación 2.5D y no del motor espacial 3D definitivo**. El modelo normativo de superficies y volúmenes de los NDD espaciales sigue siendo el destino de migración futura, no una capacidad mecánica ya integrada. CI verde no significa V1 completa.
+La presentación incorpora un **renderer WebGL táctico 2.5D** con respaldo `2D`, cámara orbital limitada, cuatro presets y sprites pixel-art, estrictamente desacoplado sobre el grid autoritativo 2D con huellas multicasilla. No es todavía el motor espacial 3D normativo: las alturas visuales son cosméticas y los NDD espaciales siguen siendo el destino de migración mecánica. CI verde no significa V1 completa.
 
 ## Capacidades del código
 
@@ -35,7 +34,7 @@ El monorepo contiene:
 - paquete compartido de tipos, catálogos, reglas y proyecciones;
 - servidor Express/WebSocket autoritativo;
 - cliente React/Vite que consume las mismas proyecciones compartidas;
-- capa de presentación táctica 2.5D (`presentationModel.ts`, `sprites.tsx`, `Board.tsx`) con selector `2.5D / 2D`, cámara táctica local de 4 ángulos (`NO`, `NE`, `SE`, `SO`) y zoom acotado, sprites SVG estáticos por arquetipo con fallback gráfico seguro, sombras de contacto, losas con volumen/zócalo y elementos escénicos no normativos sin alterar reglas ni autoridad del servidor;
+- capa de presentación táctica 2.5D (`TacticalScene3D.tsx`) con Three.js, cámara ortográfica orbital por arrastre, presets `NO/NE/SE/SO`, zoom acotado, sprites PNG pixel-art originales con filtrado nearest-neighbor, meshes volumétricos, picking y fallback 2D automático, sin alterar reglas ni autoridad del servidor;
 - demostración táctica automática y guionada (`scripted_tactical_demo_v1`) con 3 escenas reproducibles en salas efímeras aisladas, runner autoritativo sincronizado por confirmaciones de estado y panel de observación/transporte (`DemoPanel`);
 - snapshots source-first sin estadísticas derivadas persistidas;
 - contexto autoritativo de movimiento por turno, inicializado y reiniciado, todavía sin mutación desde la resolución productiva;

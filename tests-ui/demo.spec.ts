@@ -46,7 +46,9 @@ test.describe("Demostración Táctica Automática y Presentación 2.5D", () => {
     await expect(statusBadge).toContainText("En pausa");
 
     // 1. Ninguna ficha ni fila lateral muestra los strings internos shield/swords/sparkles/skull
-    const tokenTexts = await page.locator(".board-token").allInnerTexts();
+    const canvas = page.getByTestId("tactical-scene-canvas");
+    await expect(canvas).toBeVisible();
+    const tokenTexts = await page.locator("[data-scene-combatant]").allInnerTexts();
     expect(tokenTexts.length).toBeGreaterThanOrEqual(4);
     for (const rawText of tokenTexts) {
       const normalized = rawText.trim().toLowerCase();
@@ -64,7 +66,7 @@ test.describe("Demostración Táctica Automática y Presentación 2.5D", () => {
       }
     }
 
-    // 2. Cada combatiente de la Escena A muestra su nombre real y sprite diferenciado sin solaparse
+    // 2. Cada combatiente de la Escena A tiene identidad y familia raster diferenciada en la escena
     const expectedSceneAActors = [
       { name: "Cedrick", archetype: "cedrick" },
       { name: "Jefe Orco", archetype: "orc_leader" },
@@ -73,30 +75,15 @@ test.describe("Demostración Táctica Automática y Presentación 2.5D", () => {
     ];
 
     for (const actor of expectedSceneAActors) {
-      const namePlate = page.locator(`[data-combatant-nameplate="${actor.name}"]`);
-      await expect(namePlate).toBeVisible();
-      await expect(namePlate).toContainText(actor.name);
-
-      const tokenEl = page.locator(`[data-combatant-name="${actor.name}"]`);
-      await expect(tokenEl).toHaveAttribute("data-sprite-archetype", actor.archetype);
-
-      const spriteEl = tokenEl.locator(".combatant-sprite-svg");
-      await expect(spriteEl).toHaveAttribute("data-sprite-archetype", actor.archetype);
-      await expect(spriteEl).toHaveAttribute("data-sprite-fallback", "false");
-
-      // Verificar que la etiqueta de nombre y el sprite tienen cajas válidas y legibles
-      const nameBox = await namePlate.boundingBox();
-      const spriteBox = await spriteEl.boundingBox();
-      expect(nameBox).not.toBeNull();
-      expect(spriteBox).not.toBeNull();
-      expect(nameBox!.width).toBeGreaterThan(24);
-      expect(nameBox!.height).toBeGreaterThan(10);
+      const sceneToken = page.locator(`[data-scene-combatant="${actor.name}"]`);
+      await expect(sceneToken).toHaveAttribute("data-sprite-archetype", actor.archetype);
+      await expect(sceneToken).toHaveAttribute("data-sprite-family", /knight|mage|ranger|orc/);
     }
 
     // 3. Seleccionar a Cedrick haciendo click en su celda (3,3) y verificar que rotar los 4 ángulos preserva la selección y no altera la sala
-    const cedrickToken = page.locator('[data-combatant-name="Cedrick"]');
-    await page.getByTestId("cell-3-3").click();
-    await expect(cedrickToken).toHaveClass(/selected-token/);
+    const cedrickToken = page.locator('[data-scene-combatant="Cedrick"]');
+    await page.locator(".combatant-row").filter({ hasText: "Cedrick" }).click();
+    await expect(cedrickToken).toHaveAttribute("data-selected", "true");
 
     const statusBeforeCamera = await statusBadge.textContent();
     const seqBeforeCamera = await demoPanel.getAttribute("data-sequence");
@@ -109,13 +96,27 @@ test.describe("Demostración Táctica Automática y Presentación 2.5D", () => {
     for (const angle of ["ne", "se", "sw", "nw"] as const) {
       await page.getByTestId(`camera-angle-${angle}`).click();
       await expect(boardStage).toHaveAttribute("data-camera-angle", angle);
-      await expect(cedrickToken).toHaveClass(/selected-token/);
+      await expect(cedrickToken).toHaveAttribute("data-selected", "true");
       await expect(statusBadge).toHaveText(statusBeforeCamera ?? "");
       await expect(demoPanel).toHaveAttribute("data-sequence", seqBeforeCamera ?? "");
       if (angle !== "nw") {
         await page.screenshot({ path: `${ARTIFACTS_DIR}/demo_25d_angle_${angle}.png` });
       }
     }
+
+    // Arrastrar rota/inclina la cámara real sin modificar el estado de la sala.
+    const cameraBox = await canvas.boundingBox();
+    expect(cameraBox).not.toBeNull();
+    const azimuthBeforeDrag = await boardStage.getAttribute("data-camera-azimuth");
+    const elevationBeforeDrag = await boardStage.getAttribute("data-camera-elevation");
+    await page.mouse.move(cameraBox!.x + cameraBox!.width * 0.5, cameraBox!.y + cameraBox!.height * 0.5);
+    await page.mouse.down();
+    await page.mouse.move(cameraBox!.x + cameraBox!.width * 0.68, cameraBox!.y + cameraBox!.height * 0.34, { steps: 8 });
+    await page.mouse.up();
+    await expect.poll(() => boardStage.getAttribute("data-camera-azimuth")).not.toBe(azimuthBeforeDrag);
+    await expect.poll(() => boardStage.getAttribute("data-camera-elevation")).not.toBe(elevationBeforeDrag);
+    await expect(statusBadge).toHaveText(statusBeforeCamera ?? "");
+    await expect(demoPanel).toHaveAttribute("data-sequence", seqBeforeCamera ?? "");
 
     // 4. Zoom +/- y Restablecer no envían comandos ni alteran la sala
     await page.getByTestId("camera-zoom-in").click();
@@ -131,6 +132,7 @@ test.describe("Demostración Táctica Automática y Presentación 2.5D", () => {
     // 5. Toggle a vista 2D de respaldo y regreso a 2.5D
     await page.getByTestId("view-mode-2d").click();
     await expect(boardStage).toHaveAttribute("data-view-mode", "2d");
+    await expect(page.locator('[data-combatant-name="Cedrick"] .combatant-sprite-svg')).toBeVisible();
     await page.screenshot({ path: `${ARTIFACTS_DIR}/demo_2d_fallback.png` });
 
     await page.getByTestId("view-mode-25d").click();
@@ -181,37 +183,38 @@ test.describe("Demostración Táctica Automática y Presentación 2.5D", () => {
     await stepDemoUntil(page, async () => {
       const title = (await page.getByTestId("demo-scene-title").textContent()) ?? "";
       if (!title.includes("Escena B")) return false;
-      const count = await page.locator('[data-combatant-badges="Arquero Orco"]').count();
+      const count = await page.locator('[data-scene-combatant="Arquero Orco"]').count();
       if (count === 0) return false;
-      const text = (await page.locator('[data-combatant-badges="Arquero Orco"]').textContent()) ?? "";
-      return text.includes("COV +4");
+      const badges = (await page.locator('[data-scene-combatant="Arquero Orco"]').getAttribute("data-badges")) ?? "";
+      return badges.includes("COV +4");
     });
 
     // Validar indicadores de cobertura en 2.5D (COV +4 sobre Arquero Orco e INTERP sobre Guardia Aliado)
-    await expect(page.locator('[data-combatant-badges="Arquero Orco"]')).toContainText("COV +4");
-    await expect(page.locator('[data-combatant-badges="Guardia Aliado"]')).toContainText("INTERP");
+    await expect(page.locator('[data-scene-combatant="Arquero Orco"]')).toHaveAttribute("data-badges", /COV \+4/);
+    await expect(page.locator('[data-scene-combatant="Guardia Aliado"]')).toHaveAttribute("data-badges", /INTERP/);
 
     // Validar criatura Large (Guardián Coloso) con huella 2x2 e interacción en cualquiera de sus 4 celdas
-    const largeToken = page.locator('[data-combatant-name="Guardián Coloso"]');
-    await expect(largeToken).toBeVisible();
+    const largeToken = page.locator('[data-scene-combatant="Guardián Coloso"]');
     await expect(largeToken).toHaveAttribute("data-footprint-columns", "2");
     await expect(largeToken).toHaveAttribute("data-footprint-rows", "2");
 
+    await page.getByTestId("view-mode-2d").click();
     for (const [cx, cy] of [[0, 5], [1, 5], [0, 6], [1, 6]] as const) {
       await page.getByTestId(`cell-${cx}-${cy}`).click();
-      await expect(largeToken).toHaveClass(/selected-token/);
+      await expect(page.locator('[data-combatant-name="Guardián Coloso"]')).toHaveClass(/selected-token/);
     }
+    await page.getByTestId("view-mode-25d").click();
 
     await page.screenshot({ path: `${ARTIFACTS_DIR}/demo_25d_scene_b_cover_and_large.png` });
 
     // Avanzar hasta que Guardián Coloso entre en Squeezing (SQZ)
     await stepDemoUntil(page, async () => {
-      const badges = page.locator('[data-combatant-badges="Guardián Coloso"]');
+      const badges = page.locator('[data-scene-combatant="Guardián Coloso"]');
       if ((await badges.count()) === 0) return false;
-      return ((await badges.textContent()) ?? "").includes("SQZ");
+      return ((await badges.getAttribute("data-badges")) ?? "").includes("SQZ");
     });
 
-    await expect(page.locator('[data-combatant-badges="Guardián Coloso"]')).toContainText("SQZ");
+    await expect(page.locator('[data-scene-combatant="Guardián Coloso"]')).toHaveAttribute("data-badges", /SQZ/);
     await expect(largeToken).toHaveAttribute("data-footprint-columns", "2");
     await expect(largeToken).toHaveAttribute("data-footprint-rows", "1");
     await page.screenshot({ path: `${ARTIFACTS_DIR}/demo_25d_large_squeezing.png` });
@@ -220,26 +223,26 @@ test.describe("Demostración Táctica Automática y Presentación 2.5D", () => {
     await stepDemoUntil(page, async () => {
       const title = (await page.getByTestId("demo-scene-title").textContent()) ?? "";
       if (!title.includes("Escena C")) return false;
-      const badges = page.locator('[data-combatant-badges="Duelista Orco"]');
+      const badges = page.locator('[data-scene-combatant="Duelista Orco"]');
       if ((await badges.count()) === 0) return false;
-      return ((await badges.textContent()) ?? "").includes("PRN");
+      return ((await badges.getAttribute("data-badges")) ?? "").includes("PRN");
     });
 
-    const defensorToken = page.locator('[data-combatant-name="Duelista Orco"]');
-    await expect(defensorToken).toHaveClass(/token-prone/);
-    await expect(page.locator('[data-combatant-badges="Duelista Orco"]')).toContainText("PRN");
+    const defensorToken = page.locator('[data-scene-combatant="Duelista Orco"]');
+    await expect(defensorToken).toHaveAttribute("data-pose", "prone");
+    await expect(defensorToken).toHaveAttribute("data-badges", /PRN/);
     await page.screenshot({ path: `${ARTIFACTS_DIR}/demo_25d_prone_condition.png` });
 
     // Avanzar hasta c-16-mago-hold-person-resolves para observar Hold Person (PAR) sobre Guardia de Lanza
     await stepDemoUntil(page, async () => {
-      const badges = page.locator('[data-combatant-badges="Guardia de Lanza"]');
+      const badges = page.locator('[data-scene-combatant="Guardia de Lanza"]');
       if ((await badges.count()) === 0) return false;
-      return ((await badges.textContent()) ?? "").includes("PAR");
+      return ((await badges.getAttribute("data-badges")) ?? "").includes("PAR");
     });
 
-    const guardiaLanzaToken = page.locator('[data-combatant-name="Guardia de Lanza"]');
-    await expect(guardiaLanzaToken).toHaveClass(/token-paralyzed/);
-    await expect(page.locator('[data-combatant-badges="Guardia de Lanza"]')).toContainText("PAR");
+    const guardiaLanzaToken = page.locator('[data-scene-combatant="Guardia de Lanza"]');
+    await expect(guardiaLanzaToken).toHaveAttribute("data-pose", "paralyzed");
+    await expect(guardiaLanzaToken).toHaveAttribute("data-badges", /PAR/);
     await page.screenshot({ path: `${ARTIFACTS_DIR}/demo_25d_hold_person_condition.png` });
 
     // Avanzar hasta completar la demostración
@@ -294,6 +297,7 @@ test.describe("Demostración Táctica Automática y Presentación 2.5D", () => {
 
     await page.locator('input[type="text"], input:not([type])').first().fill("OverlayGM");
     await page.getByRole("button", { name: "Crear sala" }).click();
+    await page.getByTestId("view-mode-2d").click();
 
     await page.locator("label").filter({ hasText: "Perfiles guardados" }).locator("select").selectOption({ label: "Aventurero Astral" });
     await page.getByRole("button", { name: "Agregar perfil" }).click();
@@ -334,6 +338,8 @@ test.describe("Demostración Táctica Automática y Presentación 2.5D", () => {
     await expect(page.locator(".cell.route-cell")).toHaveCount(3);
     await expect(page.getByTestId("cell-5-3").locator(".route-step")).toContainText("15");
 
+    await page.getByTestId("view-mode-25d").click();
+    await expect(page.getByTestId("tactical-scene-canvas")).toBeVisible();
     await page.screenshot({ path: `${ARTIFACTS_DIR}/demo_25d_movement_overlay.png` });
   });
 });

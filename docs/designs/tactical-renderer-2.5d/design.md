@@ -2,7 +2,7 @@
 
 Responsabilidad: Definir la arquitectura de presentación del tablero táctico, la cámara y los assets visuales sin introducir autoridad mecánica en el cliente.
 Autoridad: Canónica (Nivel D)
-Lifecycle: Diseño propuesto — pendiente de Architecture Review
+Lifecycle: Implementado — pendiente de aceptación visual y Architecture Review
 Reemplaza: La implementación CSS/SVG 2.5D actual como destino de presentación; no elimina el renderer 2D de respaldo.
 Complementa: [`../spatial-engine-2.5d.md`](../spatial-engine-2.5d.md), [`../normative-spatial-geometry.md`](../normative-spatial-geometry.md), [`../scripted-combat-demo.md`](../scripted-combat-demo.md)
 Consumidores: UI React, Board, previews tácticos, demo guionada, D-2 Participant Projection, D-3 protocolo y D-5 editor.
@@ -77,7 +77,7 @@ Motivos:
 
 Referencias oficiales consultadas: [OrthographicCamera](https://threejs.org/docs/pages/OrthographicCamera.html), [OrbitControls](https://threejs.org/docs/pages/OrbitControls.html), [Raycaster](https://threejs.org/docs/pages/Raycaster.html) y [WebGLRenderer](https://threejs.org/docs/pages/WebGLRenderer.html). PixiJS se descartó para este caso después de contrastar su [scene graph 2D](https://pixijs.com/8.x/guides/components/scene-objects) y sus [renderers](https://pixijs.com/8.x/guides/components/renderers).
 
-Esta decisión no autoriza instalar dependencias hasta recibir `Proceed` de implementación.
+La implementación recibió `Proceed`; esta decisión fue aplicada mediante una integración directa y encapsulada de Three.js.
 
 ## 5. Fronteras del renderer
 

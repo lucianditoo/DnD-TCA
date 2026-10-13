@@ -15,7 +15,18 @@ Consumidores: Revisores que verifican las validaciones de un commit.
 Este documento consolida las directrices y el reporte de cobertura de testing
 del motor de combate D&D 3.5.
 
-## Baseline de código más reciente — D-1B-I5
+## Baseline de código más reciente — D-4 Renderer táctico 2.5D
+
+La implementación D-4 conserva **657/657 pruebas unitarias/integración**,
+`typecheck` y `build` verdes en los tres workspaces, **107/107 aserciones
+WebSocket** y **10/10 escenarios Playwright**. La cobertura UI verifica escena
+WebGL, sprites pixel-art sin IDs crudos visibles, presets de cámara, orbitado
+horizontal y vertical por arrastre, zoom/reset, fallback 2D y las tres escenas
+de la demo. Los smoke tests funcionales continúan sobre el renderer 2D para
+mantener una superficie DOM estable de interacción. La aceptación estética
+humana y Architecture Review permanecen pendientes.
+
+## Baseline histórica — D-1B-I5
 
 Código publicado: [`6dc34f2`](https://github.com/lucianditoo/DnD-TCA/commit/6dc34f2823824a3fcf523790b2a19538bc19fe29).
 [Windows CI #67](https://github.com/lucianditoo/DnD-TCA/actions/runs/30756609816)

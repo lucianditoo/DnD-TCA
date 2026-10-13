@@ -31,11 +31,10 @@ creación como si fueran documentos ausentes.
 - Elaborar los NDD específicos requeridos para D-2 (FoW), D-3
   (protocolo/identidad/persistencia), D-5 (editor)
   y D-6 (objetos ambientales).
-- Obtener Architecture Review y decisión del propietario sobre
+- Validar visualmente con el propietario y obtener Architecture Review de
   [D-4 Renderer táctico 2.5D y cámara](docs/designs/tactical-renderer-2.5d/design.md).
-  El diseño y su plan existen, pero no autorizan implementación ni instalación
-  de Three.js. Resolver antes las decisiones abiertas de assets, presupuesto de
-  rendimiento y preferencias de cámara.
+  La implementación WebGL está completa; no declararla cerrada antes de esa
+  aceptación. Evaluar separación de bundle solo si las métricas reales lo exigen.
 - Delimitar D-7, TurnState e integración de movimiento fragmentado, incluido
   Ataque Elástico. Es un candidato, no una funcionalidad aprobada.
 - Coordinar las dependencias según [ROADMAP.md](ROADMAP.md).

@@ -1,11 +1,11 @@
 # Implementation Plan — D-4 Renderer táctico 2.5D y cámara
 
 Responsabilidad: Secuenciar la futura implementación del NDD D-4 sin autorizarla.
-Autoridad: Plan ejecutable pendiente de `Proceed`
-Lifecycle: Diseño
+Autoridad: Registro del plan ejecutado
+Lifecycle: Implementado — pendiente de aceptación visual y Architecture Review
 Complementa: [`design.md`](design.md)
 
-> Este plan no concede autorización para modificar código ni instalar dependencias. La ejecución comienza únicamente después de Architecture Review y `Proceed` explícito.
+> El propietario concedió `Proceed`; las etapas se ejecutaron preservando el renderer 2D y la autoridad mecánica del servidor.
 
 ## 1. Gate de precondición
 
