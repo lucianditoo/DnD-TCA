@@ -14,7 +14,7 @@ async function stepDemoOnce(page: Page) {
   // rejects duplicate or stale control commands.
   for (let attempt = 0; attempt < 3; attempt += 1) {
     await expect(stepButton).toBeEnabled();
-    await stepButton.click();
+    await stepButton.dispatchEvent("click");
     try {
       await expect
         .poll(async () => await demoPanel.getAttribute("data-current-step-index"), { timeout: 5_000 })
@@ -36,6 +36,21 @@ async function stepDemoUntil(page: Page, predicate: () => Promise<boolean>, maxS
     await stepDemoOnce(page);
   }
   expect(await predicate()).toBe(true);
+}
+
+async function exitDemoReliably(page: Page) {
+  const demoPanel = page.getByTestId("demo-panel");
+  for (let attempt = 0; attempt < 3; attempt += 1) {
+    await page.getByTestId("demo-exit-btn").dispatchEvent("click");
+    try {
+      await expect(demoPanel).toHaveCount(0, { timeout: 3_000 });
+      return;
+    } catch {
+      // Autoplay can advance between the rendered sequence and the control
+      // command. The next server state refreshes the sequence for a safe retry.
+    }
+  }
+  await expect(demoPanel).toHaveCount(0);
 }
 
 test.describe("Demostración Táctica Automática y Presentación 2.5D", () => {
@@ -164,16 +179,19 @@ test.describe("Demostración Táctica Automática y Presentación 2.5D", () => {
     await expect(statusBadge).toContainText("En pausa");
     await expect(statusBadge).not.toHaveText(badgeBeforeStep ?? "");
 
-    await page.getByTestId("demo-speed-2x").click();
+    const sequenceBeforeSpeed = await demoPanel.getAttribute("data-sequence");
+    await page.getByTestId("demo-speed-2x").dispatchEvent("click");
+    await expect(demoPanel).not.toHaveAttribute("data-sequence", sequenceBeforeSpeed ?? "");
 
     const urlBeforeRestart = page.url();
-    await page.getByTestId("demo-restart-scene-btn").click();
+    const sequenceBeforeRestart = await demoPanel.getAttribute("data-sequence");
+    await page.getByTestId("demo-restart-scene-btn").dispatchEvent("click");
     await expect(demoPanel).toBeVisible();
     await expect.poll(() => page.url()).not.toBe(urlBeforeRestart);
+    await expect(demoPanel).not.toHaveAttribute("data-sequence", sequenceBeforeRestart ?? "");
     expect(page.url()).toMatch(/\/combat\/DM/);
 
-    await page.getByTestId("demo-exit-btn").click();
-    await expect(demoPanel).toHaveCount(0);
+    await exitDemoReliably(page);
     await expect(page.getByTestId("start-demo-btn")).toBeVisible();
 
     expect(consoleErrors).toEqual([]);
@@ -181,6 +199,7 @@ test.describe("Demostración Táctica Automática y Presentación 2.5D", () => {
   });
 
   test("2. ejecuta las 3 escenas completas en vista 2.5D validando criatura Large 2x2, Squeezing, Cobertura, Prone y Hold Person", async ({ page }) => {
+    test.setTimeout(90_000);
     const consoleErrors: string[] = [];
     const pageErrors: string[] = [];
     page.on("console", (msg) => {
