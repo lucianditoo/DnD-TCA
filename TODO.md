@@ -29,8 +29,13 @@ Los contratos normativos D-1R1, D-1A y D-1B ya existen: no volver a pedir su
 creación como si fueran documentos ausentes.
 
 - Elaborar los NDD específicos requeridos para D-2 (FoW), D-3
-  (protocolo/identidad/persistencia), D-4 (renderer/cámara normativo sobre superficies y volúmenes; el prototipo 2.5D actual es exclusivamente una capa de presentación local sobre el grid 2D y no reemplaza a D-4), D-5 (editor)
+  (protocolo/identidad/persistencia), D-5 (editor)
   y D-6 (objetos ambientales).
+- Obtener Architecture Review y decisión del propietario sobre
+  [D-4 Renderer táctico 2.5D y cámara](docs/designs/tactical-renderer-2.5d/design.md).
+  El diseño y su plan existen, pero no autorizan implementación ni instalación
+  de Three.js. Resolver antes las decisiones abiertas de assets, presupuesto de
+  rendimiento y preferencias de cámara.
 - Delimitar D-7, TurnState e integración de movimiento fragmentado, incluido
   Ataque Elástico. Es un candidato, no una funcionalidad aprobada.
 - Coordinar las dependencias según [ROADMAP.md](ROADMAP.md).

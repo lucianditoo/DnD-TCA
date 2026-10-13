@@ -84,6 +84,8 @@ implementación cerrados (`large-footprints-v1-implementation-plan.md`,
   - [`docs/designs/normative-spatial-geometry.md`](docs/designs/normative-spatial-geometry.md): Geometría Normativa Espacial (D-1R1).
   - [`docs/designs/normative-area-shape-projection.md`](docs/designs/normative-area-shape-projection.md): Proyección Normativa de Áreas (D-1A).
   - [`docs/designs/normative-movement-design.md`](docs/designs/normative-movement-design.md): Contratos normativos de movimiento, coste, validación, resolución e integración (D-1B, Capítulos 1–7).
+  - [`docs/designs/tactical-renderer-2.5d/design.md`](docs/designs/tactical-renderer-2.5d/design.md): NDD D-4 del renderer táctico WebGL, cámara ortográfica orbital, picking y sprites pixel-art.
+  - [`docs/designs/tactical-renderer-2.5d/implementation-plan.md`](docs/designs/tactical-renderer-2.5d/implementation-plan.md): plan incremental pendiente de aprobación para implementar D-4 sin trasladar autoridad al cliente.
 - [`docs/audits/`](docs/audits/): auditorías y divergencias.
   - [`docs/audits/combat-rules-deviations.md`](docs/audits/combat-rules-deviations.md): Desviaciones documentadas de las reglas oficiales.
   - [`docs/audits/movement-rules-audit.md`](docs/audits/movement-rules-audit.md): Auditoría oficial de reglas de movimiento (D-1B-Research).

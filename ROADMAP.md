@@ -37,7 +37,7 @@ para todos ellos:
 |---|---|---|
 | D-2 | Fog of War y Participant Projection | Requerido por el NDD padre; diseño específico pendiente. |
 | D-3 | Protocolo, identidad, reconexión y persistencia durable | Requerido; debe coordinarse con las proyecciones de D-2. |
-| D-4 | Renderer, presentación 2.5D y cámara | Requerido; consume el modelo espacial y la proyección autorizada. |
+| D-4 | Renderer, presentación 2.5D y cámara | [NDD y plan](docs/designs/tactical-renderer-2.5d/design.md) redactados; pendientes de Architecture Review y `Proceed`. Consume el modelo espacial y la proyección autorizada. |
 | D-5 | Editor táctico V2 | Requerido; consume superficies, formato de mapa y prefabs. |
 | D-6 | Objetos ambientales | Requerido; sus capacidades y entidades deben coordinarse con mapa/editor. |
 | D-7 | TurnState y movimiento fragmentado | Candidato registrado en TODO; sin NDD propio ni implementación aprobada de Ataque Elástico. |
