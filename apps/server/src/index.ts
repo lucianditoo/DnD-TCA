@@ -2,8 +2,10 @@ import cors from "cors";
 import express from "express";
 import http from "node:http";
 import { WebSocketServer } from "ws";
-import type { ClientCommand } from "@dnd-tactical/shared";
+import { isDemoCommandType, validateDemoCommand } from "@dnd-tactical/shared";
 import { dispatchCommand } from "./commands/dispatcher.js";
+import { handleDemoCommand } from "./demo/demoCommands.js";
+import { destroyDemoSessionBySocket } from "./demo/sessionStore.js";
 import { clients, send, resetAllRoomsForTest } from "./room/roomStore.js";
 import { validateClientCommand } from "./validation/validateClientCommand.js";
 
@@ -34,6 +36,22 @@ wss.on("connection", (socket) => {
     }
 
     try {
+      if (
+        typeof rawData === "object" &&
+        rawData !== null &&
+        "type" in rawData &&
+        typeof (rawData as { type?: unknown }).type === "string" &&
+        isDemoCommandType((rawData as { type: string }).type)
+      ) {
+        const demoValidation = validateDemoCommand(rawData);
+        if (!demoValidation.ok) {
+          send(socket, { type: "error", message: demoValidation.error });
+          return;
+        }
+        handleDemoCommand(socket, demoValidation.data);
+        return;
+      }
+
       const validation = validateClientCommand(rawData);
       if (!validation.success) {
         send(socket, { type: "error", message: validation.error });
@@ -44,7 +62,10 @@ wss.on("connection", (socket) => {
       send(socket, { type: "error", message: error instanceof Error ? error.message : "Error interno de servidor." });
     }
   });
-  socket.on("close", () => clients.delete(socket));
+  socket.on("close", () => {
+    destroyDemoSessionBySocket(socket);
+    clients.delete(socket);
+  });
 });
 
 server.listen(PORT, "0.0.0.0", () => {

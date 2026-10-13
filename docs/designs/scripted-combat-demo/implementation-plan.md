@@ -354,79 +354,79 @@ Para garantizar 100% de reproducibilidad sin parches globales de `Math.random`, 
   6. Bane confirma crítico (`resolve-attack-confirmation` d20=18, daño extra=4). Checkpoint: crítico confirmado, daño total aplicado (4*2 + 7 = 15), orco HP = 13. Bane emite `end-turn`. Turno pasa a elaen.
   7. Elaen declara modo estándar y dispara al orco a 15 ft (`resolve-attack` d20=14, daño=6) y emite `end-turn`. Checkpoint: orco HP = 7, flechas de elaen = 19. Fin de Escena A.
 
-### Escena B — Posición, Cobertura, AdO y Espacio Estrecho (MAJOR 3)
-- **Tablero:** 16×8, celdas de 5 ft. Muros en (2,6) a (5,6) formando corredor estrecho entre (1,5) y (5,5). Celda de escombros (terreno difícil) en (13,5).
+#### Escena B — Posición, Cobertura, AdO y Espacio Estrecho (MAJOR 3)
+- **Tablero:** 16×8, celdas de 5 ft. Muros en (2,6) a (5,6) formando corredor estrecho (`narrowCells`) entre (1,5) y (5,5). Celda de escombros (terreno difícil) en (13,5).
 - **Actores e Iniciativas Iniciales:**
   - `elaen`: (1,1), iniciativa 25 (player)
   - `guardia`: (3,1), iniciativa 22 (player)
+  - `enemigo_melee`: (9,2), iniciativa 21 (enemy — actúa antes que `caminante` para que expire `srd_flat_footed` y pueda ejecutar AdO en Ronda 1)
   - `caminante`: (9,1), iniciativa 20 (player)
   - `guardian_large`: Large (2×2) ancla en (0,5), iniciativa 18 (player)
   - `explorador`: (12,5), iniciativa 16 (player)
-  - `enemigo_melee`: (9,2), iniciativa 14 (enemy)
   - `orco`: (5,1), iniciativa 10 (enemy)
 - **Secuencia y Checkpoints Legales:**
-  1. `sort-initiative`: Orden elaen (25) → guardia (22) → caminante (20) → guardian_large (18) → explorador (16) → enemigo_melee (14) → orco (10). Checkpoint: sala en `active`, ronda 1, turno activo de `elaen`.
-  2. **Turno Elaen (Ronda 1) — Disparo con Cobertura:** Elaen dispara al orco (`resolve-attack` d20=11, daño=5). Checkpoint: orco recibe +4 CA por `creature-cover` (guardia aliado colineal en 3,1 intercepta la línea); tirada total 11 + mod 4 = 15 vs CA 14+4=18 (falla). Elaen emite `end-turn`. Checkpoint: turno pasa a `guardia`.
-  3. **Turno Guardia (Ronda 1) — Despejar Línea:** Guardia se mueve de (3,1) a (3,2) (`move-combatant`). Checkpoint: posición (3,2), celda (3,1) liberada. Guardia emite `end-turn`. Checkpoint: turno pasa a `caminante`.
-  4. **Turno Caminante (Ronda 1) — AdO por Desplazamiento:** Caminante inicia movimiento desde celda amenazada (9,1) hacia (10,1) (`move-combatant`). Checkpoint: al abandonar celda amenazada por `enemigo_melee`, el servidor suspende el movimiento y pasa la sala a `opportunity-resolution`.
-  5. `enemigo_melee` resuelve AdO interruptivo (`resolve-opportunity-attack` d20=10, daño=0). Checkpoint: sala retorna a `active`, caminante completa el desplazamiento a (10,1) y luego a (11,1). Caminante emite `end-turn`. Checkpoint: turno pasa a `guardian_large`.
-  6. **Turno Guardián Large (Ronda 1) — Squeezing en Corredor:** Guardián Large se mueve ortogonalmente a (1,5) y (2,5) ingresando al corredor estrecho de 5 ft (`move-combatant`). Checkpoint: huella comprimida a ancho 1 celda, `spatialMode: "squeezing"`, efecto `srd_squeezing` aplicado, coste duplicado (10 ft por celda = 20 ft consumidos). Guardián Large emite `end-turn`. Checkpoint: turno pasa a `explorador`.
-  7. **Turno Explorador (Ronda 1) — Terreno Difícil:** Explorador se mueve de (12,5) a (14,5) atravesando la celda difícil en (13,5) (`move-combatant`). Checkpoint: coste total = 15 ft (5 ft normal + 10 ft difícil). Explorador emite `end-turn`. Checkpoint: turno pasa a `enemigo_melee`.
-  8. **Turnos Restantes y Transición a Ronda 2:**
-     - `enemigo_melee` emite `end-turn`. Checkpoint: turno pasa a `orco`.
+  1. `sort-initiative`: Orden elaen (25) → guardia (22) → enemigo_melee (21) → caminante (20) → guardian_large (18) → explorador (16) → orco (10). Checkpoint: sala en `active`, ronda 1, turno activo de `elaen`.
+  2. **Turno Elaen (Ronda 1) — Disparo con Cobertura:** Elaen declara modo estándar y dispara al orco (`resolve-attack` d20=11, daño=5). Checkpoint: orco recibe +4 CA por `creature-cover` (guardia aliado colineal en 3,1 intercepta la línea); tirada total 11 + mod 4 = 15 vs CA 14+4=18 (falla). Elaen emite `end-turn`. Checkpoint: turno pasa a `guardia`.
+  3. **Turno Guardia (Ronda 1) — Despejar Línea:** Guardia se mueve de (3,1) a (3,2) (`move-combatant`). Checkpoint: posición (3,2), celda (3,1) liberada. Guardia emite `end-turn`. Checkpoint: turno pasa a `enemigo_melee`.
+  4. **Turno Enemigo Melee (Ronda 1) — Activar Amenaza:** `enemigo_melee` emite `end-turn`, expirando `srd_flat_footed` (`CANNOT_MAKE_AOO`) y habilitando su reacción para el turno de `caminante`.
+  5. **Turno Caminante (Ronda 1) — AdO por Desplazamiento:** Caminante se desplaza desde celda amenazada (9,1) pasando por (10,1) hasta (11,1) (`move-combatant`, 10 ft). Checkpoint: al abandonar celda amenazada por `enemigo_melee`, el servidor suspende el movimiento y pasa la sala a `opportunity-resolution`.
+  6. `enemigo_melee` resuelve AdO interruptivo (`resolve-opportunity-attack` d20=5, daño=4; falla contra CA 16). Checkpoint: sala retorna a `active`, caminante completa el desplazamiento a (11,1) con HP intactos (20). Caminante emite `end-turn`. Checkpoint: turno pasa a `guardian_large`.
+  7. **Turno Guardián Large (Ronda 1) — Squeezing en Corredor:** Guardián Large se mueve ortogonalmente a (1,5) y (2,5) ingresando al corredor estrecho de 5 ft (`move-combatant`). Checkpoint: huella comprimida a ancho 1 celda, efecto `srd_squeezing` aplicado, coste duplicado (10 ft por celda = 20 ft consumidos). Guardián Large emite `end-turn`. Checkpoint: turno pasa a `explorador`.
+  8. **Turno Explorador (Ronda 1) — Terreno Difícil:** Explorador se mueve de (12,5) a (14,5) atravesando la celda difícil en (13,5) (`move-combatant`). Checkpoint: coste total = 15 ft (10 ft difícil + 5 ft normal). Explorador emite `end-turn`. Checkpoint: turno pasa a `orco`.
+  9. **Turno Orco y Transición a Ronda 2:**
      - `orco` emite `end-turn`.
      - *Transición de Asalto:* `advanceTurn` detecta fin de `turnOrder`, despacha `RoundEnded`, incrementa `round: 2` y despacha `RoundStarted`. El listener autoritativo `roundTickListener` captura `RoundStarted` y **resetea las reacciones de todos los combatientes**: `opportunityAttacksThisRound = 0`. Activo retorna al primer combatiente de la iniciativa: `elaen`.
-  9. **Turno Elaen (Ronda 2) — Disparo sin Cobertura:** Elaen vuelve a disparar al orco (`resolve-attack` d20=11, daño=5). Checkpoint: al haberse desplazado el guardia fuera de la línea de tiro, el orco no posee bono de cobertura (+0 CA); tirada 11 + mod 4 = 15 vs CA 14 (impacta, orco HP reducido). Elaen emite `end-turn`. Fin de Escena B.
+  10. **Turno Elaen (Ronda 2) — Disparo sin Cobertura:** Elaen declara modo estándar y vuelve a disparar al orco (`resolve-attack` d20=11, daño=5). Checkpoint: al haberse desplazado el guardia fuera de la línea de tiro, el orco no posee bono de cobertura (+0 CA); tirada 11 + mod 4 = 15 vs CA 14 (impacta, orco HP = 15). Elaen emite `end-turn`. Fin de Escena B.
 
 ### Escena C — Maniobras y Magia (MAJOR 3 y MAJOR 4)
 - **Tablero:** 12×8 despejado, celdas de 5 ft.
 - **Actores e Iniciativas Iniciales:**
+  - `defensor`: (3,2), CA 15, HP 20, espada corta, iniciativa 25 (enemy — actúa primero en Ronda 1 para perder `srd_flat_footed` y poder ejecutar el AdO interruptivo de Derribo)
   - `cedrick`: (2,2), CA 18, HP 22, espada larga, iniciativa 20 (player)
-  - `defensor`: (3,2), CA 15, HP 20, espada corta, iniciativa 15 (enemy)
+  - `enemigo_guardia`: (9,5), CA 15, HP 18, lanza, iniciativa 15 (enemy — actúa antes que `mago` en Ronda 1 para perder `srd_flat_footed` y amenazar el conjuro)
   - `mago`: (8,5), CA 12, HP 14, slots: Shocking Grasp (nv 1), Hold Person (nv 2), iniciativa 10 (player)
-  - `enemigo_guardia`: (9,5), CA 15, HP 18, lanza, iniciativa 5 (enemy)
 - **Secuencia y Checkpoints Legales:**
-  1. `sort-initiative`: Orden cedrick (20) → defensor (15) → mago (10) → enemigo_guardia (5). Checkpoint: sala en `active`, ronda 1, turno activo de `cedrick`.
-  2. **Turno Cedrick (Ronda 1) — Derribo y AdO Interruptivo (MAJOR 4):**
+  1. `sort-initiative`: Orden defensor (25) → cedrick (20) → enemigo_guardia (15) → mago (10). Checkpoint: sala en `active`, ronda 1, turno activo de `defensor`.
+  2. **Turno Defensor (Ronda 1):** `defensor` emite `end-turn`, perdiendo `srd_flat_footed`. Turno pasa a `cedrick`.
+  3. **Turno Cedrick (Ronda 1) — Derribo y AdO Interruptivo (MAJOR 4):**
      - Cedrick declara derribo contra defensor (`resolve-special-maneuver`, `trip`, `d20TouchRoll: 14`, `d20OpposedRoll: 16`).
-     - Al no poseer Cedrick la dote *Improved Trip* y estar el defensor armado, `specialManeuverCommands.ts` dispara `resolveInterruptingOpportunityAttack` del defensor contra Cedrick.
-     - *Tirada AdO de Defensor:* `maneuverDiceSource.d20("opportunity-attack") = 4` (+ mod 2 = 6 vs CA 18 de Cedrick, falla; daño 0). Al no infligir daño, la maniobra continúa legalmente.
-     - *Toque de derribo:* Toque melee de Cedrick (d20=14 + mod 5 = 19 vs Touch AC 11, conecta).
-     - *Oposición:* Cedrick Fuerza (d20=16 + mod 4 = 20) vs Defensor (`maneuverDiceSource.d20("opposed-defender") = 8` + mod 2 = 10). Cedrick gana la prueba.
+     - Al no poseer Cedrick la dote *Improved Trip* y estar el defensor armado y no desprevenido, `specialManeuverCommands.ts` dispara `resolveInterruptingOpportunityAttack` del defensor contra Cedrick.
+     - *Tirada AdO de Defensor:* `maneuverDiceSource.d20("opportunity-attack") = 4` (+ mod 3 = 7 vs CA 18 de Cedrick, falla; daño 0). Al no infligir daño, la maniobra continúa legalmente.
+     - *Toque de derribo:* Toque melee de Cedrick (d20=14 + mod 5 = 19 vs Touch AC 12, conecta).
+     - *Oposición:* Cedrick Fuerza (d20=16 + mod 3 = 19) vs Defensor (`maneuverDiceSource.d20("opposed-defender") = 8` + mod 2 = 10). Cedrick gana la prueba.
      - Checkpoint: efecto `srd_prone` aplicado al defensor.
-     - Cedrick emite `end-turn`. Checkpoint: turno pasa a `defensor`.
-  3. **Turno Defensor (Ronda 1) — Levantarse con AdO Provocado:**
-     - Defensor caído emite `use-tactical-action` (`stand-up`).
-     - El handler retira `srd_prone`, deduce 15 ft de movimiento, y al estar amenazado por Cedrick (quien posee 1 AdO disponible en R1), suspende la acción y transiciona sala a `opportunity-resolution`.
-     - Cedrick resuelve AdO (`resolve-opportunity-attack` d20=12, daño=0 para no alterar los HP del defensor).
-     - Sala retorna a `active`. Defensor completa acción de levantarse y emite `end-turn`. Checkpoint: turno pasa a `mago`.
-  4. **Turno Mago (Ronda 1) — Shocking Grasp bajo Amenaza:**
+     - Cedrick emite `end-turn`. Checkpoint: turno pasa a `enemigo_guardia`.
+  4. **Turno Guardia (Ronda 1):** `enemigo_guardia` emite `end-turn`, perdiendo `srd_flat_footed`. Turno pasa a `mago`.
+  5. **Turno Mago (Ronda 1) — Shocking Grasp bajo Amenaza:**
      - Mago se encuentra a 5 ft de `enemigo_guardia` (quien tiene `opportunityAttacksThisRound = 0`).
-     - **Paso 4a:** Primer `cast-spell` (`shocking-grasp` contra `enemigo_guardia`).
+     - **Paso 5a:** Primer `cast-spell` (`srd_shocking_grasp` contra `enemigo_guardia`, `d20Roll: 15`, `amount: 5`).
        - Handler detecta conjuro estándar en celda amenazada. Guardia dispone de AdO y amenaza: se registra en `pendingOpportunityAttacks`, slot se mantiene intacto (`isExpended: false`) y sala transiciona a `opportunity-resolution`.
-     - **Paso 4b:** `enemigo_guardia` resuelve AdO (`resolve-opportunity-attack` d20=9, daño=0).
+     - **Paso 5b:** `enemigo_guardia` resuelve AdO (`resolve-opportunity-attack` d20=5, daño=4; falla 5+2=7 vs CA 12).
        - Guardia agota su AdO por asalto (`opportunityAttacksThisRound = 1`). Sala retorna a `active`.
-     - **Paso 4c:** Segundo `cast-spell` (`shocking-grasp`).
+     - **Paso 5c:** Segundo `cast-spell` (`srd_shocking_grasp`, `d20Roll: 15`, `amount: 5`).
        - Al no haber ningún enemigo amenazando con AdO disponible, el conjuro procede efectivamente.
-       - Resuelve toque melee contra Touch AC (d20=15 + mod 1 = 16 vs Touch AC 11, impacto). Aplica daño eléctrico (inyectado 1d6 = 5, guardia HP = 13) y expende slot de nivel 1 (`isExpended: true`).
-     - Mago emite `end-turn`. Checkpoint: turno pasa a `enemigo_guardia`.
-  5. **Turno Guardia (Ronda 1) y Transición a Ronda 2:**
-     - `enemigo_guardia` emite `end-turn`.
+       - Resuelve toque melee contra Touch AC (d20=15 + mod 1 = 16 vs Touch AC 11, impacto). Aplica 5 puntos de daño eléctrico (guardia HP = 13) y expende slot de nivel 1 (`isExpended: true`).
+     - Mago emite `end-turn`.
      - *Transición de Asalto:* `advanceTurn` detecta fin de `turnOrder`, despacha `RoundEnded`, avanza `round: 2` y despacha `RoundStarted`.
      - El listener autoritativo `roundTickListener` captura `RoundStarted` y **resetea las reacciones de todos los combatientes**: `enemigo_guardia.stats.opportunityAttacksThisRound = 0`.
-     - `activeTurnIndex = 0`, reactivando el turno de `cedrick`.
-  6. **Turnos Intermedios de Ronda 2:**
-     - `cedrick` emite `end-turn`. Checkpoint: turno pasa a `defensor`.
-     - `defensor` emite `end-turn`. Checkpoint: turno pasa a `mago`.
-  7. **Turno Mago (Ronda 2) — Hold Person y Salvación de Voluntad:**
+     - `activeTurnIndex = 0`, reactivando el turno de `defensor`.
+  6. **Turno Defensor (Ronda 2) — Levantarse con AdO Provocado:**
+     - Defensor caído emite `use-tactical-action` (`stand-up`).
+     - El handler retira `srd_prone`, deduce 15 ft de movimiento, y al estar amenazado por Cedrick (quien posee 1 AdO disponible en R2), suspende la acción y transiciona sala a `opportunity-resolution`.
+     - Cedrick resuelve AdO (`resolve-opportunity-attack` d20=5, daño=6; falla 5+5=10 vs CA 15).
+     - Sala retorna a `active`. Defensor completa acción de levantarse y emite `end-turn`. Checkpoint: turno pasa a `cedrick`.
+  7. **Turnos Intermedios de Ronda 2:**
+     - `cedrick` emite `end-turn`. Checkpoint: turno pasa a `enemigo_guardia`.
+     - `enemigo_guardia` emite `end-turn`. Checkpoint: turno pasa a `mago`.
+  8. **Turno Mago (Ronda 2) — Hold Person y Salvación de Voluntad:**
      - Mago emite conjuro de nivel 2 contra `enemigo_guardia`.
-     - **Paso 7a:** Primer `cast-spell` (`hold-person`).
+     - **Paso 8a:** Primer `cast-spell` (`srd_hold_person`).
        - Como el cambio de asalto restauró el AdO del guardia (`opportunityAttacksThisRound = 0`), el lanzamiento en celda amenazada vuelve a provocar AdO legalmente.
        - Handler registra AdO en `pendingOpportunityAttacks`, slot se mantiene intacto (`isExpended: false`) y sala transiciona a `opportunity-resolution`.
-     - **Paso 7b:** `enemigo_guardia` resuelve AdO (`resolve-opportunity-attack` d20=7, daño=0).
+     - **Paso 8b:** `enemigo_guardia` resuelve AdO (`resolve-opportunity-attack` d20=6, daño=4; falla 6+2=8 vs CA 12).
        - Guardia agota su AdO de Ronda 2 (`opportunityAttacksThisRound = 1`). Sala retorna a `active`.
-     - **Paso 7c:** Segundo `cast-spell` (`hold-person`).
-       - Conjuro procede efectivamente: `enemigo_guardia` realiza tirada de salvación de Voluntad (CD 14, tirada inyectada d20=5 + mod 1 = 6 vs CD 14, fallo).
+     - **Paso 8c:** Segundo `cast-spell` (`srd_hold_person`).
+       - Conjuro procede efectivamente: `enemigo_guardia` realiza tirada de salvación de Voluntad (CD 15, tirada inyectada d20=5 + mod 0 = 5 vs CD 15, fallo).
        - Checkpoint: efecto `srd_paralyzed` aplicado al guardia (HELPLESS, DEX 0), slot de nivel 2 de *Hold Person* expendido (`isExpended: true`).
      - Mago emite `end-turn`.
      - Fin de Escena C y demo completada con éxito.
@@ -437,24 +437,24 @@ Para garantizar 100% de reproducibilidad sin parches globales de `Math.random`, 
 
 | Escena | Paso | Acción | Propósito / Dado | Valor Preparado | Justificación Mecánica |
 |---|---|---|---|---|---|
-| **A** | 3 | Ataque Cedrick | d20 ataque / daño espada | d20: 12 / daño: 7 | 12 + mod 5 = 17 vs CA 14 (impacta). |
-| **A** | 5 | Ataque Bane | d20 ataque / daño base / sneak | d20: 20 / base: 4 / sneak: [3, 4] | 20 natural amenaza crítico; sneak attack 2d6 = 7. |
-| **A** | 6 | Confirmación Bane | d20 confirmación / daño crítico | d20: 18 / daño extra: 4 | 18 + mod 4 = 22 vs CA 14 (confirma). |
-| **A** | 7 | Disparo Elaen | d20 ataque / daño flecha | d20: 14 / daño: 6 | 14 + mod 4 = 18 vs CA 14 (impacta). |
-| **B** | 2 | Disparo con Cover | d20 ataque / daño flecha | d20: 11 / daño: 5 | 11 + mod 4 = 15 vs CA 14+4=18 (falla por cobertura). |
-| **B** | 5 | AdO por salida | d20 ataque / daño melee | d20: 10 / daño: 0 | AdO no interrumpe el desplazamiento. |
-| **B** | 9 | Disparo sin Cover | d20 ataque / daño flecha | d20: 11 / daño: 5 | 11 + mod 4 = 15 vs CA 14 (impacta tras apartarse aliado). |
-| **C** | 2 | AdO Interruptivo Defensor (MAJOR 4) | d20 AdO en Derribo | d20: 4 / daño: 0 | 4 + mod 2 = 6 vs CA 18 (falla; derribo no se aborta). |
-| **C** | 2 | Toque Derribo Cedrick | d20 toque / mod | Toque: 14 | 14 + mod 5 = 19 vs Touch AC 11 (conecta). |
-| **C** | 2 | Oposición Derribo Cedrick | d20 Fuerza Cedrick | Atacante: 16 | 16 + mod 4 = 20 Fuerza atacante. |
-| **C** | 2 | Oposición Derribo Defensor | d20 Fuerza/Des Defensor | Defensor: 8 | 8 + mod 2 = 10 (Cedrick gana derribo; aplica `srd_prone`). |
-| **C** | 3 | AdO al levantarse | d20 ataque Cedrick / daño | d20: 12 / daño: 0 | Demuestra AdO provocado al levantarse. |
-| **C** | 4b | AdO en Shocking Grasp | d20 ataque Guardia / daño | d20: 9 / daño: 0 | Guardia no inflige daño, permitiendo segundo lanzamiento. |
-| **C** | 4c | Toque Shocking Grasp | d20 toque Mago / daño 1d6 | d20: 15 / daño: 5 | Toque melee 15+1=16 impacta Touch AC; gasta slot. |
-| **C** | 7b | AdO en Hold Person | d20 ataque Guardia / daño | d20: 7 / daño: 0 | Guardia no inflige daño en el AdO recuperado en R2. |
-| **C** | 7c | Salvación Hold Person | d20 Voluntad Guardia | d20: 5 | 5 + mod 1 = 6 vs CD 14 (fallo; aplica `srd_paralyzed`). |
+| **A** | 4 | Ataque Cedrick | d20 ataque / daño espada | d20: 12 / daño: 7 | 12 + mod 5 = 17 vs CA 14 (impacta). |
+| **A** | 8 | Ataque Bane | d20 ataque / daño base / sneak | d20: 20 / base: 4 / sneak: [3, 4] | 20 natural amenaza crítico; sneak attack 2d6 = 7. |
+| **A** | 9 | Confirmación Bane | d20 confirmación / daño crítico | d20: 18 / daño total arma: 8 | 18 + mod 6 = 24 vs CA 14 (confirma; 8 arma + 7 sneak = 15). |
+| **A** | 12 | Disparo Elaen | d20 ataque / daño flecha | d20: 14 / daño: 6 | 14 + mod 4 = 18 vs CA 14 (impacta). |
+| **B** | 3 | Disparo con Cover | d20 ataque / daño flecha | d20: 11 / daño: 5 | 11 + mod 4 = 15 vs CA 14+4=18 (falla por cobertura). |
+| **B** | 8 | AdO por salida | d20 ataque / daño melee | d20: 5 / daño: 4 | 5 + mod 3 = 8 vs CA 16 (falla; no interrumpe el desplazamiento). |
+| **B** | 16 | Disparo sin Cover | d20 ataque / daño flecha | d20: 11 / daño: 5 | 11 + mod 4 = 15 vs CA 14 (impacta tras apartarse aliado). |
+| **C** | 3 | AdO Interruptivo Defensor (MAJOR 4) | d20 AdO en Derribo | d20: 4 | 4 + mod 3 = 7 vs CA 18 (falla; derribo no se aborta). |
+| **C** | 3 | Toque Derribo Cedrick | d20 toque / mod | Toque: 14 | 14 + mod 5 = 19 vs Touch AC 12 (conecta). |
+| **C** | 3 | Oposición Derribo Cedrick | d20 Fuerza Cedrick | Atacante: 16 | 16 + mod 3 = 19 Fuerza atacante. |
+| **C** | 3 | Oposición Derribo Defensor | d20 Fuerza/Des Defensor | Defensor: 8 | 8 + mod 2 = 10 (Cedrick gana derribo; aplica `srd_prone`). |
+| **C** | 7 | AdO en Shocking Grasp | d20 ataque Guardia / daño | d20: 5 / daño: 4 | 5 + mod 2 = 7 vs CA 12 (falla; permite segundo lanzamiento). |
+| **C** | 8 | Toque Shocking Grasp | d20 toque Mago / amount | d20: 15 / amount: 5 | Toque melee 15+1=16 impacta Touch AC 11; inflige 5 daño y gasta slot. |
+| **C** | 11 | AdO al levantarse | d20 ataque Cedrick / daño | d20: 5 / daño: 6 | 5 + mod 5 = 10 vs CA 15 (falla; demuestra AdO provocado al levantarse). |
+| **C** | 15 | AdO en Hold Person | d20 ataque Guardia / daño | d20: 6 / daño: 4 | 6 + mod 2 = 8 vs CA 12 (falla en el AdO recuperado en R2). |
+| **C** | 16 | Salvación Hold Person | d20 Voluntad Guardia | d20: 5 | 5 + mod 0 = 5 vs CD 15 (fallo; aplica `srd_paralyzed`). |
 
-*Nota metodológica:* Todos los valores de esta tabla son especificaciones normativas proyectadas que deberán certificarse mediante los tests de integración en la Etapa 5.
+*Nota metodológica:* Todos los valores de esta tabla fueron certificados en ejecución real mediante `tests/demo-runner.test.mjs`, `tests/demo-rng.test.mjs` y `scripts/e2e-websocket.mjs`.
 
 ---
 

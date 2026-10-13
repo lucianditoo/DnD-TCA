@@ -4,13 +4,15 @@ const record = (name, ok, detail = '') => results.push({ name, ok, detail });
 function connectAndSend(command) {
   return new Promise((resolve, reject) => {
     const ws = new WebSocket('ws://localhost:3333');
-    const state = { ws, participant: null, room: null, catalog: null, errors: [] };
+    const state = { ws, participant: null, room: null, catalog: null, demoSession: null, demoExited: false, errors: [] };
     const timer = setTimeout(() => reject(new Error('timeout connecting')), 5000);
     ws.on('open', () => ws.send(JSON.stringify(command)));
     ws.on('message', (raw) => {
       const msg = JSON.parse(raw.toString());
       if (msg.type === 'hello') { state.participant = msg.participant; state.room = msg.room; state.catalog = msg.catalog; clearTimeout(timer); resolve(state); }
       if (msg.type === 'room-update') state.room = msg.room;
+      if (msg.type === 'demo-session-state') state.demoSession = msg.state;
+      if (msg.type === 'demo-exited') state.demoExited = true;
       if (msg.type === 'error') state.errors.push(msg.message);
     });
     ws.on('error', reject);
@@ -697,6 +699,40 @@ await send(gmLoe, { type: 'declare-attack-mode', roomCode: loeCode, actorId: loe
 await send(gmLoe, { type: 'resolve-attack', roomCode: loeCode, actorId: loeGmId, attackerId: loeCedrick.id, targetId: loeEnemy.id, d20Roll: 15, damage: 4 });
 const loeHitEnemy = gmLoe.room.combatants.find(c => c.id === loeEnemy.id);
 record('Line of Effect presente (tablero sin obstaculos) permite resolver el ataque normalmente', loeHitEnemy.hpCurrent === loeEnemy.hpCurrent - 4 && !gmLoe.errors.some(e => /Cobertura Total/i.test(e)), 'hpAntes=' + loeEnemy.hpCurrent + ' hpDespues=' + loeHitEnemy.hpCurrent + ' errors=' + gmLoe.errors.join(' | '));
+
+// Demo Táctica Automática y Guionada (scripted_tactical_demo_v1)
+const demoClient = await connectAndSend({ type: 'start-demo', demoId: 'scripted_tactical_demo_v1' });
+await wait(60);
+const demoSessionId = demoClient.demoSession?.sessionId;
+const demoRoomCode = demoClient.room?.code;
+record('Demo: start-demo inicializa hello + demo-session-state en sala efimera', !!demoSessionId && demoRoomCode?.startsWith('DM') && demoClient.participant?.role === 'gm' && demoClient.demoSession?.status === 'playing', JSON.stringify({ roomCode: demoRoomCode, session: demoClient.demoSession }));
+
+await send(demoClient, { type: 'pause-demo', sessionId: demoSessionId }, 80);
+const stepBeforeAdvance = demoClient.demoSession?.currentStepIndex ?? -1;
+record('Demo: pause-demo detiene la ejecucion automatica', demoClient.demoSession?.status === 'paused', JSON.stringify(demoClient.demoSession));
+
+await send(demoClient, { type: 'step-demo', sessionId: demoSessionId }, 80);
+record('Demo: step-demo avanza exactamente un paso en pausa', demoClient.demoSession?.status === 'paused' && demoClient.demoSession?.currentStepIndex === stepBeforeAdvance + 1, JSON.stringify(demoClient.demoSession));
+
+await send(demoClient, { type: 'end-turn', roomCode: demoRoomCode, actorId: demoClient.participant.id }, 80);
+record('Demo: sala demo bloquea comandos manuales de combate', demoClient.errors.some(e => /salas de demostracion son de solo lectura/i.test(e)), demoClient.errors.join(' | '));
+
+const demoIntruder = new WebSocket('ws://localhost:3333');
+const intruderErrors = [];
+await new Promise((resolve, reject) => {
+  demoIntruder.on('open', () => demoIntruder.send(JSON.stringify({ type: 'join-room', roomCode: demoRoomCode, name: 'Intruder', role: 'player' })));
+  demoIntruder.on('message', (raw) => {
+    const msg = JSON.parse(raw.toString());
+    if (msg.type === 'error') { intruderErrors.push(msg.message); resolve(); }
+  });
+  demoIntruder.on('error', reject);
+});
+record('Demo: sala demo bloquea join-room de terceros', intruderErrors.some(e => /No se permite unirse manualmente/i.test(e)), intruderErrors.join(' | '));
+demoIntruder.close();
+
+await send(demoClient, { type: 'exit-demo', sessionId: demoSessionId }, 80);
+record('Demo: exit-demo destruye la sesion y emite demo-exited', demoClient.demoExited === true, 'demoExited=' + demoClient.demoExited);
+demoClient.ws.close();
 
 gm.ws.close(); ownershipGm.ws.close(); ownerA.ws.close(); ownerB.ws.close(); stabilizationGm.ws.close(); profileGm.ws.close(); profilePlayer.ws.close(); largeGm.ws.close(); diehardGm.ws.close(); gmTouch.ws.close(); player.ws.close(); gmHaste.ws.close(); gmAoo.ws.close(); gmDiagonalAoo.ws.close(); gmMultiAoo.ws.close(); gmDiagonalMelee.ws.close(); gmCharge.ws.close(); gmAid.ws.close(); gmPassThrough.ws.close(); gmFlanking.ws.close(); gmFfs.ws.close(); gmFa.ws.close(); gmDef.ws.close(); gmDisabled.ws.close(); gmStun.ws.close(); gmEntangled.ws.close(); gmBlinded.ws.close(); gmConditionPanel.ws.close(); conditionPanelPlayer.ws.close(); gmLoe.ws.close();
 console.log(JSON.stringify(results, null, 2));

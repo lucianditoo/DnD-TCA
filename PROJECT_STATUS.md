@@ -7,20 +7,10 @@
 ## Estado actual
 
 - Rama de integración: `master`.
-- Última vertical funcional integrada: Sprint 055B, Ataques de Oportunidad bajo Cover y Ocultación Total.
-- Última decisión arquitectónica: Sprint D-1B Capítulo 7 (Integration & Implementation Contracts).
-- Implementación en revisión: Sprint D-1B-I5R1, Movement Resolution / Commit Remediation.
-  Remedia hallazgos de Architecture Review de I5: procedencia y vigencia estricta
-  (actor/turno, ronda, origen, presupuesto, contexto diagonal y fingerprint
-  canónico determinista del estado de reglas con `createMovementStateFingerprint`),
-  coste normativo de Squeezing puro en `assessMovementCost` (duplicación ortogonal y diagonal
-  respetando paridad 5/10), tipado explícito para combinaciones no soportadas
-  (Squeezing + Difficult Terrain bajo ODR-D1B-C3-01) y separación estricta entre
-  presupuesto consumido (`totalCostFeet` → `movementUsedFeet`) y distancia espacial
-  recorrida (`totalBaseRouteCostFeet` → `distanceMovedFeet`). Aislamiento productivo
-  intacto; ODR-D1B-I5-1 y ODR-D1B-C3-01 permanecen abiertas.
-- Último saneamiento documental: consolidación del estado y roadmap posterior a D-1B-I5; no cambia el estado de aprobación de I5.
-- Baseline de código: Sprint D-1B-I5R1, con validaciones locales completas (635 tests unitarios, typecheck, build y e2e websocket en verde).
+- Última vertical funcional integrada: Demostración Táctica Automática y Guionada (`scripted_tactical_demo_v1`), conforme a [`docs/designs/scripted-combat-demo.md`](docs/designs/scripted-combat-demo.md) y [`docs/designs/scripted-combat-demo/implementation-plan.md`](docs/designs/scripted-combat-demo/implementation-plan.md).
+- Última decisión arquitectónica: Sprint D-1B Capítulo 7 (Integration & Implementation Contracts) y NDD de Demo Táctica Automática (`f8c0e9d`).
+- Implementación en revisión: Demostración Táctica Automática y Guionada (ejecución autoritativa en servidor reutilizando `dispatchCommandCore` + `validateClientCommand`, aislamiento estricto de salas efímeras `DM*`, transporte RNG determinista por paso sin alterar `rollDice` en partidas normales, 3 escenas completas con checkpoints de estado reales y controles de reproducción en `DemoPanel`); y Sprint D-1B-I5R1 (Movement Resolution / Commit Remediation, aún aislado del flujo productivo con ODR-D1B-I5-1 y ODR-D1B-C3-01 abiertas).
+- Baseline de código: 648 tests unitarios, `typecheck`, `build`, `e2e-websocket` y 8 tests Playwright UI en verde.
   Conteos y evidencias se mantienen en [master-coverage.md](docs/testing/master-coverage.md), no como un segundo registro aquí.
 - GitHub Actions sobre Windows es el gate canónico de cierre para la revisión
   publicada.
@@ -46,6 +36,7 @@ El monorepo contiene:
 - paquete compartido de tipos, catálogos, reglas y proyecciones;
 - servidor Express/WebSocket autoritativo;
 - cliente React/Vite que consume las mismas proyecciones compartidas;
+- demostración táctica automática y guionada (`scripted_tactical_demo_v1`) con 3 escenas reproducibles en salas efímeras aisladas, runner autoritativo sincronizado por confirmaciones de estado y panel de observación/transporte (`DemoPanel`);
 - snapshots source-first sin estadísticas derivadas persistidas;
 - contexto autoritativo de movimiento por turno, inicializado y reiniciado, todavía sin mutación desde la resolución productiva;
 - assessment compartido y puro de Movement Cost, con diagonales normales 5/10, costes fijos de terreno difícil y evidencia por Step, compuesto junto a Route Validation y Budget Verification por un Movement Resolution Pipeline puro (`resolveMovementPipeline`), con un Authoritative Movement Commit (`commitMovementResolution`) que aplica ese resultado bajo precondición de estado vigente — todavía aislado de la resolución productiva;

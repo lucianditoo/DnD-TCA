@@ -23,6 +23,8 @@ export * from "./initiativeCommands.js";
 export * from "./specialManeuverCommands.js";
 export * from "./equipmentCommands.js";
 export * from "./grappleCommands.js";
+export * from "./demoCommands.js";
+
 
 export const clientCommandSchema = z.union([
   createRoomSchema,

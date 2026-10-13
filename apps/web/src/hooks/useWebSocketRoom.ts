@@ -1,6 +1,15 @@
 import { useRef, useState } from "react";
 import type { FormEvent } from "react";
-import type { ClientCommand, CombatRoom, GameCatalog, Participant, ServerEvent } from "@dnd-tactical/shared";
+import type {
+  ClientCommand,
+  CombatRoom,
+  DemoClientCommand,
+  DemoSessionState,
+  DemoSpeedMultiplier,
+  GameCatalog,
+  Participant,
+  ServerEvent
+} from "@dnd-tactical/shared";
 import { getActiveCombatant } from "../viewModel";
 
 const socketUrl =
@@ -21,9 +30,10 @@ export function useWebSocketRoom({ onHello, onActiveTurnChanged }: { onHello: ()
   const [selectedHeroTemplateId, setSelectedHeroTemplateId] = useState("");
   const [selectedEnemyTemplateId, setSelectedEnemyTemplateId] = useState("");
   const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [demoSessionState, setDemoSessionState] = useState<DemoSessionState | null>(null);
   const [error, setError] = useState<string | null>(null);
 
-  function connect(command: ClientCommand) {
+  function connect(command: ClientCommand | DemoClientCommand) {
     socketRef.current?.close();
     const socket = new WebSocket(socketUrl);
     socketRef.current = socket;
@@ -51,12 +61,24 @@ export function useWebSocketRoom({ onHello, onActiveTurnChanged }: { onHello: ()
         setSelectedId((current) => payload.room.phase === "active" ? nextActiveId : current ?? payload.room.combatants[0]?.id ?? null);
         setError(null);
       }
+      if (payload.type === "demo-session-state") {
+        setDemoSessionState(payload.state);
+      }
+      if (payload.type === "demo-exited") {
+        activeCombatantIdRef.current = null;
+        setDemoSessionState(null);
+        setRoom(null);
+        setParticipant(null);
+        setSelectedId(null);
+        setError(null);
+        window.history.replaceState({}, "", "/");
+      }
       if (payload.type === "error") setError(payload.message);
     };
     socket.onerror = () => setError("No se pudo conectar con el servidor local.");
   }
 
-  function send(command: ClientCommand) {
+  function send(command: ClientCommand | DemoClientCommand) {
     if (!socketRef.current || socketRef.current.readyState !== WebSocket.OPEN) {
       setError("La conexion WebSocket no esta lista.");
       return;
@@ -66,16 +88,52 @@ export function useWebSocketRoom({ onHello, onActiveTurnChanged }: { onHello: ()
 
   function createRoom(event: FormEvent) {
     event.preventDefault();
+    setDemoSessionState(null);
     connect({ type: "create-room", name });
   }
 
   function joinRoom(event: FormEvent) {
     event.preventDefault();
+    setDemoSessionState(null);
     connect({ type: "join-room", roomCode: roomCode.toUpperCase(), name, role: mode });
   }
 
+  function startDemo() {
+    connect({ type: "start-demo", demoId: "scripted_tactical_demo_v1" });
+  }
+
+  function pauseDemo() {
+    if (!demoSessionState) return;
+    send({ type: "pause-demo", sessionId: demoSessionState.sessionId });
+  }
+
+  function resumeDemo() {
+    if (!demoSessionState) return;
+    send({ type: "resume-demo", sessionId: demoSessionState.sessionId });
+  }
+
+  function stepDemo() {
+    if (!demoSessionState) return;
+    send({ type: "step-demo", sessionId: demoSessionState.sessionId });
+  }
+
+  function setDemoSpeed(speed: DemoSpeedMultiplier) {
+    if (!demoSessionState) return;
+    send({ type: "set-demo-speed", sessionId: demoSessionState.sessionId, speedMultiplier: speed });
+  }
+
+  function restartDemo(scope: "scene" | "all") {
+    if (!demoSessionState) return;
+    send({ type: "restart-demo", sessionId: demoSessionState.sessionId, scope });
+  }
+
+  function exitDemo() {
+    if (!demoSessionState) return;
+    send({ type: "exit-demo", sessionId: demoSessionState.sessionId });
+  }
+
   function roomCommand<T extends ClientCommand>(command: T) {
-    if (!room || !participant) return;
+    if (!room || !participant || demoSessionState) return;
     send(command);
   }
 
@@ -84,6 +142,8 @@ export function useWebSocketRoom({ onHello, onActiveTurnChanged }: { onHello: ()
     participant, room, catalog, selectedId, setSelectedId,
     selectedHeroTemplateId, setSelectedHeroTemplateId,
     selectedEnemyTemplateId, setSelectedEnemyTemplateId,
-    error, setError, createRoom, joinRoom, roomCommand
+    demoSessionState,
+    error, setError, createRoom, joinRoom, roomCommand,
+    startDemo, pauseDemo, resumeDemo, stepDemo, setDemoSpeed, restartDemo, exitDemo
   };
 }

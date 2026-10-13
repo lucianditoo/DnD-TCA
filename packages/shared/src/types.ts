@@ -526,7 +526,40 @@ export type ClientCommand =
   | { type: "gm-force-outcome"; roomCode: string; actorId: string; outcome: CombatOutcome }
   | { type: "end-turn"; roomCode: string; actorId: string };
 
+export type DemoSpeedMultiplier = 0.5 | 1 | 2;
+
+export type DemoClientCommand =
+  | { type: "start-demo"; demoId: string; name?: string }
+  | { type: "pause-demo"; sessionId: string }
+  | { type: "resume-demo"; sessionId: string }
+  | { type: "step-demo"; sessionId: string }
+  | { type: "set-demo-speed"; sessionId: string; speedMultiplier: DemoSpeedMultiplier }
+  | { type: "restart-demo"; sessionId: string; scope: "scene" | "all" }
+  | { type: "exit-demo"; sessionId: string };
+
+export interface DemoSessionState {
+  sessionId: string;
+  demoId: string;
+  roomCode: string;
+  status: "starting" | "preparing" | "playing" | "paused" | "completed" | "failed";
+  currentSceneIndex: number;
+  totalScenes: number;
+  currentSceneTitle: string;
+  currentStepIndex: number;
+  totalStepsInScene: number;
+  activeActorName: string | null;
+  actionSummary: string;
+  ruleExplanation: string;
+  speedMultiplier: DemoSpeedMultiplier;
+  errorMessage: string | null;
+}
+
+export type DemoServerEvent =
+  | { type: "demo-session-state"; state: DemoSessionState }
+  | { type: "demo-exited"; sessionId: string };
+
 export type ServerEvent =
   | { type: "hello"; participant: Participant; room: CombatRoom; catalog: GameCatalog }
   | { type: "room-update"; room: CombatRoom }
-  | { type: "error"; message: string };
+  | { type: "error"; message: string }
+  | DemoServerEvent;

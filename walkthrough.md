@@ -1,113 +1,67 @@
-# Walkthrough — Sprint D-1B-I5R1: Movement Resolution / Commit Remediation
+# Walkthrough — Demostración Táctica Automática y Guionada (`scripted_tactical_demo_v1`)
 
-Responsabilidad: Registrar la remediación ejecutada de D-1B-I5 y su validación técnica completa.
-Autoridad: Registro
-Lifecycle: Rotativo
-Reemplaza: Walkthrough de saneamiento documental posterior a D-1B-I5.
-Complementa: [PROJECT_STATUS.md](PROJECT_STATUS.md), [TODO.md](TODO.md), [docs/designs/normative-movement-design.md](docs/designs/normative-movement-design.md)
-Consumidores: Architecture Gate, siguiente agente y revisión técnica.
-
-## 1. Alcance y Objetivos
-
-Sprint D-1B-I5R1 remedia exclusivamente los hallazgos identificados en la Architecture Review de D-1B-I5:
-- **Major 1 — Stale Resolution y Vigencia:** Fortalecer el contrato Resolution → Commit para impedir que una resolución calculada sobre un estado anterior pueda commitearse tras cambios de turno, actor, ronda, posición, presupuesto, contexto diagonal o estado espacial del combate.
-- **Major 2 — Coste Normativo de Squeezing:** Implementar en `assessMovementCost` el coste doble para Squeezing (ortogonal y diagonal con paridad 5/10), y devolver resultado tipado `{ kind: "unsupported-cost-combination" }` cuando confluyan Squeezing y Terreno Difícil (ODR D-1B-C3-01 abierta).
-- **Minor — Distinción Coste vs Distancia:** Separar formalmente el presupuesto consumido (`totalCostFeet` acumulado a `room.currentTurn.movementUsedFeet`) del recorrido espacial físico (`totalBaseRouteCostFeet` acumulado a `combatant.stats.distanceMovedFeet`).
-
-### Fronteras y Restricciones Respetadas
-- **Aislamiento productivo total:** Ningún comando productivo (`movementCommands.ts`, `tacticalCommands.ts`, `spatialTransition.ts`) fue modificado ni conectado al pipeline normativo. Sprint I6 permanece bloqueado.
-- **NDD congelado:** Sin alteraciones en `docs/designs/normative-movement-design.md`.
-- **ODRs abiertas:** ODR D-1B-C3-01 y ODR-D1B-I5-1 se mantienen abiertas y documentadas.
-- **Archivos protegidos:** `.claude/` y `test.txt` no fueron leídos, modificados ni incluidos.
+Responsabilidad: Resumen del último cierre ejecutado (motivos, archivos tocados, validaciones y estado final).
+Autoridad: Registro rotativo
+Lifecycle: Temporal (se reescribe en cada cierre)
+Reemplaza: —
+Complementa: [Estado](PROJECT_STATUS.md), [Diseño NDD](docs/designs/scripted-combat-demo.md), [Plan de Implementación](docs/designs/scripted-combat-demo/implementation-plan.md)
+Consumidores: Architecture Reviewer y agentes que retoman el repositorio.
 
 ---
 
-## 2. Cambios Técnicos Realizados
+## 1. Objetivo del Cierre
 
-### `packages/shared/src/movementCost.ts`
-- Agregado campo opcional `spatialMode?: SpatialMode` a `MovementCostStep`.
-- Incorporados `stepBaseRouteCostFeet` y `cumulativeBaseRouteCostFeet` en `MovementCostAssessmentStep`.
-- Agregado `totalBaseRouteCostFeet` al resultado de `MovementCostAssessment`.
-- Incorporada unión discriminada `UnsupportedCostCombination` (`kind: "unsupported-cost-combination"`).
-- Implementada tabla de costes de Squeezing:
-  - Ortogonal bajo Squeezing: 10 ft (base 5 * 2).
-  - Diagonal base 5 bajo Squeezing: 10 ft (consume paridad normal y avanza contador en 1).
-  - Diagonal base 10 bajo Squeezing: 20 ft (consume paridad normal y avanza contador en 1).
-- Detección de combinación Squeezing + Difficult Terrain devolviendo `UnsupportedCostCombination` sin arrojar excepciones.
-
-### `packages/shared/src/movementResolution.ts`
-- Creada función pura `createMovementStateFingerprint(context)`: genera una cadena serializada y canónicamente ordenada del estado que afecta Route Validation y Movement Cost (tablero: ancho, alto, tamaño de celda, celdas intransitables, terreno difícil y estrechas; combatientes: ID, posición 3D, tamaño, tipo y estado vital; instancias activas del efecto `srd_squeezing`). Sin dependencias de Node.js (100% portable para shared y web).
-- Agregado `rulesStateFingerprint` a los resultados de `MovementResolutionResult` (`ready` e `insufficient-budget`).
-- Propagación directa de `UnsupportedCostCombination` en `resolveMovementPipeline`.
-- Agregado `stepBaseRouteCostFeet` y `cumulativeBaseRouteCostFeet` a `MovementResolutionStep`.
-- Agregado `totalBaseRouteCostFeet` a `MovementResolutionReady` e `insufficient-budget`.
-
-### `packages/shared/src/movementCommit.ts`
-- Actualizado `MovementCommitPreconditions`:
-  - `expectedTurnCombatantId: string`
-  - `expectedRound?: number`
-  - `expectedOrigin: Position`
-  - `expectedMovementUsedFeet: number`
-  - `expectedDiagonalContext: MovementContext`
-- Ampliados códigos de rechazo: `"invalid-actor"`, `"stale-round"`, `"stale-rules-state"`.
-- Implementadas precondiciones secuenciales y atómicas:
-  1. Identidad de actor y correspondencia con el turno activo (`combatant.id === expectedTurnCombatantId === room.currentTurn.combatantId`).
-  2. Ronda del combate (`expectedRound !== undefined && room.round !== expectedRound`).
-  3. Origen espacial (`positionsMatch(combatant.position, expectedOrigin)`).
-  4. Presupuesto consumido previo (`room.currentTurn.movementUsedFeet !== expectedMovementUsedFeet`).
-  5. Contexto diagonal vinculado estrictamente a `resolution.initialContext.normalDiagonalStepsThisTurn`.
-  6. Fingerprint del estado de reglas: `createMovementStateFingerprint(room) === resolution.rulesStateFingerprint`.
-- Mutación atómica autoritativa:
-  - `combatant.stats.distanceMovedFeet += resolution.totalBaseRouteCostFeet`
-  - `room.currentTurn.movementUsedFeet += resolution.totalCostFeet`
-  - `room.currentTurn.normalDiagonalStepsThisTurn = resolution.projectedContext.normalDiagonalStepsThisTurn`
+Implementar la **Demostración Táctica Automática y Guionada** (`scripted_tactical_demo_v1`) conforme al NDD aprobado (`docs/designs/scripted-combat-demo.md`, commit `f8c0e9d`) y al Plan de Implementación R1 aprobado (`docs/designs/scripted-combat-demo/implementation-plan.md`, commit `20a10b9`), permitiendo al usuario pulsar **"Empezar demo"** desde la pantalla inicial, ingresar automáticamente a una sala efímera aislada y observar la ejecución autoritativa de las tres escenas tácticas con controles de reproducción (`Pausar`, `Continuar`, `Siguiente paso`, velocidad `0.5x`/`1x`/`2x`, `Reiniciar escena`, `Reiniciar demo` y `Salir de la demo`).
 
 ---
 
-## 3. Cobertura de Pruebas
+## 2. Cambios Implementados por Paquete
 
-### `tests/movement-cost.test.mjs`
-- Squeezing ortogonal normal: base 5 / coste 10.
-- Squeezing diagonal base 5: base 5 / coste 10.
-- Squeezing diagonal base 10: base 10 / coste 20.
-- Difficult Terrain ortogonal: base 5 / coste 10.
-- Regresión A: diagonal normal (5) → diagonal difícil (15) → diagonal normal (10).
-- Regresión B: diagonal squeezing (10, avanza contador) → diagonal normal (10).
-- Combinación no soportada: Squeezing + Difficult Terrain produce resultado tipado `unsupported-cost-combination`.
+### 2.1 `@dnd-tactical/shared`
+- [`packages/shared/src/types.ts`](packages/shared/src/types.ts):
+  - Incorporados los contratos de red `DemoSpeedMultiplier`, `DemoClientCommand`, `DemoSessionState`, `DemoServerEvent` e integración de `DemoServerEvent` en `ServerEvent`.
+- [`packages/shared/src/schemas/commands/demoCommands.ts`](packages/shared/src/schemas/commands/demoCommands.ts) y [`packages/shared/src/schemas/commands/index.ts`](packages/shared/src/schemas/commands/index.ts):
+  - Schemas Zod estrictos (`.strict()`) para `start-demo`, `pause-demo`, `resume-demo`, `step-demo`, `set-demo-speed`, `restart-demo`, `exit-demo` y eventos `demo-session-state` / `demo-exited`.
+- [`packages/shared/src/demo/types.ts`](packages/shared/src/demo/types.ts) y [`packages/shared/src/demo/catalog.ts`](packages/shared/src/demo/catalog.ts):
+  - Tipos declarativos del guion (`DemoStepCheckpoint`, `DemoStepCommandSpec`, `DemoManeuverRolls`, `DemoStepDefinition`, `DemoSceneDefinition`, `DemoScriptDefinition`) y catálogo `scripted_tactical_demo_v1` con perfiles source-first y las tres escenas completas:
+    - **Escena A — La Emboscada**: Iniciativa, `srd_flat_footed`, ataque melee, posicionamiento de flanqueo (+2), Ataque Furtivo (+2d6), amenaza y confirmación de crítico (multiplicando el daño del arma sin multiplicar los dados de precisión) y disparo con arco largo consumiendo munición.
+    - **Escena B — Posición, Cobertura, AdO y Espacio Estrecho**: Cobertura por interposición de criatura (+4 CA), reposicionamiento aliado, Ataque de Oportunidad al salir de casilla amenazada, Apretujarse (`srd_squeezing`) de criatura Large (2×2) en corredor estrecho de 5 ft (`narrowCells`), terreno difícil (coste doble) y segundo disparo despejado tras transición a Ronda 2.
+    - **Escena C — Maniobras y Magia**: Derribo (`trip`) sin *Improved Trip* provocando AdO defensivo interruptivo antes del toque y prueba opuesta aplicando `srd_prone`, conjuro de toque *Shocking Grasp* en casilla amenazada en 3 pasos (intento que provoca AdO y suspende en `opportunity-resolution`, resolución del AdO agotando la reacción de Ronda 1, segundo lanzamiento que impacta Touch AC y consume slot), transición a Ronda 2 restaurando reacciones (`opportunityAttacksThisRound = 0`), levantarse (`stand-up`) provocando AdO de Cedrick, y lanzamiento de *Hold Person* en Ronda 2 en 3 pasos con salvación de Voluntad fallida aplicando `srd_paralyzed`.
 
-### `tests/movement-resolution.test.mjs`
-- Detección y propagación tipada de Squeezing + Difficult Terrain como `unsupported-cost-combination`.
-- Squeezing puro sin DT produce resolución `ready` con coste duplicado.
-- Preservación y reporte de `totalBaseRouteCostFeet` y `rulesStateFingerprint`.
+### 2.2 `@dnd-tactical/server`
+- [`apps/server/src/commands/dispatcher.ts`](apps/server/src/commands/dispatcher.ts):
+  - Extraído el núcleo compartido `dispatchCommandCore(socket, command, context?)` reutilizado tanto por `dispatchCommand` (entrada externa de WebSocket sin contexto RNG) como por `dispatchInternalDemoCommand` (entrada interna del runner que ejecuta `validateClientCommand` antes de invocar `dispatchCommandCore`).
+  - Guardia autoritativa `isDemoRoom`: bloquea `join-room` manuales de terceros y rechaza cualquier comando manual de combate enviado desde clientes externos sobre salas de demostración.
+- [`apps/server/src/commands/specialManeuverCommands.ts`](apps/server/src/commands/specialManeuverCommands.ts):
+  - Extendido `ManeuverDiceSource` con `rollDie?(sides: number): number` opcional y propagado a `resolveInterruptingOpportunityAttack`.
+- [`apps/server/src/demo/sessionStore.ts`](apps/server/src/demo/sessionStore.ts), [`apps/server/src/demo/runner.ts`](apps/server/src/demo/runner.ts) y [`apps/server/src/demo/demoCommands.ts`](apps/server/src/demo/demoCommands.ts):
+  - Almacén efímero de sesiones de demo vinculadas a su `socket` propietario y sala clonada (`structuredClone(scene.board)`), con limpieza determinista al salir (`exit-demo`), reiniciar (`restart-demo`) o desconectar (`close`) sin tocar otras salas ni invocar `/api/test/reset`.
+  - Runner autoritativo secuencial con bandera `commandInFlight`, inyección RNG determinista por paso (`createStepRngContext`) que verifica consumo exacto de todas las tiradas preparadas, y validador de checkpoints (`verifyStepCheckpoint`) que transiciona a `failed` ante cualquier desviación.
+- [`apps/server/src/index.ts`](apps/server/src/index.ts):
+  - Enrutamiento de `DemoClientCommand` hacia `validateDemoCommand` + `handleDemoCommand` y limpieza automática con `destroyDemoSessionBySocket(socket)` en `socket.on("close")`.
 
-### `tests/movement-commit.test.mjs`
-- Rechazo por `stale-turn` al cambiar de turno a otro combatiente.
-- Rechazo por `invalid-actor` al intentar commitear un combatiente ajeno al turno.
-- Rechazo por `stale-round` al avanzar de ronda aunque vuelva al mismo actor.
-- Rechazo por `stale-rules-state` si cambia el tablero (nuevos obstáculos/terrenos).
-- Rechazo por `stale-rules-state` si otro combatiente se desplaza.
-- Verificación de determinismo canónico de `createMovementStateFingerprint` frente a reordenamiento de arrays.
-- Separación estricta entre `totalCostFeet` (`room.currentTurn.movementUsedFeet`) y `totalBaseRouteCostFeet` (`combatant.stats.distanceMovedFeet`).
-
----
-
-## 4. Resultado de Validaciones
-
-| Validación | Comando | Resultado |
-|---|---|---|
-| **Unit Tests** | `npm test` | **635 pass**, 0 fail (19 suites) |
-| **Typecheck** | `npm run typecheck` | **0 errors** (shared, web, server) |
-| **Build** | `npm run build` | **Exitoso** (shared dist, web dist, server dist) |
-| **E2E WebSocket** | `node scripts/e2e-websocket.mjs` | **Exitoso** (suite completa en verde contra servidor real) |
+### 2.3 `@dnd-tactical/web`
+- [`apps/web/src/components/DemoPanel/DemoPanel.tsx`](apps/web/src/components/DemoPanel/DemoPanel.tsx):
+  - Panel de progreso de escena/paso, actor activo, resumen de acción, explicación pedagógica de la regla y controles de transporte (`Pausar`/`Continuar`, `Siguiente paso`, selector `0.5x`/`1x`/`2x`, `Reiniciar escena`, `Reiniciar demo`, `Salir de la demo`).
+- [`apps/web/src/hooks/useWebSocketRoom.ts`](apps/web/src/hooks/useWebSocketRoom.ts), [`apps/web/src/components/ConnectionPanel/ConnectionPanel.tsx`](apps/web/src/components/ConnectionPanel/ConnectionPanel.tsx) y [`apps/web/src/App.tsx`](apps/web/src/App.tsx):
+  - Botón **"Empezar demo"** en `ConnectionPanel`, suscripción a `demo-session-state` y `demo-exited`, e inspección pasiva de fichas/celdas durante la demo bloqueando la emisión de comandos manuales de combate.
 
 ---
 
-## 5. Estado de ODRs y Deuda Técnica
+## 3. Validaciones Ejecutadas
 
-- **ODR-D1B-C3-01:** Composición de fuentes de coste acumulativas (Squeezing + Difficult Terrain) permanece **ABIERTA**. La implementación devuelve resultado tipado `unsupported-cost-combination` sin asumir heurísticas arbitrarias.
-- **ODR-D1B-I5-1:** Sede de almacenamiento persistente de `squeezingAxis` permanece **ABIERTA**.
-- **Deuda Técnica:** No se introdujo deuda técnica nueva.
+- `npm test`: **648/648 pruebas en verde** (incluyendo `tests/demo-contracts.test.mjs`, `tests/demo-isolation.test.mjs`, `tests/demo-rng.test.mjs` y `tests/demo-runner.test.mjs`).
+- `npm run typecheck`: **0 errores** (`shared`, `web`, `server`).
+- `npm run build`: **0 errores** (`shared`, `web`, `server`).
+- `node scripts/e2e-websocket.mjs`: **106/106 aserciones en verde** (exit 0).
+- `npm run test:ui`: **8/8 escenarios Playwright en verde** (incluyendo `tests-ui/demo.spec.ts`).
 
 ---
 
-READY FOR ARCHITECTURE REVIEW
+## 4. Gate Documental de Cierre (`AGENTS.md` §4.5.1)
+
+1. **Enlaces**: Verificados los enlaces internos en `PROJECT_STATUS.md`, `docs/testing/master-coverage.md`, `docs/designs/scripted-combat-demo/implementation-plan.md` y este `walkthrough.md`.
+2. **Responsabilidad única**: No se crearon documentos huérfanos ni duplicados; `INDEX.md` ya indexa `docs/designs/scripted-combat-demo.md` y `docs/designs/scripted-combat-demo/implementation-plan.md`.
+3. **Registry consistente**: La demo reutiliza las reglas existentes sin alterar estados normativos en `docs/rules/registry.md` ni conectar D-1B-I4/I5/I6.
+4. **Snapshots sincronizados**: `PROJECT_STATUS.md`, `docs/testing/master-coverage.md`, `docs/designs/scripted-combat-demo/implementation-plan.md` y `walkthrough.md` describen exactamente el sistema implementado.
+5. **Preservación de archivos locales ajenos**: `.claude/settings.local.json`, `test.txt` e `implementation_plan.md` (raíz, correspondiente a D-1B-I5R1) permanecieron intactos y fuera del commit.

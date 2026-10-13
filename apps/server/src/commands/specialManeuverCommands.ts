@@ -36,6 +36,7 @@ import { rollDice } from "../combat/diceRoller.js";
 export interface ManeuverDiceSource {
   d20(purpose: "opportunity-attack" | "opportunity-confirmation" | "touch-attacker" | "opposed-attacker" | "opposed-defender" | "opposed-reroll-attacker" | "opposed-reroll-defender"): number;
   d100?(purpose: "concealment"): number;
+  rollDie?(sides: number): number;
 }
 
 const randomDiceSource: ManeuverDiceSource = {
@@ -75,7 +76,7 @@ function resolveInterruptingOpportunityAttack(
   const source = resolveWeaponAttackSource(defender, "melee");
   let result = resolveAttack(snapshot, defender, tripper, d20Roll, null, "ataque de oportunidad", tactical.attackBonus, {
     source,
-    diceRoller: (sides) => sides === 100 ? checkedD100(diceSource) : rollDice(sides),
+    diceRoller: (sides) => sides === 100 ? checkedD100(diceSource) : (diceSource.rollDie ? diceSource.rollDie(sides) : rollDice(sides)),
     cover: tactical.cover,
     concealment: tactical.concealment
   });
