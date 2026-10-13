@@ -35,7 +35,7 @@ El objetivo central del proyecto es dar soporte a una **Mesa Digital de Combate 
 │                        ROADMAP: MESA DIGITAL TÁCTICA D&D 3.5                           │
 ├────────────────────────────────────────────────────────────────────────────────────────┤
 │ FASE 1: NÚCLEO DE COMBATE Y ENTORNO INMEDIATO                                          │
-│ • Zoom ampliado al 200% y presets de cámara en el tablero 2.5D                         │
+│ • Zoom ampliado al 300% y presets de cámara en el tablero 2.5D                         │
 │ • Corrección de oclusión 3D (muros ocluyen a personajes según perspectiva)             │
 │ • Creador de Mapas Básico: definir tamaño de sala y pintar muros, columnas, escombros  │
 │ • Flujo libre de combate en sala: selección, movimiento 2.5D, ataques y conjuros       │
@@ -65,7 +65,7 @@ El objetivo central del proyecto es dar soporte a una **Mesa Digital de Combate 
 
 ## 1. Fase 1: Núcleo de Combate y Entorno Inmediato
 
-- **Zoom y Cámara**: Zoom continuo de 75% a 200% (`CAMERA_ZOOM_MAX = 2.0`), presets deterministas (`NO`, `NE`, `SE`, `SO`) y órbita libre por arrastre.
+- **Zoom y Cámara**: Zoom continuo de 75% a 300% (`CAMERA_ZOOM_MAX = 3.0`), presets deterministas (`NO`, `NE`, `SE`, `SO`) y órbita libre por arrastre.
 - **Oclusión Real 3D**: Ajuste del buffer de profundidad (`depthTest: true`) para que los muros y pilares ocluyan a las criaturas cuando la perspectiva de cámara los sitúa por delante, sin que las líneas del suelo corten los pies de los sprites.
 - **Editor Táctico de Mapas (D-5 MVP)**:
   - Definición de dimensiones del tablero (ancho x alto).

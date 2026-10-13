@@ -7,7 +7,13 @@ import mageUrl from "../../../assets/sprites/mage.png";
 import rangerUrl from "../../../assets/sprites/ranger.png";
 import orcUrl from "../../../assets/sprites/orc.png";
 import rogueUrl from "../../../assets/sprites/rogue.png";
-import type { CameraAngle, TacticalBoardPresentation, UnitPose } from "../presentationModel";
+import {
+  CAMERA_ZOOM_MAX,
+  CAMERA_ZOOM_MIN,
+  type CameraAngle,
+  type TacticalBoardPresentation,
+  type UnitPose
+} from "../presentationModel";
 
 const CELL_SIZE = 1;
 const CAMERA_POLAR_MIN = THREE.MathUtils.degToRad(24);
@@ -232,8 +238,8 @@ export function TacticalScene3D({
     controls.dampingFactor = 0.09;
     controls.minPolarAngle = CAMERA_POLAR_MIN;
     controls.maxPolarAngle = CAMERA_POLAR_MAX;
-    controls.minZoom = 0.75;
-    controls.maxZoom = 2.0;
+    controls.minZoom = CAMERA_ZOOM_MIN;
+    controls.maxZoom = CAMERA_ZOOM_MAX;
     controls.mouseButtons.LEFT = THREE.MOUSE.ROTATE;
     controls.mouseButtons.RIGHT = THREE.MOUSE.ROTATE;
     controls.target.set(0, 0.35, 0);
@@ -273,7 +279,7 @@ export function TacticalScene3D({
       event.preventDefault();
       const latest = propsRef.current;
       const step = event.deltaY < 0 ? 0.125 : -0.125;
-      latest.onCameraZoomChange(Math.min(2.0, Math.max(0.75, latest.cameraZoom + step)));
+      latest.onCameraZoomChange(Math.min(CAMERA_ZOOM_MAX, Math.max(CAMERA_ZOOM_MIN, latest.cameraZoom + step)));
     };
     const onPointerUp = (event: PointerEvent) => {
       if (!pointerStart) return;

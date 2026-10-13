@@ -17,9 +17,9 @@ Consumidores: Architecture Reviewer, propietario y agentes que retoman el reposi
    - La cuadrícula del suelo se ajustó con `depthWrite: false` a `y = 0.005`, garantizando que las líneas de la cuadrícula no perforen ni compitan con los pies de las figuras, mientras que los muros y pilares (`depthWrite: true`) ocluyen limpiamente a los combatientes cuando están delante de ellos según la perspectiva de la cámara.
    - Las placas de nombre e indicadores de estado mantienen `depthTest: false` con capas de renderizado superiores (`renderOrder: 50/60`), permaneciendo legibles por encima de los muros.
 
-2. **Ampliación de Zoom Máximo al 200%**:
-   - Se aumentó `CAMERA_ZOOM_MAX` de `1.5` a `2.0` (200%) en `presentationModel.ts`.
-   - Se actualizó el clamping en `TacticalScene3D.tsx` (rueda del ratón y controles de zoom de cámara).
+2. **Ampliación de Zoom Máximo al 300%**:
+   - Se aumentó `CAMERA_ZOOM_MAX` de `2.0` a `3.0` (300%) en `presentationModel.ts`.
+   - Se eliminaron números mágicos en `TacticalScene3D.tsx`, vinculando directamente los límites de OrbitControls y la rueda de desplazamiento a `CAMERA_ZOOM_MIN` y `CAMERA_ZOOM_MAX`.
 
 3. **Gobernanza y Visión Estratégica (`ROADMAP.md`)**:
    - Se reestructuró `ROADMAP.md` alineándolo con el diseño de **Mesa Digital Táctica Híbrida (Pantalla de TV + Companion Móvil)** en 5 Fases evolutivas:
@@ -32,7 +32,7 @@ Consumidores: Architecture Reviewer, propietario y agentes que retoman el reposi
 ## 2. Archivos
 
 - `apps/web/src/components/Board/renderer/TacticalScene3D.tsx`: `depthTest: true` en sprites y `depthWrite: false` en grid lines.
-- `apps/web/src/components/Board/presentationModel.ts`: `CAMERA_ZOOM_MAX = 2.0`.
+- `apps/web/src/components/Board/presentationModel.ts`: `CAMERA_ZOOM_MAX = 3.0`.
 - `ROADMAP.md`: reestructuración canónica de las 5 fases estratégicas.
 - `walkthrough.md`: registro del cierre del sprint.
 
