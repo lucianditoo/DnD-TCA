@@ -76,7 +76,8 @@ implementación cerrados (`large-footprints-v1-implementation-plan.md`,
 
 ## Decisiones, diseños y auditorías
 
-- [implementation_plan.md](implementation_plan.md): plan recuperado de D-1B-I5R1 y remediación I5R2, pendiente de Architecture Review.
+- [implementation_plan.md](implementation_plan.md): plan de implementación activo de D-1B-I6 (Move Action Productive Integration Design), pendiente de Architecture Review y Proceed.
+- [`docs/designs/movement/i5r2-implementation-plan.md`](docs/designs/movement/i5r2-implementation-plan.md): plan cerrado y técnicamente aprobado de D-1B-I5R1/I5R2 (Movement Resolution / Commit Remediation).
 
 - [`docs/adr/`](docs/adr/): decisiones arquitectónicas estables.
 - [`docs/designs/`](docs/designs/): NDD y planes por vertical.

@@ -1157,3 +1157,63 @@ Durante el futuro sprint de código, la implementación deberá acatar el siguie
 - [ ] **No crear pipelines paralelas:** todas las Intents fluyen a través del mismo flujo de ciclo normativo común.
 - [ ] **Reutilizar helpers compartidos:** el preview del cliente consumirá la misma matemática subyacente determinista que el servidor.
 - [ ] **Preservar autoridad del servidor:** el código del cliente jamás deberá despachar mutaciones de movimiento directas, solo intenciones de consumo.
+
+---
+
+## Capítulo 8 — Integración Productiva de la Acción de Movimiento (Sprint D-1B-I6)
+
+### 8.1 Propósito y Alcance de I6
+Este capítulo especifica la integración productiva autoritativa de la **Move Action ordinaria** (`move-combatant` -> `handleMoveCombatant`) conectándola al pipeline normativo consolidado en los Capítulos 1–7 (Route Validation -> Movement Cost -> Resolution -> Commit -> Publication).
+
+**Frontera de Aislamiento Estricto:**
+- Solo migra `handleMoveCombatant` en fase activa (`room.phase === "active"`).
+- **NO migra ni altera** `handleWithdraw`, `handleRun`, `handleCharge` ni `handleFiveFootStep`. Esas acciones continúan consumiendo sus implementaciones vigentes en `tacticalCommands.ts`.
+- **NO altera** la fase de preparación (`room.phase === "preparation"`): la colocación inicial de tokens permanece como colocación libre gobernada por sus validaciones existentes fuera de I4/I5.
+- Los helpers legacy compartidos (`validateMovePath`, `calculatePathStepCostsFeet`, `calculatePathCostFeet`) se conservan sin alteración para sustentar las acciones tácticas no migradas y el preview del cliente.
+- Las ODRs normativas **ODR-D1B-C3-01** (Squeezing + Terreno Difícil) y **ODR-D1B-I5-1** (persistencia de `squeezingAxis`) permanecen abiertas y no se resuelven en este sprint.
+
+### 8.2 Autoridad y Responsabilidad del Action Consumer (`handleMoveCombatant`)
+El handler `handleMoveCombatant` retiene la responsabilidad de:
+1. **Control y Turno:** Verificar pertenencia del actor (`requireCombatantControl`), fase activa (`ensureActiveTurn`) y disponibilidad general de acción (`Rules.evaluateActionAvailability`).
+2. **Economía de Acción:** Evaluar `canUseMoveAction(snapshot, combatant)` y verificar que no existan modos de ataque preparados incompatibles (`room.currentTurn.attackMode !== "none"`).
+3. **Derivación Autoritativa del Presupuesto:** Calcular el presupuesto disponible de la acción sin admitir inputs del cliente ni duplicar fórmulas:
+   ```ts
+   const effectiveSpeedFeet = Rules.totalSpeedFeet(snapshot, combatant);
+   const availableBudgetFeet = Math.max(0, effectiveSpeedFeet - room.currentTurn.movementUsedFeet);
+   ```
+4. **Contexto Inicial:** Extraer `initialContext = { normalDiagonalStepsThisTurn: room.currentTurn.normalDiagonalStepsThisTurn }`.
+
+### 8.3 Secuencia Exacta de Acrobacias e Interrupción
+Para preservar la semántica actual de chequeo de ruta antes de tiradas y la proyección determinista del prefijo:
+1. **Resolución Candidata Completa:** Se invoca `resolveMovementPipeline` sobre la ruta candidata con `isAcrobatic = !!command.isAcrobatic`.
+   - Si el resultado NO es `ready`, se rechaza el comando inmediatamente (por ejemplo, ruta topológicamente ilegal o presupuesto insuficiente). No se realiza ninguna tirada de dados ni mutación.
+2. **Detección de Pasos a Través de Enemigos:** Se inspecciona `resolution.steps`. Si un step atraviesa casillas ocupadas por un enemigo vivo y `isAcrobatic` es true:
+   - Se realiza la tirada de Acrobacias (CD 25).
+   - Los resultados de las tiradas se acumulan en un búfer local de publicación (`pendingLogs`).
+   - Si la tirada falla, la ruta se corta: `confirmedPath` es el prefijo de posiciones previas a la casilla fallida.
+   - Si `confirmedPath` queda vacío (fallo en el primer step), se lanza error ("Movimiento interrumpido en el primer paso") sin Commit.
+3. **Re-resolución Normativa del Prefijo Confirmado:**
+   - Si hubo interrupción pero existe un prefijo válido, se re-ejecuta `resolveMovementPipeline` **exclusivamente sobre `confirmedPath`**, reutilizando el mismo `snapshot`, `initialContext`, `availableBudgetFeet` e `isAcrobatic = true`.
+   - La nueva resolución del prefijo es la única que avanza al Commit. Sus `resultingContext` y costes reflejan con exactitud los steps efectivamente transitados.
+
+### 8.4 Ataques de Oportunidad (AoO)
+1. Sobre el camino final confirmado, se ejecuta `findTriggeredOpportunityAttacksForPath`:
+   - Se procesan tiradas de CD 15 de Acrobacias para esquivar AdO según la regla vigente, acumulando mensajes en el búfer local.
+   - Si hubo interrupción por Acrobacias fallida, se genera el AdO correspondiente del enemigo interceptor.
+2. Las oportunidades resultantes se conservan localmente y **solo se encolan** en `room.pendingOpportunityAttacks` tras un Commit exitoso.
+
+### 8.5 Compromiso Atómico (Commit) y Publicación Transaccional
+1. **Precondiciones:** Se construye `preconditions`:
+   - `expectedTurnCombatantId: combatant.id`
+   - `expectedRound: room.round`
+   - `expectedOrigin: combatant.position`
+   - `expectedMovementUsedFeet: room.currentTurn.movementUsedFeet`
+   - `expectedDiagonalContext: initialContext`
+2. **Ejecución de Commit:** Se invoca `commitMovementResolution({ room, combatant: authoritativeCombatant, resolution, preconditions })`.
+   - Si el Commit retorna `rejected`: se aborta la ejecución arrojando un error descriptivo. El búfer local de logs y AdOs se descarta. `room` y `combatant` quedan con **cero mutaciones**.
+3. **Publicación (Solo si `committed`):**
+   - Se aplica la economía de turno: `room.currentTurn.usedMoveAction = true`.
+   - Se vuelcan los logs de Acrobacias/AdO del búfer local a `room.log`.
+   - Se añade el log oficial de movimiento informando casillas, coste y modo espacial.
+   - Se encolan las `finalOpportunities` en `room.pendingOpportunityAttacks`.
+   - Se sincroniza la fase (`syncEncounterPhase(room)`) y se emite `broadcast(room)`.

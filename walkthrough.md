@@ -1,17 +1,18 @@
-# Walkthrough — D-1B-I5R2: Movement Resolution Provenance & Stale-Rules Remediation
+# Walkthrough — D-1B-I5R2: Movement Resolution Provenance & Stale-Rules Remediation (Aprobado)
 
 Responsabilidad: Registrar la última entrega, sus validaciones y límites.
 Autoridad: Registro
 Lifecycle: Rotativo
 Reemplaza: Walkthrough de D-5R3, conservado en Git (D-5 no se reabre).
-Complementa: [Estado](PROJECT_STATUS.md), [plan I5R1/I5R2](implementation_plan.md), [NDD D-1B](docs/designs/normative-movement-design.md)
+Complementa: [Estado](PROJECT_STATUS.md), [plan I5R1/I5R2](docs/designs/movement/i5r2-implementation-plan.md), [NDD D-1B](docs/designs/normative-movement-design.md)
 Consumidores: Architecture Reviewer, propietario y agentes que retoman el repositorio.
 
 ## Resultado
 
-**READY FOR ARCHITECTURE REVIEW**. I5 no se declara cerrado; I6 permanece
-**BLOQUEADO**. Baseline de entrada: `a10919ebcdad7875550f34eae72283beef10ba46`.
+- **D-1B-I5R2**: **TECHNICALLY APPROVED** (commit `865405adaabc1665b8b4f417fdbf45bbfed16f3f`).
+- **D-1B-I6**: DESBLOQUEADO ÚNICAMENTE PARA DISEÑO ARQUITECTÓNICO. Sin código implementado, pendiente de Architecture Review y Proceed explícito.
 
+Logros consolidados de I5R2:
 - `MovementResolutionResult` conserva `readonly combatantId` en `ready` e
   `insufficient-budget`, derivado exclusivamente del actor recibido. Copia el
   contexto diagonal inicial para no compartir la referencia del caller.

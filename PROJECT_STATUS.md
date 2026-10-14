@@ -24,7 +24,8 @@
 | I2 — Movement Cost | Assessment puro implementado; soporte de Squeezing y separación base/coste agregados en I5R1; consumido por I4. |
 | I3 / I3R1 — Route Validation | Integrado: `validateMovePath` delega legalidad a `validateRouteLegality`; extracción sin el ciclo detectado en I3. |
 | I4 — Movement Resolution | Pipeline puro de validación/coste/verificación de presupuesto; I5R2 conserva combatantId y evidencia canónica espacial y de movilidad/presupuesto. |
-| I5 / I5R1 / I5R2 — Movement Commit | Rechaza actor sustituido, clon detached y reglas obsoletas antes de mutar; mantiene guardas I5R1 y separación coste/base. READY FOR ARCHITECTURE REVIEW, sin cierre formal ni consumidores productivos. |
+| I5 / I5R1 / I5R2 — Movement Commit | Aplicación autoritativa remediada y cerrada: procedencia de actor vivo en room y guardas anti-stale espaciales y de movilidad; **TÉCNICAMENTE APROBADO** (`865405a`). |
+| I6 — Move Action Productive Integration | En fase de DISEÑO arquitectónico y plan de implementación; pendiente de Architecture Review y Proceed explícito antes de cualquier código. |
 
 La presentación incorpora un **renderer WebGL táctico 2.5D** con respaldo `2D`, cámara orbital limitada, cuatro presets y sprites pixel-art, estrictamente desacoplado sobre el grid autoritativo 2D con huellas multicasilla. No es todavía el motor espacial 3D normativo: las alturas visuales son cosméticas y los NDD espaciales siguen siendo el destino de migración mecánica. CI verde no significa V1 completa.
 

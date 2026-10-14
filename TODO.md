@@ -13,9 +13,8 @@ Consumidores: Agentes al retomar el proyecto y propietario al priorizar tareas.
 
 ## Continuidad inmediata de D-1B
 
-- Obtener el veredicto de Architecture Review sobre D-1B-I5R2; I5 sigue sin
-  cierre formal e I6 permanece **BLOQUEADO**. El estado de
-  integración por etapa se mantiene en [PROJECT_STATUS.md](PROJECT_STATUS.md).
+- D-1B-I5R2 ha sido **TÉCNICAMENTE APROBADO** en Architecture Review (`865405a`).
+- D-1B-I6 (Integración productiva de Move Action) entra en fase de DISEÑO arquitectónico y plan de implementación; implementación de código bloqueada hasta revisión y Proceed explícito.
 - Resolver ODR-D1B-I5-1: sede persistente de `squeezingAxis`, antes de asumir
   una solución en la migración productiva.
 - Resolver las combinaciones afectadas por D-1B-C3-01 (composición de fuentes
