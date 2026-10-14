@@ -1,30 +1,26 @@
-# Walkthrough — D-1B-I6 Move Action Productive Integration
+# Walkthrough — D-1B-I7 Design: Normative Movement Preview Parity
 
-Responsabilidad: registrar implementación, verificación y límites de este sprint.
-Autoridad: registro; diseño canónico en [NDD D-1B](docs/designs/normative-movement-design.md).
-Lifecycle: rotativo.
-Reemplaza: walkthrough de remediación R5, preservado en Git.
-Complementa: [plan ejecutado](docs/designs/movement/implementation-plan.md), [evidencia](docs/testing/master-coverage.md), [estado](PROJECT_STATUS.md).
+Responsabilidad: registrar auditoría real, decisiones y alcance documental de I7.
+Autoridad: registro; el contrato vive únicamente en [NDD D-1B Capítulo 9](docs/designs/normative-movement-design.md#capítulo-9--i7-normative-movement-preview-parity).
+Lifecycle: Rotativo.
+Reemplaza: walkthrough I6, conservado en Git.
+Complementa: [plan activo](implementation_plan.md), [estado](PROJECT_STATUS.md), [pendientes](TODO.md).
+Consumidores: Architecture Reviewer y agentes que implementarán tras Proceed.
 
-## Resultado
+## Auditoría y decisiones
 
-Implementado con Proceed explícito sobre baseline 16711b603a7162e45df6effecc4f48a55010e453. Move activo usa Route Validation → coste RAW/Tumble → Resolution → Commit → publicación; conserva ownership/turno/economía, gating exacto de ataque y bloqueo tras Five-Foot Step. Costes/paridad de ocho combinaciones viven en movementCost, sin Double Move ni Accelerated Tumbling.
+Baseline limpio en master: 650f22dd514fac56b033acb6e937b3aabe5cdc3d, coincidente con origin/master. I6 técnicamente aprobado por Architecture Review externa según el owner. Auditoría de apps/web y helpers shared, localizada en NDD §9.2: un cuerpo de costes legacy en shared, cinco llamadas web de coste, una validación web, tres expresiones de presupuesto/rango y cero consumidor web de resolver/contador/Tumble. Dos renderers comparten BoardPresentationModel; SelectedInfo presenta speed shared y no coste de ruta. No tablero mobile/companion separado ni nuevo protocolo necesario.
 
-SqueezingAxis se define una vez en contrato hoja sin dependencias. EffectManager valida estructura/copia; snapshot y clones preservan eje; geometría orientable exige instancia única, eje válido/legal y falla explícitamente ante corrupción. Ambos commits preservan/reemplazan/remueven eje, evitando onStack ignore. Rechazos stale no publican logs, AdOs, economía ni movimiento. Fixtures map-builder usan horizontal porque todas las huellas iniciales auditadas son filas horizontales; effect-only no orientable sigue permitido. Fixture Disabled identifica ahora el turno canónico.
+Diseño selecciona resolver puro directamente y adapter web presentacional; snapshot recibido contiene todos los inputs. States distinguen legal/exceso/illegal/empty/unavailable; sin prefix inventado ni Commit. Eje y huellas vienen de shared; Tumble es intención y CD25 contingencia, sin RNG/AoO cliente nuevo. Matriz RAW no se duplica ni rediseña.
 
-Los 13 sitios del audit inicial se cubren: Move activo deja de usar spatialTransition; los otros 12 adaptan firma/evidencia. Withdraw/Run/Five-Foot Step conservan validación/coste/economía; Charge/teleport/bull rush/ramas AdO continúan natural. GM/ability/hazard no pueden generar squeezing sin evidencia. No loader persistente ni fallback para salas orientables axisless; recrear salas antiguas.
+La auditoría cerró dos riesgos de autoría: endpoint enemigo bloquea hoy construir tránsito CD25 y 5ft comparte draft/botón con ordinary. NDD §9.6 define draft inválido corregible y previewKind explícito, con selector local 5ft que conserva pipeline/comando legacy. Over-budget se muestra íntegro, confirmación ordinaria bloqueada. Props y fuentes se separan para no migrar Withdraw/Run/Charge/forced/preparation. Celdas del grid actual usan z=0: autoría ordinary preservará altura del actor sin introducir movimiento vertical.
 
-## Ajustes técnicos respecto al plan
+Implementación futura estrictamente apps/web consumiendo APIs existentes: Nivel B; cambios shared/contratos/protocolo/server requieren reclasificación C/D fuera del plan seleccionado. Esta entrega no es Proceed y espera Review/Proceed explícitos. Las doce preguntas de diseño quedan respondidas en NDD §9.8; ningún ODR bloqueante permanece abierto.
 
-La geometría estricta expuso un caso objetivo no representado por una mera adaptación de firma: el helper AdO consulta posiciones futuras con el eje inicial persistido. Se agregó entrada opcional de huellas confirmadas y vista local de origen por paso (sin inferir eje ni mutar Room); Move usa Resolution, Withdraw/Run sus pasos legacy. Se conserva provocación, exención, reactores, CD15 y aritmética histórica del helper. Preparación/teleport validan candidato natural explícito para no consultar un eje anterior en destino natural. NDD §8.4 aclara esta adaptación; se hace explícita para revisión externa, no se autoaprueba arquitectura.
+## Verificación documental
 
-validateMovePath/calculatePathStepCostsFeet/calculatePathCostFeet comparados contra baseline: idénticos. UI Preview permanece legacy y sus divergencias de DT diagonal, footprints y Tumble se conservan en NDD §8.6. Las nuevas pruebas de integración/eje y suites existentes reemplazan el archivo de regresión separado previsto, evitando duplicación.
+NDD único ampliado, plan temporal en raíz e INDEX actualizado; plan I6 ejecutado conservado como referencia. PROJECT_STATUS refleja aprobación I6 y diseño I7; TODO contiene solo próximos pasos. Estrategia futura cubre paridad/no mutation/budget/axis/Tumble, ambos renderers, staleness, payload y regresiones. Sin tests implementados/ejecutados ni nuevas afirmaciones de cobertura: master-coverage y Registry permanecen intactos.
 
-## Validación y gate documental
+DoD de esta entrega: diff check, enlaces y anchors locales, SSOT, contenido auditado y diff únicamente Markdown verificados antes de commit. No código productivo, shared TS, servidor, UI ni tests modificados.
 
-- Suite completa 746/746; suites focalizadas 188/188; typecheck/build de tres workspaces verdes.
-- WebSocket 110/110; Playwright 16/16 sobre implementación final. El E2E detectó el guard Five-Foot Step que antes residía en validateMovePath: restaurado en handler y regresión agregada. Presupuesto conserva mensaje legacy con coste normativo.
-- Sandbox impidió conexión localhost (EACCES); servidor de pruebas propio produjo conflicto de puerto al intentar Playwright. Se detuvieron procesos propios y se repitieron ambos gates fuera del sandbox; no ocultar fallos ni afirmar CI remoto por resultados locales. Bundle warning >500 kB preexistente.
-- Diff check, enlaces locales, SSOT, Registry y snapshots sincronizados. Plan completado reubicado de raíz a movement/implementation-plan; INDEX actualizado. Sin cambio a .claude/settings.local.json ni archivos unrelated.
-
-CI Windows remoto se inspecciona tras push. Estado de entrega: Ready for Architecture Review; el Architecture Gate externo decide cierre formal.
+Awaiting Architecture Review and Proceed.

@@ -76,7 +76,8 @@ implementación cerrados (`large-footprints-v1-implementation-plan.md`,
 
 ## Decisiones, diseños y auditorías
 
-- [Plan I6 ejecutado](docs/designs/movement/implementation-plan.md): referencia de implementación de Move Action; reubicado de raíz tras DoD, pendiente de Architecture Review externa.
+- [implementation_plan.md](implementation_plan.md): plan temporal activo de I7 Preview Parity, derivado del NDD D-1B Capítulo 9; Awaiting Architecture Review and Proceed.
+- [Plan I6 ejecutado](docs/designs/movement/implementation-plan.md): referencia de implementación de Move Action técnicamente aprobada (650f22d); reubicado de raíz tras DoD.
 - [`docs/designs/movement/i5r2-implementation-plan.md`](docs/designs/movement/i5r2-implementation-plan.md): plan cerrado y técnicamente aprobado de D-1B-I5R1/I5R2 (Movement Resolution / Commit Remediation).
 
 - [`docs/adr/`](docs/adr/): decisiones arquitectónicas estables.

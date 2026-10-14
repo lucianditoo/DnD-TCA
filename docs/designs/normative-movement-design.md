@@ -1426,3 +1426,150 @@ Dos constructores espaciales explícitos: `spatialTransition.ts:35` y `movementC
 `roomStore.ts` mantiene rooms en un Map en memoria; no se encontró loader de combates persistidos en el servidor. Snapshot usa clon explícito y distribución JSON. No se afirma haber auditado datos externos ajenos al repo. En despliegue, las salas en memoria creadas por código previo pueden contener compresión orientable sin eje: drenar/recrear esas salas antes de habilitar el contrato. Si se introduce restauración persistente, su admisión debe rechazar/quarantinar ese estado y pedir recreación o transición espacial explícitamente validada fuera del Commit. No migración silenciosa a partir de destino o candidatos. No hay fallback temporal de selección de eje aprobado.
 
 Para geometría autoritativa: consultar instancia única, exigir eje en footprint orientable y usar `preferredAxis`; si proyección falla, error de integridad antes de uso de snapshot. La excepción no orientable solo soporta fixtures/reglas de modificadores sin autoridad espacial orientada; no habilita nuevas transiciones comprimidas no soportadas.
+
+## Capítulo 9 — I7: Normative Movement Preview Parity
+
+### 9.1 Alcance, autoridad y nivel
+
+Baseline auditado: `650f22dd514fac56b033acb6e937b3aabe5cdc3d`. I6 está TECHNICALLY APPROVED por Architecture Review externa, según el owner. Este capítulo es diseño, no Proceed: no modifica el código, tests, protocolo ni reglas implementadas.
+
+I7 migra únicamente el preview de Move ordinario activo. El servidor conserva resolución, tiradas, Commit y Publication; el cliente calcula una predicción local pura. Legalidad predictiva no es autorización de acción ni garantía de éxito. Matriz RAW: §8.3.2, sin otra tabla ni fórmulas React. Eje/lifecycle: §8.7. Contador: §6.13; autoridad: §6.14 y Capítulo 7.
+
+Quedan fuera: migración semántica de Withdraw/Run/Charge/Five-Foot Step, colocación Preparation/GM, Forced Movement, Double Move, Spring Attack, D-7/TurnState, FoW, Accelerated Tumbling y preview normativo de AoO. Las superficies visuales compartidas reciben un discriminante de origen y conservan la rama legacy para esas operaciones.
+
+Esta entrega es documental (Nivel A con auditoría/diseño de fronteras). La implementación diseñada es **Nivel B**: exclusivamente apps/web y cobertura asociada consumen APIs shared existentes, sin modificar contratos/shared TS, reglas, servidor ni wire protocol. No se rebaja una extracción C/D: se decide explícitamente no hacerla. Si al implementar apareciese necesidad objetiva de modificar shared/contracts/protocolo/servidor, ese cambio queda fuera de este plan B, exige reclasificación C/D y revisión/Proceed correspondientes. El owner exige Architecture Review y Proceed antes de implementar este diseño, incluso bajo el alcance B elegido.
+
+### 9.2 Auditoría del repositorio real
+
+Búsqueda exhaustiva en apps/web/src y helpers shared usados por web: nombres de coste/validación/resolver/comando, isAcrobatic, movementUsedFeet, contador, path, overlays, rangos, hooks y renderers. Líneas referidas al baseline, no a documentos antiguos.
+
+| Archivo / componente o función | Matemática / responsabilidad actual | Fuente | ¿Duplica o diverge de I6? | ¿Presentación pura? | I7 | Rama que permanece legacy |
+|---|---|---|---|---|---|---|
+| `apps/web/src/hooks/useBoardSelection.ts:28-31` — displayedPath/movementPathCost/displayedPathCosts | Dos llamadas: coste total de draft y costes acumulados del path mostrado | Snapshot y selected; helpers legacy, sin Tumble | Sí, contra coste normativo | No: el hook decide fuente matemática | Ordinary usa proyección única | Charge, bull rush, Withdraw/Run/5ft conservan fuentes actuales |
+| mismo hook:20-32 — highlightedCells/getChargePreviewPath/bullRushPreviewPath | Selección de rutas/highlights; bull rush deriva validateSpecialManeuver | Room/snapshot, modos/flags | Ordinary comparte selector con tácticas | Orquestación, no renderer | Discriminar previewKind antes de calcular | Preview de charge y forced movement no migrado |
+| `apps/web/src/viewModel.ts:78-121` — getHighlightedCells | Presupuesto effective speed × factor de acción − movementUsedFeet; escanea tablero; usa isLegalNextPathStep | Room, snapshot, path, flags Withdraw/Run | Sí: ordinary acaba en validator/coste legacy; no contador recibido | No | Ordinary consulta pipeline para candidatos adyacentes | Factores Withdraw 2x/Disabled 1x, Run 4x/3x, ataque/ability/preparation |
+| `apps/web/src/viewModel.ts:315-323` — isLegalNextPathStep | Guardas manuales de adyacencia/repetición y validateMovePath sobre path extendido | Nuevo snapshot creado por candidato; maxDistance + gasto previo | Sí: validación/coste legacy, no isAcrobatic ni paridad inicial | No | Deja de gobernar ordinary; no borrar función compartida | Validación visual táctica existente |
+| `apps/web/src/viewModel.ts:43-75,123-170` — isFootprintInsideBoard/isCombatantDestinationOccupied/isFootprintPreviewLegal/getGmMoveHighlightedCells/getChargePreviewPath | Bounds, muros, ocupación; charge calcula speed ×2, coste legacy y mínimo 10 ft | Huellas shared, Room/snapshot; actor reanclado | Duplicación visual de chequeos; eje inicial puede no ser legal en destino hypothetical | No | Ordinary deja de reanclar actor para autorizar destino | Preparation, teleport GM y Charge permanecen existentes |
+| `apps/web/src/viewModel.ts:173-188` — buildStraightPath | Construcción geométrica de ruta recta | Anclas | No autoridad de coste; uso Charge legacy | No, utility de autoría de ruta | Sin migración | Charge/Run según uso actual |
+| `apps/web/src/App.tsx:46-48,103-105` — draft y rulesSnapshot | Estado de autoría; snapshot memoizado de Room | WebSocket Room | No matemática RAW | Orquestación | Propagar intención Tumble y previewKind; snapshot único | Flags tácticos/selección siguen locales |
+| `apps/web/src/App.tsx:262-293` — handleCellClick | Filtra highlights y tokens; append/undo; Preparation y GM envían colocación | highlightedCells y clicks del Board | Ordinary depende de filtro legacy; token enemigo bloquea autoría CD25 | No | Ordinary usa resultados predictivos y editor de draft de §9.6 | Placement, tácticas y D-5 conservar routing |
+| `apps/web/src/App.tsx:151-153,465-520` — moveSelected/confirmMovementPath/fiveFootStep | Intent ordinario con to/path; tácticas separadas; limpia draft | Draft local y flags | No coste enviado; ordinary omite isAcrobatic | No, transporte/orquestación | Ordinary añade boolean existente y no transmite resultados derivados | Run envía solo to; Withdraw to/path; 5ft to |
+| `apps/web/src/App.tsx:761-763` — wiring Board/ActionsPanel/isMoveDestinationOccupied | Props de route/cost; chequea ocupación del actor reanclado en último destino | Room/snapshot y draft | Sí: chequeo paralelo puede ignorar huella predictiva/eje nuevo | No | Ordinary usa status pipeline para destino; misma proyección para Board y panel | Props/checks legacy tácticos separados |
+| `apps/web/src/components/ActionsPanel/ActionsPanel.tsx:148-176,182-218` | Speed shared, presupuesto restante de acción y total de ruta recibido; disponibilidad Run/5ft; confirmación compartida | Rules.getMovementSpeedProjection, props y currentTurn | Duplica resta de presupuesto; hoy no distingue exceso/illegal | Mixto | Ordinary lee valores/status; selector Tumble y origen 5ft | Disponibilidad/economía y confirmación tácticas permanecen legacy |
+| mismo panel:337 — preview Charge | Recalcula coste legacy para texto | chargePreviewPath + snapshot | Coste táctico fuera de I7 | No | No migrar | Charge |
+| mismo panel:474 — alcance de conjuro | Usa calculatePathCostFeet como targetDistance | Target y snapshot | Uso de métrica movement para spell range; hallazgo ajeno a I7 | No | No corregir ni borrar helper por este uso | Spell range, follow-up separado |
+| `apps/web/src/components/Board/presentationModel.ts:434-451,506-564` — buildBoardPresentationModel | Ocupación actual shared; ruta por anclas; footprint final solo charge/forced; etiqueta routeStepCost toma coste acumulado | Snapshot y props de paths/costs/highlights | Ordinary no tiene huella por Step; nombre stepCost es valor acumulado | Mixto: proyección visual + consultas shared, sin coste RAW | Ordinary consume occupiedCells/mode/eje/costes ya resueltos | Huella actual, terrain, cover/AoE/badges y rutas tácticas vigentes |
+| `apps/web/src/components/Board/Board.tsx` — Board / rama 2D | Pasa props a presentationModel; pinta celdas/ruta/tokens/cámara | Un BoardPresentationModel | No fórmula de Movement Cost | Sí | Renderizar nuevos estados/huellas/labels recibidos | Toda presentación no ordinaria |
+| `apps/web/src/components/Board/renderer/TacticalScene3D.tsx:300,446-462,560` | Hit testing, geometría de cámara, footprint visual y labels | El mismo presentation del Board | No norma de movimiento ni coste; escala del sprite de squeezing es cosmética | Sí | Consumir la misma semántica que 2D, sin resolver movimiento | Renderer 2.5D/WebGL, cámara y sprites |
+| `apps/web/src/hooks/useWebSocketRoom.ts:40-66,100-107` — connect/room-update/send | Reemplaza Room recibido; JSON de Intent; invalidación de turno | hello/room-update/errores servidor | No coste; no preview request | Transporte | Mantener protocolo; recomputar en cada Room nuevo desde hook consumidor | Demo y demás comandos |
+| `apps/web/src/components/SelectedInfo/SelectedInfo.tsx:20,41` y `CombatantsPanel/CombatantsPanel.tsx:94` | Presentan velocidad efectiva, no coste/budget de Route | Rules.getMovementSpeedProjection y snapshot | No fórmula RAW ni ruta paralela | Sí, consume regla shared | Sin cambio previsto | Información de ficha/GM/jugador |
+| `apps/web/src/hooks/useBoardSelection.ts:17-18`, `viewModel.ts` — getRangePreview | Distancia entre footprints y penalizador de alcance de arma | Helpers shared de distancia y perfil de arma | No Movement Cost ordinary; preview de otra operación | Mixto, regla de alcance existente | Sin cambio previsto | Ataques/habilidades/alcance |
+| `apps/web/src/hooks/useCombatActions.ts` | Dados cliente de ataques/daño, no movimiento | Opciones de ataque | No interviene en CD25/CD15 del movimiento | No, otra operación | No usar para Tumble | Ataques/daño |
+| `apps/web/src/styles.css` | Clases de rutas/highlights y terrain | Datos presentacionales | Sin cálculo normativo | Sí | Estados distinguibles sin estética nueva completa | Estilo/cámara/map editor |
+| `packages/shared/src/rules.ts` — calculatePathStepCostsFeet/calculatePathCostFeet/validateMovePath | Un cuerpo legacy de costes: diagonales locales, DT alternado 15/20, narrow por ancla, multiplicadores; wrapper total y validación | Snapshot, path; isAcrobatic opcional no enviado desde web | Sí vs I6: reinicia paridad y coste/geometría diferente | No | Ordinary web deja de llamarlos | Servidor táctico/UI táctica; no tocar shared |
+| `packages/shared/src/movementResolution.ts` — resolveMovementPipeline | Route Validation → assessMovementCost → budget; steps, context y fingerprint | Snapshot/path/actor/budget/context/isAcrobatic explícitos | Misma autoridad matemática I6 | No, cálculo puro shared | Consumo directo, sin extracción | Servidor sigue re-resolviendo y comiteando |
+| `packages/shared/src/routeValidation.ts`, `movementCost.ts`, `movementGeometry.ts` | Footprints/celdas legales, modo/eje, costes RAW y ocupación actual | Snapshot; eje persistido para ocupación inicial | Autoridad compartida, no duplicación web | No, contratos puros | Consumo por resolver; getCombatantOccupiedCells para actual/CD25 | Sin cambios a contratos/implementación |
+| `packages/shared/src/combatSnapshot.ts`, `types.ts`, `movementContracts.ts`; `apps/server/src/room/roomStore.ts` | Snapshot defensivo, TurnState y axis; Room enviado por JSON completo | Sala autoritativa publicada | Ya contienen todos los inputs | Transporte/tipos/copias | Reutilizar tal cual | Sin endpoint/mapping/fingerprint cliente nuevo |
+
+Inventario cuantificado, sin confundir llamada con fórmula:
+
+- **Cero implementaciones RAW de coste en React/web**; **un cuerpo de fórmula legacy** en shared/rules.ts, consumido por cinco llamadas ejecutables de coste web: useBoardSelection ×2, getChargePreviewPath ×1, ActionsPanel Charge ×1 y spell range ×1. Wrapper total no es una segunda fórmula. La importación calculatePathStepCostsFeet en viewModel no se usa; no contar como llamada.
+- Una llamada web a validateMovePath (isLegalNextPathStep); cero llamadas web a resolveMovementPipeline en baseline. No hay lectura del contador normalDiagonalStepsThisTurn en web ni estado/isAcrobatic/Tumble de movimiento.
+- Tres expresiones web de presupuesto/rango de movimiento: getHighlightedCells (incluye factores Withdraw/Run), getChargePreviewPath y lectura disponible en ActionsPanel. Dos selectores locales de factor táctico (Withdraw/Run) y guardas manuales de adyacencia/repetición/footprint; no son fórmulas RAW adicionales.
+- Dos vistas del mismo Board (2D y 2.5D), no dos engines. GM/jugador/demo comparten árbol; no se encontró tablero mobile/companion independiente, hook/store/selector adicional de coste ni indicador de rango normativo separado. El verde actual significa siguiente extensión que el validator legacy admite, no un flood-fill de destinos alcanzables. ProfilesPage/useStoredProfiles no hacen preview de movimiento.
+
+### 9.3 Decisión de reutilización y snapshot de entrada
+
+**Seleccionada A:** ejecutar directamente resolveMovementPipeline desde web. B (extraer otro compositor inferior) descartada porque el resolver actual es puro, portable y expone toda evidencia necesaria. No hay RNG ni node:crypto; fingerprint es string determinista y no añade autoridad al cliente. Calcularlo y no mostrar/transmitirlo es aceptable; no alterar shared para evitar esa metadata.
+
+El Room recibido por hello/room-update es CombatRoom completo: board (incluidos difficult/narrow/impassable), combatants/perfiles/equipo/efectos, currentTurn.movementUsedFeet y normalDiagonalStepsThisTurn, phase y constraints. createCombatRulesSnapshot ya copia currentTurn y squeezingAxis en effectInstances. Rules.totalSpeedFeet deriva velocidad efectiva de esas fuentes como en I6. No falta ningún input. No nuevo endpoint ni preview request-response.
+
+El hook consume el snapshot memoizado de App basado exclusivamente en Room recibido, nunca presentationRoom con draftBoard de D-5. Actor: proyección del combatiente identificado por selected.id dentro de snapshot.combatants; no mezclar posición de otra revisión ni usar un clon reanclado como autoridad. No necesita referencia LIVE de servidor: esa condición pertenece a Commit y el cliente nunca lo llama. Ordinary solo proyecta el actor del turno actual; para otro seleccionado no se mezcla su speed con el budget/context de otro turno y se muestra unavailable.
+
+Inputs para cada ruta candidata: path copiado con x/y/zFeet, copia `initialContext.normalDiagonalStepsThisTurn` del snapshot (nunca cero fijo), availableBudgetFeet = max(0, Rules.totalSpeedFeet(snapshot, actor) − snapshot.currentTurn.movementUsedFeet), isAcrobatic de intención local. No reducir speed/budget otra vez por Tumble. Vacío se presenta como draft vacío sin invocar una Route ilegal vacía. La paridad proyectada nunca se escribe a Room/cache autoritativa.
+
+### 9.4 Fuente presentacional única y contrato mínimo
+
+Se elige `apps/web/src/movementPreview.ts`: adapter puro web, no segunda autoridad. Ejecuta el resolver y deriva etiquetas/discriminantes de presentación. `useBoardSelection` memoiza esta proyección y candidatos; Board/ActionsPanel reciben la misma instancia/evidencia. No React state paralelo de costes ni cómputos por renderer.
+
+Contrato conceptual web `MovementPreviewProjection` discriminado:
+
+- `empty`: sin steps, total 0, presupuesto disponible y contexto inicial sin consumo; no implica ready.
+- `legal`: resultado shared ready, steps completos y totalCostFeet/remainingBudgetFeet/projectedContext exactos.
+- `over-budget`: resultado insufficient-budget, steps completos, total desde requiredCostFeet, availableBudgetFeet y contexto proyectado exactos; remainingBudgetFeet firmado = availableBudgetFeet − requiredCostFeet, excessFeet = su magnitud negativa. Presentación de saldo, no fórmula de Movement Cost nueva.
+- `illegal`: reason y failedStepIndex del resultado illegal-route; conserva path intentado, no tiene total/remaining/projectedContext de ruta evaluada. Shared no devuelve steps válidos en esa variante: no fabricar coste cero ni prefix Resolution ni truncar ruta para obtener un total.
+- `unavailable`: faltan Room/actor, el actor no coincide con currentTurn.combatantId para preview ordinary activo, o hay error de integridad espacial reportado por shared. Mostrar diagnóstico y bloquear confirmación; no convertir en legal/illegal por fallback natural/eje inventado.
+
+Para legal/over-budget, conservar steps del resultado por referencia de solo lectura (position, occupiedCells con zFeet, spatialMode, squeezingAxis, isDifficultTerrain, stepCostFeet, cumulativeCostFeet y resultingContext). Fingerprint/combatantId/base route metadata pueden quedarse privados en el resultado compartido; no nuevas copias normativas. Una envoltura presentacional basta: no cambiar MovementResolutionResult para UI.
+
+Autoría/availability es una dimensión separada: acción bloqueada por permisos/turno/canUseMoveAction/Rules.evaluateActionAvailability/5ft/attackMode no convierte una Route geométricamente legal en illegal. Mostrar razón de acción no disponible y deshabilitar Confirmar. Reutilizar guards shared existentes y condiciones congeladas de I6 (full, o standard aún no consumido); no implementar nueva economía. Pendientes/demo/D-5 no habilitan envío. `ready` del resolver nunca se muestra como éxito confirmado.
+
+### 9.5 Representación visual y métricas
+
+| Estado | Ruta/coste/saldo | Confirmación ordinaria |
+|---|---|---|
+| legal | «Ruta prevista: X ft; quedarían Y ft»; pasos/huellas confirmados predictivamente | Habilitada solo si acción/control disponibles; envía Intent |
+| over-budget | Mantener todos los steps; destacar desde primer cumulativeCostFeet > availableBudgetFeet; saldo negativo y exceso explícito | Deshabilitada; servidor también rechaza toda la ruta, no un prefijo por presupuesto |
+| illegal | Anclas intentadas; failedStepIndex marcado; suffix no evaluado. Motivo exacto; coste/saldo de ruta «no evaluado» | Deshabilitada; no asumir huella/coste legal del paso fallido |
+| empty/unavailable | Sin proyección válida; empty muestra presupuesto sin gasto; unavailable diagnóstico | Deshabilitada |
+
+Normative step overlays usan occupiedCells, no actor reanclado en destino ni eje inferido por dirección visual. Mostrar modo/eje de cada step y footprint final predictivo como overlay/ghost; el token actual permanece en la posición publicada. Inicial: getCombatantOccupiedCells del snapshot respeta eje persistido. Cambiar cámara solo proyecta las mismas celdas.
+
+isDifficultTerrain viene del step (toda huella, no ancla). Squeezing viene de spatialMode/eje; Tumble se etiqueta desde isAcrobatic. Terrain de fondo actual se sigue pintando como hoy; no usa esos badges para calcular coste.
+
+En baseline la etiqueta `routeStepCost` contiene acumulados de displayedPathCosts. I7 mantiene la etiqueta de coste acumulado sobre ancla para continuidad; puede mostrar stepCostFeet individual en tooltip/panel, etiquetándolo explícitamente. No confundir ninguno con Spatial Distance ni base-route stats. ActionsPanel lee total/saldo del adapter, no vuelve a restar/recostear. No replicar matriz RAW en JSX.
+
+### 9.6 Autoría de ruta, Tumble y separación táctica
+
+Se congela previewKind en capa web: ordinary-move, placement, gm-placement, legacy-withdraw, legacy-run, legacy-five-foot-step, legacy-charge, legacy-forced o none. Solo ordinary-move con phase active ejecuta la nueva rama. Selección GM/jugador no cambia la matemática; permisos solo controlan interacción. Demo de solo lectura no habilita comandos.
+
+La UI actual no tiene fiveFootStepArmed: comparte draft y botón directo de confirmación con ordinary. Para evitar que el nuevo status/confirmación ordinario cambie esa operación, añadir selector local explícito de preview Five-Foot Step en el panel Move (estado de presentación, no nuevo comando/semántica). Su edición, coste/validación y confirmación conservan el branch legacy y canUseFiveFootStep. El control existente Confirmar Paso sigue enviando solo to. Withdraw/Run mantienen flags exclusivos y rutas/confirmaciones actuales. Cambiar previewKind limpia el draft como hoy al armar Withdraw/Run; no introduce Double Move. El modo 5ft no hereda Tumble ni status ordinario.
+
+Autoría ordinary:
+
+1. Una sola proyección para el draft actual. Evaluar por el mismo adapter las extensiones adyacentes del último ancla (o del origen si vacío), como máximo ocho candidatos; no rescanning de todo tablero con resolver por celda.
+2. Mapa de candidatos guarda status/razón, no solo verde=true. Extensiones legal/over-budget se pueden añadir; confirmar over-budget sigue prohibido. Añadir una extensión illegal está permitido únicamente como edición de draft inválido, nunca como aceptación predictiva. Esto permite construir tránsito Tumble por enemigo cuando una ruta provisional termina en su casilla y es illegal hasta añadir una salida libre. No convertir la razón de shared en una excepción de legalidad local.
+3. El renderer comunica estado por texto/marker/clase, no solo color. Click no se bloquea por token enemigo en el branch ordinary de autoría; endpoint ocupado sigue illegal según resolver. La ruta debe acabar libre para ser legal. Muros/duplicados/ruta inválida pueden visualizarse como draft invalidado; Deshacer/Limpiar siguen disponibles sin validación. No fórmulas de colisión/ocupación/adyacencia para otorgar legalidad: la enumeración de vecinos es gesto de editor, resultado siempre shared.
+4. El mapa no promete destinos alcanzables a múltiples pasos ni pathfinding automático. No añade BFS/A*/rango táctico nuevo. Snapshot cambiado puede invalidar draft existente; mostrar resultado nuevo y conservar draft corregible, no recortar/silenciar error.
+5. Click 2D/2.5D suministra x/y; para ordinary construir Position preservando zFeet actual del actor salvo posición explícita de draft. Baseline presentationModel crea celdas a zFeet 0: no permitir que un click ordinario cambie altura inadvertidamente. No diseñar movimiento vertical ni interpretar altura cosmética de 2.5D.
+
+Tumble: nuevo boolean local, default false, limitado a ordinary. Cambiarlo reevalúa draft/candidatos; no muta Room. No llamar useCombatActions ni tirar dados de movimiento. Con legal/over-budget, detectar necesidad CD25 por intersección entre steps.occupiedCells y huellas shared de enemigos, con misma exclusión de dead/dying/stable que I6. Esta comparación es una anotación de evidencia, no cálculo de Route/Movement Cost ni determinación RNG. Mostrar step y enemigo: «requiere prueba CD25; el servidor puede interrumpir la ruta». Si illegal no hay steps y no se fabrica esa anotación.
+
+CD15/AoO: no nueva simulación de amenazas. No se encontró un overlay predictivo de AdO de Move ordinario: panel muestra pendientes ya publicados y mensajes de tácticas (p. ej. Prone Eschewal seguro). Mantenerlos. Tumble puede advertir genéricamente que el servidor determina evitación CD15 cuando haya provocación; no declarar seguro ni contar AdOs a partir de la predicción. CD25/CD15 pueden cambiar ruta efectiva y coste gastado; X es coste previsto de la ruta completa, no promesa de Commit.
+
+Preparation permanece free placement, sin costes normativos ni contexto proyectado. Desactivar/hide bloque de saldo de Move y Tumble en placement; conservar helpers/routing actuales, sin ampliar reglas de colocación. D-5 draftBoard no alimenta preview activo y bloquea interacción como hoy. Charge/bull rush/spell range/ataques no adoptan el adapter.
+
+### 9.7 Staleness, Intent y wire contract
+
+Payload auditado: ClientCommand y moveCombatantSchema ya admiten to, path opcional e isAcrobatic opcional; no incluyen coste, budget, validez, modo/eje ni paridad. App hoy omite el boolean. Futuro envío ordinary: mismo comando, to = último path, path íntegro copiado, isAcrobatic actual. Si path ausente se conserva fallback servidor [to]. No fingerprint/preview-id/version cliente confiable, ningún campo normativo derivado, sin cambio de schema/endpoint.
+
+Preview desde snapshot N; confirmación expresa intención, no locking. Servidor re-resuelve desde N+1 y puede rechazar o resolver distinto; su CD25 puede confirmar solo prefijo. El cliente no comitea ni hace optimistic update de posición, effects, budget/context ni stats. Room solo cambia por WebSocket. onActiveTurnChanged mantiene limpieza existente; room-update con mismo actor invalida memo/recalcula ruta sin borrar silenciosamente. Un snapshot de servidor incompatible/axisless muestra error de integridad, nunca orientación normativa inventada.
+
+Después de send, se conserva el comportamiento actual de clearActionOverlays y error de comando; no cambiar acknowledgement/protocolo para previews. Toggle Tumble vuelve a default al cambiar actor, entrar placement/táctica/demo/map-editor o limpiar ciclo de overlays tras envío. No se transmite metadata de la resolución al servidor.
+
+### 9.8 Estrategia de pruebas futuras y decisiones cerradas
+
+Pruebas futuras, sin modificar tests en esta entrega:
+
+- Paridad adapter cliente == server resolveMovementPipeline para el mismo snapshot/actor/path/isAcrobatic/budget/context. Comparar status, steps/celdas xyz, costes, contexto y presupuesto; no tomar Commit como predictor.
+- Casos RAW de §8.3.2, ortogonales y diagonales, inicial != 0, normal → hampered → normal, preview repetido/edición/cancelación sin mutación y presupuesto exacto/excedido. Para combinaciones squeezed diagonales que geometría actual no permita, comprobar rechazo del resolver y validar matriz en assessment shared existente; no fingir una ruta legal por perseguir cobertura numérica.
+- Eje persistido horizontal/vertical inicial y proyección en giros/ambigüedad/salida; no mutation de EffectInstance/currentTurn/Room. Estado corrupto => unavailable explícito. Illegal no expone un total/prefijo ni eje inventado.
+- UI: una fuente de total y saldo; step/cumulative labels correctos; illegal distinto de exceso; Tumble toggle, CD25 contingente sin RNG; autoría a través de endpoint provisional enemigo y salida libre; ruta inválida corregible. Ambos renderers/cámaras muestran mismas huellas/axis/status, sin cálculo de coste.
+- Separation: preparation/GM/demo/D-5 no activa adapter ordinario; snapshot no usa draftBoard; modo 5ft explícito mantiene su preview/confirmación legacy; Withdraw/Run/Charge/forced/spell previews idénticos al baseline. Intent contiene solo campos existentes; isAcrobatic presente según intención, ningún coste/axis/fingerprint. Sin optimistic Room update.
+- E2E: preview X y server movementUsedFeet aumenta X cuando snapshot/tiradas contingentes no cambian; tras room-update recalcular, tras cambio entre preview/click el servidor decide. Para Tumble CD25 success/failure usar dados autoritativos preparados en tests, no promesa cliente.
+- Regresión completa: Move servidor I6, acciones tácticas, D-5, demos y presentación 2.5D. Gates de implementación: npm test, typecheck, build, WebSocket y Playwright. Conteos reales y CI registrados entonces, sin reclamar tests implementados ahora.
+
+Respuestas explícitas de cierre:
+
+1. Archivos/componentes actuales: tabla §9.2; hook y viewModel calculan ordinary, panel mezcla budget/legacy, Board presenta.
+2. Fórmulas/calls reales: un cuerpo shared legacy, cinco llamadas de coste web, una validación web y tres expresiones de presupuesto/rango; cero resolver web/costes RAW React. Selectores/chequeos distinguidos en inventario.
+3. Web puede ejecutar directamente resolver puro; opción A seleccionada, sin extracción B.
+4. Room/snapshot ya tiene todos los inputs; no requiere protocolo nuevo.
+5. ViewModel mínimo web presentacional por estados/consumidores; conserva evidencia del MovementResolutionResult sin nuevo pipeline.
+6. Illegal carece de steps/coste; insufficient-budget conserva ruta/coste/context, exceso visible y sin truncado; unavailable cubre integridad.
+7. Tumble local ×2 por shared; CD25 como anotación de evidencia y resultado contingente; CD15/AoO definitivo servidor.
+8. Preparation branch placement puro fuera del adapter activo.
+9. Previews tácticos permanecen legacy con previewKind, incluido selector local 5ft para aislar draft/confirmación.
+10. Wire sin cambios; activar isAcrobatic ya existente, no transmitir derivados.
+11. Implementación elegida Nivel B estrictamente web; cualquier expansión shared/protocolo/servidor exige C/D y revisión nueva. Este diseño espera Review/Proceed.
+12. Después de implementación se elimina exclusivamente el uso ordinary de legacy cost/validate/destination reprojection y resta redundante del panel; import no usado de viewModel puede limpiarse. **No** borrar helpers shared ni rutas tácticas/Charge/spell range/preparation. AoO predictivo, rango de conjuro basado en movement y preview táctico normativo son follow-ups fuera de I7, no ODR bloqueantes de este diseño.

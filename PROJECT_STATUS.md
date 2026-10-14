@@ -10,7 +10,7 @@
 - Última vertical funcional implementada: D-5 Editor Táctico de Mapas (MVP), conforme a su [NDD canónico](docs/designs/map-builder-mvp/design.md) y [plan](docs/designs/map-builder-mvp/implementation-plan.md); **CERRADA y TÉCNICAMENTE APROBADA** (Architecture Review sobre commit `6fd385b42b4dc51b8dcbb195108d7051a600944f`).
 - Última decisión arquitectónica: Sprint D-1B Capítulo 7 (Integration & Implementation Contracts) y NDD de Demo Táctica Automática (`f8c0e9d`).
 - Implementación integrada: D-5 (remediado en D-5R1/R2/R3) cierra exhaustivamente todos los requisitos de arquitectura: Candidate Board validation pura sin mutación previa al commit, invariante estricta de compresión `srd_squeezing` (comparación canónica de coordenadas `x, y, zFeet` sin permitir rotación o desplazamiento de la huella comprimida); máquina de estados Save/Error/ACK con limpieza de errores viejos y verificación de `room-update` posterior a la petición; gating del modal de confirmación crítica durante la edición del mapa; métricas y logs de pilares corregidos a `loe-only` (excluyendo muros); y suite E2E WebSocket con cobertura de `update-board`.
-- Última remediación de infraestructura: D-1B-I5R2 vincula la resolución a su actor canónico y verifica vigencia espacial, movilidad efectiva y fuentes de presupuesto; **TÉCNICAMENTE APROBADO** (`865405a`). D-1B-I6 implementado con Proceed explícito sobre 16711b6: Move ordinario consume Resolution/Commit, coste RAW y eje autoritativo persistente. DoD local completo verde; pendiente de Architecture Review externa sobre el commit publicado.
+- Última remediación de infraestructura: D-1B-I5R2 vincula la resolución a su actor canónico y verifica vigencia espacial, movilidad efectiva y fuentes de presupuesto; **TÉCNICAMENTE APROBADO** (`865405a`). D-1B-I6 implementado con Proceed explícito sobre 16711b6: Move ordinario consume Resolution/Commit, coste RAW y eje autoritativo persistente. DoD local y Windows CI verdes en 650f22dd514fac56b033acb6e937b3aabe5cdc3d; TECHNICALLY APPROVED por Architecture Review externa según el owner. I7 Preview Parity en diseño, pendiente de Review y Proceed.
 - Baseline actual y evidencia de I6: [master-coverage.md](docs/testing/master-coverage.md); gates locales completos verdes.
 - GitHub Actions sobre Windows es el gate canónico de cierre para la revisión
   publicada.
@@ -19,12 +19,13 @@
 
 | Etapa | Estado comprobado en el código |
 |---|---|
-| I1 — Movement Context | Integrado en creación/reinicio de turno y snapshots; el flujo productivo todavía no incrementa el contador. |
+| I1 — Movement Context | Integrado en creación/reinicio de turno y snapshots; Move ordinario activo incrementa el contador mediante Commit I6. |
 | I2 — Movement Cost | Assessment puro implementado; soporte de Squeezing y separación base/coste agregados en I5R1; consumido por I4. |
 | I3 / I3R1 — Route Validation | Integrado: `validateMovePath` delega legalidad a `validateRouteLegality`; extracción sin el ciclo detectado en I3. |
 | I4 — Movement Resolution | Pipeline puro de validación/coste/verificación de presupuesto; I5R2 conserva combatantId y evidencia canónica espacial y de movilidad/presupuesto. |
 | I5 / I5R1 / I5R2 — Movement Commit | Aplicación autoritativa remediada y cerrada: procedencia de actor vivo en room y guardas anti-stale espaciales y de movilidad; **TÉCNICAMENTE APROBADO** (`865405a`). |
-| I6 — Move Action Productive Integration | Integrado para Move ordinario activo; eje persistente/copia/snapshot y compatibilidad mínima legacy. Pendiente de Architecture Review externa. |
+| I6 — Move Action Productive Integration | Integrado para Move ordinario activo; eje persistente/copia/snapshot y compatibilidad mínima legacy. TECHNICALLY APPROVED (650f22d). |
+| I7 — Normative Movement Preview Parity | Auditoría y diseño en NDD Capítulo 9; plan temporal activo. Sin código/tests; Awaiting Architecture Review and Proceed. |
 
 La presentación incorpora un **renderer WebGL táctico 2.5D** con respaldo `2D`, cámara orbital limitada, cuatro presets y sprites pixel-art, estrictamente desacoplado sobre el grid autoritativo 2D con huellas multicasilla. No es todavía el motor espacial 3D normativo: las alturas visuales son cosméticas y los NDD espaciales siguen siendo el destino de migración mecánica. CI verde no significa V1 completa.
 
