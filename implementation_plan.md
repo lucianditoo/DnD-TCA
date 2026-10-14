@@ -1,7 +1,7 @@
-# Implementation Plan — D-1B-I6: Move Action Productive Integration (Remediated)
+# Implementation Plan — D-1B-I6: Move Action Productive Integration (Remediated — RAW Stacking)
 
 Responsabilidad: Plan ejecutable para migrar productivamente la Move Action ordinaria al pipeline normativo de D-1B.
-Autoridad: Derivada del [NDD D-1B (Capítulo 8)](docs/designs/normative-movement-design.md)
+Autoridad: Derivada del [NDD D-1B (Capítulos 3 y 8)](docs/designs/normative-movement-design.md)
 Lifecycle: Temporal (gobierna la implementación de I6 hasta su cierre formal).
 Reemplaza: —
 Complementa: [Walkthrough](walkthrough.md), [estado](PROJECT_STATUS.md), [I5R2 plan cerrado](docs/designs/movement/i5r2-implementation-plan.md)
@@ -15,16 +15,27 @@ Consumidores: Architecture Reviewer y desarrolladores/agentes que implementarán
 ## 1. Archivos Afectados
 
 1. **`packages/shared/src/movementCost.ts`** y **`packages/shared/src/movementResolution.ts`**:
-   - Incorporar soporte para coste de Acrobacias (`isAcrobatic?: boolean`) en `MovementCostStep` y `assessMovementCost` (duplicación x2 de coste de paso).
-   - Composición de costes: ortogonal normal 5->10 ft; diagonal normal 5/10->10/20 ft; DT ortogonal 10->20 ft; DT diagonal 15->30 ft; Squeezing ortogonal 10->20 ft; Squeezing diagonal 10/20->20/40 ft; Squeezing + DT permanece bloqueado (`unsupported-cost-combination`).
+   - Implementar la regla RAW de Double Movement Cost Exception (PHB p. 148 / SRD "Hampered Movement") y resolver formalmente la ODR D-1B-C3-01 para combinaciones multiplicativas.
+   - Cada duplicación sucesiva multiplica la anterior por 2:
+     - 1 duplicación = factor x2: ortogonal 10 ft (2 casillas); diagonal impedida 15 ft (3 casillas).
+     - 2 duplicaciones = factor x4: ortogonal 20 ft (4 casillas); diagonal impedida 30 ft (6 casillas).
+     - 3 duplicaciones = factor x8: ortogonal 40 ft (8 casillas); diagonal impedida 60 ft (12 casillas).
+   - Movimiento diagonal impedido (RAW Hampered Movement): el coste diagonal con 1, 2 o 3 duplicaciones es fijo (15 ft, 30 ft, 60 ft), no alterna paridad 5/10 ft, y preserva intacto `normalDiagonalStepsThisTurn`.
+   - Soporte para Acrobacias / Tumble (`isAcrobatic?: boolean`) en `MovementCostStep` y `assessMovementCost` como una duplicación x2 equivalente a la restricción RAW de "one-half normal speed".
+   - Combinaciones soportadas:
+     - 1 duplicación: Terreno Difícil solo, Squeezing solo, Acrobacias sola (ortogonal 10 ft, diagonal impedida 15 ft).
+     - 2 duplicaciones: Terreno Difícil + Squeezing, Terreno Difícil + Acrobacias, Squeezing + Acrobacias (ortogonal 20 ft, diagonal impedida 30 ft). La combinación Squeezing + Terreno Difícil ya NO retorna `unsupported-cost-combination`.
+     - 3 duplicaciones: Terreno Difícil + Squeezing + Acrobacias (ortogonal 40 ft, diagonal impedida 60 ft).
 2. **`apps/server/src/commands/movementCommands.ts`**:
    - Desconectar `handleMoveCombatant` (fase activa) de `validateMovePath`, `calculatePathCostFeet`, y mutaciones manuales de posición/Squeezing.
    - Conectar con `resolveMovementPipeline` y `commitMovementResolution`.
    - Preservar exactamente el gating de modo de ataque: `attackMode === "full" || (attackMode === "standard" && !usedStandardAction)`.
-   - Implementar el ciclo transaccional: resolución candidata completa (con coste x2 en acrobacias) -> evaluación CD 25 de Acrobacias -> re-resolución pura del prefijo confirmado si hubo fallo -> cálculo de AdOs entregando `resolution.totalCostFeet` y tiradas CD 15 locales -> precondiciones -> commit autoritativo -> publicación atómica.
+   - Implementar el ciclo transaccional: resolución candidata completa (con soporte RAW de duplicaciones y acrobacias) -> evaluación CD 25 de Acrobacias -> re-resolución pura del prefijo confirmado si hubo fallo -> cálculo de AdOs entregando `resolution.totalCostFeet` y tiradas CD 15 locales -> precondiciones -> commit autoritativo -> publicación atómica.
+   - Capturar `const wasSqueezing = combatant.spatialMode === "squeezing";` antes del commit.
+   - Tras el commit exitoso, verificar `commitResult.finalSpatialMode === "squeezing"` para emitir log de entrada o salida de compresión únicamente si hubo cambio de modo; si el commit es rechazado, cero mutaciones y cero logs.
    - Conservar la rama `room.phase === "preparation"` exactamente como colocación libre sin cambios.
 3. **`tests/movement-integration.test.mjs`** (nuevo suite focalizado):
-   - Cobertura exhaustiva de integración servidor para `handleMoveCombatant`: ortogonal, diagonal 5/10, rechazo de segundo movimiento en el mismo turno por economía vigente (`usedMoveAction`), terreno difícil ortogonal (10 ft) y diagonal (15 ft fijos sin paridad), Squeezing puro, rechazo de Squeezing + DT, presupuesto insuficiente, rechazo de stale commit con cero mutación, gating de modo de ataque (full bloquea, standard no gastado bloquea, standard gastado permite), Acrobacias (coste x2, éxito, fallo intermedio con prefijo re-resuelto, fallo inicial), y entrega de `totalCostFeet` a AdO/publicación.
+   - Cobertura exhaustiva de integración servidor para `handleMoveCombatant`: ortogonal, diagonal 5/10, rechazo de segundo movimiento en el mismo turno por economía vigente (`usedMoveAction`), terreno difícil ortogonal (10 ft) y diagonal impedida (15 ft fijos sin paridad), Squeezing puro (10 ft / 15 ft), Squeezing + Terreno Difícil (20 ft / 30 ft), presupuesto insuficiente, rechazo de stale commit con cero mutación, gating de modo de ataque (full bloquea, standard no gastado bloquea, standard gastado permite), Acrobacias (coste x2, éxito, fallo intermedio con prefijo re-resuelto, fallo inicial), Acrobacias + DT (20 ft / 30 ft), Acrobacias + Squeezing (20 ft / 30 ft), Acrobacias + DT + Squeezing (40 ft / 60 ft), entrega de `totalCostFeet` a AdO/publicación, y logs de transición de Squeezing (entrada/salida solo ante cambios de estado confirmados).
 4. **`tests/regression-tactical-movement.test.mjs`** (o asserts en suites existentes):
    - Probar que `handleWithdraw`, `handleRun`, `handleCharge` y `handleFiveFootStep` siguen funcionando idénticamente bajo sus caminos legacy sin verse alterados por la migración de Move Action.
 5. **`docs/testing/master-coverage.md`**, **`PROJECT_STATUS.md`**, **`TODO.md`**, **`walkthrough.md`**:
@@ -58,6 +69,7 @@ interface PendingMovementPublication {
 ```
 
 1. **Fase de Evaluación (Sin mutar Room):**
+   - Se captura el modo previo: `const wasSqueezing = combatant.spatialMode === "squeezing";`
    - Las tiradas de dados de Acrobacias (CD 25) y evasión de AdO (CD 15) se generan y sus `LogEntry` se agregan a `pendingPublication.logs`.
    - Los AdOs detectados que no fueron evadidos se agregan a `pendingPublication.opportunities`.
 2. **Fase de Commit:**
@@ -67,7 +79,10 @@ interface PendingMovementPublication {
    - `room.currentTurn.usedMoveAction = true;`
    - `room.log.unshift(...pendingPublication.logs);`
    - `room.log.unshift(makeLog("movement", `${combatant.name} avanza ${resolution.totalCostFeet} pies...`));`
-   - Si cambió de modo espacial (entrada o salida de compresión), se emite el log correspondiente.
+   - Si cambió de modo espacial:
+     - `const isSqueezing = commitResult.finalSpatialMode === "squeezing";`
+     - `if (!wasSqueezing && isSqueezing) { room.log.unshift(makeLog("movement", `${combatant.name} se comprime para avanzar por un espacio estrecho.`)); }`
+     - `if (wasSqueezing && !isSqueezing) { room.log.unshift(makeLog("movement", `${combatant.name} recupera su espacio normal.`)); }`
    - `room.pendingOpportunityAttacks.push(...pendingPublication.opportunities);`
    - `syncEncounterPhase(room);`
    - `broadcast(room);`
@@ -79,7 +94,7 @@ interface PendingMovementPublication {
 En I6 el frontend continúa utilizando helpers legacy (`calculatePathStepCostsFeet`):
 - **Diagonales DT:** UI muestra 15/20 ft alternado; servidor aplica 15 ft fijos normativos sin consumir paridad.
 - **Squeezing:** UI mira anclas individuales; servidor deriva huellas multicasilla y compresión legal.
-- **Acrobacias:** Ambos aplican x2, pero el servidor valida paridad estricta paso a paso.
+- **Acrobacias:** Ambos aplican x2, pero el servidor valida paridad estricta y duplicación de movimiento impedido RAW.
 - El servidor mantiene autoridad exclusiva; la divergencia visual se resolverá en el sprint posterior de UI Preview.
 
 ---
@@ -87,19 +102,25 @@ En I6 el frontend continúa utilizando helpers legacy (`calculatePathStepCostsFe
 ## 5. Plan de Verificación y Testing
 
 1. **Tests de Integración de Move Action (Servidor):**
-   - Ortogonal básico (5 ft) y diagonal (5 ft -> 10 ft con paridad acumulada).
+   - Ortogonal básico (5 ft) y diagonal normal (5 ft -> 10 ft con paridad acumulada).
    - Economía de turno: primera Move Action gasta `usedMoveAction = true`; un segundo comando `move-combatant` ordinario en el mismo turno es rechazado tajantemente por `canUseMoveAction` con cero mutación.
    - Attack Mode gating: modo "full" rechaza; modo "standard" sin consumir rechaza; modo "standard" consumido (`usedStandardAction === true`) permite mover.
-   - Terreno difícil: ortogonal cuesta 10 ft; diagonal cuesta 15 ft fijos y no altera paridad de pasos normales.
-   - Squeezing puro: coste x2 y aplicación automática del efecto `srd_squeezing`.
-   - Squeezing + Terreno Difícil: rechazo limpio por `unsupported-cost-combination`.
+   - **1 duplicación (factor x2):**
+     - Terreno difícil solo: ortogonal 10 ft; diagonal impedida 15 ft fijos sin alterar paridad normal.
+     - Squeezing solo: ortogonal 10 ft; diagonal impedida 15 ft fijos sin alterar paridad normal; aplicación automática del efecto `srd_squeezing`.
+     - Acrobacias sola: ortogonal 10 ft; diagonal impedida 15 ft fijos sin alterar paridad normal.
+   - **2 duplicaciones (factor x4):**
+     - Squeezing + Terreno Difícil: ortogonal 20 ft; diagonal impedida 30 ft fijos sin alterar paridad normal.
+     - Acrobacias + Terreno Difícil: ortogonal 20 ft; diagonal impedida 30 ft fijos sin alterar paridad normal.
+     - Acrobacias + Squeezing: ortogonal 20 ft; diagonal impedida 30 ft fijos sin alterar paridad normal.
+   - **3 duplicaciones (factor x8):**
+     - Acrobacias + Terreno Difícil + Squeezing: ortogonal 40 ft; diagonal impedida 60 ft fijos sin alterar paridad normal.
+   - **Invariante de paridad diagonal:** los pasos diagonales impedidos (15 ft, 30 ft, 60 ft) no incrementan `normalDiagonalStepsThisTurn`; un paso diagonal normal posterior continúa en la paridad correspondiente.
    - Presupuesto insuficiente: rechazo y cero mutación.
    - Commit stale (ej. cambio en `movementUsedFeet` o posición previa): rechazo, `usedMoveAction` permanece `false`, cero logs y cero AdOs.
-   - Acrobacias normal: coste de ruta x2 (ortogonal 10 ft, diagonal 10/20 ft).
-   - Acrobacias + DT: ortogonal 20 ft, diagonal 30 ft.
-   - Acrobacias + Squeezing: ortogonal 20 ft, diagonal 20/40 ft.
    - Acrobacias interrupción: CD 25 éxito avanza todo; CD 25 fallo intermedio trunca la ruta, re-resuelve prefijo normativo, comitea en la casilla previa al enemigo y genera AdO; CD 25 fallo inicial rechazo con "Movimiento interrumpido en el primer paso" y cero movimiento.
    - AdO metric: `findTriggeredOpportunityAttacksForPath` recibe `resolution.totalCostFeet`.
+   - Máquina de estados de logs de Squeezing: emitir log de entrada únicamente en la transición normal -> squeezing; emitir log de salida únicamente en la transición squeezing -> normal; no emitir log si permanece en el mismo modo; cero logs ante commit rechazado.
 2. **Tests de No Regresión:**
    - `handleWithdraw` conserva exención de casilla inicial y 2x velocidad.
    - `handleRun` conserva multiplicador x4/x3 y línea recta.

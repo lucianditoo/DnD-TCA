@@ -375,27 +375,35 @@ Una prohibición no es un coste infinito ni una cifra artificial. Tampoco convie
 
 No existe una conversión automática entre estas semánticas. En particular, un multiplicador no debe degradarse a un delta opaco, y un coste fijo no debe reinterpretarse como un multiplicador si la regla normativa no lo dice.
 
-### 3.8 Composición de múltiples contribuciones
+### 3.8 Composición de fuentes de coste y regla RAW de Double Movement Cost
 
 Una misma Route puede quedar afectada por más de una fuente de coste. El assessment debe conservar cada contribución por separado y no puede ocultar su procedencia dentro de un total sin desglose.
 
-El corpus aprobado permite identificar adiciones, multiplicaciones, reemplazos, costes fijos y prohibiciones, pero no establece una política única y exhaustiva para componer todas sus intersecciones posibles. Por ello, este capítulo no inventa un orden universal de operaciones ni una regla de stacking.
+#### 3.8.1 Excepción RAW para multiplicaciones de Movement Cost (Double Movement Cost)
+D&D 3.5 establece una regla de cálculo general (PHB pág. 304 / SRD) según la cual dos duplicaciones se combinan como una triplicación (×2 + ×2 = ×3). Sin embargo, **las reglas de movimiento y terreno (PHB pág. 148 / SRD "Hampered Movement") contienen una excepción explícita para Movement Cost**:
 
-#### ODR D-1B-C3-01 — Composición simultánea de fuentes de coste
+> *Movement Cost Doubling Exception (D&D 3.5 RAW):*
+> Cuando el coste de movimiento se duplica por dos o más factores simultáneos (como terreno difícil, visibilidad pobre, obstáculos o acrobacias), cada duplicación multiplica sucesivamente por dos el coste en casillas:
+> - Una duplicación: cada casilla cuenta como 2 casillas (×2).
+> - Dos duplicaciones: cada casilla cuenta como 4 casillas (×4).
+> - Tres duplicaciones: cada casilla cuenta como 8 casillas (×8).
+> - Cuatro duplicaciones: cada casilla cuenta como 16 casillas (×16).
 
-**Aclaración previa:** el coste fijo de 15 ft de una diagonal difícil sustituye al patrón diagonal normal de ese Step, resolviendo su interacción directa con el Movimiento Diagonal, pero no resuelve su combinación con otros multiplicadores (ej. Squeezing).
+**NO se aplica la regla de adición de multiplicadores (×2 + ×2 = ×3) a Movement Cost.** Las duplicaciones de movimiento se multiplican entre sí.
 
-**Pregunta:** cuando un mismo Step recibe simultáneamente dos o más contribuciones de coste —por ejemplo, un coste fijo de terreno y un multiplicador por estado corporal—, ¿qué regla normativa determina su orden, acumulación y precedencia?
+#### 3.8.2 Movimiento diagonal bajo condiciones obstaculizadas (Hampered Diagonal Movement)
+Conforme a D&D 3.5 RAW (PHB pág. 148 / SRD):
+- Una casilla diagonal normal cuenta como 1 casilla (5 ft) o 2 casillas (10 ft) alternadas.
+- **Una duplicación en diagonal (ej. Difficult Terrain):** cuenta exactamente como **3 casillas (15 ft)**.
+- **Dos duplicaciones en diagonal (ej. DT + Squeezing, o DT + Tumble-equivalent):** cuenta exactamente como **6 casillas (30 ft)**.
+- **Tres duplicaciones en diagonal (ej. DT + Squeezing + Tumble-equivalent):** cuenta exactamente como **12 casillas (60 ft)**.
 
-**Alternativas que requieren ratificación:**
+La alternancia normal 5/10 pertenece exclusivamente al movimiento diagonal ordinario sin impedimentos. Cuando un Step diagonal está sometido al régimen RAW de movimiento obstaculizado (hampered movement), su coste es fijo en función del número de duplicaciones acumuladas (15 ft, 30 ft, 60 ft) y **conserva sin alterar el contador `normalDiagonalStepsThisTurn`**, de idéntica manera a lo establecido en la sección 3.6 para el terreno difícil aislado.
 
-1. aplicar la convención general de multiplicadores del corpus de D&D 3.5 a todas las contribuciones multiplicativas y definir por separado la precedencia de reemplazos y costes fijos;
-2. establecer un orden cerrado por semántica —reemplazo o coste fijo, adición y multiplicación— para toda evaluación de coste;
-3. exigir una política explícita únicamente para cada combinación normativa reconocida, sin imponer una precedencia global.
-
-**Impacto:** la decisión determina el total de Routes donde coinciden terreno difícil, Squeezing, visibilidad obstaculizada u otras fuentes futuras. También gobierna la igualdad entre assessment autoritativo y preview.
-
-**Carácter:** es bloqueante para implementar combinaciones simultáneas cuyo resultado dependa del orden o stacking, pero es diferible para Routes afectadas por una sola fuente o por contribuciones cuya composición ya esté explícitamente resuelta por una regla normativa.
+#### 3.8.3 Resolución formal de ODR D-1B-C3-01
+Habiéndose ratificado formalmente mediante Owner Decision la primacía de D&D 3.5 RAW sobre el stacking de duplicaciones de Movement Cost:
+- **ODR D-1B-C3-01 queda RESUELTA y CERRADA** para todas las combinaciones compuestas por múltiples duplicaciones de coste de movimiento (Difficult Terrain, Squeezing, Tumble-equivalent, etc.).
+- Las combinaciones que impliquen adiciones no multiplicativas, reemplazos heterogéneos o prohibiciones categóricas no cubiertas por RAW continúan delimitándose por sus respectivas reglas específicas sin reabrir esta ODR.
 
 ### 3.9 Footprint efectivo y coste
 
@@ -407,13 +415,18 @@ Esta evaluación usa la distinción canónica entre Footprint natural y Footprin
 
 ### 3.10 Coste de Squeezing
 
-Mientras una entidad se desplaza legalmente con un Footprint efectivo de Squeezing, cada espacio recorrido cuenta como el doble para Movement Cost.
+Mientras una entidad se desplaza legalmente con un Footprint efectivo de Squeezing, cada espacio recorrido cuenta como el doble (2 casillas) para Movement Cost (D&D 3.5 RAW).
 
-Squeezing aporta una contribución multiplicativa de coste sobre los Steps afectados. El coste continúa acumulándose por Step de la Route, no por cantidad de celdas que componen la huella corporal.
+Por tanto, Squeezing aporta exactamente **una duplicación (×2) de Movement Cost** sobre los Steps afectados.
+- En pasos ortogonales puros: base 5 ft × 2 = **10 ft**.
+- En pasos diagonales bajo Squeezing sin otros impedimentos: la diagonal normal (5/10 ft) se duplica a **10/20 ft**, consumiendo la paridad diagonal normal.
+- Cuando Squeezing coincide con otras fuentes de duplicación (Terreno Difícil o Tumble-equivalent), se compone conforme a la regla RAW de Double Movement Cost (§3.8.1 y §3.8.2):
+  - Ortogonal con 2 duplicaciones: base 5 ft × 4 = **20 ft**.
+  - Diagonal con 2 duplicaciones: 6 casillas = **30 ft** (coste fijo, no altera paridad normal).
+  - Ortogonal con 3 duplicaciones: base 5 ft × 8 = **40 ft**.
+  - Diagonal con 3 duplicaciones: 12 casillas = **60 ft** (coste fijo, no altera paridad normal).
 
 Este capítulo no decide cuándo Squeezing es legal, cómo se deriva su Footprint efectivo, qué penalizadores aplica a ataques o defensa ni cómo se resuelve el tránsito por un espacio menor que la mitad de la anchura natural. La variante que requiere Escape Artist permanece como dependencia futura.
-
-La combinación numérica de Squeezing con otras fuentes simultáneas queda sujeta a la ODR D-1B-C3-01.
 
 ### 3.11 Modos de desplazamiento y presupuestos
 
@@ -500,7 +513,7 @@ Quedan expresamente fuera de este capítulo:
 - maniobrabilidad aérea;
 - implementación, contratos TypeScript, nombres de API y pseudocódigo.
 
-La única ODR nueva es D-1B-C3-01. Las ODR preexistentes —incluida la métrica de `Spatial Distance 3D`— permanecen fuera de alcance y sin cambios.
+La ODR D-1B-C3-01 queda resuelta formalmente mediante la adopción de la regla RAW de Double Movement Cost (§3.8). Las ODR preexistentes —incluida la métrica de `Spatial Distance 3D`— permanecen fuera de alcance y sin cambios.
 
 ---
 
@@ -639,7 +652,7 @@ Quedan expresamente fuera de este capítulo el diseño de: la economía completa
 
 **Owner Decision (Decisión Normativa del Propietario):** El patrón de Movimiento Diagonal pertenece al turno del combatiente, no a una Route ni a una acción individual. Se formaliza que Double Move y el movimiento segmentado (como Ataque Elástico) comparten la misma paridad diagonal durante el turno, eliminando la ambigüedad detectada previamente sin requerir ODR adicional.
 
-La ODR preexistente D-1B-C3-01 sobre composición simultánea de fuentes de coste permanece abierta (el coste fijo de una diagonal difícil no participa del patrón diagonal normal, que fue la regla aclarada en el Capítulo 3).
+La ODR D-1B-C3-01 sobre composición simultánea de fuentes de coste queda formalmente resuelta y cerrada conforme a la regla RAW de Double Movement Cost (§3.8).
 
 ---
 
@@ -825,9 +838,7 @@ Quedan expresamente fuera de este capítulo:
 - representación de TurnState;
 - pathfinding;
 - renderer y presentación;
-- contratos TypeScript, pseudocódigo e implementación.
-
-No se abre ninguna ODR nueva. La ODR D-1B-C3-01 permanece limitada a la composición simultánea de fuentes de coste y no altera el ciclo definido en este capítulo.
+No se abre ninguna ODR nueva. La ODR D-1B-C3-01 sobre composición simultánea de fuentes de coste queda formalmente resuelta mediante la adopción de la regla RAW de Double Movement Cost (§3.8) y no altera el ciclo definido en este capítulo.
 
 ---
 
@@ -1062,7 +1073,7 @@ También quedan fuera de alcance:
 - persistencia, renderer y UI concreta;
 - contratos TypeScript, pseudocódigo e implementación.
 
-No se abre ninguna ODR nueva. La ODR D-1B-C3-01 conserva exactamente su alcance previo y no se amplía por la interacción con estos consumidores.
+No se abre ninguna ODR nueva. La ODR D-1B-C3-01 sobre composición de costes queda formalmente resuelta mediante la adopción de la regla RAW de Double Movement Cost (§3.8) y no se reabre por la interacción con estos consumidores.
 
 
 ## Capítulo 7 — Normative Integration & Implementation Contracts
@@ -1170,7 +1181,7 @@ Este capítulo especifica la integración productiva autoritativa de la **Move A
 - **NO migra ni altera** `handleWithdraw`, `handleRun`, `handleCharge` ni `handleFiveFootStep`. Esas acciones continúan consumiendo sus implementaciones vigentes en `tacticalCommands.ts`.
 - **NO altera** la fase de preparación (`room.phase === "preparation"`): la colocación inicial de tokens permanece como colocación libre gobernada por sus validaciones existentes fuera de I4/I5.
 - Los helpers legacy compartidos (`validateMovePath`, `calculatePathStepCostsFeet`, `calculatePathCostFeet`) se conservan sin alteración para sustentar las acciones tácticas no migradas y el preview del cliente.
-- Las ODRs normativas **ODR-D1B-C3-01** (Squeezing + Terreno Difícil) y **ODR-D1B-I5-1** (persistencia de `squeezingAxis`) permanecen abiertas y no se resuelven en este sprint.
+- **ODR D-1B-C3-01** (composición de duplicaciones de Movement Cost) ha quedado **resuelta formalmente** mediante la regla RAW de Double Movement Cost (§3.8); la ODR normativa **ODR-D1B-I5-1** (persistencia de `squeezingAxis`) permanece abierta y no se resuelve en este sprint.
 - **Sin asunción de Double Move ni movimiento segmentado productivo:** I6 migra únicamente la Move Action ordinaria. La economía productiva vigente (`canUseMoveAction`) rechaza tajantemente un segundo `move-combatant` si `usedMoveAction === true`. Cualquier soporte futuro para gastar la acción estándar en un segundo movimiento pertenece al diseño formal de economía de acciones y Double Move, no a I6.
 
 ### 8.2 Autoridad y Responsabilidad del Action Consumer (`handleMoveCombatant`)
@@ -1197,31 +1208,33 @@ El handler `handleMoveCombatant` retiene la responsabilidad de:
    ```
 4. **Contexto Inicial:** Extraer `initialContext = { normalDiagonalStepsThisTurn: room.currentTurn.normalDiagonalStepsThisTurn }`.
 
-### 8.3 Coste Normativo de Acrobacias y Secuencia Exacta de Interrupción
+### 8.3 Tumble / Acrobacias (RAW vs Representación del Motor) y Secuencia de Interrupción
 
-#### 8.3.1 Naturaleza del Coste x2 en Acrobacias
-En el motor D&D 3.5 del repositorio (Sprint 023 / `MOVE-ACROBATIC` en Registry):
-> Moverse de forma acrobática (Piruetas / Tumble) cuesta el doble de movimiento por casilla (`stepCost *= 2`).
+#### 8.3.1 Regla RAW de Tumble y su Representación Isomórfica en el Motor
+1. **Regla RAW (D&D 3.5 PHB pág. 84 / SRD):**
+   > *Tumble:* "You can land softly when you fall or tumble past opponents. You can also tumble through an area occupied by an enemy. […] Accelerated Tumbling: You can try to tumble at greater than normal speed (see below). […] Normal Tumble: You can move at up to one-half your normal speed as a move action without provoking attacks of opportunity from squares you leave."
 
-Arquitectónicamente, este x2 es una **contribución de Movement Cost por Step**, no una deducción abstracta de presupuesto.
-- En la infraestructura legacy, `calculatePathStepCostsFeet` aplicaba `if (isAcrobatic) stepCost *= 2`.
-- Para que I6 no pierda silenciosamente este coste ×2 al conectarse a `resolveMovementPipeline`, `MovementCostStep` y `assessMovementCost` (o el puente normativo en `movementCost.ts`) deben recibir explícitamente `isAcrobatic?: boolean`.
-- **Composición de Costes con Acrobacias:**
-  1. **Acrobacias normal (sin DT ni Squeezing):**
-     - Ortogonal: base 5 ft, coste 10 ft (5 * 2).
-     - Diagonal: base 5/10 ft (alternado), coste 10/20 ft (duplicado), incrementa contador diagonal en 1.
-  2. **Acrobacias + Terreno Difícil:**
-     - Siguiendo la regla PHB de Tumble en terreno difícil (CD incrementada y coste cumulativo) y la semántica multiplicativa de D&D 3.5:
-     - Ortogonal: base 5 ft, DT = 10 ft, Acrobático = 20 ft (duplicado).
-     - Diagonal: base 5 ft, DT fijo = 15 ft, Acrobático = 30 ft (15 * 2). No altera la paridad normal.
-  3. **Acrobacias + Squeezing (sin DT):**
-     - Ortogonal: base 5 ft, Squeezing = 10 ft, Acrobático = 20 ft.
-     - Diagonal: base 5/10 ft, Squeezing = 10/20 ft, Acrobático = 20/40 ft.
-  4. **Acrobacias + Squeezing + DT:**
-     - Permanece bloqueado por **ODR-D1B-C3-01** (`unsupported-cost-combination`).
-- Esta ampliación controlada de `movementCost.ts` asegura que la autoridad de coste resida exclusivamente en el Rule Engine y que `commitMovementResolution` acredite con exactitud el gasto en `movementUsedFeet` sin recalcular nada.
+   RAW expresa formalmente que realizar Piruetas ordinarias se efectúa a **mitad de velocidad** (*one-half normal speed*).
 
-#### 8.3.2 Secuencia Transaccional de Tiradas y confirmedPath
+2. **Representación en el Motor de DnD-TCA:**
+   - Para no crear economías paralelas de velocidad por acción ni fragmentar el Movement Budget del turno, el motor modela la restricción de mitad de velocidad de forma equivalente como **una duplicación del Movement Cost (×2)** por cada Step recorrido acrobáticamente.
+   - *Justificación de equivalencia matemática y autoritativa:* Recorrer casillas al doble de coste consume exactamente la mitad de la velocidad disponible en pies (`availableBudgetFeet`), logrando la misma distancia máxima alcanzable y la misma contabilidad de `movementUsedFeet` que exige el pipeline normativo de I4/I5.
+   - *Variante de Accelerated Tumbling (movimiento a velocidad completa con penalizador de -10 a la tirada):* Queda registrada como gap normativo de PHB para un sprint específico posterior; I6 modela exclusivamente el Tumble ordinario a mitad de velocidad.
+
+#### 8.3.2 Composición RAW de Múltiples Duplicaciones de Coste
+Conforme a la regla central de D&D 3.5 RAW (§3.8.1 y §3.8.2), las fuentes multiplicativas de coste (Terreno Difícil, Squeezing y Tumble-equivalent) se combinan multiplicando sus factores:
+
+| Combinación | Factores Activos | Coste Ortogonal (RAW) | Coste Diagonal Hampered (RAW) | Paridad `normalDiagonalStepsThisTurn` |
+|---|---|---|---|---|
+| **Normal** | Ninguno | 5 ft | 5 / 10 ft (alternado) | Incrementa paridad (+1) |
+| **1 Duplicación** (ej. solo Tumble, solo DT, o solo Squeezing) | ×2 | 10 ft | 15 ft (3 casillas) | DT y Tumble en hampered no alteran paridad; Squeezing aislado consume paridad 10/20 |
+| **2 Duplicaciones** (ej. Tumble + DT, Tumble + Squeezing, o DT + Squeezing) | ×4 | 20 ft | 30 ft (6 casillas) | Coste fijo, conserva paridad sin cambios |
+| **3 Duplicaciones** (Tumble + DT + Squeezing) | ×8 | 40 ft | 60 ft (12 casillas) | Coste fijo, conserva paridad sin cambios |
+
+- La autoridad central de cálculo reside exclusivamente en `assessMovementCost` (`movementCost.ts`), la cual evalúa el número de duplicaciones activas del Step y aplica la regla general RAW sin fórmulas hardcodeadas en `handleMoveCombatant`.
+- **ODR D-1B-C3-01 queda resuelta** para todas estas combinaciones multiplicativas.
+
+#### 8.3.3 Secuencia Transaccional de Tiradas y confirmedPath
 1. **Resolución Candidata Completa:** Se invoca `resolveMovementPipeline` sobre la ruta candidata completa con `isAcrobatic = !!command.isAcrobatic`.
    - Si el resultado NO es `ready`, se rechaza el comando inmediatamente. Cero tiradas de dados y cero mutación.
 2. **Detección de Pasos a Través de Enemigos:** Se inspecciona `resolution.steps`. Si un step atraviesa casillas ocupadas por un enemigo vivo y `isAcrobatic` es true:
@@ -1265,7 +1278,13 @@ Arquitectónicamente, este x2 es una **contribución de Movement Cost por Step**
      - Consume `resolution.totalCostFeet` como el coste de movimiento consumido.
      - Consume `commitResult.movementUsedFeetAfter` como el total consumido en el turno.
      - Documentación de deuda semántica: la frase histórica `combatant.name + " avanza " + distance + " pies..."` ha reflejado históricamente el coste de ruta (`totalCostFeet`). I6 mantiene la coherencia de este log informando el coste consumido (`resolution.totalCostFeet`), y reporta `commitResult.distanceMovedFeet` únicamente si se requiere trazar la longitud base de la ruta, sin confundirlo con Spatial Distance.
-   - **Transición Espacial:** Si cambió de modo espacial (Squeezing), se emite el log correspondiente derivado de `commitResult.finalSpatialMode`.
+   - **Transición Espacial (Squeezing):**
+     - Se captura `wasSqueezing` inmediatamente antes del Commit (`hasEffect(combatant, "srd_squeezing")` o presencia en `room.effectInstances`).
+     - Tras un Commit exitoso: `isSqueezingNow = commitResult.finalSpatialMode === "squeezing"`.
+     - Si `!wasSqueezing && isSqueezingNow`: emite log `"X se ha metido en un espacio estrecho y esta Apretujandose."`
+     - Si `wasSqueezing && !isSqueezingNow`: emite log `"X dejo el espacio estrecho."`
+     - Si no hubo cambio (`wasSqueezing === isSqueezingNow`): no emite log de transición espacial.
+     - Si el Commit fue rechazado: cero logs de Squeezing.
    - **AdOs y Fase:** Se encolan las oportunidades en `room.pendingOpportunityAttacks`, se ejecuta `syncEncounterPhase(room)` y se difunde mediante `broadcast(room)`.
 
 ### 8.6 Divergencia Temporal con UI / Preview

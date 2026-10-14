@@ -1,78 +1,60 @@
-# Walkthrough — D-1B-I5R2: Movement Resolution Provenance & Stale-Rules Remediation (Aprobado)
+# Walkthrough — D-1B: RAW Movement Cost Remediation (Owner Decision)
 
-Responsabilidad: Registrar la última entrega, sus validaciones y límites.
+Responsabilidad: Registrar la alineación normativa de Movement Cost con D&D 3.5 RAW y la resolución formal de ODR D-1B-C3-01.
 Autoridad: Registro
 Lifecycle: Rotativo
-Reemplaza: Walkthrough de D-5R3, conservado en Git (D-5 no se reabre).
-Complementa: [Estado](PROJECT_STATUS.md), [plan I5R1/I5R2](docs/designs/movement/i5r2-implementation-plan.md), [NDD D-1B](docs/designs/normative-movement-design.md)
+Reemplaza: Walkthrough de D-1B-I5R2, conservado en Git.
+Complementa: [Estado](PROJECT_STATUS.md), [TODO](TODO.md), [Plan de Implementación I6](implementation_plan.md), [NDD D-1B](docs/designs/normative-movement-design.md)
 Consumidores: Architecture Reviewer, propietario y agentes que retoman el repositorio.
 
 ## Resultado
 
-- **D-1B-I5R2**: **TECHNICALLY APPROVED** (commit `865405adaabc1665b8b4f417fdbf45bbfed16f3f`).
-- **D-1B-I6**: DESBLOQUEADO ÚNICAMENTE PARA DISEÑO ARQUITECTÓNICO. Sin código implementado, pendiente de Architecture Review y Proceed explícito.
+- **D-1B RAW Movement Cost Remediation**: Alineación de diseño y plan con la decisión normativa del Propietario (D&D 3.5 RAW / SRD / PHB como autoridad primaria).
+- **ODR D-1B-C3-01**: **RESUELTA Y CERRADA** para todas las combinaciones multiplicativas de duplicaciones de coste de movimiento (Terreno Difícil, Squeezing, Tumble-equivalent).
+- **D-1B-I6**: DISEÑO ARQUITECTÓNICO Y PLAN REMEDIADOS. Sin código productivo ni tests modificados; pendiente de Architecture Review y Proceed explícito.
 
-Logros consolidados de I5R2:
-- `MovementResolutionResult` conserva `readonly combatantId` en `ready` e
-  `insufficient-budget`, derivado exclusivamente del actor recibido. Copia el
-  contexto diagonal inicial para no compartir la referencia del caller.
-- Commit busca ese ID en `room.combatants` y exige la misma referencia viva,
-  el actor esperado y el turno activo antes de mutar. Actor ajeno, clon detached
-  o actor eliminado se rechazan como `invalid-actor` sin mutación.
-- Un único fingerprint verifica las dependencias espaciales existentes y las
-  fuentes de movilidad/presupuesto. Consume las huellas canónicas y
-  `Rules.getMovementSpeedProjection` (total, base ajustada y razón), el trait
-  declarativo `CANNOT_MOVE` y el presupuesto gastado. No duplica Speed ni coste.
-- Se elimina la lista de efectos espaciales por ID del fingerprint: cambios de
-  efecto se representan por su semántica efectiva. Arrays no ordenados se
-  normalizan; nombres, iconos, logs y trazas cosméticas no invalidan la resolución.
-
-El presupuesto disponible sigue siendo un input del consumidor; se verifica la
-vigencia de sus fuentes actuales sin introducir fórmulas por acción. La
-integración/autorización productiva de acciones pertenece a I6, no a este sprint.
+Logros consolidados:
+1. **Regla RAW de Excepción a Duplicaciones (PHB p. 148 / SRD "Hampered Movement")**:
+   - Cada duplicación sucesiva multiplica el coste de paso: 1 duplicación = x2 (10 ft ortogonal); 2 duplicaciones = x4 (20 ft ortogonal); 3 duplicaciones = x8 (40 ft ortogonal); 4 duplicaciones = x16 (80 ft ortogonal).
+   - No aplica la regla general aditiva de D&D de (x2 + x2 = x3).
+2. **Movimiento Diagonal Impedido (RAW Hampered Movement)**:
+   - 1 duplicación: 3 casillas = 15 ft.
+   - 2 duplicaciones: 6 casillas = 30 ft.
+   - 3 duplicaciones: 12 casillas = 60 ft.
+   - El coste diagonal impedido es fijo, no alterna paridad 5/10 ft, y preserva intacto `normalDiagonalStepsThisTurn`.
+3. **Formulación Isomórfica de Acrobacias / Tumble**:
+   - RAW formula Tumble como restricción de velocidad ("one-half normal speed").
+   - El motor traduce esta restricción de forma pura e isomorfa como duplicación x2 del coste de paso en `assessMovementCost`.
+   - Se documenta la equivalencia técnica y se registra la brecha de Accelerated Tumbling (-10 check para velocidad completa).
+4. **Publicación y Máquina de Estados de Squeezing**:
+   - Captura pre-commit de `wasSqueezing = combatant.spatialMode === "squeezing"`.
+   - Comparación post-commit contra `commitResult.finalSpatialMode === "squeezing"` para emitir logs de entrada/salida únicamente ante transiciones efectivas.
+   - Si el commit es rechazado, cero mutaciones y cero logs emitidos.
 
 ## Archivos y trazabilidad
 
-- `packages/shared/src/movementResolution.ts`: procedencia y fingerprint canónico.
-- `packages/shared/src/movementCommit.ts`: identidad canónica y guardas anti-stale.
-- `tests/movement-commit.test.mjs`: 20 regresiones nuevas; actualización de fixtures
-  existentes al contrato con actor.
-- `implementation_plan.md`: recuperación del mismo plan I5R1 desde `9a6b87d`
-  (retirado en `551a333`), con §8 de dependencias reales e implementación I5R2.
-  Las secciones anteriores quedan identificadas como trazabilidad I5R1; no se
-  crea otro NDD ni otra autoridad de reglas.
-- `INDEX.md`, `PROJECT_STATUS.md`, `TODO.md`,
-  `docs/testing/master-coverage.md` y este walkthrough: estado/evidencia sincronizados.
+- `docs/designs/normative-movement-design.md`:
+  - §3.8: Adición de §3.8.1 (RAW Double Movement Cost Exception), §3.8.2 (Hampered Diagonal Movement), §3.8.3 (Resolución formal de ODR D-1B-C3-01).
+  - §3.10: Actualización de matemáticas de Squeezing con factores RAW y combinaciones.
+  - §3.16, §4.15, §5.15, §6.16: Registro de ODR D-1B-C3-01 como resuelta y cerrada.
+  - §8.1, §8.3: Formulación isomórfica de Tumble, tabla exhaustiva de combinaciones multiplicativas y autoridad exclusiva de `assessMovementCost`.
+  - §8.5: Máquina de estados de publicación para transiciones de Squeezing.
+- `implementation_plan.md`:
+  - Sección 1: Actualizada con factores multiplicativos RAW y combinaciones soportadas.
+  - Sección 3: Búfer de publicación con captura pre-commit de `wasSqueezing` y guardas de commit.
+  - Sección 5: Matriz exhaustiva de pruebas para 1, 2 y 3 duplicaciones (ortogonal y diagonal impedida), invariante de paridad normal, y transiciones de compresión.
+- `TODO.md` y `PROJECT_STATUS.md`: Sincronización del estado de ODR D-1B-C3-01 e I6.
+- `walkthrough.md`: Actualizado con el resumen del sprint.
 
-## Validaciones ejecutadas
+## Validaciones
 
-| Gate | Resultado |
-|---|---|
-| `npm test` | 701/701; 28 suites, 0 fallos, 0 omitidos |
-| Focalizados Commit / Resolution / Cost | 72/72 |
-| `npm run typecheck` | PASS en shared, web y server |
-| `npm run build` | PASS en shared, web y server |
-| `node scripts/e2e-websocket.mjs` | 110/110 |
-| `npm run test:ui` | 16/16 |
-| `git diff --check` | PASS |
-
-El primer build dentro del sandbox falló por `EPERM` en `realpath` de Vite;
-la repetición autorizada fuera del sandbox terminó correctamente. Se conserva
-el aviso existente de tamaño de bundle, sin modificar D-4/D-5.
-La primera ejecución WebSocket no pasó y coincidió con reinicios del servidor
-`tsx watch` al guardar el código; se repitió sobre el servidor estable y pasó
-110/110. El servidor local usado se detuvo antes de Playwright, que levantó su
-propio entorno de prueba. No se modificaron las suites WebSocket/UI.
+- Modo: Exclusivamente documentación y diseño arquitectónico.
+- Código productivo y tests: 0 modificaciones.
+- `git diff --check`: Verificado limpio.
 
 ## Límites y gate documental
 
-- Sin consumidores productivos nuevos, Publication ni cambios en Run/Withdraw/Charge.
-- Sin cambios de semántica diagonal, costes de Squeezing, ni métrica base de ruta.
-- **ODR-D1B-C3-01** y **ODR-D1B-I5-1** siguen abiertas; no se persiste `squeezingAxis`.
-- NDD, Research, Registry, D-5 y archivos locales ajenos no se modifican.
-- No se crean Rule IDs ni deuda técnica nueva. Los dos hallazgos I5R2 quedan
-  remediados en código, pendientes del veredicto arquitectónico externo.
-- Enlaces internos de documentos tocados verificados; plan recuperado indexado,
-  sin duplicar responsabilidad normativa. Estados oficiales del Registry intactos.
-- El commit único se publica y su Windows CI se verifica según Governance v2;
-  el resultado remoto se informa en la entrega del SHA, sin declarar aprobación.
+- No se autoriza implementación de I6.
+- No se introducen House Rules.
+- ODR-D1B-I5-1 (`squeezingAxis`) permanece abierta y fuera de alcance.
+- Enlaces internos y consistencia documental verificados.

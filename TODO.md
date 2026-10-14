@@ -17,9 +17,10 @@ Consumidores: Agentes al retomar el proyecto y propietario al priorizar tareas.
 - D-1B-I6 (Integración productiva de Move Action) entra en fase de DISEÑO arquitectónico y plan de implementación; implementación de código bloqueada hasta revisión y Proceed explícito.
 - Resolver ODR-D1B-I5-1: sede persistente de `squeezingAxis`, antes de asumir
   una solución en la migración productiva.
-- Resolver las combinaciones afectadas por D-1B-C3-01 (composición de fuentes
-  de coste) cuando se delimite su implementación; el [NDD](docs/designs/normative-movement-design.md)
-  sigue siendo su autoridad.
+- ODR-D1B-C3-01 (composición de fuentes de coste) queda **RESUELTA Y CERRADA**
+  para combinaciones multiplicativas mediante la regla RAW de Double Movement
+  Cost (§3.8 del [NDD](docs/designs/normative-movement-design.md)); su
+  implementación se integra en el diseño de I6.
 - Delimitar y aprobar las fases de Publication, integración productiva de
   comandos, preview y UI. No crear otra autoridad de legalidad o coste.
 
