@@ -13,15 +13,7 @@ Consumidores: Agentes al retomar el proyecto y propietario al priorizar tareas.
 
 ## Continuidad inmediata de D-1B
 
-- D-1B-I5R2 ha sido **TÉCNICAMENTE APROBADO** en Architecture Review (`865405a`).
-- D-1B-I6 (Integración productiva de Move Action) entra en fase de DISEÑO arquitectónico y plan de implementación; implementación de código bloqueada hasta revisión y Proceed explícito.
-- ODR-D1B-I5-1 (sede autoritativa de `squeezingAxis`) queda **RESUELTA Y CERRADA**
-  en el diseño de I6 (§8.7 del [NDD](docs/designs/normative-movement-design.md)),
-  alojando el eje en `EffectInstance` para `srd_squeezing` sin fuentes duales de verdad.
-- ODR-D1B-C3-01 (composición de fuentes de coste) queda **RESUELTA Y CERRADA**
-  para combinaciones multiplicativas mediante la regla RAW de Double Movement
-  Cost (§3.8 del [NDD](docs/designs/normative-movement-design.md)); su
-  implementación se integra en el diseño de I6.
+- Obtener Architecture Review y Proceed explícito de I6 sobre [NDD §8.7](docs/designs/normative-movement-design.md) y [plan consolidado](implementation_plan.md); después ejecutar tareas y migraciones de fixtures/estado legacy. No implementar antes de Proceed.
 - Delimitar y aprobar las fases de Publication, integración productiva de
   comandos, preview y UI. No crear otra autoridad de legalidad o coste.
 
@@ -81,6 +73,3 @@ creación como si fueran documentos ausentes.
 - Priorizar y cerrar únicamente las entradas abiertas documentadas en
   [`docs/technical-debt.md`](docs/technical-debt.md), sin duplicar aquí su
   estado.
-
-
-D-1B-I6 Design Remediation R4: [integración completa de squeezingAxis](docs/designs/movement/i6r4-squeezing-axis-integration.md), auditoría de 13 invocaciones, copias manager/snapshot y compatibilidad explícita. Matriz R3 aprobada sin cambios. Diseño pendiente de Architecture Review y Proceed; ningún código ni test modificado.

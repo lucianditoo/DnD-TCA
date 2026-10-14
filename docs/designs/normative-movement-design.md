@@ -1349,41 +1349,78 @@ En consecuencia, `getSqueezedFootprintAt` recurre a la lista fija de candidatos 
 - **Fingerprint y Stale Protection:** `createMovementStateFingerprint` en `movementResolution.ts` calcula las celdas ocupadas de cada combatiente mediante `getCombatantOccupiedCells`. Al consultar `instance.squeezingAxis`, cualquier alteración del eje produce una huella distinta en `occupiedCells`, invalidando de forma determinista cualquier resolución stale calculada sobre el eje previo.
 - **Fase de Preparación y D-5 Board Editing:** Durante la edición del tablero (`handleUpdateBoard`), `candidateRoom` preserva las `effectInstances` existentes. Al derivar `getCombatantOccupiedCells(combatant, candidateRoom)`, se consume `instance.squeezingAxis`, garantizando que `isExactlySameFootprint` verifique con precisión matemática que la compresión no rota ni se altera.
 
-#### 8.7.4 Contrato Normativo Obligatorio de squeezingAxis
-1. **Compromiso (Commit):**
-   - Si `lastStep.spatialMode === "squeezing"`:
-     - `movementCommit.ts` genera la instancia `srd_squeezing` asignando explícitamente `squeezingAxis: lastStep.squeezingAxis`.
-     - Si el combatiente ya estaba en Squeezing y el eje confirmado cambió (ej. de horizontal a vertical al doblar una esquina), la instancia previa se reemplaza atómicamente por la nueva instancia con el nuevo eje.
-   - Si `lastStep.spatialMode === "natural"`:
-     - Las instancias de `srd_squeezing` del combatiente se eliminan íntegramente mediante `EffectManager.removeMany`.
-   - Si el Commit es rechazado (`rejected`):
-     - Cero mutaciones en `room.effectInstances`, cero cambios en el eje.
-2. **Reconstrucción Determinista en Snapshot:**
-   - En `movementGeometry.ts`:
-     ```ts
-     export function getCombatantOccupiedCellsAt(
-       combatant: CombatantSnapshot,
-       snapshot: CombatRulesSnapshot,
-       position: Position
-     ): Position[] {
-       const squeezeInstance = snapshot.effectInstances?.find(
-         (instance) => instance.effectId === "srd_squeezing" && instance.targets?.includes(combatant.id)
-       );
-       if (squeezeInstance) {
-         const squeezed = getSqueezedFootprintAt(combatant, snapshot, position, squeezeInstance.squeezingAxis);
-         if (squeezed) return squeezed.occupiedCells;
-       }
-       return getNaturalCombatantOccupiedCellsAt(combatant, snapshot, position);
-     }
-     ```
-   - Se cumple estrictamente:
-     `occupiedCellsImmediatelyAfterCommit == occupiedCellsDerivedFromNextAuthoritativeSnapshot`
-     sin depender de orden del array de candidatos, dirección inferida, heurísticas ni estado del cliente.
-3. **Cierre de ODR:**
-   - **ODR-D1B-I5-1 queda formalmente RESUELTA y CERRADA.**
+#### 8.7.4 Invariante global y contrato autoritativo
 
-#### 8.7.5 Integración completa R4 — contrato obligatorio
+La matriz RAW de Movement Cost/paridad aprobada en R3 permanece sin cambios. R4 solo completa el ciclo de vida de `squeezingAxis`.
 
-El [diseño R4 y auditoría de todos los productores/callers](movement/i6r4-squeezing-axis-integration.md) completa §8.7. Una instancia productiva de `srd_squeezing` para footprint orientable requiere exactamente un eje confirmado. Manager y clonador de snapshot deben preservarlo explícitamente; definir el tipo no basta. Ambos commits exigen evidencia antes de mutar y reemplazan estado cuando cambia el eje. Los callers legacy propagan el eje existente en sus pasos validados conservando Route Validation, Movement Cost, economía, AoO y action semantics.
+La única autoridad es la instancia de `srd_squeezing` en `room.effectInstances`. Para cada combatiente con footprint orientable comprimido existe una sola instancia espacial, con exactamente un eje `horizontal | vertical`, confirmado por la proyección validada de la transición. Actualmente la geometría soporta compresión orientable de huellas naturales 2×2 según escala del tablero, no simplemente una etiqueta de tamaño Large. No se amplía soporte geométrico.
 
-El pseudocódigo de §8.7.4 se entiende sujeto a estas guardas: instancia única, eje requerido/valido y proyección legal. Para compresión orientable, eje ausente o inválido/proyección fallida se rechaza como error de integridad; no se ejecuta fallback legal[0] ni retorno de huella natural. La excepción no orientable está acotada en R4. No se infiere eje en Commit ni en lectura de snapshot. La inyección manual GM sin evidencia queda rechazada. Salas legacy se drenan/recrean; no se inventa un eje silenciosamente. Matriz RAW §8.3.2 aprobada e inalterada.
+Ningún productor nuevo puede insertar compresión orientable sin eje. Commit nunca elige un eje por orden de candidatos, heurística, destino o estado del cliente. El snapshot siguiente debe reproducir las mismas coordenadas `x,y,zFeet` de la huella confirmada. Eje faltante, inválido, instancia duplicada o eje que dejó de ser legal son errores de integridad: no retornar silenciosamente `legal[0]` ni huella natural.
+
+ODR-D1B-I5-1 queda formalmente resuelta y cerrada en este NDD. Lifecycle y auditoría R4 aprobados conceptualmente; R5 consolida autoridad documental y responsabilidades. Este NDD es la única autoridad normativa de D-1B; el plan deriva tareas y walkthrough registra historia/auditoría.
+
+#### 8.7.5 Propiedad del tipo y frontera genérica de efectos
+
+`SqueezingAxis` tendrá una única definición en el nuevo módulo hoja `packages/shared/src/movementContracts.ts`, sin imports ni dependencias de runtime. Este contrato inferior será reutilizado por `effects/types.ts`, `movementGeometry.ts`, Resolution/Commit y SpatialTransition mediante `import type`. No duplicar la unión literal en efectos ni en servidor. La exportación existente de movementGeometry se conserva como re-export de tipo para compatibilidad; index.ts expone la misma autoridad. No importar movementGeometry desde effects/types ni manager. Grafo: effects/types → movementContracts; movementGeometry → types + movementContracts; ningún retorno desde el módulo hoja. La evidencia discriminada también vive en ese módulo, sin importar Position, Combatant ni reglas.
+
+Se conserva `EffectInstance<TEffectId>` con `readonly squeezingAxis?: SqueezingAxis`, sin metadata genérica ni unión distributiva compleja por catálogo. La optionalidad permite efectos ordinarios y fixtures effect-only/no orientables; no autoriza compresión espacial orientable incompleta.
+
+EffectManager conserva infraestructura genérica de efectos:
+
+- Copia explícitamente el escalar en safeInstance; cadena por valor. Mantiene copias defensivas de targets, source, appliedAtEvent y duration.
+- Si existe el campo, valida su pertenencia a SqueezingAxis y rechaza el campo en efectos distintos de srd_squeezing antes de retornos por collision/onStack.
+- Conserva collision/onStack y remove/removeMany; eliminar instancia elimina su eje.
+- No exige eje ausente por tamaño/footprint ni decide cardinalidad espacial del target. No calcula footprints, importa MovementGeometry/size rules, consulta board/narrow terrain, elige/infiere eje, decide compresión ni valida rutas.
+
+cloneEffectInstances de combatSnapshot.ts también enumera campos manualmente y debe copiar el eje para createCombatRulesSnapshot y consumidores del clonador, incluidos clones transaccionales. Broadcast de roomStore serializa room con JSON.stringify sin filtrar el campo; no cambia protocolo.
+
+#### 8.7.6 Productores espaciales y geometría autoritativa
+
+commitMovementResolution consume el último paso confirmado de Resolution; commitSpatialTransition consume evidencia discriminada de su caller:
+
+```ts
+type ConfirmedSpatialTransition =
+  | { readonly spatialMode: "natural"; readonly squeezingAxis?: never }
+  | { readonly spatialMode: "squeezing"; readonly squeezingAxis: SqueezingAxis };
+```
+
+El último paso con eje opcional de Resolution debe estrecharse/validarse a esa evidencia antes de cualquier mutación. Una transición a squeezing orientable exige eje válido antes de cambiar posición, efectos, economía, logs o AdOs. La evidencia procede de la proyección validada y corresponde al destino/prefijo confirmado; no recalcularla en Commit ni inferir desde destination, legal[0], heurística o estado cliente. Los productores espaciales exigen un único target existente; no crean compresión global, ambiental o multitarjet ambigua. Esa garantía espacial no pertenece a EffectManager.
+
+Natural elimina efecto/eje. Squeezing con instancia única válida y mismo eje puede preservarla; cambiar eje hace removeMany/reinsert en candidato local porque onStack:"ignore" impide actualizar con add directo. Publicar candidato y posición tras todas las guardas. Rejected/stale conserva room completo: posición, efectos/eje, economía, logs y AdOs. Duplicados se rechazan como integridad espacial; nunca seleccionar primera instancia.
+
+En getCombatantOccupiedCellsAt, la frontera geométrica determina si el footprint requiere orientación (soporte actual: natural 2×2 según escala del tablero). Si existe srd_squeezing, exige exactamente una instancia, eje válido obligatorio y proyección con preferredAxis todavía legal. Si falla: ERROR DE INTEGRIDAD antes de consumir/publicar snapshot. Nunca legal[0], fallback horizontal ni fallback natural para ese estado. Sin squeezing se deriva huella natural. Fixtures no espaciales/no orientables pueden mantener axisless únicamente porque no representan autoridad espacial orientada; no habilitan nuevas transiciones comprimidas no soportadas.
+
+Se cumple occupiedCellsImmediatelyAfterCommit == occupiedCellsDerivedFromNextAuthoritativeSnapshot en x,y,zFeet, incluso con ambos ejes legales. Fingerprint consume esa ocupación: cambiar eje invalida resoluciones stale. Edición de tablero preserva eje y compara huella exacta sin rotaciones silenciosas.
+
+#### 8.7.7 Integración de callers legacy
+
+Búsqueda de todos los usos en baseline: 13 invocaciones productivas, además de definición/imports. Referencias de línea corresponden al baseline.
+
+| Archivo / caller | Líneas | Modo actual / evidencia | Adaptación mínima futura |
+|---|---|---|---|
+| `movementCommands.ts`, preparación | 15 | natural explícito | Conserva colocación libre; variante natural sin eje |
+| `movementCommands.ts`, Move activo | 122 | `steps[actualPath.length - 1]` | I6 lo reemplaza por Resolution/Commit ordinario; eje del último paso del prefijo re-resuelto |
+| `tacticalCommands.ts`, Withdraw | 113 | `validation.value.steps` conserva eje | Propagar último paso validado que corresponde a `finalStep` |
+| `tacticalCommands.ts`, Run | 209 | misma evidencia, ruta recta validada | Propagar último paso; entrar en squeezing solo si pipeline vigente lo permite |
+| `tacticalCommands.ts`, Charge | 343 | natural explícito | Mantener pipeline y variante natural |
+| `tacticalCommands.ts`, Five-Foot Step | 440 | `validation.value.steps` del único paso | Propagar evidencia si validación vigente permite squeezing; conservar presupuesto y prohibiciones |
+| `gmCommands.ts`, teleport | 23 | natural explícito | Mantener variante natural |
+| `specialManeuverCommands.ts`, bull rush | 355 | natural explícito | Mantener forced movement vigente |
+| `attackCommands.ts`, resolveThreatOutcome | 364, 368 | natural explícito (origin/destination) | Mantener rollback/avance vigente |
+| `attackCommands.ts`, handleResolveOpportunityAttack | 466, 470, 475 | natural explícito | Mantener tres ramas vigentes |
+
+Los 9 sitios natural explícito no crean compresión y eliminan cualquier instancia previa y su eje como hoy. No inferir squeezing por el destino ni extender su semántica. Los 4 sitios de modo variable ya tienen evidencia: `validateMovePath` copia `squeezingAxis` de `legality.steps` a `MovementStepProjection` (`rules.ts:784-789`). No modificar `rules.ts`, Route Validation, Movement Cost, economía, AoO ni action semantics de tácticas. Five-Foot Step conserva `validateMovePath(..., true)`; Charge su pipeline vigente. Las 13 invocaciones quedan cubiertas.
+
+Firma propuesta: mantener room/combatant/position y reemplazar el argumento de modo por la evidencia discriminada anterior. Validar correspondencia con el paso confirmado en el caller. Si falta el último paso, no coincide con el destino o falta eje para modo squeezing, rechazar antes de mutar posición, efectos, economía, logs o AdOs. No recalcular geometría dentro de Commit para recuperar evidencia perdida.
+
+`spatialTransition.ts` y `movementCommit.ts` deben dejar de depender solo de `previousMode !== currentMode`. Natural elimina todas las instancias espaciales previas. Squeezing con eje igual y estado único válido puede preservar instancia; eje distinto reemplaza removeMany + add en estado candidato local. `onStack: "ignore"` de squeezing hace insuficiente un add directo para actualizar eje. Solo publicar candidato y posición una vez que todas las guardas terminan. Error/stale conserva room completo. Duplicados se rechazan en admisión de estado; no se selecciona la primera instancia como autoridad.
+
+#### 8.7.8 Otros productores y compatibilidad de estado
+
+Dos constructores espaciales explícitos: `spatialTransition.ts:35` y `movementCommit.ts:188`; ambos requieren adaptación. No se encontró otro literal constructor productivo de squeezing.
+
+`gmCommands.ts:handleGmApplyEffect` admite cualquier ProductionEffectId y no tiene evidencia espacial. Decisión explícita: rechazar aplicación manual de `srd_squeezing` antes de construir/publicar el efecto; se obtiene por transición espacial validada. `handleGmApplyEnvironmentalHazard` ya exige bloque hazard, ausente en squeezing; mantiene rechazo. `abilityResolver.ts` y `environmentalHazardResolver.ts` aplican ids dinámicos: el catálogo actual no aporta squeezing por estas rutas; sus productores deben exigir evidencia espacial validada antes de crear squeezing orientable; no delegar esa garantía geométrica a EffectManager. No se agrega una entrada de eje cliente para legitimarlos.
+
+`roomStore.ts` mantiene rooms en un Map en memoria; no se encontró loader de combates persistidos en el servidor. Snapshot usa clon explícito y distribución JSON. No se afirma haber auditado datos externos ajenos al repo. En despliegue, las salas en memoria creadas por código previo pueden contener compresión orientable sin eje: drenar/recrear esas salas antes de habilitar el contrato. Si se introduce restauración persistente, su admisión debe rechazar/quarantinar ese estado y pedir recreación o transición espacial explícitamente validada fuera del Commit. No migración silenciosa a partir de destino o candidatos. No hay fallback temporal de selección de eje aprobado.
+
+Para geometría autoritativa: consultar instancia única, exigir eje en footprint orientable y usar `preferredAxis`; si proyección falla, error de integridad antes de uso de snapshot. La excepción no orientable solo soporta fixtures/reglas de modificadores sin autoridad espacial orientada; no habilita nuevas transiciones comprimidas no soportadas.

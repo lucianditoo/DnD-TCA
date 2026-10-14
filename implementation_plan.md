@@ -1,4 +1,4 @@
-# Implementation Plan — D-1B-I6: Move Action Productive Integration (Remediated R4)
+# Implementation Plan — D-1B-I6: Move Action Productive Integration (Remediated R5)
 
 Responsabilidad: Plan ejecutable para migrar productivamente la Move Action ordinaria al pipeline normativo de D-1B y resolver la sede autoritativa de `squeezingAxis` (ODR-D1B-I5-1).
 Autoridad: Derivada del [NDD D-1B (Capítulos 3 y 8)](docs/designs/normative-movement-design.md)
@@ -15,7 +15,7 @@ Consumidores: Architecture Reviewer y desarrolladores/agentes que implementarán
 ## 1. Archivos Afectados
 
 1. **`packages/shared/src/effects/types.ts`**:
-   - Incorporar `readonly squeezingAxis?: SqueezingAxis;` a la interfaz `EffectInstance` como sede autoritativa única de la orientación espacial de `srd_squeezing` (resolución de ODR-D1B-I5-1).
+   - Importar SqueezingAxis del módulo hoja movementContracts.ts, sin depender de movementGeometry; incorporar `readonly squeezingAxis?: SqueezingAxis;` a la interfaz `EffectInstance` como sede autoritativa única de la orientación espacial de `srd_squeezing` (resolución de ODR-D1B-I5-1).
 2. **`packages/shared/src/movementCost.ts`** y **`packages/shared/src/movementResolution.ts`**:
    - Implementar la matriz canónica RAW de costes y paridad diagonal (§8.3.2):
      - **Normal:** ortogonal 5 ft; diagonal 5/10 ft (alternado); paridad: SÍ.
@@ -27,11 +27,11 @@ Consumidores: Architecture Reviewer y desarrolladores/agentes que implementarán
      - **Terreno Difícil + Squeezing:** ortogonal 20 ft; diagonal 30 ft fijos; paridad: NO (ODR D-1B-C3-01 resuelta, ya no retorna `unsupported-cost-combination`).
      - **Tumble + Terreno Difícil + Squeezing:** ortogonal 40 ft; diagonal 60 ft fijos; paridad: NO.
 3. **`packages/shared/src/movementCommit.ts`**:
-   - Persistir `lastStep.squeezingAxis` en la instancia de `srd_squeezing` al entrar en compresión o al actualizar el eje en pasos subsiguientes de compresión.
+   - Estrechar/validar último paso a evidencia discriminada antes de cualquier mutación; remove/reinsert candidato al cambiar eje evita onStack ignore. Persistir `lastStep.squeezingAxis` en la instancia de `srd_squeezing` al entrar en compresión o al actualizar el eje en pasos subsiguientes de compresión.
    - Si la resolución final es `natural`, eliminar las instancias de `srd_squeezing` mediante `EffectManager.removeMany`.
    - Si el Commit es rechazado, cero mutaciones a `room.effectInstances` y cero alteraciones al eje.
 4. **`packages/shared/src/movementGeometry.ts`**:
-   - En `getCombatantOccupiedCellsAt`, extraer `instance.squeezingAxis` de la instancia activa de `srd_squeezing` del combatiente y pasarla a `getSqueezedFootprintAt` como `preferredAxis`.
+   - Importar/re-exportar SqueezingAxis del módulo hoja. En footprint orientable con squeezing exigir instancia única, eje válido y proyección legal; si falla, error de integridad sin fallback legal[0]/horizontal/natural. En `getCombatantOccupiedCellsAt`, extraer `instance.squeezingAxis` de la instancia activa de `srd_squeezing` del combatiente y pasarla a `getSqueezedFootprintAt` como `preferredAxis`.
    - Esto garantiza determinismo total sin depender del orden del array de candidatos (`legal[0]`):
      `occupiedCellsImmediatelyAfterCommit == occupiedCellsDerivedFromNextAuthoritativeSnapshot`.
 5. **`apps/server/src/commands/movementCommands.ts`**:
@@ -41,13 +41,17 @@ Consumidores: Architecture Reviewer y desarrolladores/agentes que implementarán
    - Derivación canónica de `wasSqueezing` previo al Commit consultando `room.effectInstances.some(i => i.effectId === "srd_squeezing" && i.targets?.includes(combatant.id))` (no mediante campos inexistentes en `Combatant`).
    - Ciclo transaccional: resolución candidata completa -> evaluación CD 25 de Acrobacias -> re-resolución pura del prefijo confirmado si hubo fallo -> cálculo de AdOs entregando `resolution.totalCostFeet` y tiradas CD 15 locales -> precondiciones -> commit autoritativo -> publicación atómica.
    - Emisión de logs de compresión únicamente ante cambios reales (`wasSqueezing !== isSqueezingNow`); cero logs si el commit es rechazado.
-   - Conservar la rama `room.phase === "preparation"` exactamente como colocación libre sin cambios.
-6. **`tests/movement-integration.test.mjs`** (nuevo suite focalizado):
-   - Cobertura exhaustiva de integración servidor para `handleMoveCombatant`, matriz canónica de costes y paridad, y contrato de persistencia de `squeezingAxis`.
-7. **`tests/regression-tactical-movement.test.mjs`**:
-   - Probar no-regresión semántica de `handleWithdraw`, `handleRun`, `handleCharge` y `handleFiveFootStep`.
-8. **Documentación de gobernanza**:
-   - `docs/testing/master-coverage.md`, `PROJECT_STATUS.md`, `TODO.md`, `walkthrough.md`.
+   - Preparación conserva colocación libre; adaptar solo firma natural. Move activo usa eje del último paso del prefijo re-resuelto, nunca destino descartado.
+6. **`packages/shared/src/movementContracts.ts`** (nuevo módulo hoja): única definición SqueezingAxis y ConfirmedSpatialTransition discriminada; sin imports/runtime. effects/types, geometría, Resolution/Commit y SpatialTransition usan import type. movementGeometry retira unión local y conserva re-export compatible.
+7. **`packages/shared/src/effects/manager.ts`**: copiar eje en safeInstance, validar valor si existe y rechazar campo en otros efectos antes de collision/onStack. Mantener infraestructura genérica; no footprints, tamaño, board, geometría, cardinalidad espacial ni obligación de eje ausente por target.
+8. **`packages/shared/src/combatSnapshot.ts`**: copiar eje en cloneEffectInstances para snapshot y clones transaccionales; comprobar aislamiento de referencias y round trip JSON.
+9. **`apps/server/src/combat/spatialTransition.ts`**: entrada ConfirmedSpatialTransition y guardas antes de mutar; sin inferencia/revalidación para recuperar eje perdido. Natural limpia; mismo eje preserva estado único válido; eje distinto remove/reinsert candidato antes de publicar para evitar onStack ignore.
+10. **`apps/server/src/commands/tacticalCommands.ts`**: Withdraw/Run/Five-Foot Step propagan eje existente en último paso validado; Charge adapta firma natural. Conservar validación, costes, economía, AoO y action semantics vigentes; squeezing solo si legal bajo su pipeline actual.
+11. **`apps/server/src/commands/gmCommands.ts`**: teleport adapta firma natural; GM manual squeezing sin evidencia rechaza antes de efectos/logs/publicación. Hazard mantiene rechazo vigente.
+12. **`apps/server/src/commands/attackCommands.ts`** y **`apps/server/src/commands/specialManeuverCommands.ts`**: adaptar firma de cinco ramas de AdO y bull rush natural explícito; mantener rollback/avance y forced movement actuales.
+13. **`packages/shared/src/index.ts`**: comprobar exposición pública de tipo/evidencia desde autoridad única sin exportaciones ambiguas; preservar re-exports type-only compatibles.
+14. **Tests futuros**: `tests/active-effects.test.mjs`, `tests/dt-006-snapshot-integrity.test.mjs`, `tests/movement-commit.test.mjs`, `tests/movement-integration.test.mjs` (nuevo), `tests/regression-tactical-movement.test.mjs`, `tests/withdraw-server.test.mjs`, `tests/run-server.test.mjs`, `tests/gm-apply-effect.test.mjs`, `tests/demo-runner.test.mjs`, `tests/map-builder.test.mjs`, `tests/bull-rush-and-squeezing.test.mjs`, `tests/iterative-attacks-effective-routine.test.mjs`. Casos en §5; ningún test se modifica en R5.
+15. **Documentación futura**: NDD canónico, `docs/testing/master-coverage.md`, PROJECT_STATUS, TODO y walkthrough según responsabilidad; sin segundo contrato normativo.
 
 ---
 
@@ -60,7 +64,7 @@ Consumidores: Architecture Reviewer y desarrolladores/agentes que implementarán
     - `handleFiveFootStep`
     - `chargePreviewPath` y helpers de UI/preview en el cliente.
 - **`apps/server/src/combat/spatialTransition.ts`**:
-  - Sigue existiendo para la fase de colocación `preparation` y acciones tácticas no migradas.
+  - Sigue existiendo para preparación y tácticas no migradas. Adaptar evidencia/firma de las 13 invocaciones enumeradas en NDD §8.7.7: 9 natural conservan modo; 4 variables ya tienen eje en pasos validados.
   - Para `handleMoveCombatant` activo, la transición de estado espacial y efectos de `srd_squeezing` la gobierna exclusivamente `commitMovementResolution`.
 
 ---
@@ -145,17 +149,33 @@ En I6 el frontend continúa utilizando helpers legacy (`calculatePathStepCostsFe
    - Acrobacias interrupción: CD 25 éxito avanza todo; CD 25 fallo intermedio trunca la ruta, re-resuelve prefijo normativo, comitea en la casilla previa al enemigo y genera AdO; CD 25 fallo inicial rechazo con error y cero movimiento.
    - AdO metric: `findTriggeredOpportunityAttacksForPath` recibe `resolution.totalCostFeet`.
    - Máquina de estados de logs de Squeezing: emitir log de entrada únicamente en la transición normal -> squeezing; emitir log de salida únicamente en la transición squeezing -> normal; no emitir log si permanece en el mismo modo; cero logs ante commit rechazado.
-   - No regresión: `handleWithdraw`, `handleRun`, `handleCharge`, `handleFiveFootStep` conservan pipelines; solo propagación de evidencia/firma según R4.
+   - No regresión: `handleWithdraw`, `handleRun`, `handleCharge`, `handleFiveFootStep` conservan pipelines; solo propagación de evidencia/firma según NDD §8.7.
    - E2E & UI: `node scripts/e2e-websocket.mjs` y `npm run test:ui` 100% verde.
 
-## 6. Integración completa del eje — R4 (obligatorio antes de Proceed)
 
-El [contrato y auditoría R4](docs/designs/movement/i6r4-squeezing-axis-integration.md) completa y prevalece sobre las afirmaciones de integración de eje de R3. La matriz RAW aprobada de §§1/5 permanece sin cambios.
+4. **Integración completa del eje y fronteras:**
 
-Agregar a §1: `packages/shared/src/effects/manager.ts` (guardas y copia explícita en safeInstance), `packages/shared/src/combatSnapshot.ts` (cloneEffectInstances también descarta campos), `apps/server/src/combat/spatialTransition.ts` (entrada discriminada y reemplazo al cambiar eje), `apps/server/src/commands/tacticalCommands.ts` (Withdraw/Run/Five-Foot Step propagan eje ya confirmado), `apps/server/src/commands/gmCommands.ts` (rechazo explícito de inyección squeezing sin evidencia). Adaptar firma de callers natural explícito en `attackCommands.ts` y `specialManeuverCommands.ts` si corresponde. Incluir fixtures y suites enumerados en §5 del contrato R4.
+1. Manager preserva horizontal y vertical exactamente; mutar objeto/arrays originales no altera copia ni eje. remove/removeMany elimina eje y efecto. Efectos ordinarios no adquieren eje; eje en efecto ajeno/invalid axis se rechaza sin mutación, incluso con onStack ignore. Manager no evalúa footprint ni exige eje ausente; effect-only/no orientable axisless permitido.
+2. cloneEffectInstances/createCombatRulesSnapshot y round trip JSON preservan eje y copias defensivas. Huella inmediata = huella de siguiente snapshot en ambos ejes y cuando ambos son legales.
+3. Move normal crea instancia completa; prefijo tras fallo CD25 usa su último paso confirmado, sin heredar eje del destino descartado. No cambio de matriz R3.
+4. Withdraw entra horizontal/vertical mediante validación legacy y conserva coste, economía, AoO y semántica. Run entra solo en caso legal existente y conserva prohibiciones (terreno difícil, línea recta). Five-Foot Step: caso natural y propagación si squeezing es legal; si no, rechazo previo sin ampliar reglas.
+5. Cubrir cada fila y rama de las 13 invocaciones: natural no crea eje y limpia previo; Charge/teleport/bull rush/ramas de AdO conservan comportamiento. GM manual squeezing rechazado antes de logs/mutación. Demo genera estado completo.
+6. Squeezing → natural elimina instancia/eje; squeezing → squeezing mismo eje conserva orientación; cambio horizontal ↔ vertical reemplaza determinísticamente aun con onStack ignore. Sin duplicados.
+7. Stale Commit no cambia posición, eje, efectos, economía, logs ni AdOs; cambio externo del eje invalida fingerprint mediante ocupación. Evidencia ausente/contradictoria rechazada sin mutación.
+8. Estado legacy orientable axisless y eje ya ilegal producen error explícito, sin fallback legal[0]/natural; fixtures map-builder migrados preservan comparación exacta y rechazo de rotación. Colocación preparation conserva semántica natural.
 
-La optionalidad del almacenamiento no autoriza compresión orientable incompleta: manager protege inserts, ambos commits exigen evidencia antes de mutar y geometría rechaza estado inválido sin escoger legal[0] ni retornar natural. La unión discriminada en frontera garantiza natural sin eje / squeezing con eje. Copiar el escalar en manager y clonador de snapshot, no introducir metadata genérica. Remover/reinsertar al cambiar eje evita onStack ignore.
+9. Spatial commit rechaza squeezing orientable sin eje antes de cualquier mutación; observar room completo sin delegar a manager. Geometry rechaza estado orientable axisless, duplicado o eje ilegal. Fixture effect-only/no orientable axisless permitido solo si no actúa como autoridad espacial orientada.
+10. EffectManager copia/valida estructura sin importar geometry/size rules ni consultar board. Typecheck y revisión de imports verifican módulo hoja sin dependencias y ningún ciclo nuevo effects ↔ movement. Una sola definición de SqueezingAxis y re-exports type-only compatibles.
 
-§2 mantiene helpers legacy intactos; adaptación mínima de consumidores tácticos para propagar `validation.value.steps[last].squeezingAxis` y cambiar firma está autorizada como integridad del estado, sin migración a I4/I5. La preparación sigue natural. Cerrar los 13 call sites auditados, la entrada GM sin evidencia y compatibilidad de salas antiguas antes de Proceed.
+**Secuencia futura:** contrato hoja/copias estructurales → geometría/snapshot → ambos commits → propagación de callers y cierre GM → fixtures/integración/checks. Todos los cambios de código/tests de este plan esperan Proceed; R5 modifica únicamente documentación.
 
-Pruebas futuras adicionales obligatorias: manager horizontal/vertical/copia defensiva/remove/removeMany/otros efectos; clon y JSON del snapshot; Move/Withdraw/Run legal/Five-Foot Step; cada caller natural; eje ambiguo confirmado; reemplazo determinista; salida a natural; stale cero mutación; snapshot igual a footprint confirmado; rechazo de axisless orientable y de inyección GM; fixtures map-builder migrados. Alcance exclusivamente documental en R4.
+**Migración de fixtures y despliegue:**
+
+Auditoría de fixtures sin eje:
+
+- `tests/map-builder.test.mjs`: seis instancias manuales (398, 452, 501, 582, 640, 689); migrar con el eje explicitado por cada escenario/celdas esperadas. Cuando el test exige preservar compresión vertical, declarar vertical; no agregar horizontal indiscriminadamente.
+- `tests/bull-rush-and-squeezing.test.mjs:169` e `tests/iterative-attacks-effective-routine.test.mjs:82`: fixtures manuales de modificadores. Si footprint no orientable, pueden permanecer axisless bajo excepción acotada; migrar a escenario espacial confirmado cuando se use ocupación orientable. No fingir un eje confirmado para una prueba puramente numérica.
+- `tests/movement-commit.test.mjs` y casos de entrada/continuidad de bull-rush-and-squeezing generan squeezing vía código: ampliar aserciones de eje y huella, no solo presencia/count.
+- `packages/shared/src/demo/catalog.ts:603,616`: explicación y expectativa `hasEffect`, no instancia manual; conservar datos y añadir verificación del estado generado en cobertura futura de demo.
+
+Drenar/recrear salas anteriores con squeezing orientable axisless antes de habilitar contrato. No hay loader persistido en baseline; restauración futura aplica admisión de integridad espacial del NDD §8.7.8. Sin fallback temporal aprobado.
