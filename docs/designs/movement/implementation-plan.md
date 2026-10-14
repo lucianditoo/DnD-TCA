@@ -1,14 +1,14 @@
 # Implementation Plan — D-1B-I6: Move Action Productive Integration (Remediated R5)
 
 Responsabilidad: Plan ejecutable para migrar productivamente la Move Action ordinaria al pipeline normativo de D-1B y resolver la sede autoritativa de `squeezingAxis` (ODR-D1B-I5-1).
-Autoridad: Derivada del [NDD D-1B (Capítulos 3 y 8)](docs/designs/normative-movement-design.md)
-Lifecycle: Temporal (gobierna la implementación de I6 hasta su cierre formal).
+Autoridad: Derivada del [NDD D-1B (Capítulos 3 y 8)](../normative-movement-design.md)
+Lifecycle: Referencia de implementación ejecutada; no es un plan activo.
 Reemplaza: —
-Complementa: [Walkthrough](walkthrough.md), [estado](PROJECT_STATUS.md), [I5R2 plan cerrado](docs/designs/movement/i5r2-implementation-plan.md)
-Consumidores: Architecture Reviewer y desarrolladores/agentes que implementarán el Sprint D-1B-I6 tras el Proceed explícito.
+Complementa: [Walkthrough](../../../walkthrough.md), [estado](../../../PROJECT_STATUS.md), [I5R2 plan cerrado](i5r2-implementation-plan.md)
+Consumidores: Architecture Reviewer y desarrolladores/agentes que consultan la ejecución del Sprint D-1B-I6.
 
-**ESTADO ACTUAL:** EN ESPERA DE ARCHITECTURE REVIEW Y PROCEED EXPLÍCITO.
-**MODO:** NO IMPLEMENTAR CÓDIGO PRODUCTIVO NI MODIFICAR TESTS HASTA APROBACIÓN.
+**ESTADO ACTUAL:** IMPLEMENTACIÓN Y DoD COMPLETADOS; PENDIENTE DE ARCHITECTURE REVIEW EXTERNA.
+**MODO:** Registro del plan aprobado en 16711b6 y ejecutado con Proceed del owner. Las tareas/pruebas futuras descritas abajo documentan el diseño original; no autorizan trabajo adicional.
 
 ---
 
@@ -179,3 +179,11 @@ Auditoría de fixtures sin eje:
 - `packages/shared/src/demo/catalog.ts:603,616`: explicación y expectativa `hasEffect`, no instancia manual; conservar datos y añadir verificación del estado generado en cobertura futura de demo.
 
 Drenar/recrear salas anteriores con squeezing orientable axisless antes de habilitar contrato. No hay loader persistido en baseline; restauración futura aplica admisión de integridad espacial del NDD §8.7.8. Sin fallback temporal aprobado.
+
+## 6. Ejecución I6 y verificaciones
+
+Plan ejecutado: Move activo integrado; matriz RAW/Tumble aplicada centralmente; eje persistido/copiado y geometría estricta. Callers tácticos conservan pipelines y propagan evidencia; GM/ability/hazard sin evidencia no crean squeezing. Fixtures espaciales migrados conforme a sus celdas; fixture Disabled ahora identifica turno activo.
+
+Ajuste técnico necesario: AdO recibe opcionalmente huellas confirmadas, y sus orígenes hipotéticos usan vista local espacial coherente. Esto evita aplicar eje inicial a un destino/paso donde ya no es legal. Sin cambio de reglas de provocación, coste legacy, exenciones ni CD15. Preparación/teleport validan candidato natural explícito. Aclaración en NDD §8.4; no se modificaron validateMovePath/calculatePathStepCostsFeet/calculatePathCostFeet.
+
+Las pruebas de integración/regresión planeadas se distribuyeron en movement-integration, squeezing-axis-integration y suites tácticas existentes; no se creó un segundo archivo de regresiones redundante. DoD: 746/746 suite completa, 188/188 focalizadas, typecheck/build de tres workspaces, 110/110 WebSocket, 16/16 Playwright. CI remoto se comprueba tras push; aprobación arquitectónica no autoemitida.

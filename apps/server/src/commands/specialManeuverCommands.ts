@@ -352,7 +352,7 @@ function resolveBullRush(
     room.log.unshift(makeLog("status", `Prueba enfrentada de Embestida: ${attacker.name} d20 ${opposed.attackerRoll} + ${opposed.attackerModifier} = ${opposed.attackerTotal}; ${target.name} d20 ${opposed.defenderRoll} + ${opposed.defenderModifier} = ${opposed.defenderTotal}.`));
     if (opposed.attackerWins && forcedMovement) {
       attacker.stats.hits += 1;
-      commitSpatialTransition(room, target, forcedMovement.finalPosition, "natural");
+      commitSpatialTransition(room, target, forcedMovement.finalPosition, { spatialMode: "natural" });
       room.log.unshift(makeLog("movement", `${attacker.name} gana la Embestida y desplaza a ${target.name} ${forcedMovement.distanceFeet} pies${forcedMovement.blocked ? " hasta la primera colision legal" : ""}.`));
     } else {
       attacker.stats.misses += 1;

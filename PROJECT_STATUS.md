@@ -10,9 +10,8 @@
 - Última vertical funcional implementada: D-5 Editor Táctico de Mapas (MVP), conforme a su [NDD canónico](docs/designs/map-builder-mvp/design.md) y [plan](docs/designs/map-builder-mvp/implementation-plan.md); **CERRADA y TÉCNICAMENTE APROBADA** (Architecture Review sobre commit `6fd385b42b4dc51b8dcbb195108d7051a600944f`).
 - Última decisión arquitectónica: Sprint D-1B Capítulo 7 (Integration & Implementation Contracts) y NDD de Demo Táctica Automática (`f8c0e9d`).
 - Implementación integrada: D-5 (remediado en D-5R1/R2/R3) cierra exhaustivamente todos los requisitos de arquitectura: Candidate Board validation pura sin mutación previa al commit, invariante estricta de compresión `srd_squeezing` (comparación canónica de coordenadas `x, y, zFeet` sin permitir rotación o desplazamiento de la huella comprimida); máquina de estados Save/Error/ACK con limpieza de errores viejos y verificación de `room-update` posterior a la petición; gating del modal de confirmación crítica durante la edición del mapa; métricas y logs de pilares corregidos a `loe-only` (excluyendo muros); y suite E2E WebSocket con cobertura de `update-board`.
-- Última remediación de infraestructura: D-1B-I5R2 vincula la resolución a su actor canónico y verifica vigencia espacial, movilidad efectiva y fuentes de presupuesto; **TÉCNICAMENTE APROBADO** (`865405a`). D-1B-I6 en DISEÑO remediado R5: NDD §8.7 autocontenido y plan consolidado; matriz R3, lifecycle y auditoría R4 aprobados conceptualmente. Sin implementación; pendiente de Architecture Review y Proceed explícito.
-- Baseline de código: 701 tests unitarios, `typecheck`, `build`, `e2e-websocket` (110/110) y 16 tests Playwright UI al 100% en verde.
-  Conteos y evidencias se mantienen en [master-coverage.md](docs/testing/master-coverage.md), no como un segundo registro aquí.
+- Última remediación de infraestructura: D-1B-I5R2 vincula la resolución a su actor canónico y verifica vigencia espacial, movilidad efectiva y fuentes de presupuesto; **TÉCNICAMENTE APROBADO** (`865405a`). D-1B-I6 implementado con Proceed explícito sobre 16711b6: Move ordinario consume Resolution/Commit, coste RAW y eje autoritativo persistente. DoD local completo verde; pendiente de Architecture Review externa sobre el commit publicado.
+- Baseline actual y evidencia de I6: [master-coverage.md](docs/testing/master-coverage.md); gates locales completos verdes.
 - GitHub Actions sobre Windows es el gate canónico de cierre para la revisión
   publicada.
 
@@ -25,7 +24,7 @@
 | I3 / I3R1 — Route Validation | Integrado: `validateMovePath` delega legalidad a `validateRouteLegality`; extracción sin el ciclo detectado en I3. |
 | I4 — Movement Resolution | Pipeline puro de validación/coste/verificación de presupuesto; I5R2 conserva combatantId y evidencia canónica espacial y de movilidad/presupuesto. |
 | I5 / I5R1 / I5R2 — Movement Commit | Aplicación autoritativa remediada y cerrada: procedencia de actor vivo en room y guardas anti-stale espaciales y de movilidad; **TÉCNICAMENTE APROBADO** (`865405a`). |
-| I6 — Move Action Productive Integration | En fase de DISEÑO arquitectónico y plan de implementación; pendiente de Architecture Review y Proceed explícito antes de cualquier código. |
+| I6 — Move Action Productive Integration | Integrado para Move ordinario activo; eje persistente/copia/snapshot y compatibilidad mínima legacy. Pendiente de Architecture Review externa. |
 
 La presentación incorpora un **renderer WebGL táctico 2.5D** con respaldo `2D`, cámara orbital limitada, cuatro presets y sprites pixel-art, estrictamente desacoplado sobre el grid autoritativo 2D con huellas multicasilla. No es todavía el motor espacial 3D normativo: las alturas visuales son cosméticas y los NDD espaciales siguen siendo el destino de migración mecánica. CI verde no significa V1 completa.
 

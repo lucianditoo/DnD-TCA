@@ -5,6 +5,8 @@ import type {
   Position,
 } from "./types.js";
 import { getSizeRule } from "./sizeRules.js";
+import type { SqueezingAxis } from "./movementContracts.js";
+export type { SqueezingAxis } from "./movementContracts.js";
 
 /**
  * Módulo inferior de geometría/ocupación espacial (Sprint D-1B-I3R1).
@@ -15,7 +17,6 @@ import { getSizeRule } from "./sizeRules.js";
  */
 
 export type SpatialMode = "natural" | "squeezing";
-export type SqueezingAxis = "horizontal" | "vertical";
 
 export interface MovementFootprintProjection {
   readonly occupiedCells: Position[];
@@ -87,7 +88,7 @@ function getSqueezedFootprintAt(
   combatant: CombatantSnapshot,
   snapshot: CombatRulesSnapshot,
   position: Position,
-  preferredAxis?: SqueezingAxis
+  preferredAxis: SqueezingAxis
 ): MovementFootprintProjection | null {
   const naturalCells = getNaturalCombatantOccupiedCellsAt(combatant, snapshot, position);
   const naturalGeometry = projectFootprintGeometry(naturalCells);
@@ -117,9 +118,7 @@ function getSqueezedFootprintAt(
     !isImpassable(snapshot, cell.x, cell.y) &&
     isNarrowCell(snapshot, cell)
   ));
-  const selected = preferredAxis
-    ? legal.find((candidate) => candidate.axis === preferredAxis)
-    : legal[0];
+  const selected = legal.find((candidate) => candidate.axis === preferredAxis);
   return selected ? { occupiedCells: selected.cells, spatialMode: "squeezing", squeezingAxis: selected.axis } : null;
 }
 
@@ -151,11 +150,19 @@ export function getCombatantOccupiedCellsAt(
   snapshot: CombatRulesSnapshot,
   position: Position
 ): Position[] {
-  if (isSqueezingCombatant(snapshot, combatant.id)) {
-    const squeezed = getSqueezedFootprintAt(combatant, snapshot, position);
-    if (squeezed) return squeezed.occupiedCells;
+  const natural = getNaturalCombatantOccupiedCellsAt(combatant, snapshot, position);
+  if (natural.length === 4 && isSqueezingCombatant(snapshot, combatant.id)) {
+    const instances = snapshot.effectInstances.filter(instance =>
+      instance.effectId === "srd_squeezing" && instance.targets?.includes(combatant.id));
+    const axis = instances[0]?.squeezingAxis;
+    if (instances.length !== 1 || (axis !== "horizontal" && axis !== "vertical")) {
+      throw new Error(`Integridad espacial: srd_squeezing de ${combatant.name} requiere una instancia con eje valido.`);
+    }
+    const squeezed = getSqueezedFootprintAt(combatant, snapshot, position, axis);
+    if (!squeezed) throw new Error(`Integridad espacial: eje de srd_squeezing de ${combatant.name} ya no es legal.`);
+    return squeezed.occupiedCells;
   }
-  return getNaturalCombatantOccupiedCellsAt(combatant, snapshot, position);
+  return natural;
 }
 
 /** Deriva de forma autoritativa las celdas ocupadas desde tamaño, ancla y escala del tablero. */

@@ -200,123 +200,35 @@ test("Movement Cost conserva evidencia ordenada por Step: coste individual, acum
   assert.equal(assessment.steps.at(-1).cumulativeCostFeet, assessment.totalCostFeet);
 });
 
-// --- Sprint D-1B-I5R1: Squeezing, Base Route Cost y Regresiones ---
-
-const squeezingStep = (origin, destination, isDifficultTerrain = false) => ({
-  origin,
-  destination,
-  isDifficultTerrain,
-  spatialMode: "squeezing"
-});
-
-test("Movement Cost (I5R1): Squeezing ortogonal normal: base 5 / cost 10", () => {
-  const assessment = assessMovementCost(
-    route(squeezingStep(position(0, 0), position(1, 0))),
-    { normalDiagonalStepsThisTurn: 0 }
-  );
-
-  assert.equal(assessment.totalCostFeet, 10);
-  assert.equal(assessment.totalBaseRouteCostFeet, 5);
-  assert.equal(assessment.resultingContext.normalDiagonalStepsThisTurn, 0);
-  assert.equal(assessment.steps[0].stepCostFeet, 10);
-  assert.equal(assessment.steps[0].stepBaseRouteCostFeet, 5);
-});
-
-test("Movement Cost (I5R1): Squeezing diagonal base 5: base 5 / cost 10", () => {
-  const assessment = assessMovementCost(
-    route(squeezingStep(position(0, 0), position(1, 1))),
-    { normalDiagonalStepsThisTurn: 0 }
-  );
-
-  assert.equal(assessment.totalCostFeet, 10);
-  assert.equal(assessment.totalBaseRouteCostFeet, 5);
-  assert.equal(assessment.resultingContext.normalDiagonalStepsThisTurn, 1);
-  assert.equal(assessment.steps[0].stepCostFeet, 10);
-  assert.equal(assessment.steps[0].stepBaseRouteCostFeet, 5);
-});
-
-test("Movement Cost (I5R1): Segundo diagonal bajo Squeezing: base 10 -> cost 20", () => {
-  const assessment = assessMovementCost(
-    route(squeezingStep(position(1, 1), position(2, 2))),
-    { normalDiagonalStepsThisTurn: 1 }
-  );
-
-  assert.equal(assessment.totalCostFeet, 20);
-  assert.equal(assessment.totalBaseRouteCostFeet, 10);
+// I6 approved RAW matrix: each source composes multiplicatively.
+for (const [name, difficult, squeezing, acrobatic, orthogonal, diagonals] of [
+  ["normal", false, false, false, 5, [5, 10]],
+  ["tumble", false, false, true, 10, [10, 20]],
+  ["DT", true, false, false, 10, [15, 15]],
+  ["squeezing", false, true, false, 10, [15, 15]],
+  ["tumble + DT", true, false, true, 20, [30, 30]],
+  ["tumble + squeezing", false, true, true, 20, [30, 30]],
+  ["DT + squeezing", true, true, false, 20, [30, 30]],
+  ["all three", true, true, true, 40, [60, 60]]
+]) {
+  test(`I6 RAW matrix: ${name}`, () => {
+    const costStep = (a, b) => ({ ...step(a, b, difficult), spatialMode: squeezing ? "squeezing" : "natural", isAcrobatic: acrobatic });
+    const orth = assessMovementCost(route(costStep(position(0, 0), position(1, 0))), { normalDiagonalStepsThisTurn: 0 });
+    assert.equal(orth.totalCostFeet, orthogonal);
+    assert.equal(orth.totalBaseRouteCostFeet, 5);
+    const diag = assessMovementCost(route(costStep(position(0, 0), position(1, 1)), costStep(position(1, 1), position(2, 2))), { normalDiagonalStepsThisTurn: 0 });
+    assert.deepEqual(diag.steps.map(s => s.stepCostFeet), diagonals);
+    assert.equal(diag.resultingContext.normalDiagonalStepsThisTurn, difficult || squeezing ? 0 : 2);
+    assert.equal(diag.totalBaseRouteCostFeet, difficult || squeezing ? 10 : 15);
+  });
+}
+test("I6 normal parity resumes around both kinds of hampered diagonal", () => {
+  const assessment = assessMovementCost(route(
+    step(position(0,0), position(1,1)),
+    { ...step(position(1,1), position(2,2)), spatialMode: "squeezing" },
+    { ...step(position(2,2), position(3,3), true), isAcrobatic: true },
+    { ...step(position(3,3), position(4,4)), isAcrobatic: true }
+  ), { normalDiagonalStepsThisTurn: 0 });
+  assert.deepEqual(assessment.steps.map(s => s.stepCostFeet), [5,15,30,20]);
   assert.equal(assessment.resultingContext.normalDiagonalStepsThisTurn, 2);
-  assert.equal(assessment.steps[0].stepCostFeet, 20);
-  assert.equal(assessment.steps[0].stepBaseRouteCostFeet, 10);
-});
-
-test("Movement Cost (I5R1): Difficult Terrain ortogonal: base 5 / cost 10", () => {
-  const assessment = assessMovementCost(
-    route(step(position(0, 0), position(1, 0), true)),
-    { normalDiagonalStepsThisTurn: 0 }
-  );
-
-  assert.equal(assessment.totalCostFeet, 10);
-  assert.equal(assessment.totalBaseRouteCostFeet, 5);
-  assert.equal(assessment.resultingContext.normalDiagonalStepsThisTurn, 0);
-  assert.equal(assessment.steps[0].stepCostFeet, 10);
-  assert.equal(assessment.steps[0].stepBaseRouteCostFeet, 5);
-});
-
-test("Movement Cost (I5R1): Regresion A: normal diagonal -> difficult diagonal -> normal diagonal", () => {
-  const assessment = assessMovementCost(
-    route(
-      step(position(0, 0), position(1, 1)),       // 1a normal diagonal: base 5, cost 5, cont 1
-      step(position(1, 1), position(2, 2), true), // diagonal dificil: base 5, cost 15, cont 1 (no altera contador)
-      step(position(2, 2), position(3, 3))        // 2a normal diagonal: base 10, cost 10, cont 2 (paridad normal preservada)
-    ),
-    { normalDiagonalStepsThisTurn: 0 }
-  );
-
-  assert.equal(assessment.steps[0].stepCostFeet, 5);
-  assert.equal(assessment.steps[0].stepBaseRouteCostFeet, 5);
-  assert.equal(assessment.steps[0].resultingContext.normalDiagonalStepsThisTurn, 1);
-
-  assert.equal(assessment.steps[1].stepCostFeet, 15);
-  assert.equal(assessment.steps[1].stepBaseRouteCostFeet, 5);
-  assert.equal(assessment.steps[1].resultingContext.normalDiagonalStepsThisTurn, 1);
-
-  assert.equal(assessment.steps[2].stepCostFeet, 10);
-  assert.equal(assessment.steps[2].stepBaseRouteCostFeet, 10);
-  assert.equal(assessment.steps[2].resultingContext.normalDiagonalStepsThisTurn, 2);
-
-  assert.equal(assessment.totalCostFeet, 30);
-  assert.equal(assessment.totalBaseRouteCostFeet, 20);
-});
-
-test("Movement Cost (I5R1): Regresion B: squeezing diagonal -> normal diagonal", () => {
-  const assessment = assessMovementCost(
-    route(
-      squeezingStep(position(0, 0), position(1, 1)), // 1a diagonal bajo squeezing: base 5, cost 10, cont 1
-      step(position(1, 1), position(2, 2))           // 2a normal diagonal: base 10, cost 10, cont 2
-    ),
-    { normalDiagonalStepsThisTurn: 0 }
-  );
-
-  assert.equal(assessment.steps[0].stepCostFeet, 10);
-  assert.equal(assessment.steps[0].stepBaseRouteCostFeet, 5);
-  assert.equal(assessment.steps[0].resultingContext.normalDiagonalStepsThisTurn, 1);
-
-  assert.equal(assessment.steps[1].stepCostFeet, 10);
-  assert.equal(assessment.steps[1].stepBaseRouteCostFeet, 10);
-  assert.equal(assessment.steps[1].resultingContext.normalDiagonalStepsThisTurn, 2);
-
-  assert.equal(assessment.totalCostFeet, 20);
-  assert.equal(assessment.totalBaseRouteCostFeet, 15);
-});
-
-test("Movement Cost (I5R1): Combinacion No Soportada: Squeezing + Difficult Terrain produce resultado tipado", () => {
-  const result = assessMovementCost(
-    route(
-      squeezingStep(position(0, 0), position(1, 0), true)
-    ),
-    { normalDiagonalStepsThisTurn: 0 }
-  );
-
-  assert.equal(result.kind, "unsupported-cost-combination");
-  assert.equal(result.failedStepIndex, 0);
-  assert.match(result.reason, /ODR-D1B-C3-01/);
 });

@@ -1279,6 +1279,8 @@ Queda congelada de forma canónica la siguiente matriz de costes y paridad:
 3. **Encolado Post-Commit:**
    - Las oportunidades resultantes se conservan localmente y **solo se encolan** en `room.pendingOpportunityAttacks` tras un Commit exitoso.
 
+**Aclaración factual de integración I6:** el helper legacy de AdO acepta opcionalmente las huellas/mode/eje ya confirmados por Resolution o por validation.value.steps. La lectura de posiciones hipotéticas con el eje inicial almacenado puede ser ilegal al salir/girar en compresión; por eso las celdas abandonadas y la vista local del origen consumen evidencia validada sin inferir ni recalcular eje. Se preservan gates de provocación, exención de Withdraw, selección de reactores, coste histórico y CD15; los callers sin evidencia mantienen el comportamiento por defecto. validateMovePath y los dos calculadores legacy no cambian. Preparación y teleport validan una vista candidata natural explícita, coherente con el modo que confirman, sin mutar el estado previo ni extender squeezing.
+
 ### 8.5 Compromiso Atómico (Commit) y Frontera de Publicación
 
 1. **Precondiciones:** Se construye `preconditions`:

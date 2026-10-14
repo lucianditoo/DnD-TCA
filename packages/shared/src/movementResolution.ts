@@ -1,7 +1,8 @@
 import type { CombatRulesSnapshot, Combatant, MovementContext, Position } from "./types.js";
 import { EffectReducer, effectsCatalog } from "./effects/index.js";
 import { validateRouteLegality } from "./routeValidation.js";
-import type { SpatialMode, SqueezingAxis } from "./movementGeometry.js";
+import type { SpatialMode } from "./movementGeometry.js";
+import type { SqueezingAxis } from "./movementContracts.js";
 import { isDifficultTerrain, Rules } from "./rules.js";
 import { getCombatantOccupiedCells } from "./movementGeometry.js";
 import { lifeStatus } from "./lifeStatus.js";
@@ -21,8 +22,7 @@ import {
  *   validateRouteLegality → (input de coste) → assessMovementCost → Budget Verification
  *
  * Aislado deliberadamente del flujo productivo legacy (`validateMovePath`,
- * `calculatePathStepCostsFeet`) y de Commit/Publication — ningún comando ni
- * `commitSpatialTransition` consume este módulo todavía.
+ * `calculatePathStepCostsFeet`); I6 lo consume para Move ordinario activo.
  */
 
 /**
@@ -120,11 +120,7 @@ export type MovementResolutionResult =
       readonly reason: string;
       readonly failedStepIndex: number;
     }
-  | {
-      readonly kind: "unsupported-cost-combination";
-      readonly reason: string;
-      readonly failedStepIndex: number;
-    }
+
   | {
       readonly kind: "insufficient-budget";
       readonly combatantId: string;
@@ -183,7 +179,8 @@ export function resolveMovementPipeline(input: MovementResolutionInput): Movemen
       origin: { ...origin },
       destination: { ...step.position },
       isDifficultTerrain: stepIsDifficultTerrain,
-      spatialMode: step.spatialMode
+      spatialMode: step.spatialMode,
+      isAcrobatic
     };
     origin = step.position;
     return costStep;
@@ -197,14 +194,6 @@ export function resolveMovementPipeline(input: MovementResolutionInput): Movemen
   };
 
   const costAssessment = assessMovementCost(costRoute, initialContext);
-
-  if ("kind" in costAssessment && costAssessment.kind === "unsupported-cost-combination") {
-    return {
-      kind: "unsupported-cost-combination",
-      reason: costAssessment.reason,
-      failedStepIndex: costAssessment.failedStepIndex
-    };
-  }
 
   const rulesStateFingerprint = createMovementStateFingerprint(context, combatant);
 

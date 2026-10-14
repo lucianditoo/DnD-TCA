@@ -13,7 +13,7 @@ Consumidores: Agentes al retomar el proyecto y propietario al priorizar tareas.
 
 ## Continuidad inmediata de D-1B
 
-- Obtener Architecture Review y Proceed explícito de I6 sobre [NDD §8.7](docs/designs/normative-movement-design.md) y [plan consolidado](implementation_plan.md); después ejecutar tareas y migraciones de fixtures/estado legacy. No implementar antes de Proceed.
+- Obtener Architecture Review externa del commit de implementación I6 (DoD local completo); [plan ejecutado](docs/designs/movement/implementation-plan.md). No autoaprobar cierre arquitectónico.
 - Delimitar y aprobar las fases de Publication, integración productiva de
   comandos, preview y UI. No crear otra autoridad de legalidad o coste.
 

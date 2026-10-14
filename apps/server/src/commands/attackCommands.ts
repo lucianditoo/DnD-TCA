@@ -361,11 +361,11 @@ function resolveThreatOutcome(
       if (opportunityMovementFeet === 0) {
         room.log.unshift(makeLog("opportunity", "El ataque de oportunidad contra " + target.name + " se resuelve sin desplazar al objetivo."));
       } else if (finalDamage > 0) {
-        commitSpatialTransition(room, target, opportunity.origin, "natural");
+        commitSpatialTransition(room, target, opportunity.origin, { spatialMode: "natural" });
           target.stats.distanceMovedFeet = Math.max(0, target.stats.distanceMovedFeet - opportunityMovementFeet);
         room.log.unshift(makeLog("opportunity", target.name + " no logra abandonar la casilla amenazada y vuelve a su posicion original."));
       } else {
-        commitSpatialTransition(room, target, opportunity.destination, "natural");
+        commitSpatialTransition(room, target, opportunity.destination, { spatialMode: "natural" });
           room.log.unshift(makeLog("opportunity", target.name + " completa el movimiento porque el ataque de oportunidad no lo detuvo."));
       }
       room.pendingOpportunityAttacks = room.pendingOpportunityAttacks.filter((o) => o.id !== threat.opportunityAttackId);
@@ -463,16 +463,16 @@ export function handleResolveOpportunityAttack(room: CombatRoom, command: Extrac
   const targetAlreadyStopped = sameCell(targetCurrentPosition, opportunity.origin);
   const opportunityMovementFeet = targetAlreadyStopped ? 0 : opportunity.movementCostFeet ?? movementDistanceFeet(opportunity.origin, opportunity.destination, room.board.cellSizeFeet);
   if (opportunityMovementFeet === 0) {
-    commitSpatialTransition(room, target, targetCurrentPosition, "natural");
+    commitSpatialTransition(room, target, targetCurrentPosition, { spatialMode: "natural" });
       room.log.unshift(makeLog("opportunity", "El ataque de oportunidad contra " + target.name + " se resuelve sin desplazar al objetivo."));
     room.pendingOpportunityAttacks = room.pendingOpportunityAttacks.filter((item) => item.id !== command.opportunityId);
   } else if (result.hits && result.damage > 0) {
-    commitSpatialTransition(room, target, opportunity.origin, "natural");
+    commitSpatialTransition(room, target, opportunity.origin, { spatialMode: "natural" });
           target.stats.distanceMovedFeet = Math.max(0, target.stats.distanceMovedFeet - opportunityMovementFeet);
     room.log.unshift(makeLog("opportunity", target.name + " no logra abandonar la casilla amenazada y vuelve a su posicion original."));
     room.pendingOpportunityAttacks = room.pendingOpportunityAttacks.filter((item) => item.id !== command.opportunityId);
   } else {
-    commitSpatialTransition(room, target, opportunity.destination, "natural");
+    commitSpatialTransition(room, target, opportunity.destination, { spatialMode: "natural" });
           room.log.unshift(makeLog("opportunity", target.name + " completa el movimiento porque el ataque de oportunidad no lo detuvo."));
     room.pendingOpportunityAttacks = room.pendingOpportunityAttacks.filter((item) => item.id !== command.opportunityId);
   }

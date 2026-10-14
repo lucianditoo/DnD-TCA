@@ -396,6 +396,7 @@ describe("D-5R1 Map Builder Architecture Remediation", () => {
         {
           instanceId: "eff-squeeze-1",
           effectId: "srd_squeezing",
+          squeezingAxis: "horizontal",
           source: { type: "system" },
           targets: [large.id],
           appliedAtEvent: { type: "SystemInjected", round: 1 }
@@ -421,7 +422,7 @@ describe("D-5R1 Map Builder Architecture Remediation", () => {
             }
           });
         },
-        /invalida la compresión \(srd_squeezing\)/i
+        /Integridad espacial.*srd_squeezing/i
       );
 
       // Invariantes: room.board original no cambia, posición no cambia, efectos no cambian
@@ -450,6 +451,7 @@ describe("D-5R1 Map Builder Architecture Remediation", () => {
         {
           instanceId: "eff-squeeze-2",
           effectId: "srd_squeezing",
+          squeezingAxis: "horizontal",
           source: { type: "system" },
           targets: [large.id],
           appliedAtEvent: { type: "SystemInjected", round: 1 }
@@ -499,6 +501,7 @@ describe("D-5R1 Map Builder Architecture Remediation", () => {
         {
           instanceId: "eff-squeeze-3",
           effectId: "srd_squeezing",
+          squeezingAxis: "horizontal",
           source: { type: "system" },
           targets: [large.id],
           appliedAtEvent: { type: "SystemInjected", round: 1 }
@@ -523,7 +526,7 @@ describe("D-5R1 Map Builder Architecture Remediation", () => {
             }
           });
         },
-        /quedaría fuera de los límites|invalida la compresión/i
+        /quedaría fuera de los límites|Integridad espacial/i
       );
     });
 
@@ -580,6 +583,7 @@ describe("D-5R1 Map Builder Architecture Remediation", () => {
         {
           instanceId: "eff-squeeze-orient-1",
           effectId: "srd_squeezing",
+          squeezingAxis: "horizontal",
           source: { type: "system" },
           targets: [large.id],
           appliedAtEvent: { type: "SystemInjected", round: 1 }
@@ -606,7 +610,7 @@ describe("D-5R1 Map Builder Architecture Remediation", () => {
             }
           });
         },
-        /alteraría la huella comprimida actual de Canocrock/i
+        /Integridad espacial.*srd_squeezing de Canocrock/i
       );
 
       // Posición y tablero intactos
@@ -638,6 +642,7 @@ describe("D-5R1 Map Builder Architecture Remediation", () => {
         {
           instanceId: "eff-squeeze-orient-2",
           effectId: "srd_squeezing",
+          squeezingAxis: "horizontal",
           source: { type: "system" },
           targets: [large.id],
           appliedAtEvent: { type: "SystemInjected", round: 1 }
@@ -662,7 +667,7 @@ describe("D-5R1 Map Builder Architecture Remediation", () => {
             }
           });
         },
-        /alteraría la huella comprimida actual de Canocrock/i
+        /Integridad espacial.*srd_squeezing de Canocrock/i
       );
 
       assert.deepEqual(bystander.position, { x: 1, y: 2, zFeet: 0 });
@@ -687,6 +692,7 @@ describe("D-5R1 Map Builder Architecture Remediation", () => {
         {
           instanceId: "eff-squeeze-orient-3",
           effectId: "srd_squeezing",
+          squeezingAxis: "horizontal",
           source: { type: "system" },
           targets: [large.id],
           appliedAtEvent: { type: "SystemInjected", round: 1 }

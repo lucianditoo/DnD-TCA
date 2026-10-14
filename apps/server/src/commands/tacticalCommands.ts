@@ -105,12 +105,15 @@ function handleWithdraw(room: CombatRoom, snapshot: CombatRulesSnapshot<import("
     distanceFeet,
     (reactor) => Rules.canMakeOpportunityAttack(snapshot, reactor, combatant.id),
     false,
-    exemptDepartureCellKeys
+    exemptDepartureCellKeys,
+    validation.value.steps
   );
 
   // ── Commit atomico (patrón handleCharge) ───────────────────────────────────
   const wasDisabledAtActionStart = lifeStatus(combatant) === "disabled";
-  const spatialTransition = commitSpatialTransition(room, combatant, finalStep, validation.value.finalSpatialMode);
+  const spatialTransition = commitSpatialTransition(room, combatant, finalStep, validation.value.finalSpatialMode === "natural"
+    ? { spatialMode: "natural" }
+    : { spatialMode: "squeezing", squeezingAxis: validation.value.steps[validation.value.steps.length - 1].squeezingAxis! });
   combatant.stats.distanceMovedFeet += distanceFeet;
   room.currentTurn.movementUsedFeet += distanceFeet;
   if (isLimitedWithdraw) {
@@ -202,11 +205,16 @@ function handleRun(room: CombatRoom, snapshot: CombatRulesSnapshot<import("@dnd-
     combatant,
     validation.value.path,
     distanceFeet,
-    (reactor) => Rules.canMakeOpportunityAttack(snapshot, reactor, combatant.id)
+    (reactor) => Rules.canMakeOpportunityAttack(snapshot, reactor, combatant.id),
+    false,
+    undefined,
+    validation.value.steps
   );
 
   // ── Commit atomico (patrón handleWithdraw/handleCharge) ────────────────────
-  const spatialTransition = commitSpatialTransition(room, combatant, finalStep, validation.value.finalSpatialMode);
+  const spatialTransition = commitSpatialTransition(room, combatant, finalStep, validation.value.finalSpatialMode === "natural"
+    ? { spatialMode: "natural" }
+    : { spatialMode: "squeezing", squeezingAxis: validation.value.steps[validation.value.steps.length - 1].squeezingAxis! });
   combatant.stats.distanceMovedFeet += distanceFeet;
   room.currentTurn.movementUsedFeet += distanceFeet;
   room.currentTurn.usedFullAttack = true; // marcador vigente de "acción de asalto completo consumida"
@@ -340,7 +348,7 @@ function handleCharge(room: CombatRoom, snapshot: CombatRulesSnapshot<import("@d
     movementDistance,
     (c) => Rules.canMakeOpportunityAttack(snapshot, c, combatant.id)
   );
-  commitSpatialTransition(room, combatant, chargePath.value[chargePath.value.length - 1], "natural");
+  commitSpatialTransition(room, combatant, chargePath.value[chargePath.value.length - 1], { spatialMode: "natural" });
   combatant.stats.distanceMovedFeet += movementDistance;
   room.currentTurn.movementUsedFeet += movementDistance;
   room.currentTurn.usedFullAttack = true;
@@ -437,7 +445,9 @@ function handleFiveFootStep(room: CombatRoom, snapshot: CombatRulesSnapshot<impo
   const validation = validateMovePath(snapshot, combatant, [command.to], room.board.cellSizeFeet, true);
   if (!validation.ok || !validation.value) throw new Error(validation.error);
 
-  const spatialTransition = commitSpatialTransition(room, combatant, command.to, validation.value.finalSpatialMode);
+  const spatialTransition = commitSpatialTransition(room, combatant, command.to, validation.value.finalSpatialMode === "natural"
+    ? { spatialMode: "natural" }
+    : { spatialMode: "squeezing", squeezingAxis: validation.value.steps[validation.value.steps.length - 1].squeezingAxis! });
   combatant.stats.distanceMovedFeet += validation.value.distanceFeet;
   room.currentTurn.usedFiveFootStep = true;
   room.currentTurn.movementUsedFeet += validation.value.distanceFeet;

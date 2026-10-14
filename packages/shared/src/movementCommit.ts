@@ -4,7 +4,8 @@ import type {
   Position,
   MovementContext,
 } from "./types.js";
-import type { SpatialMode, SqueezingAxis } from "./movementGeometry.js";
+import type { SpatialMode } from "./movementGeometry.js";
+import type { SqueezingAxis, ConfirmedSpatialTransition } from "./movementContracts.js";
 import type { EffectInstance } from "./effects/types.js";
 import type { ProductionEffectId } from "./effects/catalog.js";
 import { EffectManager } from "./effects/manager.js";
@@ -30,12 +31,7 @@ import {
  * - Contexto diagonal vinculado a `resolution.initialContext`.
  * - Vigencia del estado de reglas via `resolution.rulesStateFingerprint`.
  *
- * Aislado deliberadamente del flujo productivo legacy: ningún comando (`handleMoveCombatant`,
- * `handleWithdraw`, `handleRun`, `handleCharge`) ni `commitSpatialTransition` invoca todavía
- * este módulo.
- *
- * ODR-D1B-I5-1 (abierta): `squeezingAxis` se consume desde el último `MovementResolutionStep`
- * y se expone en el resultado del Commit, pero no se persiste en ninguna sede durable.
+ * I6: productor autoritativo del movimiento ordinario y del eje persistido.
  */
 
 export interface MovementCommitPreconditions {
@@ -61,6 +57,7 @@ export interface MovementCommitInput {
 }
 
 export type MovementCommitRejectionCode =
+  | "invalid-spatial-evidence"
   | "invalid-actor"
   | "stale-turn"
   | "stale-round"
@@ -152,7 +149,9 @@ export function commitMovementResolution(input: MovementCommitInput): MovementCo
   }
 
   // 5. Contexto diagonal vinculado estrictamente a resolution.initialContext
-  if (room.currentTurn.normalDiagonalStepsThisTurn !== resolution.initialContext.normalDiagonalStepsThisTurn) {
+  if (room.currentTurn.normalDiagonalStepsThisTurn !== resolution.initialContext.normalDiagonalStepsThisTurn ||
+      (preconditions.expectedDiagonalContext !== undefined &&
+       room.currentTurn.normalDiagonalStepsThisTurn !== preconditions.expectedDiagonalContext.normalDiagonalStepsThisTurn)) {
     return {
       kind: "rejected",
       reason: "El contexto diagonal del turno cambió desde que se calculó la Resolution.",
@@ -170,22 +169,28 @@ export function commitMovementResolution(input: MovementCommitInput): MovementCo
     };
   }
 
-  // Todas las precondiciones se sostienen: a partir de aquí se aplican todas las
-  // mutaciones juntas, sin punto de retorno intermedio.
   const lastStep = resolution.steps[resolution.steps.length - 1];
+  if (!lastStep || (lastStep.spatialMode === "squeezing" &&
+      lastStep.squeezingAxis !== "horizontal" && lastStep.squeezingAxis !== "vertical")) {
+    return { kind: "rejected", rejectionCode: "invalid-spatial-evidence", reason: "Falta evidencia confirmada de squeezingAxis." };
+  }
+  const transition: ConfirmedSpatialTransition = lastStep.spatialMode === "natural"
+    ? { spatialMode: "natural" }
+    : { spatialMode: "squeezing", squeezingAxis: lastStep.squeezingAxis! };
 
   const squeezingInstances = room.effectInstances.filter(
     (instance) => instance.effectId === "srd_squeezing" && instance.targets?.includes(combatant.id)
   );
-  const wasSqueezing = squeezingInstances.length > 0;
   const isSqueezingNow = lastStep.spatialMode === "squeezing";
 
-  if (wasSqueezing !== isSqueezingNow) {
+  if (!isSqueezingNow || squeezingInstances.length !== 1 ||
+      squeezingInstances[0].squeezingAxis !== transition.squeezingAxis) {
     let nextRoom = EffectManager.removeMany(room, squeezingInstances.map((instance) => instance.instanceId));
     if (isSqueezingNow) {
       const instance: EffectInstance<ProductionEffectId> = {
         instanceId: cryptoId("effect"),
         effectId: "srd_squeezing",
+        squeezingAxis: transition.squeezingAxis,
         source: { type: "system" },
         targets: [combatant.id],
         appliedAtEvent: { type: "ActionResolved", combatantId: combatant.id, round: room.round },

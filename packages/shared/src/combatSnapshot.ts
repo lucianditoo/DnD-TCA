@@ -170,7 +170,8 @@ export function cloneEffectInstances<TId extends string>(
     ...(inst.targetCells ? { targetCells: [...inst.targetCells] } : {}),
     appliedAtEvent: { ...inst.appliedAtEvent },
     ...(inst.duration ? { duration: { ...inst.duration } } : {}),
-    ...(inst.stacks !== undefined ? { stacks: inst.stacks } : {})
+    ...(inst.stacks !== undefined ? { stacks: inst.stacks } : {}),
+    ...(inst.squeezingAxis !== undefined ? { squeezingAxis: inst.squeezingAxis } : {})
   }));
 }
 

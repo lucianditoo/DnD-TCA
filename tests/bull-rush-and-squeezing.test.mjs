@@ -105,7 +105,7 @@ test("Sprint 028 - Bull Rush & Dynamic Squeezing", async (t) => {
       { x: 2, y: 0, zFeet: 0 }
     ]);
 
-    commitSpatialTransition(room, large, { x: 1, y: 0, zFeet: 0 }, "squeezing");
+    commitSpatialTransition(room, large, { x: 1, y: 0, zFeet: 0 }, { spatialMode: "squeezing", squeezingAxis: "horizontal" });
     const snapshot = createCombatRulesSnapshot(room);
     assert.deepEqual(getCombatantOccupiedCells(large, snapshot), validation.value.steps[0].occupiedCells);
     assert.equal(room.effectInstances.filter((effect) => effect.effectId === "srd_squeezing").length, 1);
@@ -188,17 +188,17 @@ test("Sprint 028 - Bull Rush & Dynamic Squeezing", async (t) => {
     const { room, attacker } = bullRushRoom();
     
     // Initial commit to squeezing
-    commitSpatialTransition(room, attacker, { x: 1, y: 1, zFeet: 0 }, "squeezing");
+    commitSpatialTransition(room, attacker, { x: 1, y: 1, zFeet: 0 }, { spatialMode: "squeezing", squeezingAxis: "horizontal" });
     const squeezingCount1 = room.effectInstances.filter((instance) => instance.effectId === "srd_squeezing").length;
     assert.equal(squeezingCount1, 1);
     
     // Second commit to squeezing should be idempotent (it doesn't duplicate the effect)
-    commitSpatialTransition(room, attacker, { x: 2, y: 2, zFeet: 0 }, "squeezing");
+    commitSpatialTransition(room, attacker, { x: 2, y: 2, zFeet: 0 }, { spatialMode: "squeezing", squeezingAxis: "horizontal" });
     const squeezingCount2 = room.effectInstances.filter((instance) => instance.effectId === "srd_squeezing").length;
     assert.equal(squeezingCount2, 1);
     
     // Third commit back to natural should remove the effect
-    commitSpatialTransition(room, attacker, { x: 3, y: 3, zFeet: 0 }, "natural");
+    commitSpatialTransition(room, attacker, { x: 3, y: 3, zFeet: 0 }, { spatialMode: "natural" });
     const squeezingCount3 = room.effectInstances.filter((instance) => instance.effectId === "srd_squeezing").length;
     assert.equal(squeezingCount3, 0);
   });

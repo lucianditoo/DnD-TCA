@@ -13,6 +13,9 @@ export function validateAbilityRange(room: CombatRoom, caster: Combatant, target
 }
 
 export function resolveAbility(room: CombatRoom, caster: Combatant, target: Combatant, ability: Ability, amount: number | null): void {
+  if (ability.resolution.kind === "effect" && ability.resolution.effectId === "srd_squeezing") {
+    throw new Error("srd_squeezing requiere una transicion espacial validada.");
+  }
   if (ability.resolution.kind === "attack-roll") throw new Error(`${ability.name} requiere una tirada de ataque autoritativa.`);
   if (ability.resolution.kind === "healing") {
     const result = applyHealing(target, amount ?? 0);

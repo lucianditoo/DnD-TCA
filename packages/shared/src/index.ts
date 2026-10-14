@@ -23,3 +23,4 @@ export * from "./combat/tickLayer.js";
 export * from "./geometry/aoe.js";
 export * from "./demo/types.js";
 export * from "./demo/catalog.js";
+export type { ConfirmedSpatialTransition } from "./movementContracts.js";

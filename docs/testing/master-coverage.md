@@ -15,7 +15,15 @@ Consumidores: Revisores que verifican las validaciones de un commit.
 Este documento consolida las directrices y el reporte de cobertura de testing
 del motor de combate D&D 3.5.
 
-## Baseline de código más reciente — D-1B-I5R2 (pendiente de Architecture Review)
+## Baseline de código más reciente — D-1B-I6 (Ready for Architecture Review)
+
+**746/746 pruebas unitarias/integración**, **188/188 focalizadas** (movement cost/resolution/commit/integration, squeezing axis, effects/snapshot, Withdraw/Run, D-5 y GM), typecheck y build verdes en los tres workspaces, **110/110 aserciones WebSocket** y **16/16 escenarios Playwright**.
+
+I6 migra Move ordinario activo, conserva matriz RAW de ocho combinaciones y verifica publicación post-commit, CD25/prefijo/CD15, economía/gating/stale, eje horizontal/vertical/cambio/salida, copia/JSON, geometría estricta, callbacks legacy y GM/dynamic producers. validateMovePath y ambos calculadores legacy permanecen idénticos al baseline; acciones tácticas y UI conservan sus pipelines. Los tests existentes de coste se actualizaron a la matriz aprobada, sin usar conteo histórico como objetivo.
+
+Ejecución local en Windows/Node 24.18.0. E2E/Playwright se ejecutaron fuera del sandbox tras EACCES local/puerto ocupado por servidor de pruebas propio; servidores propios detenidos al terminar. Build emite advertencia preexistente de bundle >500 kB. CI Windows remoto es un gate separado y se verifica después del push; no se afirma aprobación arquitectónica.
+
+## Baseline histórica — D-1B-I5R2
 
 **701/701 pruebas unitarias/integración**, `typecheck` y `build` verdes en los
 tres workspaces, **110/110 aserciones WebSocket** y **16/16 escenarios Playwright**.
@@ -25,8 +33,7 @@ actor, rechazo de clones, actor ausente, aplicación/remoción de condiciones de
 movilidad, Speed base/equipo/buffs, restricción intrínseca, determinismo,
 pureza y ausencia de invalidación cosmética.
 
-I4/I5 continúan aislados: WebSocket y Playwright verifican regresión del flujo
-productivo existente, no integración I6. I5 no está cerrado; ambas ODR siguen abiertas.
+En ese baseline I4/I5 todavía estaban aislados; I6 implementa ahora las ODR de composición de coste y sede de eje ya aprobadas.
 
 ## Baseline histórica — D-5R3 Editor Táctico de Mapas MVP (Final Closure)
 

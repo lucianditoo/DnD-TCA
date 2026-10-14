@@ -61,6 +61,12 @@ export const EffectManager = {
       throw new Error(`[EffectManager] Unknown Effect: ${String(instance.effectId)} no existe en el catálogo.`);
     }
 
+    if (instance.squeezingAxis !== undefined &&
+        (instance.effectId !== "srd_squeezing" ||
+         (instance.squeezingAxis !== "horizontal" && instance.squeezingAxis !== "vertical"))) {
+      throw new Error("[EffectManager] Invalid squeezingAxis for effect instance.");
+    }
+
     // Copia defensiva profunda para garantizar que referencias externas no puedan mutar el estado almacenado
     const safeInstance: EffectInstance<ProductionEffectId> = {
       instanceId: instance.instanceId,
@@ -70,7 +76,8 @@ export const EffectManager = {
       ...(instance.targets ? { targets: [...instance.targets] } : {}),
       ...(instance.targetCells ? { targetCells: [...instance.targetCells] } : {}),
       ...(instance.duration ? { duration: { ...instance.duration } } : {}),
-      ...(instance.stacks !== undefined ? { stacks: instance.stacks } : {})
+      ...(instance.stacks !== undefined ? { stacks: instance.stacks } : {}),
+      ...(instance.squeezingAxis !== undefined ? { squeezingAxis: instance.squeezingAxis } : {})
     };
 
     const incomingTargets = safeInstance.targets;

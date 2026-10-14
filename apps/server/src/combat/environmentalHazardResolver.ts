@@ -41,6 +41,10 @@ export function resolveEnvironmentalHazards(
   const hits = getEnvironmentalHazardHits(snapshot);
   if (hits.length === 0) return;
 
+  if (hits.some(hit => (effectsCatalog[hit.effectId] as EffectDefinition).hazard?.onFailEffectId === "srd_squeezing")) {
+    throw new Error("srd_squeezing requiere una transicion espacial validada.");
+  }
+
   for (const hit of hits) {
     const definition: EffectDefinition = effectsCatalog[hit.effectId];
     const hazard = definition.hazard;

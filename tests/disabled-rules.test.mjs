@@ -48,6 +48,7 @@ function setupRoom() {
   room.phase = "active";
   room.turnOrder = ["hero", "goblin"];
   room.activeTurnIndex = 0;
+  room.currentTurn.combatantId = hero.id;
   return { room, hero, goblin };
 }
 

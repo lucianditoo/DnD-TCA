@@ -7,6 +7,7 @@ export interface MovementCostStep {
   readonly destination: Readonly<Position>;
   readonly isDifficultTerrain: boolean;
   readonly spatialMode?: SpatialMode;
+  readonly isAcrobatic?: boolean;
 }
 
 /** Secuencia ordenada de Steps consumida por el assessment de coste. */
@@ -35,15 +36,8 @@ export interface MovementCostAssessmentSuccess {
   readonly steps: ReadonlyArray<MovementCostStepAssessment>;
 }
 
-/** Resultado tipado para combinaciones normativas cuya composicion permanece abierta en ODR D-1B-C3-01. */
-export interface UnsupportedCostCombination {
-  readonly kind: "unsupported-cost-combination";
-  readonly reason: string;
-  readonly failedStepIndex: number;
-}
-
 export type MovementCostAssessment = MovementCostAssessmentSuccess;
-export type MovementCostAssessmentResult = MovementCostAssessmentSuccess | UnsupportedCostCombination;
+export type MovementCostAssessmentResult = MovementCostAssessmentSuccess;
 
 function isDiagonalStep(step: MovementCostStep): boolean {
   const changedAxes =
@@ -54,19 +48,7 @@ function isDiagonalStep(step: MovementCostStep): boolean {
   return changedAxes > 1;
 }
 
-/**
- * Calcula el coste normativo de una Route sin validar, ejecutar ni mutar estado.
- * La entrada se presupone legal conforme al contrato separado de Route Validation.
- *
- * Reglas de coste aplicadas:
- * - Ortogonal normal: base 5 ft, coste 5 ft, contador diagonal sin cambio.
- * - Diagonal normal: base 5/10 ft (alternado), coste 5/10 ft, incrementa contador en 1.
- * - Squeezing ortogonal (sin DT): base 5 ft, coste 10 ft (duplicado), contador sin cambio.
- * - Squeezing diagonal (sin DT): base 5/10 ft (paridad normal), coste 10/20 ft (duplicado), incrementa contador en 1.
- * - DT ortogonal (sin Squeezing): base 5 ft, coste 10 ft, contador sin cambio.
- * - DT diagonal (sin Squeezing): base 5 ft, coste fijo 15 ft, contador sin cambio ni alteracion de paridad posterior.
- * - Squeezing + DT: retorna UnsupportedCostCombination (ODR D-1B-C3-01 abierta).
- */
+/** RAW cost stacking: true hampering diagonals are fixed and do not consume normal parity. */
 export function assessMovementCost(
   route: MovementCostRoute,
   initialContext: Readonly<MovementContext>
@@ -82,44 +64,18 @@ export function assessMovementCost(
     const isSqueezing = step.spatialMode === "squeezing";
     const isDT = step.isDifficultTerrain;
 
-    if (isSqueezing && isDT) {
-      return {
-        kind: "unsupported-cost-combination",
-        reason: "Squeezing + Difficult Terrain combination is pending normative resolution (ODR-D1B-C3-01).",
-        failedStepIndex: index
-      };
+    const hampered = isSqueezing || isDT;
+    const doublings = Number(isSqueezing) + Number(isDT) + Number(!!step.isAcrobatic);
+    let stepBaseRouteCostFeet = 5;
+    if (diagonal && !hampered) {
+      normalDiagonalStepsThisTurn += 1;
+      stepBaseRouteCostFeet = normalDiagonalStepsThisTurn % 2 === 1 ? 5 : 10;
     }
-
-    let stepCostFeet: number;
-    let stepBaseRouteCostFeet: number;
-
-    if (isSqueezing) {
-      if (!diagonal) {
-        stepBaseRouteCostFeet = 5;
-        stepCostFeet = 10;
-      } else {
-        normalDiagonalStepsThisTurn += 1;
-        stepBaseRouteCostFeet = normalDiagonalStepsThisTurn % 2 === 1 ? 5 : 10;
-        stepCostFeet = stepBaseRouteCostFeet * 2;
-      }
-    } else if (isDT) {
-      if (!diagonal) {
-        stepBaseRouteCostFeet = 5;
-        stepCostFeet = 10;
-      } else {
-        stepBaseRouteCostFeet = 5;
-        stepCostFeet = 15;
-      }
-    } else {
-      if (!diagonal) {
-        stepBaseRouteCostFeet = 5;
-        stepCostFeet = 5;
-      } else {
-        normalDiagonalStepsThisTurn += 1;
-        stepBaseRouteCostFeet = normalDiagonalStepsThisTurn % 2 === 1 ? 5 : 10;
-        stepCostFeet = stepBaseRouteCostFeet;
-      }
-    }
+    // A hampered diagonal costs 15 ft for its first doubling, then each
+    // additional source doubles it again. Base-route accounting stays separate.
+    const stepCostFeet = diagonal && hampered
+      ? 15 * 2 ** (doublings - 1)
+      : stepBaseRouteCostFeet * 2 ** doublings;
 
     totalCostFeet += stepCostFeet;
     totalBaseRouteCostFeet += stepBaseRouteCostFeet;

@@ -18,9 +18,11 @@ export function handleHealCombatant(room: CombatRoom, command: Extract<ClientCom
 export function handleGmMoveCombatant(room: CombatRoom, command: Extract<ClientCommand, { type: "gm-move-combatant" }>): void {
   requireGM(command.actorId);
   const combatant = findCombatant(room, command.combatantId);
-  if (!isCombatantInsideBoard(room, combatant, command.to)) throw new Error("La huella elegida esta fuera del tablero.");
-  if (isCellOccupied(room, command.to, combatant.id)) throw new Error("Esa casilla esta ocupada.");
-  commitSpatialTransition(room, combatant, command.to, "natural");
+  const naturalCandidate = { ...room, effectInstances: room.effectInstances.filter(instance =>
+    !(instance.effectId === "srd_squeezing" && instance.targets?.includes(combatant.id))) };
+  if (!isCombatantInsideBoard(naturalCandidate, combatant, command.to)) throw new Error("La huella elegida esta fuera del tablero.");
+  if (isCellOccupied(naturalCandidate, command.to, combatant.id)) throw new Error("Esa casilla esta ocupada.");
+  commitSpatialTransition(room, combatant, command.to, { spatialMode: "natural" });
   room.log.unshift(makeLog("movement", "GM reposiciona a " + combatant.name + " en " + formatCell(command.to) + "."));
   broadcast(room);
 }
@@ -84,6 +86,8 @@ export function handleGmApplyEffect(room: CombatRoom, command: Extract<ClientCom
     throw new Error(`Validación de comando fallida: Efecto desconocido '${command.effectId}'.`);
   }
   
+  if (command.effectId === "srd_squeezing") throw new Error("srd_squeezing requiere una transicion espacial validada.");
+
   const duration = command.durationPreset === "until_target_turn_end" ? {
     type: "until_turn" as const,
     anchorCombatantId: target.id,

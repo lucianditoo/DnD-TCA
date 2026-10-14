@@ -940,8 +940,13 @@ export function findTriggeredOpportunityAttacksForPath(
    * únicamente el evento de provocación; jamás toca la capacidad del reactor
    * (`canMakeAoO` / AOO-03 / Reflejos de Combate siguen decidiendo).
    */
-  exemptDepartureCellKeys: ReadonlySet<string> = NO_EXEMPT_DEPARTURE_CELLS
+  exemptDepartureCellKeys: ReadonlySet<string> = NO_EXEMPT_DEPARTURE_CELLS,
+  /** Optional validated footprints; no route validation or axis inference here. */
+  confirmedSteps?: readonly Pick<MovementStepProjection, "occupiedCells" | "spatialMode" | "squeezingAxis">[]
 ): OpportunityAttack[] {
+  if (confirmedSteps && confirmedSteps.length !== path.length) {
+    throw new Error("La evidencia espacial confirmada no corresponde a la ruta de AdO.");
+  }
   if (distanceMovedFeet <= room.board.cellSizeFeet || path.length === 0) return [];
   if (lifeStatus(mover) === "dead" || lifeStatus(mover) === "dying" || lifeStatus(mover) === "stable") return [];
   const destination = path[path.length - 1];
@@ -960,12 +965,14 @@ export function findTriggeredOpportunityAttacksForPath(
   let costBeforeOrigin = 0;
   let diagonalSteps = 0;
 
-  for (const step of path) {
+  for (const [stepIndex, step] of path.entries()) {
     const dx = Math.abs(origin.x - step.x);
     const dy = Math.abs(origin.y - step.y);
     const stepCost = dx === 1 && dy === 1 ? (++diagonalSteps % 2 === 1 ? room.board.cellSizeFeet : room.board.cellSizeFeet * 2) : room.board.cellSizeFeet;
-    const originCells = getCombatantOccupiedCellsAt(mover, room, origin);
-    const stepCellKeys = new Set(getCombatantOccupiedCellsAt(mover, room, step).map(footprintCellKey));
+    const originProjection = confirmedSteps?.[stepIndex - 1];
+    const originCells = originProjection?.occupiedCells ?? getCombatantOccupiedCellsAt(mover, room, origin);
+    const stepCells = confirmedSteps?.[stepIndex]?.occupiedCells ?? getCombatantOccupiedCellsAt(mover, room, step);
+    const stepCellKeys = new Set(stepCells.map(footprintCellKey));
     const abandonedCells = originCells.filter((cell) => {
       const key = footprintCellKey(cell);
       return !stepCellKeys.has(key) && !exemptDepartureCellKeys.has(key);
@@ -975,6 +982,22 @@ export function findTriggeredOpportunityAttacksForPath(
     // concreta que se evalúa en pasos intermedios. Nunca se muta `mover`; es una copia superficial
     // consumida únicamente por `getOpportunityAttackLegality` (Line of Effect/Cover/Concealment).
     const moverAtOrigin: Combatant = { ...mover, position: origin };
+    // A hypothetical origin uses its already confirmed spatial state. This view
+    // is local and never changes the authoritative snapshot or room effects.
+    const originContext = originProjection ? {
+      ...room,
+      combatants: room.combatants.map(c => c.id === mover.id ? moverAtOrigin : c),
+      effectInstances: [
+        ...room.effectInstances.filter(instance =>
+          !(instance.effectId === "srd_squeezing" && instance.targets?.includes(mover.id))),
+        ...(originProjection.spatialMode === "squeezing" ? [{
+          instanceId: "confirmed-route-footprint", effectId: "srd_squeezing" as const,
+          squeezingAxis: originProjection.squeezingAxis,
+          source: { type: "system" as const }, targets: [mover.id],
+          appliedAtEvent: { type: "SystemInjected" as const, round: 0 }
+        }] : [])
+      ]
+    } : room;
     for (const reactor of reactors) {
       const other = reactor.combatant;
       if (triggeredAttackerIds.has(other.id)) continue;
@@ -993,7 +1016,7 @@ export function findTriggeredOpportunityAttacksForPath(
       // puede volver a intentarlo en un paso posterior si las condiciones cambian (ej. el
       // provocador sale de detrás de un obstáculo), coherente con que un AdO rechazado nunca
       // "se gasta".
-      const legality = getOpportunityAttackLegality(room, other, moverAtOrigin);
+      const legality = getOpportunityAttackLegality(originContext, other, moverAtOrigin);
       if (!legality.allowed) continue;
       triggeredAttackerIds.add(other.id);
       opportunities.push({

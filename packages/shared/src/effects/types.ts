@@ -1,4 +1,5 @@
 import type { EffectSource, DurationPolicy } from "./contracts.js";
+import type { SqueezingAxis } from "../movementContracts.js";
 
 export * from "./contracts.js";
 
@@ -41,4 +42,5 @@ export interface EffectInstance<TEffectId extends string = string> {
   }>;
   readonly duration?: Readonly<DurationPolicy>;
   readonly stacks?: number;
+  readonly squeezingAxis?: SqueezingAxis;
 }
