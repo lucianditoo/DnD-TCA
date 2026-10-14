@@ -1190,7 +1190,7 @@ Este capítulo especifica la integración productiva autoritativa de la **Move A
 
 **Frontera de Aislamiento Estricto:**
 - Solo migra `handleMoveCombatant` en fase activa (`room.phase === "active"`).
-- **NO migra ni altera** `handleWithdraw`, `handleRun`, `handleCharge` ni `handleFiveFootStep`. Esas acciones continúan consumiendo sus implementaciones vigentes en `tacticalCommands.ts`.
+- **NO migra la semántica táctica** de `handleWithdraw`, `handleRun`, `handleCharge` ni `handleFiveFootStep`; R4 permite únicamente propagar evidencia de eje y adaptar la firma de Commit. Esas acciones continúan consumiendo sus implementaciones vigentes en `tacticalCommands.ts`.
 - **NO altera** la fase de preparación (`room.phase === "preparation"`): la colocación inicial de tokens permanece como colocación libre gobernada por sus validaciones existentes fuera de I4/I5.
 - Los helpers legacy compartidos (`validateMovePath`, `calculatePathStepCostsFeet`, `calculatePathCostFeet`) se conservan sin alteración para sustentar las acciones tácticas no migradas y el preview del cliente.
 - **ODR D-1B-C3-01** (composición de duplicaciones de Movement Cost) ha quedado **resuelta formalmente** mediante la regla RAW de Double Movement Cost (§3.8); la ODR normativa **ODR-D1B-I5-1** (sede autoritativa de `squeezingAxis`) queda **formalmente resuelta y cerrada** en este diseño (§8.7) situando la autoridad del eje en `EffectInstance<ProductionEffectId>` para el efecto `srd_squeezing`, garantizando la reconstrucción determinista de huellas tras Commit.
@@ -1342,7 +1342,7 @@ En consecuencia, `getSqueezedFootprintAt` recurre a la lista fija de candidatos 
 
 #### 8.7.3 Evaluación Multidimensional de la Alternativa B Seleccionada
 
-- **Snapshot y Serialización:** `room.effectInstances` es un campo estándar serializable de `CombatRoom` y `CombatRulesSnapshot`. Al añadir `readonly squeezingAxis?: SqueezingAxis;` a `EffectInstance`, se transmite limpiamente por WebSocket sin payload redundante ni hacks de serialización.
+- **Snapshot y Serialización:** `room.effectInstances` es un campo estándar serializable de `CombatRoom` y `CombatRulesSnapshot`. Requiere añadir el campo a EffectInstance y copiarlo explícitamente en safeInstance de EffectManager y cloneEffectInstances de combatSnapshot; WebSocket distribuye room por JSON.
 - **Room State y EffectManager:** Las transiciones de Squeezing se gestionan exclusivamente mediante `EffectManager.add` y `EffectManager.removeMany`. Cuando la criatura entra en compresión o cambia de eje, la instancia se inserta o actualiza atómicamente; cuando abandona la compresión, la instancia se elimina y el eje desaparece automáticamente sin dejar residuos huérfanos.
 - **Client Projection y Render:** El snapshot distribuido al cliente contiene la instancia con su `squeezingAxis`, permitiendo que el renderer 2.5D y el overlay proyecten la orientación exacta confirmada por el servidor sin heurísticas.
 - **Persistencia Futura:** Los efectos activos de una sala forman parte de su snapshot persistente; no se altera el esquema de plantillas o perfiles de criaturas en catálogo.
@@ -1381,3 +1381,9 @@ En consecuencia, `getSqueezedFootprintAt` recurre a la lista fija de candidatos 
      sin depender de orden del array de candidatos, dirección inferida, heurísticas ni estado del cliente.
 3. **Cierre de ODR:**
    - **ODR-D1B-I5-1 queda formalmente RESUELTA y CERRADA.**
+
+#### 8.7.5 Integración completa R4 — contrato obligatorio
+
+El [diseño R4 y auditoría de todos los productores/callers](movement/i6r4-squeezing-axis-integration.md) completa §8.7. Una instancia productiva de `srd_squeezing` para footprint orientable requiere exactamente un eje confirmado. Manager y clonador de snapshot deben preservarlo explícitamente; definir el tipo no basta. Ambos commits exigen evidencia antes de mutar y reemplazan estado cuando cambia el eje. Los callers legacy propagan el eje existente en sus pasos validados conservando Route Validation, Movement Cost, economía, AoO y action semantics.
+
+El pseudocódigo de §8.7.4 se entiende sujeto a estas guardas: instancia única, eje requerido/valido y proyección legal. Para compresión orientable, eje ausente o inválido/proyección fallida se rechaza como error de integridad; no se ejecuta fallback legal[0] ni retorno de huella natural. La excepción no orientable está acotada en R4. No se infiere eje en Commit ni en lectura de snapshot. La inyección manual GM sin evidencia queda rechazada. Salas legacy se drenan/recrean; no se inventa un eje silenciosamente. Matriz RAW §8.3.2 aprobada e inalterada.

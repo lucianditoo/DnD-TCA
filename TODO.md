@@ -81,3 +81,6 @@ creación como si fueran documentos ausentes.
 - Priorizar y cerrar únicamente las entradas abiertas documentadas en
   [`docs/technical-debt.md`](docs/technical-debt.md), sin duplicar aquí su
   estado.
+
+
+D-1B-I6 Design Remediation R4: [integración completa de squeezingAxis](docs/designs/movement/i6r4-squeezing-axis-integration.md), auditoría de 13 invocaciones, copias manager/snapshot y compatibilidad explícita. Matriz R3 aprobada sin cambios. Diseño pendiente de Architecture Review y Proceed; ningún código ni test modificado.

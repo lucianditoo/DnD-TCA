@@ -43,7 +43,7 @@ Consumidores: Architecture Reviewer, propietario y agentes que retoman el reposi
      - Alternativa A (campo en `CombatantSnapshot`): rechazada por crear dualidad de fuentes de verdad con `srd_squeezing` y violar guardas de estado escalar en el combatiente.
      - Alternativa B (`squeezingAxis?: SqueezingAxis` en `EffectInstance`): **SELECCIONADA COMO AUTORIDAD ÚNICA**. Vincula el eje de compresión al ciclo de vida atómico del efecto `srd_squeezing`.
      - Alternativa C (registro independiente en la sala): rechazada por introducir colecciones superfluas y requerir sincronización bidireccional.
-   - Evaluación multidimensional (10 áreas): validada positivamente en snapshot, serialización, room state, EffectManager, proyección de cliente, persistencia futura, fingerprinting, protección anti-stale, preparación y edición de tablero D-5.
+   - Evaluación multidimensional (10 áreas): evaluada en R3, completada por R4 en snapshot, serialización, room state, EffectManager, proyección de cliente, persistencia futura, fingerprinting, protección anti-stale, preparación y edición de tablero D-5.
    - Invariante obligatoria garantizada:
      `occupiedCellsImmediatelyAfterCommit == occupiedCellsDerivedFromNextAuthoritativeSnapshot`
 7. **Autoridad Canónica de `wasSqueezing`:**
@@ -77,3 +77,9 @@ Consumidores: Architecture Reviewer, propietario y agentes que retoman el reposi
 - Sin implementación de código hasta recibir Proceed explícito.
 - Sin House Rules; pleno alineamiento con D&D 3.5 RAW / SRD / PHB.
 - Todas las ODRs de la vertical D-1B activas para I6 quedan formalmente cerradas.
+
+## D-1B-I6 Design Remediation R4
+
+[Contrato R4](docs/designs/movement/i6r4-squeezing-axis-integration.md): corrige la pérdida de eje en safeInstance y descubre el mismo defecto en cloneEffectInstances. Audita las 13 invocaciones de commitSpatialTransition: 4 reciben modo variable con eje disponible en pasos validados y 9 confirman natural. Withdraw/Run/Five-Foot Step propagan evidencia existente sin migración táctica. Ambos commits reemplazan instancia al cambiar eje para evitar onStack ignore. GM manual no puede aportar evidencia: rechazo explícito. Fixtures map-builder requieren migración; salas en memoria antiguas se drenan/recrean sin fallback de eje. La matriz RAW aprobada R3 permanece intacta.
+
+Estado: solo documentación; implementación y tests futuros descritos en implementation_plan y contrato R4. Awaiting Architecture Review and Proceed.

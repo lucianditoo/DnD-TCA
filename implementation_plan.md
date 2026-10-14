@@ -1,4 +1,4 @@
-# Implementation Plan — D-1B-I6: Move Action Productive Integration (Remediated R3)
+# Implementation Plan — D-1B-I6: Move Action Productive Integration (Remediated R4)
 
 Responsabilidad: Plan ejecutable para migrar productivamente la Move Action ordinaria al pipeline normativo de D-1B y resolver la sede autoritativa de `squeezingAxis` (ODR-D1B-I5-1).
 Autoridad: Derivada del [NDD D-1B (Capítulos 3 y 8)](docs/designs/normative-movement-design.md)
@@ -45,7 +45,7 @@ Consumidores: Architecture Reviewer y desarrolladores/agentes que implementarán
 6. **`tests/movement-integration.test.mjs`** (nuevo suite focalizado):
    - Cobertura exhaustiva de integración servidor para `handleMoveCombatant`, matriz canónica de costes y paridad, y contrato de persistencia de `squeezingAxis`.
 7. **`tests/regression-tactical-movement.test.mjs`**:
-   - Probar no-regresión de `handleWithdraw`, `handleRun`, `handleCharge` y `handleFiveFootStep`.
+   - Probar no-regresión semántica de `handleWithdraw`, `handleRun`, `handleCharge` y `handleFiveFootStep`.
 8. **Documentación de gobernanza**:
    - `docs/testing/master-coverage.md`, `PROJECT_STATUS.md`, `TODO.md`, `walkthrough.md`.
 
@@ -145,5 +145,17 @@ En I6 el frontend continúa utilizando helpers legacy (`calculatePathStepCostsFe
    - Acrobacias interrupción: CD 25 éxito avanza todo; CD 25 fallo intermedio trunca la ruta, re-resuelve prefijo normativo, comitea en la casilla previa al enemigo y genera AdO; CD 25 fallo inicial rechazo con error y cero movimiento.
    - AdO metric: `findTriggeredOpportunityAttacksForPath` recibe `resolution.totalCostFeet`.
    - Máquina de estados de logs de Squeezing: emitir log de entrada únicamente en la transición normal -> squeezing; emitir log de salida únicamente en la transición squeezing -> normal; no emitir log si permanece en el mismo modo; cero logs ante commit rechazado.
-   - No regresión: `handleWithdraw`, `handleRun`, `handleCharge`, `handleFiveFootStep` intactos.
+   - No regresión: `handleWithdraw`, `handleRun`, `handleCharge`, `handleFiveFootStep` conservan pipelines; solo propagación de evidencia/firma según R4.
    - E2E & UI: `node scripts/e2e-websocket.mjs` y `npm run test:ui` 100% verde.
+
+## 6. Integración completa del eje — R4 (obligatorio antes de Proceed)
+
+El [contrato y auditoría R4](docs/designs/movement/i6r4-squeezing-axis-integration.md) completa y prevalece sobre las afirmaciones de integración de eje de R3. La matriz RAW aprobada de §§1/5 permanece sin cambios.
+
+Agregar a §1: `packages/shared/src/effects/manager.ts` (guardas y copia explícita en safeInstance), `packages/shared/src/combatSnapshot.ts` (cloneEffectInstances también descarta campos), `apps/server/src/combat/spatialTransition.ts` (entrada discriminada y reemplazo al cambiar eje), `apps/server/src/commands/tacticalCommands.ts` (Withdraw/Run/Five-Foot Step propagan eje ya confirmado), `apps/server/src/commands/gmCommands.ts` (rechazo explícito de inyección squeezing sin evidencia). Adaptar firma de callers natural explícito en `attackCommands.ts` y `specialManeuverCommands.ts` si corresponde. Incluir fixtures y suites enumerados en §5 del contrato R4.
+
+La optionalidad del almacenamiento no autoriza compresión orientable incompleta: manager protege inserts, ambos commits exigen evidencia antes de mutar y geometría rechaza estado inválido sin escoger legal[0] ni retornar natural. La unión discriminada en frontera garantiza natural sin eje / squeezing con eje. Copiar el escalar en manager y clonador de snapshot, no introducir metadata genérica. Remover/reinsertar al cambiar eje evita onStack ignore.
+
+§2 mantiene helpers legacy intactos; adaptación mínima de consumidores tácticos para propagar `validation.value.steps[last].squeezingAxis` y cambiar firma está autorizada como integridad del estado, sin migración a I4/I5. La preparación sigue natural. Cerrar los 13 call sites auditados, la entrada GM sin evidencia y compatibilidad de salas antiguas antes de Proceed.
+
+Pruebas futuras adicionales obligatorias: manager horizontal/vertical/copia defensiva/remove/removeMany/otros efectos; clon y JSON del snapshot; Move/Withdraw/Run legal/Five-Foot Step; cada caller natural; eje ambiguo confirmado; reemplazo determinista; salida a natural; stale cero mutación; snapshot igual a footprint confirmado; rechazo de axisless orientable y de inyección GM; fixtures map-builder migrados. Alcance exclusivamente documental en R4.
