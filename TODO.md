@@ -15,8 +15,9 @@ Consumidores: Agentes al retomar el proyecto y propietario al priorizar tareas.
 
 - D-1B-I5R2 ha sido **TÉCNICAMENTE APROBADO** en Architecture Review (`865405a`).
 - D-1B-I6 (Integración productiva de Move Action) entra en fase de DISEÑO arquitectónico y plan de implementación; implementación de código bloqueada hasta revisión y Proceed explícito.
-- Resolver ODR-D1B-I5-1: sede persistente de `squeezingAxis`, antes de asumir
-  una solución en la migración productiva.
+- ODR-D1B-I5-1 (sede autoritativa de `squeezingAxis`) queda **RESUELTA Y CERRADA**
+  en el diseño de I6 (§8.7 del [NDD](docs/designs/normative-movement-design.md)),
+  alojando el eje en `EffectInstance` para `srd_squeezing` sin fuentes duales de verdad.
 - ODR-D1B-C3-01 (composición de fuentes de coste) queda **RESUELTA Y CERRADA**
   para combinaciones multiplicativas mediante la regla RAW de Double Movement
   Cost (§3.8 del [NDD](docs/designs/normative-movement-design.md)); su

@@ -1,60 +1,79 @@
-# Walkthrough — D-1B: RAW Movement Cost Remediation (Owner Decision)
+# Walkthrough — D-1B-I6: Design Remediation R3 (RAW Diagonal Semantics + Squeezing Axis)
 
-Responsabilidad: Registrar la alineación normativa de Movement Cost con D&D 3.5 RAW y la resolución formal de ODR D-1B-C3-01.
+Responsabilidad: Registrar la resolución de los bloqueantes de diseño de I6: semántica diagonal RAW, matriz canónica de costes y sede autoritativa de `squeezingAxis` (ODR-D1B-I5-1).
 Autoridad: Registro
 Lifecycle: Rotativo
-Reemplaza: Walkthrough de D-1B-I5R2, conservado en Git.
+Reemplaza: Walkthrough de D-1B RAW Movement Cost Remediation, conservado en Git.
 Complementa: [Estado](PROJECT_STATUS.md), [TODO](TODO.md), [Plan de Implementación I6](implementation_plan.md), [NDD D-1B](docs/designs/normative-movement-design.md)
 Consumidores: Architecture Reviewer, propietario y agentes que retoman el repositorio.
 
 ## Resultado
 
-- **D-1B RAW Movement Cost Remediation**: Alineación de diseño y plan con la decisión normativa del Propietario (D&D 3.5 RAW / SRD / PHB como autoridad primaria).
-- **ODR D-1B-C3-01**: **RESUELTA Y CERRADA** para todas las combinaciones multiplicativas de duplicaciones de coste de movimiento (Terreno Difícil, Squeezing, Tumble-equivalent).
-- **D-1B-I6**: DISEÑO ARQUITECTÓNICO Y PLAN REMEDIADOS. Sin código productivo ni tests modificados; pendiente de Architecture Review y Proceed explícito.
+- **D-1B-I6 Design Remediation R3**: Cerradas las contradicciones de diseño de I6 y resuelto el prerrequisito bloqueante ODR-D1B-I5-1 antes del Proceed de implementación.
+- **ODR-D1B-I5-1 (`squeezingAxis`)**: **RESUELTA Y CERRADA** situando la autoridad única en `EffectInstance<ProductionEffectId>` para `srd_squeezing`.
+- **ODR D-1B-C3-01 (composición de costes)**: **RESUELTA Y CERRADA** conforme a la regla RAW de Double Movement Cost.
+- **Estado de I6**: DISEÑO ARQUITECTÓNICO Y PLAN DE IMPLEMENTACIÓN LISTOS PARA REVISIÓN FINAL. Sin código productivo ni tests modificados; bloqueado hasta Proceed explícito.
 
-Logros consolidados:
-1. **Regla RAW de Excepción a Duplicaciones (PHB p. 148 / SRD "Hampered Movement")**:
-   - Cada duplicación sucesiva multiplica el coste de paso: 1 duplicación = x2 (10 ft ortogonal); 2 duplicaciones = x4 (20 ft ortogonal); 3 duplicaciones = x8 (40 ft ortogonal); 4 duplicaciones = x16 (80 ft ortogonal).
-   - No aplica la regla general aditiva de D&D de (x2 + x2 = x3).
-2. **Movimiento Diagonal Impedido (RAW Hampered Movement)**:
-   - 1 duplicación: 3 casillas = 15 ft.
-   - 2 duplicaciones: 6 casillas = 30 ft.
-   - 3 duplicaciones: 12 casillas = 60 ft.
-   - El coste diagonal impedido es fijo, no alterna paridad 5/10 ft, y preserva intacto `normalDiagonalStepsThisTurn`.
-3. **Formulación Isomórfica de Acrobacias / Tumble**:
-   - RAW formula Tumble como restricción de velocidad ("one-half normal speed").
-   - El motor traduce esta restricción de forma pura e isomorfa como duplicación x2 del coste de paso en `assessMovementCost`.
-   - Se documenta la equivalencia técnica y se registra la brecha de Accelerated Tumbling (-10 check para velocidad completa).
-4. **Publicación y Máquina de Estados de Squeezing**:
-   - Captura pre-commit de `wasSqueezing = combatant.spatialMode === "squeezing"`.
-   - Comparación post-commit contra `commitResult.finalSpatialMode === "squeezing"` para emitir logs de entrada/salida únicamente ante transiciones efectivas.
-   - Si el commit es rechazado, cero mutaciones y cero logs emitidos.
+### Logros Consolidados
+
+1. **Semántica RAW de Tumble Aislado (Major 1):**
+   - RAW formula Tumble como restricción de velocidad (*one-half normal speed*).
+   - Su representación equivalente en el motor duplica el coste normal que habría consumido el paso:
+     - Ortogonal: 5 ft -> 10 ft.
+     - Diagonal normal: 5 / 10 ft -> 10 / 20 ft.
+     - Paridad normal: **SÍ** (continúa participando e incrementando `normalDiagonalStepsThisTurn`).
+   - Tumble aislado **NO** es una diagonal obstaculizada fija de 15 ft.
+2. **Fuentes Reales de Movimiento Obstaculizado (True Hampering Sources):**
+   - Terreno Difícil (DT): ortogonal 10 ft; diagonal 15 ft fijos; paridad normal: **NO** (`normalDiagonalStepsThisTurn` intacto).
+   - Compresión (Squeezing): ortogonal 10 ft; diagonal 15 ft fijos; paridad normal: **NO** (`normalDiagonalStepsThisTurn` intacto).
+3. **Composición de Tumble con Fuentes de Movimiento Obstaculizado:**
+   - La restricción de mitad de velocidad duplica el coste impedido subyacente:
+     - Tumble + DT: ortogonal 20 ft; diagonal 30 ft fijos; paridad: **NO**.
+     - Tumble + Squeezing: ortogonal 20 ft; diagonal 30 ft fijos; paridad: **NO**.
+     - DT + Squeezing: ortogonal 20 ft; diagonal 30 ft fijos; paridad: **NO**.
+     - Tumble + DT + Squeezing: ortogonal 40 ft; diagonal 60 ft fijos; paridad: **NO**.
+4. **Eliminación de Contradicciones Legacy de Squeezing (Major 2):**
+   - Se removió la mención desactualizada donde Squeezing aislado consumía paridad 10/20 ft en §3.10 y §8.3.
+   - Squeezing aislado queda estrictamente como movimiento obstaculizado RAW: 10 ft ortogonal / 15 ft diagonal fija sin mutar paridad normal.
+5. **Matriz Canónica de Costes Congelada (§8.3.2):**
+   - Queda documentada y congelada la tabla canónica con sus 8 estados y sus reglas de paridad.
+6. **Resolución Normativa de ODR-D1B-I5-1 (Major 3):**
+   - Diagnóstico: `getCombatantOccupiedCellsAt` sin `preferredAxis` seleccionaba arbitrariamente `legal[0]` (horizontal), provocando *footprint drift* respecto al eje confirmado por Resolution.
+   - Auditoría de alternativas:
+     - Alternativa A (campo en `CombatantSnapshot`): rechazada por crear dualidad de fuentes de verdad con `srd_squeezing` y violar guardas de estado escalar en el combatiente.
+     - Alternativa B (`squeezingAxis?: SqueezingAxis` en `EffectInstance`): **SELECCIONADA COMO AUTORIDAD ÚNICA**. Vincula el eje de compresión al ciclo de vida atómico del efecto `srd_squeezing`.
+     - Alternativa C (registro independiente en la sala): rechazada por introducir colecciones superfluas y requerir sincronización bidireccional.
+   - Evaluación multidimensional (10 áreas): validada positivamente en snapshot, serialización, room state, EffectManager, proyección de cliente, persistencia futura, fingerprinting, protección anti-stale, preparación y edición de tablero D-5.
+   - Invariante obligatoria garantizada:
+     `occupiedCellsImmediatelyAfterCommit == occupiedCellsDerivedFromNextAuthoritativeSnapshot`
+7. **Autoridad Canónica de `wasSqueezing`:**
+   - Se eliminó del diseño la referencia a un inexistente `combatant.spatialMode`.
+   - Se consulta a través de `room.effectInstances.some(i => i.effectId === "srd_squeezing" && i.targets?.includes(combatant.id))`.
 
 ## Archivos y trazabilidad
 
 - `docs/designs/normative-movement-design.md`:
-  - §3.8: Adición de §3.8.1 (RAW Double Movement Cost Exception), §3.8.2 (Hampered Diagonal Movement), §3.8.3 (Resolución formal de ODR D-1B-C3-01).
-  - §3.10: Actualización de matemáticas de Squeezing con factores RAW y combinaciones.
-  - §3.16, §4.15, §5.15, §6.16: Registro de ODR D-1B-C3-01 como resuelta y cerrada.
-  - §8.1, §8.3: Formulación isomórfica de Tumble, tabla exhaustiva de combinaciones multiplicativas y autoridad exclusiva de `assessMovementCost`.
-  - §8.5: Máquina de estados de publicación para transiciones de Squeezing.
+  - §3.8.2: Distinción entre True Hampering Sources y Tumble-only; composición multiplicativa con paridad intacta.
+  - §3.10: Corrección de coste diagonal de Squeezing a 15 ft fijos sin mutación de paridad.
+  - §8.1: Actualización de alcance y registro del cierre de ODR-D1B-I5-1.
+  - §8.3: Reformulación de Tumble aislado (10/20 ft con paridad) y congelación de la Matriz Canónica de 8 filas.
+  - §8.5: Corrección de autoridad de consulta de `wasSqueezing` en `room.effectInstances`.
+  - §8.7: Nueva sección exhaustiva con la resolución de ODR-D1B-I5-1, auditoría de alternativas, evaluación en 10 dimensiones y contrato normativo de `squeezingAxis`.
 - `implementation_plan.md`:
-  - Sección 1: Actualizada con factores multiplicativos RAW y combinaciones soportadas.
-  - Sección 3: Búfer de publicación con captura pre-commit de `wasSqueezing` y guardas de commit.
-  - Sección 5: Matriz exhaustiva de pruebas para 1, 2 y 3 duplicaciones (ortogonal y diagonal impedida), invariante de paridad normal, y transiciones de compresión.
-- `TODO.md` y `PROJECT_STATUS.md`: Sincronización del estado de ODR D-1B-C3-01 e I6.
-- `walkthrough.md`: Actualizado con el resumen del sprint.
+  - Sección 1: Ampliación de alcance para incorporar `squeezingAxis` en `EffectInstance` y en `movementCommit` / `movementGeometry`.
+  - Sección 3: Consulta canónica de `wasSqueezing` y ciclo de vida de `squeezingAxis`.
+  - Sección 5: Matriz de pruebas canónica (8 casos) y pruebas de contrato de `squeezingAxis` (horizontal, vertical, ambigüedad sin drift, continuidad, salida, stale rejection, fingerprint y fase preparación).
+- `TODO.md` y `PROJECT_STATUS.md`: Sincronización formal marcando ODR-D1B-I5-1 y ODR D-1B-C3-01 como resueltas y cerradas.
+- `walkthrough.md`: Actualizado para este cierre.
 
 ## Validaciones
 
-- Modo: Exclusivamente documentación y diseño arquitectónico.
-- Código productivo y tests: 0 modificaciones.
+- Modo: Exclusivamente diseño y arquitectura documental.
+- Código productivo y tests: 0 líneas modificadas.
 - `git diff --check`: Verificado limpio.
 
 ## Límites y gate documental
 
-- No se autoriza implementación de I6.
-- No se introducen House Rules.
-- ODR-D1B-I5-1 (`squeezingAxis`) permanece abierta y fuera de alcance.
-- Enlaces internos y consistencia documental verificados.
+- Sin implementación de código hasta recibir Proceed explícito.
+- Sin House Rules; pleno alineamiento con D&D 3.5 RAW / SRD / PHB.
+- Todas las ODRs de la vertical D-1B activas para I6 quedan formalmente cerradas.
