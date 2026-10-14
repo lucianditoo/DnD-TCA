@@ -10,7 +10,8 @@
 - Última vertical funcional implementada: D-5 Editor Táctico de Mapas (MVP), conforme a su [NDD canónico](docs/designs/map-builder-mvp/design.md) y [plan](docs/designs/map-builder-mvp/implementation-plan.md); **CERRADA y TÉCNICAMENTE APROBADA** (Architecture Review sobre commit `6fd385b42b4dc51b8dcbb195108d7051a600944f`).
 - Última decisión arquitectónica: Sprint D-1B Capítulo 7 (Integration & Implementation Contracts) y NDD de Demo Táctica Automática (`f8c0e9d`).
 - Implementación integrada: D-5 (remediado en D-5R1/R2/R3) cierra exhaustivamente todos los requisitos de arquitectura: Candidate Board validation pura sin mutación previa al commit, invariante estricta de compresión `srd_squeezing` (comparación canónica de coordenadas `x, y, zFeet` sin permitir rotación o desplazamiento de la huella comprimida); máquina de estados Save/Error/ACK con limpieza de errores viejos y verificación de `room-update` posterior a la petición; gating del modal de confirmación crítica durante la edición del mapa; métricas y logs de pilares corregidos a `loe-only` (excluyendo muros); y suite E2E WebSocket con cobertura de `update-board`.
-- Baseline de código: 681 tests unitarios, `typecheck`, `build`, `e2e-websocket` (110/110) y 16 tests Playwright UI al 100% en verde.
+- Última remediación de infraestructura: D-1B-I5R2 vincula la resolución a su actor canónico y verifica vigencia espacial, movilidad efectiva y fuentes de presupuesto; **READY FOR ARCHITECTURE REVIEW**. I5 no está cerrado e I6 permanece bloqueado.
+- Baseline de código: 701 tests unitarios, `typecheck`, `build`, `e2e-websocket` (110/110) y 16 tests Playwright UI al 100% en verde.
   Conteos y evidencias se mantienen en [master-coverage.md](docs/testing/master-coverage.md), no como un segundo registro aquí.
 - GitHub Actions sobre Windows es el gate canónico de cierre para la revisión
   publicada.
@@ -22,8 +23,8 @@
 | I1 — Movement Context | Integrado en creación/reinicio de turno y snapshots; el flujo productivo todavía no incrementa el contador. |
 | I2 — Movement Cost | Assessment puro implementado; soporte de Squeezing y separación base/coste agregados en I5R1; consumido por I4. |
 | I3 / I3R1 — Route Validation | Integrado: `validateMovePath` delega legalidad a `validateRouteLegality`; extracción sin el ciclo detectado en I3. |
-| I4 — Movement Resolution | Pipeline puro de validación/coste/verificación de presupuesto remediado en I5R1 con fingerprint de estado y propagación tipada. |
-| I5 / I5R1 — Movement Commit | Aplicación autoritativa remediada (precondiciones robustas anti-stale, separación coste/distancia, squeezing); listo para Architecture Review. |
+| I4 — Movement Resolution | Pipeline puro de validación/coste/verificación de presupuesto; I5R2 conserva combatantId y evidencia canónica espacial y de movilidad/presupuesto. |
+| I5 / I5R1 / I5R2 — Movement Commit | Rechaza actor sustituido, clon detached y reglas obsoletas antes de mutar; mantiene guardas I5R1 y separación coste/base. READY FOR ARCHITECTURE REVIEW, sin cierre formal ni consumidores productivos. |
 
 La presentación incorpora un **renderer WebGL táctico 2.5D** con respaldo `2D`, cámara orbital limitada, cuatro presets y sprites pixel-art, estrictamente desacoplado sobre el grid autoritativo 2D con huellas multicasilla. No es todavía el motor espacial 3D normativo: las alturas visuales son cosméticas y los NDD espaciales siguen siendo el destino de migración mecánica. CI verde no significa V1 completa.
 

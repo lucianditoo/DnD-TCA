@@ -76,6 +76,8 @@ implementación cerrados (`large-footprints-v1-implementation-plan.md`,
 
 ## Decisiones, diseños y auditorías
 
+- [implementation_plan.md](implementation_plan.md): plan recuperado de D-1B-I5R1 y remediación I5R2, pendiente de Architecture Review.
+
 - [`docs/adr/`](docs/adr/): decisiones arquitectónicas estables.
 - [`docs/designs/`](docs/designs/): NDD y planes por vertical.
   - [`docs/designs/scripted-combat-demo.md`](docs/designs/scripted-combat-demo.md): NDD de demo táctica automática por comandos reales, escenas, aislamiento y controles de reproducción (aprobado).

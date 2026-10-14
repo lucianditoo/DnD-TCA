@@ -9,7 +9,6 @@ import type { EffectInstance } from "./effects/types.js";
 import type { ProductionEffectId } from "./effects/catalog.js";
 import { EffectManager } from "./effects/manager.js";
 import { cryptoId } from "./demo-data.js";
-import { createCombatRulesSnapshot } from "./combatSnapshot.js";
 import {
   createMovementStateFingerprint,
   type MovementResolutionResult,
@@ -19,9 +18,10 @@ import {
  * Authoritative Movement Commit (Sprint D-1B-I5/I5R1).
  *
  * Consume exclusivamente un `MovementResolutionResult` de kind "ready" ya producido por
- * `resolveMovementPipeline` (I4/I5R1). No recalcula Route Validation, Movement Cost, footprints,
- * geometría, terreno difícil, `squeezingAxis` ni el contador diagonal — toda esa evidencia
- * ya viene resuelta en `resolution.steps`/`resolution.projectedContext`.
+ * `resolveMovementPipeline` (I4/I5R2). No vuelve a resolver Route Validation, Movement Cost
+ * ni los Steps: esa evidencia viene en `resolution.steps`/`resolution.projectedContext`.
+ * Reproyecta únicamente las dependencias actuales del fingerprint (huellas y movilidad)
+ * para verificar su vigencia, sin sustituir la evidencia de la Route.
  *
  * Valida de forma estricta las precondiciones autoritativas:
  * - Correspondencia de actor y turno activo.
@@ -107,11 +107,20 @@ export function commitMovementResolution(input: MovementCommitInput): MovementCo
   } = preconditions;
 
   // 1. Actor y turno
-  if (combatant.id !== expectedTurnCombatantId || room.currentTurn.combatantId !== combatant.id || room.currentTurn.combatantId !== expectedTurnCombatantId) {
+  const authoritativeCombatant = room.combatants.find(c => c.id === resolution.combatantId);
+  if (!authoritativeCombatant || authoritativeCombatant !== combatant ||
+      resolution.combatantId !== combatant.id || expectedTurnCombatantId !== resolution.combatantId) {
+    return {
+      kind: "rejected",
+      reason: "La resolución no corresponde a la entidad canónica viva del actor esperado.",
+      rejectionCode: "invalid-actor"
+    };
+  }
+  if (room.currentTurn.combatantId !== resolution.combatantId) {
     return {
       kind: "rejected",
       reason: `El combatiente ${combatant.name} (${combatant.id}) no coincide con el turno activo (${room.currentTurn.combatantId}) o con el actor esperado (${expectedTurnCombatantId}).`,
-      rejectionCode: combatant.id !== expectedTurnCombatantId ? "invalid-actor" : "stale-turn"
+      rejectionCode: "stale-turn"
     };
   }
 
@@ -152,11 +161,11 @@ export function commitMovementResolution(input: MovementCommitInput): MovementCo
   }
 
   // 6. Fingerprint del estado de reglas del combate
-  const currentFingerprint = createMovementStateFingerprint(room);
+  const currentFingerprint = createMovementStateFingerprint(room, authoritativeCombatant);
   if (currentFingerprint !== resolution.rulesStateFingerprint) {
     return {
       kind: "rejected",
-      reason: "El estado de reglas del combate (tablero, ocupantes o efectos espaciales) cambió desde que se calculó la Resolution.",
+      reason: "El estado espacial o las fuentes de movilidad/presupuesto cambiaron desde que se calculó la Resolution.",
       rejectionCode: "stale-rules-state"
     };
   }

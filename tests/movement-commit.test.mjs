@@ -7,6 +7,139 @@ import {
 } from "../packages/shared/dist/index.js";
 import { structuredSnapshotFields } from "./test-utils.mjs";
 
+function condition(effectId, targetId = "c1") {
+  return {
+    instanceId: effectId + "-instance", effectId, targets: [targetId],
+    source: { type: "system" }, duration: { type: "permanent" },
+    appliedAtEvent: { type: "ActionResolved", combatantId: targetId, round: 1 }
+  };
+}
+
+function assertRejectedWithoutMutation(room, combatant, resolution, preconditions, code) {
+  const before = structuredClone(room);
+  const actorBefore = structuredClone(combatant);
+  const result = commitMovementResolution({ room, combatant, resolution, preconditions });
+  assert.equal(result.kind, "rejected");
+  assert.equal(result.rejectionCode, code);
+  assert.deepEqual(room, before);
+  assert.deepEqual(combatant, actorBefore);
+}
+
+test("I5R2: actor provenance rejects A resolution on B despite coherent B preconditions", () => {
+  const room = setupRoom(5, 5);
+  const a = createCombatant("a", 1, 1);
+  const b = createCombatant("b", 1, 1);
+  room.combatants.push(a, b);
+  preconditionsFor(room, a);
+  const resolution = resolveReady(room, a, [{ x: 2, y: 1, zFeet: 0 }]);
+  const preconditions = preconditionsFor(room, b);
+  assert.equal(resolution.combatantId, "a");
+  assertRejectedWithoutMutation(room, b, resolution, preconditions, "invalid-actor");
+});
+
+test("I5R2: detached clone with identical ID cannot receive a commit", () => {
+  const room = setupRoom(5, 5);
+  const a = createCombatant("c1", 1, 1);
+  room.combatants.push(a);
+  const preconditions = preconditionsFor(room, a);
+  const resolution = resolveReady(room, a, [{ x: 2, y: 1, zFeet: 0 }]);
+  assertRejectedWithoutMutation(room, structuredClone(a), resolution, preconditions, "invalid-actor");
+});
+
+test("I5R2: removed actor cannot receive a commit", () => {
+  const room = setupRoom(5, 5);
+  const a = createCombatant("c1", 1, 1);
+  room.combatants.push(a);
+  const preconditions = preconditionsFor(room, a);
+  const resolution = resolveReady(room, a, [{ x: 2, y: 1, zFeet: 0 }]);
+  room.combatants = [];
+  assertRejectedWithoutMutation(room, a, resolution, preconditions, "invalid-actor");
+});
+
+for (const effectId of ["srd_entangled", "srd_exhausted", "srd_blinded", "srd_paralyzed", "srd_grappling"]) {
+  for (const removing of [false, true]) {
+    test("I5R2: stale mobility on " + (removing ? "removing " : "applying ") + effectId, () => {
+      const room = setupRoom(5, 5);
+      const mover = createCombatant("c1", 1, 1);
+      room.combatants.push(mover);
+      if (removing) room.effectInstances.push(condition(effectId));
+      const preconditions = preconditionsFor(room, mover);
+      // Budget remains externally supplied; I5R2 verifies source freshness,
+      // not action eligibility or a new production movement policy.
+      const resolution = resolveReady(room, mover, [{ x: 2, y: 1, zFeet: 0 }]);
+      room.effectInstances = removing ? [] : [condition(effectId)];
+      assertRejectedWithoutMutation(room, mover, resolution, preconditions, "stale-rules-state");
+    });
+  }
+}
+
+for (const [name, mutate] of [
+  ["base speed", (c) => { c.baseSpeedFeet = 20; }],
+  ["armor", (c) => {
+    c.inventory.push({ itemId: "armor", catalogId: "full_plate" });
+    c.equipmentSlots.armorItemId = "armor";
+  }],
+  ["buff speed", (c) => { c.buffs.push({ id: "speed", speedBonusFeet: 10 }); }],
+  ["intrinsic prohibition", (c) => { c.ruleTraits.push("CANNOT_MOVE"); }]
+]) {
+  test("I5R2: stale movement source " + name, () => {
+    const room = setupRoom(5, 5);
+    const mover = createCombatant("c1", 1, 1);
+    room.combatants.push(mover);
+    const preconditions = preconditionsFor(room, mover);
+    const resolution = resolveReady(room, mover, [{ x: 2, y: 1, zFeet: 0 }]);
+    mutate(mover);
+    assertRejectedWithoutMutation(room, mover, resolution, preconditions, "stale-rules-state");
+  });
+}
+
+test("I5R2: equivalent unordered effects/targets/equipment/buffs produce the same fingerprint", () => {
+  const room = setupRoom(5, 5);
+  const mover = createCombatant("c1", 1, 1);
+  room.combatants.push(mover, createCombatant("other", 4, 4));
+  room.effectInstances = [condition("srd_entangled"), condition("srd_exhausted")];
+  room.effectInstances[0].targets.push("other");
+  mover.buffs = [{ speedBonusFeet: 5 }, { speedBonusFeet: 10 }];
+  const copy = structuredClone(room);
+  copy.combatants.reverse();
+  copy.effectInstances.reverse();
+  copy.effectInstances.forEach(e => e.targets.reverse());
+  const actor = copy.combatants.find(c => c.id === mover.id);
+  actor.inventory.reverse();
+  actor.buffs.reverse();
+  deepFreeze(room);
+  deepFreeze(copy);
+  assert.equal(createMovementStateFingerprint(room, mover), createMovementStateFingerprint(copy, actor));
+});
+
+test("I5R2: cosmetics and unrelated effects do not stale a valid commit", () => {
+  const room = setupRoom(5, 5);
+  const mover = createCombatant("c1", 1, 1);
+  room.combatants.push(mover);
+  const preconditions = preconditionsFor(room, mover);
+  const resolution = resolveReady(room, mover, [{ x: 2, y: 1, zFeet: 0 }]);
+  mover.name = "new label";
+  mover.icon = "new icon";
+  room.effectInstances.push(condition("srd_prone"));
+  room.log = [{ message: "cosmetic log" }];
+  assert.equal(commitMovementResolution({ room, combatant: mover, resolution, preconditions }).kind, "committed");
+});
+
+test("I5R2: insufficient-budget preserves actor and detached initial diagonal evidence", () => {
+  const room = setupRoom(5, 5);
+  const mover = createCombatant("c1", 1, 1);
+  room.combatants.push(mover);
+  const initialContext = { normalDiagonalStepsThisTurn: 0 };
+  const result = resolveMovementPipeline({
+    context: room, combatant: mover, path: [{ x: 2, y: 1, zFeet: 0 }],
+    availableBudgetFeet: 0, initialContext
+  });
+  assert.equal(result.kind, "insufficient-budget");
+  assert.equal(result.combatantId, mover.id);
+  initialContext.normalDiagonalStepsThisTurn = 9;
+  assert.equal(result.initialContext.normalDiagonalStepsThisTurn, 0);
+});
+
 function setupRoom(width, height) {
   return {
     round: 1,
@@ -305,11 +438,12 @@ test("Movement Commit: no vuelve a ejecutar Route Validation (confia en los Step
   const room = setupRoom(5, 5);
   const mover = createCombatant("c1", 1, 1);
   room.combatants.push(mover);
-  const fingerprint = createMovementStateFingerprint(room);
+  const fingerprint = createMovementStateFingerprint(room, mover);
 
   // La celda (3,3) no es adyacente a (1,1); Route Validation la rechazaria, pero Commit confia en la Resolution
   const fabricatedResolution = {
     kind: "ready",
+    combatantId: mover.id,
     steps: [{
       stepIndex: 0,
       position: { x: 3, y: 3, zFeet: 0 },
@@ -348,10 +482,11 @@ test("Movement Commit: no vuelve a ejecutar Movement Cost (aplica totalCostFeet 
   const room = setupRoom(5, 5);
   const mover = createCombatant("c1", 0, 0);
   room.combatants.push(mover);
-  const fingerprint = createMovementStateFingerprint(room);
+  const fingerprint = createMovementStateFingerprint(room, mover);
 
   const fabricatedResolution = {
     kind: "ready",
+    combatantId: mover.id,
     steps: [{
       stepIndex: 0,
       position: { x: 1, y: 0, zFeet: 0 },
@@ -531,8 +666,8 @@ test("Movement Commit (I5R1): createMovementStateFingerprint es canonico, determ
   roomB.board.impassableCells = ["1,2", "2,1"];
   roomB.combatants.push(createCombatant("a", 2, 2), createCombatant("b", 1, 1));
 
-  const fpA = createMovementStateFingerprint(roomA);
-  const fpB = createMovementStateFingerprint(roomB);
+  const fpA = createMovementStateFingerprint(roomA, roomA.combatants.find(c => c.id === "a"));
+  const fpB = createMovementStateFingerprint(roomB, roomB.combatants.find(c => c.id === "a"));
 
   assert.equal(fpA, fpB, "snapshots semanticamente equivalentes producen identico fingerprint");
 });

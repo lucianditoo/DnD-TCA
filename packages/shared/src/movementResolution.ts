@@ -1,8 +1,9 @@
-import type { CombatRulesSnapshot, Combatant, CombatantSnapshot, MovementContext, Position } from "./types.js";
-import type { EffectInstance } from "./effects/index.js";
+import type { CombatRulesSnapshot, Combatant, MovementContext, Position } from "./types.js";
+import { EffectReducer, effectsCatalog } from "./effects/index.js";
 import { validateRouteLegality } from "./routeValidation.js";
 import type { SpatialMode, SqueezingAxis } from "./movementGeometry.js";
-import { isDifficultTerrain } from "./rules.js";
+import { isDifficultTerrain, Rules } from "./rules.js";
+import { getCombatantOccupiedCells } from "./movementGeometry.js";
 import { lifeStatus } from "./lifeStatus.js";
 import {
   assessMovementCost,
@@ -26,34 +27,28 @@ import {
 
 /**
  * Genera una representacion canonica y determinista del estado normativo relevante para
- * movimiento dentro de un CombatRulesSnapshot (Sprint D-1B-I5R1).
+ * movimiento dentro de un CombatRulesSnapshot (Sprint D-1B-I5R2).
  *
  * Es 100% portable para `packages/shared` (cero dependencias nativas como node:crypto).
- * Incluye estrictamente las dependencias reales consumidas por Route Validation y Movement Cost:
+ * Incluye las dependencias de Route Validation, Movement Cost y las fuentes de Budget:
  * - Tablero: width, height, cellSizeFeet, impassableCells, difficultTerrainCells, narrowCells.
  * - Combatientes: id, position (x, y, zFeet), sizeCategory, type, y lifeStatus.
- * - Efectos espaciales relevantes: instancias de `srd_squeezing` y sus targets.
+ * - Huellas efectivas derivadas por la autoridad geométrica (incluye Squeezing).
+ * - Speed efectiva y sus componentes numéricos, CANNOT_MOVE y presupuesto gastado.
+ * No serializa trazas cosméticas ni implementa fórmulas de Speed o de acciones.
  * Ordena canonicamente todos los arrays para garantizar determinismo semantico.
  */
-export function createMovementStateFingerprint(context: {
-  readonly board: {
-    readonly width: number;
-    readonly height: number;
-    readonly cellSizeFeet: number;
-    readonly impassableCells?: readonly string[];
-    readonly difficultTerrainCells?: readonly string[];
-    readonly narrowCells?: readonly string[];
-  };
-  readonly combatants: readonly (Combatant | CombatantSnapshot)[];
-  readonly effectInstances?: readonly EffectInstance<any>[];
-}): string {
+export function createMovementStateFingerprint(
+  context: CombatRulesSnapshot<any>,
+  actor: Combatant
+): string {
   const board = {
     width: context.board.width,
     height: context.board.height,
     cellSizeFeet: context.board.cellSizeFeet,
-    impassableCells: (context.board.impassableCells ?? []).slice().sort(),
-    difficultTerrainCells: (context.board.difficultTerrainCells ?? []).slice().sort(),
-    narrowCells: (context.board.narrowCells ?? []).slice().sort()
+    impassableCells: [...new Set(context.board.impassableCells ?? [])].sort(),
+    difficultTerrainCells: [...new Set(context.board.difficultTerrainCells ?? [])].sort(),
+    narrowCells: [...new Set(context.board.narrowCells ?? [])].sort()
   };
 
   const combatants = (context.combatants ?? [])
@@ -64,19 +59,29 @@ export function createMovementStateFingerprint(context: {
       position: { x: c.position.x, y: c.position.y, zFeet: c.position.zFeet ?? 0 },
       sizeCategory: c.sizeCategory ?? "medium",
       type: c.type,
-      lifeStatus: lifeStatus(c as Combatant)
+      lifeStatus: lifeStatus(c as Combatant),
+      occupiedCells: getCombatantOccupiedCells(c, context)
+        .map(cell => [cell.x, cell.y, cell.zFeet ?? 0])
+        .sort((a, b) => a[0] - b[0] || a[1] - b[1] || a[2] - b[2])
     }));
 
-  const squeezingEffects = (context.effectInstances ?? [])
-    .filter((i) => i.effectId === "srd_squeezing")
-    .map((i) => ({
-      instanceId: i.instanceId,
-      effectId: i.effectId,
-      targets: (i.targets ?? []).slice().sort()
-    }))
-    .sort((a, b) => a.instanceId.localeCompare(b.instanceId));
+  const speed = Rules.getMovementSpeedProjection(context, actor);
+  const reduced = EffectReducer.reduceEffectsForTarget({
+    effectInstances: context.effectInstances,
+    targetId: actor.id,
+    catalog: effectsCatalog
+  });
+  const mobility = {
+    combatantId: actor.id,
+    total: speed.total,
+    beforeRate: speed.beforeRate,
+    rateNumerator: speed.rateNumerator,
+    rateDenominator: speed.rateDenominator,
+    cannotMove: actor.ruleTraits.includes("CANNOT_MOVE") || reduced.traits.includes("CANNOT_MOVE"),
+    movementUsedFeet: context.currentTurn?.movementUsedFeet ?? 0
+  };
 
-  return JSON.stringify({ board, combatants, squeezingEffects });
+  return JSON.stringify({ board, combatants, mobility });
 }
 
 /** Un Step de resolución combina, sin inventar datos, la evidencia de Route Validation y
@@ -122,6 +127,7 @@ export type MovementResolutionResult =
     }
   | {
       readonly kind: "insufficient-budget";
+      readonly combatantId: string;
       readonly steps: ReadonlyArray<MovementResolutionStep>;
       readonly costAssessment: MovementCostAssessment;
       readonly requiredCostFeet: number;
@@ -134,6 +140,7 @@ export type MovementResolutionResult =
     }
   | {
       readonly kind: "ready";
+      readonly combatantId: string;
       readonly steps: ReadonlyArray<MovementResolutionStep>;
       readonly costAssessment: MovementCostAssessment;
       readonly totalCostFeet: number;
@@ -199,7 +206,7 @@ export function resolveMovementPipeline(input: MovementResolutionInput): Movemen
     };
   }
 
-  const rulesStateFingerprint = createMovementStateFingerprint(context);
+  const rulesStateFingerprint = createMovementStateFingerprint(context, combatant);
 
   const resolutionSteps: MovementResolutionStep[] = legality.steps.map((step, index) => {
     const stepCost = costAssessment.steps[index];
@@ -227,12 +234,13 @@ export function resolveMovementPipeline(input: MovementResolutionInput): Movemen
   if (requiredCostFeet > availableBudgetFeet) {
     return {
       kind: "insufficient-budget",
+      combatantId: combatant.id,
       steps: resolutionSteps,
       costAssessment,
       requiredCostFeet,
       totalBaseRouteCostFeet,
       availableBudgetFeet,
-      initialContext,
+      initialContext: { ...initialContext },
       projectedContext: costAssessment.resultingContext,
       finalPosition,
       rulesStateFingerprint
@@ -241,11 +249,12 @@ export function resolveMovementPipeline(input: MovementResolutionInput): Movemen
 
   return {
     kind: "ready",
+    combatantId: combatant.id,
     steps: resolutionSteps,
     costAssessment,
     totalCostFeet: requiredCostFeet,
     totalBaseRouteCostFeet,
-    initialContext,
+    initialContext: { ...initialContext },
     projectedContext: costAssessment.resultingContext,
     finalPosition,
     availableBudgetFeet,

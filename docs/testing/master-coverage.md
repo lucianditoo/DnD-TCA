@@ -15,7 +15,20 @@ Consumidores: Revisores que verifican las validaciones de un commit.
 Este documento consolida las directrices y el reporte de cobertura de testing
 del motor de combate D&D 3.5.
 
-## Baseline de código más reciente — D-5R3 Editor Táctico de Mapas MVP (Final Closure)
+## Baseline de código más reciente — D-1B-I5R2 (pendiente de Architecture Review)
+
+**701/701 pruebas unitarias/integración**, `typecheck` y `build` verdes en los
+tres workspaces, **110/110 aserciones WebSocket** y **16/16 escenarios Playwright**.
+La ejecución focalizada de `movement-commit`, `movement-resolution` y
+`movement-cost` pasa **72/72**. I5R2 agrega 20 regresiones de procedencia del
+actor, rechazo de clones, actor ausente, aplicación/remoción de condiciones de
+movilidad, Speed base/equipo/buffs, restricción intrínseca, determinismo,
+pureza y ausencia de invalidación cosmética.
+
+I4/I5 continúan aislados: WebSocket y Playwright verifican regresión del flujo
+productivo existente, no integración I6. I5 no está cerrado; ambas ODR siguen abiertas.
+
+## Baseline histórica — D-5R3 Editor Táctico de Mapas MVP (Final Closure)
 
 La implementación D-5R3 conserva **681/681 pruebas unitarias/integración**,
 `typecheck` y `build` verdes en los tres workspaces, **110/110 aserciones
@@ -46,6 +59,7 @@ La aprobación arquitectónica pendiente de I5 no se deduce del resultado del CI
 | I3/I3R1 | [route-validation.test.mjs](../../tests/route-validation.test.mjs) | Legalidad, ocupación, huellas, Squeezing y puente con el validador productivo. |
 | I4 | [movement-resolution.test.mjs](../../tests/movement-resolution.test.mjs) | Composición pura y presupuesto, sin mutación; evidencia por Step. |
 | I5 | [movement-commit.test.mjs](../../tests/movement-commit.test.mjs) | 17 casos de commit, contexto diagonal, Squeezing y rechazo por precondiciones obsoletas. |
+| I5R2 | [movement-commit.test.mjs](../../tests/movement-commit.test.mjs) | 20 regresiones adicionales de identidad canónica y vigencia semántica; preserva las pruebas I5/I5R1. |
 
 Los walkthroughs conservados en Git registran la progresión de unitarias:
 I1 (`c823af5`) 563; I2 (`fbfc944`) 570; I3R1 (`2ce772b`) 590;
