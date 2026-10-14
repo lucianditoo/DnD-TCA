@@ -1,3 +1,4 @@
+import type { MovementPreviewProjection } from "../../movementPreview";
 import {
   EffectQueries,
   SpellsCatalog,
@@ -208,6 +209,12 @@ export interface TacticalCellPresentation {
   readonly className: string;
   readonly routeIndex: number;
   readonly routeStepCost: number | null;
+  readonly routeStatus: "legal" | "over-budget" | "illegal" | "unassessed" | null;
+  readonly routeGhost: boolean;
+  readonly routeLabel: string | null;
+  readonly previewLabel: string;
+  readonly routeAxis: string | null;
+  readonly requiresAcrobatics: boolean;
 }
 
 export type VolumeKind = "wall" | "pillar" | "rubble-stone" | "ledge";
@@ -408,6 +415,7 @@ export function buildBoardPresentationModel(params: {
   readonly hoveredCell?: Position | null;
   readonly camera?: CameraState;
   readonly forceSpriteFallback?: boolean;
+  readonly movementPreview?: MovementPreviewProjection | null;
 }): TacticalBoardPresentation {
   const {
     room,
@@ -424,6 +432,7 @@ export function buildBoardPresentationModel(params: {
     targetPosition,
     hoveredCell = null,
     camera = DEFAULT_CAMERA_STATE,
+    movementPreview = null,
     forceSpriteFallback = false
   } = params;
 
@@ -439,12 +448,15 @@ export function buildBoardPresentationModel(params: {
     }
   }
 
+  const ordinary = movementPreview !== null;
+  const evaluatedPreview = movementPreview?.status === "legal" || movementPreview?.status === "over-budget" ? movementPreview : null;
   const routeFinal = chargePreviewPath?.at(-1);
-  const routeFootprintKeys = new Set(
-    routeFinal && routeFootprintCombatant
-      ? getCombatantOccupiedCells({ ...routeFootprintCombatant, position: routeFinal }, snapshot).map(cellKey)
-      : []
-  );
+  const routeFootprintKeys = new Set(ordinary
+    ? evaluatedPreview?.steps.at(-1)?.occupiedCells.map(cellKey) ?? []
+    : routeFinal && routeFootprintCombatant
+      ? getCombatantOccupiedCells({ ...routeFootprintCombatant, position: routeFinal }, snapshot).map(cellKey) : []);
+  const projectedStepsByCell = new Map<string, NonNullable<typeof evaluatedPreview>["steps"][number]>();
+  for (const step of evaluatedPreview?.steps ?? []) for (const cell of step.occupiedCells) projectedStepsByCell.set(cellKey(cell), step);
 
   const aoePreviewKeys = new Set<string>();
   if (actionMode === "ability" && selected && selectedAbility) {
@@ -494,6 +506,20 @@ export function buildBoardPresentationModel(params: {
     const highlight = highlightedCells.get(key) ?? "";
     const routeIndex = displayedPath.findIndex((step) => step.x === x && step.y === y);
     const isRouteFootprint = routeFootprintKeys.has(key);
+    const routeStep = routeIndex >= 0 ? evaluatedPreview?.steps[routeIndex] : projectedStepsByCell.get(key);
+    const routeGhost = ordinary && isRouteFootprint;
+    const routeStatus: TacticalCellPresentation["routeStatus"] = !ordinary || (routeIndex < 0 && !routeStep) ? null
+      : movementPreview?.status === "illegal" ? (routeIndex === movementPreview.failedStepIndex ? "illegal" : "unassessed")
+      : routeStep && evaluatedPreview ? (routeStep.cumulativeCostFeet > evaluatedPreview.availableBudgetFeet ? "over-budget" : "legal") : "unassessed";
+    const requiresAcrobatics = !!routeStep && !!evaluatedPreview?.acrobaticsChecks.some(check => check.stepIndex === routeStep.stepIndex);
+    const routeAxis = routeStep?.squeezingAxis ?? null;
+    const routeLabel = ordinary && routeIndex >= 0
+      ? routeStep ? `${routeStep.cumulativeCostFeet} ft${requiresAcrobatics ? " · CD25" : ""}${routeAxis ? ` · ${routeAxis}` : ""}`
+        : routeStatus === "illegal" ? "Inválido" : "No evaluado" : null;
+    const candidateStatus = highlight.includes("preview-over-budget") ? "Excede presupuesto"
+      : highlight.includes("preview-illegal") ? "Candidato inválido" : highlight.includes("preview-legal") ? "Candidato legal" : "";
+    const previewLabel = [`Casilla ${x}, ${y}`, candidateStatus, routeLabel,
+      routeGhost ? `Huella prevista${routeAxis ? ` Squeezing ${routeAxis}` : ""}` : ""].filter(Boolean).join(". ");
 
     const isImpassable = impassableSet.has(key);
     const isDifficultTerrain = difficultSet.has(key);
@@ -524,11 +550,12 @@ export function buildBoardPresentationModel(params: {
     }
 
     const routeClass =
-      routeIndex >= 0 || isRouteFootprint
+      routeIndex >= 0 || isRouteFootprint || (ordinary && projectedStepsByCell.has(key))
         ? " route-cell" +
           (routeIndex === displayedPath.length - 1 || isRouteFootprint ? " route-end" : "") +
           (chargePreviewPath ? " charge-route" : "")
         : "";
+    const movementClass = `${routeStatus ? ` route-${routeStatus}` : ""}${routeGhost ? " route-ghost" : ""}${requiresAcrobatics ? " route-acrobatics" : ""}`;
     const aoeClass = aoePreviewKeys.has(key) ? " aoe-preview" : "";
     const aoeAffectedClass = aoeAffectedKeys.has(key) ? " aoe-affected" : "";
     const hazardClass = hazardCellKeys.has(key) ? " hazard-cell" : "";
@@ -558,9 +585,10 @@ export function buildBoardPresentationModel(params: {
       scenicProp,
       debugLabel,
       terrainBadge,
-      className: `cell${highlight}${routeClass}${aoeClass}${aoeAffectedClass}${hazardClass}${terrainClass}`,
+      className: `cell${highlight}${routeClass}${movementClass}${aoeClass}${aoeAffectedClass}${hazardClass}${terrainClass}`,
       routeIndex,
-      routeStepCost: routeIndex >= 0 ? (displayedPathCosts[routeIndex] ?? null) : null
+      routeStatus, routeGhost, routeLabel, previewLabel, routeAxis, requiresAcrobatics,
+      routeStepCost: routeIndex >= 0 ? (ordinary ? routeStep?.cumulativeCostFeet ?? null : displayedPathCosts[routeIndex] ?? null) : null
     });
   }
 

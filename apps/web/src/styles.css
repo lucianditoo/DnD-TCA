@@ -883,3 +883,15 @@ h1 { margin: 0; font-size: clamp(1.35rem, 3vw, 2rem); letter-spacing: 0; }
 .topbar-map-edit-btn:hover {
   background: #334e2f;
 }
+
+/* Movement previews consume shared evidence; these classes only communicate it. */
+.movement-preview-summary { border: 1px solid var(--border); padding: .6rem; border-radius: .4rem; margin: .5rem 0; }
+.movement-preview-summary p { margin: .25rem 0; }
+.movement-preview-summary[data-preview-status="over-budget"] { border-color: #ffa726; }
+.movement-preview-summary[data-preview-status="illegal"], .movement-preview-summary[data-preview-status="unavailable"] { border-color: #ff6148; }
+.cell.preview-over-budget, .cell.route-over-budget { background-color: rgba(255,167,38,.28); outline: 2px dashed #ffa726; }
+.cell.preview-illegal, .cell.route-illegal { background-color: rgba(255,97,72,.24); outline: 2px dotted #ff6148; }
+.cell.route-unassessed { outline: 1px dashed #aaa; }
+.cell.route-ghost { box-shadow: inset 0 0 0 3px #64ffda; }
+.cell.route-acrobatics { border-bottom: 3px dotted #ba8bff; }
+.route-step { max-width: 100%; font-size: .68rem; white-space: normal; }

@@ -1,15 +1,14 @@
 # Implementation Plan — D-1B-I7: Normative Movement Preview Parity
 
 Responsabilidad: tareas ejecutables para migrar exclusivamente el preview cliente de Move ordinario activo.
-Autoridad: Derivada del [NDD D-1B, Capítulo 9](docs/designs/normative-movement-design.md#capítulo-9--i7-normative-movement-preview-parity).
-Lifecycle: Temporal.
-Reemplaza: — (plan I6 ejecutado permanece en [movement/implementation-plan](docs/designs/movement/implementation-plan.md)).
-Complementa: [Estado](PROJECT_STATUS.md), [pendientes](TODO.md), [registro de auditoría](walkthrough.md).
+Autoridad: Derivada del [NDD D-1B, Capítulo 9](../normative-movement-design.md#capítulo-9--i7-normative-movement-preview-parity).
+Lifecycle: Referencia de implementación ejecutada; no es un plan activo.
+Reemplaza: — (plan I6 ejecutado permanece en [movement/implementation-plan](../movement/implementation-plan.md)).
+Complementa: [Estado](../../../PROJECT_STATUS.md), [pendientes](../../../TODO.md), [registro de auditoría](../../../walkthrough.md).
 Consumidores: Architecture Reviewer y desarrolladores/agentes tras Proceed explícito.
 
-**ESTADO:** DISEÑO ÚNICAMENTE. Awaiting Architecture Review and Proceed.
-Baseline de código auditado: `650f22dd514fac56b033acb6e937b3aabe5cdc3d`, I6 técnicamente aprobado por Review externa.
-Entrega actual: documentación/auditoría, sin código/tests. Implementación futura seleccionada: Nivel B, APIs shared existentes; si requiere cambiar shared/protocolo/server, detener expansión y reclasificar C/D antes de Proceed para ese alcance.
+**ESTADO:** IMPLEMENTACIÓN Y DoD LOCAL COMPLETADOS; READY FOR ARCHITECTURE REVIEW EXTERNA.
+**MODO:** Registro del diseño técnicamente aprobado sobre `8aa4119372315308dc4bcb05f063d68965385ac1`, ejecutado con Proceed explícito del owner. Las tareas y verificaciones futuras conservadas abajo describen el plan original y no autorizan trabajo adicional. Evidencia final en walkthrough y master-coverage; Windows CI se observa tras el push.
 
 ## 1. Archivos y responsabilidades futuras
 

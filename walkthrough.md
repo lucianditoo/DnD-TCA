@@ -1,26 +1,42 @@
-# Walkthrough — D-1B-I7 Design: Normative Movement Preview Parity
+# Walkthrough — D-1B-I7: Normative Movement Preview Parity
 
-Responsabilidad: registrar auditoría real, decisiones y alcance documental de I7.
-Autoridad: registro; el contrato vive únicamente en [NDD D-1B Capítulo 9](docs/designs/normative-movement-design.md#capítulo-9--i7-normative-movement-preview-parity).
+Responsabilidad: evidencia de implementación, verificación y límites de I7.
+Autoridad: registro; contrato en [NDD D-1B Capítulo 9](docs/designs/normative-movement-design.md#capítulo-9--i7-normative-movement-preview-parity).
 Lifecycle: Rotativo.
-Reemplaza: walkthrough I6, conservado en Git.
-Complementa: [plan activo](implementation_plan.md), [estado](PROJECT_STATUS.md), [pendientes](TODO.md).
-Consumidores: Architecture Reviewer y agentes que implementarán tras Proceed.
+Reemplaza: walkthrough de diseño I7, conservado en Git.
+Complementa: [plan ejecutado](docs/designs/movement-preview/implementation-plan.md), [estado](PROJECT_STATUS.md), [pendientes](TODO.md), [coverage](docs/testing/master-coverage.md).
+Consumidores: Architecture Reviewer y agentes que consultan el cierre.
 
-## Auditoría y decisiones
+## Resultado y autoridad
 
-Baseline limpio en master: 650f22dd514fac56b033acb6e937b3aabe5cdc3d, coincidente con origin/master. I6 técnicamente aprobado por Architecture Review externa según el owner. Auditoría de apps/web y helpers shared, localizada en NDD §9.2: un cuerpo de costes legacy en shared, cinco llamadas web de coste, una validación web, tres expresiones de presupuesto/rango y cero consumidor web de resolver/contador/Tumble. Dos renderers comparten BoardPresentationModel; SelectedInfo presenta speed shared y no coste de ruta. No tablero mobile/companion separado ni nuevo protocolo necesario.
+Diseño técnicamente aprobado y Proceed explícito del owner sobre `8aa4119372315308dc4bcb05f063d68965385ac1`. Implementación Nivel B limitada a apps/web, tests asociados y documentación. No se modificaron packages/shared/src, apps/server, schemas, protocolo, contratos ni .claude/settings.local.json. No se incorporaron archivos unrelated.
 
-Diseño selecciona resolver puro directamente y adapter web presentacional; snapshot recibido contiene todos los inputs. States distinguen legal/exceso/illegal/empty/unavailable; sin prefix inventado ni Commit. Eje y huellas vienen de shared; Tumble es intención y CD25 contingencia, sin RNG/AoO cliente nuevo. Matriz RAW no se duplica ni rediseña.
+El adapter puro llama directamente resolveMovementPipeline con snapshot/actor actuales, ruta completa, presupuesto desde Rules.totalSpeedFeet menos gasto recibido, contador diagonal real e intención isAcrobatic. Conserva evidencia shared para legal/exceso; illegal solo aporta draft/reason/índice, unavailable captura precondiciones e integridad sin inferir eje. Empty no resuelve. No hay Commit, RNG, efectos, fórmulas RAW duplicadas ni movimiento optimista.
 
-La auditoría cerró dos riesgos de autoría: endpoint enemigo bloquea hoy construir tránsito CD25 y 5ft comparte draft/botón con ordinary. NDD §9.6 define draft inválido corregible y previewKind explícito, con selector local 5ft que conserva pipeline/comando legacy. Over-budget se muestra íntegro, confirmación ordinaria bloqueada. Props y fuentes se separan para no migrar Withdraw/Run/Charge/forced/preparation. Celdas del grid actual usan z=0: autoría ordinary preservará altura del actor sin introducir movimiento vertical.
+useBoardSelection memoiza el draft y ocho candidatos del mismo snapshot. La autoría permite exceso y drafts ilegales corregibles, incluido endpoint enemigo Tumble seguido de salida libre. Confirmar ordinary exige legalidad y guardas separadas de control/economía I6; no recorta rutas. El payload conserva exclusivamente type/ids/to/path/isAcrobatic y los clicks preservan zFeet.
 
-Implementación futura estrictamente apps/web consumiendo APIs existentes: Nivel B; cambios shared/contratos/protocolo/server requieren reclasificación C/D fuera del plan seleccionado. Esta entrega no es Proceed y espera Review/Proceed explícitos. Las doce preguntas de diseño quedan respondidas en NDD §9.8; ningún ODR bloqueante permanece abierto.
+previewKind aísla ordinary de placement/GM/Withdraw/Run/5ft/Charge/forced/demo/editor. El selector local de paso de 5 pies conserva comando y evaluación legacy; los cambios de familia limpian intención Tumble. Los helpers tácticos y de rango de conjuros permanecen disponibles.
 
-## Verificación documental
+Panel y ambos renderers consumen una misma proyección. Ghost final y pasos salen de occupiedCells/spatialMode/squeezingAxis de Resolution; etiquetas acumuladas y saldo vienen de esa evidencia. El token publicado conserva posición/eje. CD25 es contingencia por intersección de footprints, excluye dead/dying/stable y anuncia posible interrupción; CD15/AdO siguen siendo resueltos por servidor.
 
-NDD único ampliado, plan temporal en raíz e INDEX actualizado; plan I6 ejecutado conservado como referencia. PROJECT_STATUS refleja aprobación I6 y diseño I7; TODO contiene solo próximos pasos. Estrategia futura cubre paridad/no mutation/budget/axis/Tumble, ambos renderers, staleness, payload y regresiones. Sin tests implementados/ejecutados ni nuevas afirmaciones de cobertura: master-coverage y Registry permanecen intactos.
+## Verificación
 
-DoD de esta entrega: diff check, enlaces y anchors locales, SSOT, contenido auditado y diff únicamente Markdown verificados antes de commit. No código productivo, shared TS, servidor, UI ni tests modificados.
+| Gate | Resultado local |
+|---|---|
+| npm test | 792/792 |
+| Preview + presentación focalizados | 55/55 |
+| npm run typecheck | Verde, tres workspaces |
+| npm run build | Verde, tres workspaces |
+| node scripts/e2e-websocket.mjs | 110/110 |
+| npm run test:ui | 22/22 |
+| Repetición stale con room-update N+1 | 1/1 |
 
-Awaiting Architecture Review and Proceed.
+Los seis tests UI nuevos usan transporte controlado y el handler I6 real sin cambios productivos. Verifican diagonales DT, paridad inicial, Tumble CD25/altura, edición/exceso/modos, estado N→N+1 y ghost común. La suite WebSocket independiente usa servidor real. El test stale verifica recomposición del draft al recibir room-update y, separadamente, rechazo autoritativo del Intent retrasado, sin gasto/movimiento optimista ni reintento. La prueba de humo Entangled selecciona ahora explícitamente el modo 5ft antes de dibujar.
+
+Los fixtures de velocidad baja eliminan la armadura de demo para usar la velocidad efectiva declarada; no se cambiaron reglas para acomodar expectativas. Una aserción exploratoria posterior al envío esperaba un draft visible, aunque la confirmación limpia overlays por diseño existente; se ubicó la comprobación de recomposición antes del envío y pasó. La ejecución UI concurrente inicial encontró el puerto ocupado por nuestro E2E; la repetición se realizó con ese servidor detenido. Todos los servidores propios se detuvieron. Build mantiene la advertencia previa de bundle >500 kB.
+
+## Cierre documental y límites
+
+Plan retirado de raíz y conservado en docs/designs/movement-preview/implementation-plan.md sin duplicar un plan activo. INDEX, PROJECT_STATUS, TODO y master-coverage sincronizados; NDD recibe solo aclaración factual de la divergencia histórica. Enlaces locales, scope, SSOT y diff check revisados. Registry, inventarios PHB y deuda técnica no cambian: I7 no incorpora reglas nuevas ni cierra follow-ups tácticos, AoO predictivo, rango de conjuros o D-7.
+
+DoD local completo. Commit único y push origin/master; Windows CI se observa sobre el SHA publicado y se informa al owner. Ready for Architecture Review; no se autoaprueba la implementación.

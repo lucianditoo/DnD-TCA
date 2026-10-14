@@ -1,3 +1,4 @@
+import type { MovementPreviewProjection } from "../../movementPreview";
 import { useCallback, useMemo, useState } from "react";
 import type {
   Ability,
@@ -23,6 +24,7 @@ import { CombatantSprite } from "./sprites";
 import { TacticalScene3D } from "./renderer/TacticalScene3D";
 
 export function Board({
+  movementPreview = null,
   room,
   snapshot,
   selected,
@@ -37,6 +39,7 @@ export function Board({
   targetPosition,
   onCellClick
 }: {
+  movementPreview?: MovementPreviewProjection | null;
   room: CombatRoom;
   snapshot: CombatRulesSnapshot<ProductionEffectId>;
   selected: Combatant | null;
@@ -64,9 +67,10 @@ export function Board({
   }, []);
 
   const presentation = useMemo(
-    () =>
+    () => movementPreview?.status === "unavailable" ? null :
       buildBoardPresentationModel({
         room,
+        movementPreview,
         snapshot,
         selected,
         targetId,
@@ -87,6 +91,7 @@ export function Board({
       }),
     [
       room,
+      movementPreview,
       snapshot,
       selected,
       targetId,
@@ -111,6 +116,8 @@ export function Board({
     setCameraZoom(DEFAULT_CAMERA_STATE.zoom);
     setCameraResetRevision((revision) => revision + 1);
   }
+
+  if (!presentation) return <section role="alert">Preview no disponible: {movementPreview?.status === "unavailable" ? movementPreview.reason : "Integridad espacial"}</section>;
 
   return (
     <section
@@ -256,6 +263,11 @@ export function Board({
                   data-testid={`cell-${cell.x}-${cell.y}`}
                   data-cell-coord={`${cell.x},${cell.y}`}
                   data-scenic-prop={cell.scenicProp}
+                  data-route-status={cell.routeStatus ?? undefined}
+                  data-route-axis={cell.routeAxis ?? undefined}
+                  data-route-ghost={String(cell.routeGhost)}
+                  aria-label={cell.previewLabel}
+                  title={cell.previewLabel}
                   onPointerEnter={() => setHoveredCell(cell.position)}
                   onPointerLeave={() =>
                     setHoveredCell((current) =>
@@ -266,7 +278,7 @@ export function Board({
                 >
                   <span className="cell-overlay-wash" aria-hidden="true" />
 
-                  {cell.routeIndex >= 0 && cell.routeStepCost !== null && (
+                  {cell.routeLabel ? <span className="route-step">{cell.routeLabel}</span> : cell.routeIndex >= 0 && cell.routeStepCost !== null && (
                     <span className="route-step">{cell.routeStepCost}</span>
                   )}
                 </button>

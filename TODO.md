@@ -13,7 +13,7 @@ Consumidores: Agentes al retomar el proyecto y propietario al priorizar tareas.
 
 ## Continuidad inmediata de D-1B
 
-- Obtener Architecture Review y Proceed de [I7 Preview Parity, NDD Capítulo 9](docs/designs/normative-movement-design.md#capítulo-9--i7-normative-movement-preview-parity) y [plan activo](implementation_plan.md). Implementar solo después de esa aprobación.
+- Obtener Architecture Review externa de la implementación I7 Preview Parity publicada; [NDD Capítulo 9](docs/designs/normative-movement-design.md#capítulo-9--i7-normative-movement-preview-parity), [plan ejecutado](docs/designs/movement-preview/implementation-plan.md) y [evidencia](walkthrough.md). No deducir aprobación arquitectónica del CI.
 - Mantener previews tácticos, AoO predictivo, corrección de rango de conjuro y D-7/movimiento segmentado como follow-ups separados; no ampliar I7 para resolverlos.
 
 ## Diseños espaciales pendientes

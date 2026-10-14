@@ -63,7 +63,10 @@ function disposeObject(object: THREE.Object3D) {
 function makeCellMaterial(className: string): THREE.MeshBasicMaterial {
   let color = 0x000000;
   let opacity = 0;
-  if (className.includes("route-cell")) { color = 0xffd54f; opacity = 0.42; }
+  if (className.includes("route-illegal") || className.includes("preview-illegal")) { color = 0xff6148; opacity = 0.48; }
+  else if (className.includes("route-over-budget") || className.includes("preview-over-budget")) { color = 0xffa726; opacity = 0.48; }
+  else if (className.includes("route-ghost")) { color = 0x64ffda; opacity = 0.55; }
+  else if (className.includes("route-cell")) { color = 0xffd54f; opacity = 0.42; }
   else if (className.includes("move-highlight")) { color = 0x39d9c4; opacity = 0.38; }
   else if (className.includes("attack-highlight")) { color = 0xff6148; opacity = 0.4; }
   else if (className.includes("ranged-highlight")) { color = 0xffb74d; opacity = 0.38; }
@@ -529,6 +532,17 @@ export function TacticalScene3D({
       content.add(group);
     }
 
+    for (const cell of presentation.cells) {
+      if (!cell.routeLabel) continue;
+      const texture = makeLabelTexture(cell.routeLabel, cell.routeStatus === "illegal" ? "#ff6148" : cell.routeStatus === "over-budget" ? "#ffa726" : "#64ffda");
+      textures.set(`route-${cell.key}`, texture);
+      const label = new THREE.Sprite(new THREE.SpriteMaterial({ map: texture, transparent: true, depthTest: false }));
+      label.scale.set(1.5, 0.38, 1);
+      label.position.set(boardX + cell.x + 0.5, 0.45, boardZ + cell.y + 0.5);
+      label.renderOrder = 55;
+      content.add(label);
+    }
+
     scene.add(content);
     runtime.renderer.render(scene, runtime.camera);
     return () => textures.forEach((texture) => texture.dispose());
@@ -548,6 +562,13 @@ export function TacticalScene3D({
       {initializationError ? <p className="renderer-warning">{initializationError}</p> : null}
       <span className="sr-only">Arrastrá con botón izquierdo para orbitar e inclinar el tablero. Botón derecho para desplazar (pan). La rueda controla el zoom.</span>
       <div className="sr-only" data-testid="scene-entities" aria-live="polite">
+        {presentation.cells.filter(cell => cell.routeStatus || cell.className.includes("move-candidate")).map(cell => (
+          <span key={`route-${cell.key}`} data-testid={`scene-cell-${cell.x}-${cell.y}`}
+            data-route-status={cell.routeStatus ?? undefined} data-route-axis={cell.routeAxis ?? undefined}
+            data-route-ghost={String(cell.routeGhost)} data-route-cost={cell.routeStepCost ?? undefined}>
+            {cell.previewLabel}
+          </span>
+        ))}
         {presentation.tokens.map((token) => (
           <span
             key={token.id}

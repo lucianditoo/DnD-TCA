@@ -1313,6 +1313,7 @@ Queda congelada de forma canónica la siguiente matriz de costes y paridad:
    - **AdOs y Fase:** Se encolan las oportunidades en `room.pendingOpportunityAttacks`, se ejecuta `syncEncounterPhase(room)` y se difunde mediante `broadcast(room)`.
 
 ### 8.6 Divergencia Temporal con UI / Preview
+Aclaración factual tras I7: Move ordinario activo consume ahora Resolution shared mediante el adapter web y deja de usar estos costes legacy. La divergencia histórica de I6 descrita abajo permanece aplicable a las familias tácticas fuera de I7; no cambia la matriz ni el contrato de §9.
 Dado que en I6 el frontend continuará consumiendo temporalmente los helpers legacy:
 1. **Diagonales en Terreno Difícil:**
    - Servidor I4/I5: coste fijo normativo de 15 ft sin consumir paridad normal.

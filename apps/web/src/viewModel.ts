@@ -1,6 +1,5 @@
 import {
   calculatePathCostFeet,
-  calculatePathStepCostsFeet,
   createCombatRulesSnapshot,
   distanceBetweenFootprintsFeet,
   distanceFeet,

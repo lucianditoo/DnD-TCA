@@ -15,7 +15,15 @@ Consumidores: Revisores que verifican las validaciones de un commit.
 Este documento consolida las directrices y el reporte de cobertura de testing
 del motor de combate D&D 3.5.
 
-## Baseline de código más reciente — D-1B-I6 (Ready for Architecture Review)
+## Baseline de código más reciente — D-1B-I7 (Ready for Architecture Review)
+
+**792/792 pruebas unitarias/integración**, **55/55 focalizadas** (adapter de preview y presentación 2.5D), typecheck y build verdes en los tres workspaces, **110/110 aserciones WebSocket** y **22/22 escenarios Playwright**. La prueba focalizada stale se repitió con una aserción adicional de recomposición por room-update: **1/1**.
+
+I7 compara el adapter con resolveMovementPipeline sobre el mismo snapshot; verifica costes/contexto/huellas, presupuesto completo, pureza, unavailable e illegal sin evidencia inventada, Tumble/CD25 contingente, payload y altura, guardas separadas, aislamiento de familias y presentación común en dos modos/cuatro cámaras. Los seis escenarios UI I7 usan transporte WebSocket controlado con el handler I6 real y sin cambios; la suite WebSocket separada verifica el servidor real. Las regresiones incluyen demo, D-5, estados, maniobras y renderer. Servidor/shared/protocolo permanecen idénticos al baseline aprobado.
+
+Ejecución local Windows/Node 24.18.0. Servidores locales propios detenidos al terminar. Build conserva la advertencia preexistente de bundle >500 kB. Windows CI remoto se verifica después del push; esta evidencia local no constituye aprobación arquitectónica.
+
+## Baseline histórica — D-1B-I6
 
 **746/746 pruebas unitarias/integración**, **188/188 focalizadas** (movement cost/resolution/commit/integration, squeezing axis, effects/snapshot, Withdraw/Run, D-5 y GM), typecheck y build verdes en los tres workspaces, **110/110 aserciones WebSocket** y **16/16 escenarios Playwright**.
 

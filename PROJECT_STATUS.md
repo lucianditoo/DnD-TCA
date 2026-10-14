@@ -10,8 +10,8 @@
 - Última vertical funcional implementada: D-5 Editor Táctico de Mapas (MVP), conforme a su [NDD canónico](docs/designs/map-builder-mvp/design.md) y [plan](docs/designs/map-builder-mvp/implementation-plan.md); **CERRADA y TÉCNICAMENTE APROBADA** (Architecture Review sobre commit `6fd385b42b4dc51b8dcbb195108d7051a600944f`).
 - Última decisión arquitectónica: Sprint D-1B Capítulo 7 (Integration & Implementation Contracts) y NDD de Demo Táctica Automática (`f8c0e9d`).
 - Implementación integrada: D-5 (remediado en D-5R1/R2/R3) cierra exhaustivamente todos los requisitos de arquitectura: Candidate Board validation pura sin mutación previa al commit, invariante estricta de compresión `srd_squeezing` (comparación canónica de coordenadas `x, y, zFeet` sin permitir rotación o desplazamiento de la huella comprimida); máquina de estados Save/Error/ACK con limpieza de errores viejos y verificación de `room-update` posterior a la petición; gating del modal de confirmación crítica durante la edición del mapa; métricas y logs de pilares corregidos a `loe-only` (excluyendo muros); y suite E2E WebSocket con cobertura de `update-board`.
-- Última remediación de infraestructura: D-1B-I5R2 vincula la resolución a su actor canónico y verifica vigencia espacial, movilidad efectiva y fuentes de presupuesto; **TÉCNICAMENTE APROBADO** (`865405a`). D-1B-I6 implementado con Proceed explícito sobre 16711b6: Move ordinario consume Resolution/Commit, coste RAW y eje autoritativo persistente. DoD local y Windows CI verdes en 650f22dd514fac56b033acb6e937b3aabe5cdc3d; TECHNICALLY APPROVED por Architecture Review externa según el owner. I7 Preview Parity en diseño, pendiente de Review y Proceed.
-- Baseline actual y evidencia de I6: [master-coverage.md](docs/testing/master-coverage.md); gates locales completos verdes.
+- Última remediación de infraestructura: D-1B-I5R2 vincula la resolución a su actor canónico y verifica vigencia espacial, movilidad efectiva y fuentes de presupuesto; **TÉCNICAMENTE APROBADO** (`865405a`). D-1B-I6 implementado con Proceed explícito sobre 16711b6: Move ordinario consume Resolution/Commit, coste RAW y eje autoritativo persistente. DoD local y Windows CI verdes en 650f22dd514fac56b033acb6e937b3aabe5cdc3d; TECHNICALLY APPROVED por Architecture Review externa según el owner. I7 Preview Parity implementado con diseño aprobado y Proceed explícito; DoD local verde, Ready for Architecture Review externa.
+- Baseline actual y evidencia de I7: [master-coverage.md](docs/testing/master-coverage.md); gates locales completos verdes.
 - GitHub Actions sobre Windows es el gate canónico de cierre para la revisión
   publicada.
 
@@ -25,7 +25,7 @@
 | I4 — Movement Resolution | Pipeline puro de validación/coste/verificación de presupuesto; I5R2 conserva combatantId y evidencia canónica espacial y de movilidad/presupuesto. |
 | I5 / I5R1 / I5R2 — Movement Commit | Aplicación autoritativa remediada y cerrada: procedencia de actor vivo en room y guardas anti-stale espaciales y de movilidad; **TÉCNICAMENTE APROBADO** (`865405a`). |
 | I6 — Move Action Productive Integration | Integrado para Move ordinario activo; eje persistente/copia/snapshot y compatibilidad mínima legacy. TECHNICALLY APPROVED (650f22d). |
-| I7 — Normative Movement Preview Parity | Auditoría y diseño en NDD Capítulo 9; plan temporal activo. Sin código/tests; Awaiting Architecture Review and Proceed. |
+| I7 — Normative Movement Preview Parity | Implementado en web usando resolveMovementPipeline existente: draft/candidatos, coste/contexto, Tumble/CD25 contingente y ghost común 2D/2.5D. Servidor/shared/protocolo sin cambios. DoD local verde; Ready for Architecture Review externa. |
 
 La presentación incorpora un **renderer WebGL táctico 2.5D** con respaldo `2D`, cámara orbital limitada, cuatro presets y sprites pixel-art, estrictamente desacoplado sobre el grid autoritativo 2D con huellas multicasilla. No es todavía el motor espacial 3D normativo: las alturas visuales son cosméticas y los NDD espaciales siguen siendo el destino de migración mecánica. CI verde no significa V1 completa.
 
@@ -39,8 +39,8 @@ El monorepo contiene:
 - capa de presentación táctica 2.5D (`TacticalScene3D.tsx`) con Three.js, cámara ortográfica orbital por arrastre, presets `NO/NE/SE/SO`, zoom acotado, sprites PNG pixel-art originales con filtrado nearest-neighbor, meshes volumétricos, picking y fallback 2D automático, sin alterar reglas ni autoridad del servidor;
 - demostración táctica automática y guionada (`scripted_tactical_demo_v1`) con 3 escenas reproducibles en salas efímeras aisladas, runner autoritativo sincronizado por confirmaciones de estado y panel de observación/transporte (`DemoPanel`);
 - snapshots source-first sin estadísticas derivadas persistidas;
-- contexto autoritativo de movimiento por turno, inicializado y reiniciado, todavía sin mutación desde la resolución productiva;
-- assessment compartido y puro de Movement Cost, con diagonales normales 5/10, costes fijos de terreno difícil y evidencia por Step, compuesto junto a Route Validation y Budget Verification por un Movement Resolution Pipeline puro (`resolveMovementPipeline`), con un Authoritative Movement Commit (`commitMovementResolution`) que aplica ese resultado bajo precondición de estado vigente — todavía aislado de la resolución productiva;
+- contexto autoritativo de movimiento por turno, inicializado/reiniciado y actualizado por Commit I6; preview ordinario I7 lo consume sin mutarlo;
+- assessment compartido y puro de Movement Cost, con diagonales normales 5/10, costes fijos de terreno difícil y evidencia por Step, compuesto junto a Route Validation y Budget Verification por un Movement Resolution Pipeline puro (`resolveMovementPipeline`), con un Authoritative Movement Commit (`commitMovementResolution`) que aplica ese resultado bajo precondición de estado vigente — integrado en Move ordinario activo por I6 y consumido predictivamente por I7;
 - ActiveEffects, EffectReducer, EffectManager, Tick Layer y Event Bus;
 - economía de acciones, movimiento, amenaza, AdO y huellas multicasilla;
 - ataques normales, completos, de toque, críticos, daño de precisión y

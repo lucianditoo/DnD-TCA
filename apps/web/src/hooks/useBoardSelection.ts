@@ -1,8 +1,9 @@
 import { useMemo } from "react";
+import { buildMovementPreview, buildMovementCandidates, getMovementPreviewKind } from "../movementPreview";
 import { distanceBetweenFootprintsFeet, lifeStatus, calculatePathCostFeet, calculatePathStepCostsFeet, createCombatRulesSnapshot, validateSpecialManeuver, type CombatRoom, type Combatant, type Participant, type Position } from "@dnd-tactical/shared";
 import { getAbilityTargets, getActiveCombatant, getChargePreviewPath, getGmMoveHighlightedCells, getHighlightedCells, getRangePreview, type ActionMode, type TacticMode } from "../viewModel";
 
-export function useBoardSelection({ room, snapshot, selectedId, participant, actionMode, tacticMode, selectedAbilityId, movementPath, gmMoveMode, gmMoveTargetId, targetId, withdrawArmed = false, runArmed = false, isDemoActive = false }: { room: CombatRoom | null; snapshot: import("@dnd-tactical/shared").CombatRulesSnapshot<import("@dnd-tactical/shared").ProductionEffectId> | null; selectedId: string | null; participant: Participant | null; actionMode: ActionMode; tacticMode: TacticMode; selectedAbilityId: string; movementPath: Position[]; gmMoveMode: boolean; gmMoveTargetId: string; targetId: string; withdrawArmed?: boolean; runArmed?: boolean; isDemoActive?: boolean }) {
+export function useBoardSelection({ room, snapshot, selectedId, participant, actionMode, tacticMode, selectedAbilityId, movementPath, gmMoveMode, gmMoveTargetId, targetId, withdrawArmed = false, runArmed = false, isDemoActive = false, isAcrobatic = false, fiveFootStepArmed = false, isMapEditing = false }: { room: CombatRoom | null; snapshot: import("@dnd-tactical/shared").CombatRulesSnapshot<import("@dnd-tactical/shared").ProductionEffectId> | null; selectedId: string | null; participant: Participant | null; actionMode: ActionMode; tacticMode: TacticMode; selectedAbilityId: string; movementPath: Position[]; gmMoveMode: boolean; gmMoveTargetId: string; targetId: string; withdrawArmed?: boolean; runArmed?: boolean; isDemoActive?: boolean; isAcrobatic?: boolean; fiveFootStepArmed?: boolean; isMapEditing?: boolean }) {
   const active = useMemo(() => getActiveCombatant(room), [room]);
   const effectiveSelectedId = isDemoActive ? (selectedId ?? active?.id) : (room?.phase === "active" ? active?.id ?? selectedId : selectedId);
   const selected = room?.combatants.find((combatant) => combatant.id === effectiveSelectedId) ?? active ?? room?.combatants[0] ?? null;
@@ -26,9 +27,25 @@ export function useBoardSelection({ room, snapshot, selectedId, participant, act
   }, [snapshot, selected, selectedTarget, actionMode, tacticMode]);
   const displayedPath = chargePreviewPath ?? bullRushPreviewPath ?? movementPath;
   const activeSnapshot = snapshot ?? (room ? createCombatRulesSnapshot(room) : null);
-  const movementPathCost = activeSnapshot && selected ? calculatePathCostFeet(selected.position, movementPath, activeSnapshot) : 0;
-  const displayedPathCosts = activeSnapshot && selected ? calculatePathStepCostsFeet(selected.position, displayedPath, activeSnapshot) : [];
-  const highlightedCells = useMemo(() => gmMoveMode && participant?.role === "gm" ? getGmMoveHighlightedCells(room, snapshot, gmMoveTarget) : getHighlightedCells(room, snapshot, selected, actionMode, selectedAbilityId, movementPath, withdrawArmed, runArmed), [room, snapshot, selected, actionMode, selectedAbilityId, movementPath, withdrawArmed, runArmed, gmMoveMode, gmMoveTarget, participant?.role]);
+  const previewKind = getMovementPreviewKind({ phase: room?.phase, actionMode, tacticMode, gmMoveMode,
+    withdrawArmed, runArmed, fiveFootStepArmed, isDemoActive, isMapEditing });
+  const movementPreview = useMemo(() => previewKind === "ordinary-move"
+    ? buildMovementPreview({ snapshot: activeSnapshot, actorId: selected?.id ?? null, path: movementPath, isAcrobatic }) : null,
+    [previewKind, activeSnapshot, selected?.id, movementPath, isAcrobatic]);
+  const movementCandidates = useMemo(() => previewKind === "ordinary-move"
+    ? buildMovementCandidates({ snapshot: activeSnapshot, actorId: selected?.id ?? null, path: movementPath, isAcrobatic }) : new Map(),
+    [previewKind, activeSnapshot, selected?.id, movementPath, isAcrobatic]);
+  const evaluated = movementPreview?.status === "legal" || movementPreview?.status === "over-budget" ? movementPreview : null;
+  const movementPathCost = previewKind === "ordinary-move" ? evaluated?.totalCostFeet ?? null
+    : activeSnapshot && selected ? calculatePathCostFeet(selected.position, movementPath, activeSnapshot) : 0;
+  const displayedPathCosts = previewKind === "ordinary-move" ? evaluated?.steps.map(step => step.cumulativeCostFeet) ?? []
+    : activeSnapshot && selected ? calculatePathStepCostsFeet(selected.position, displayedPath, activeSnapshot) : [];
+  const highlightedCells = useMemo(() => {
+    if (previewKind === "ordinary-move") return new Map<string, string>(Array.from(movementCandidates, ([key, preview]) =>
+      [key, ` move-candidate preview-${preview.status}${preview.status === "legal" ? " move-highlight" : ""}`]));
+    return gmMoveMode && participant?.role === "gm" ? getGmMoveHighlightedCells(room, snapshot, gmMoveTarget)
+      : getHighlightedCells(room, snapshot, selected, actionMode, selectedAbilityId, movementPath, withdrawArmed, runArmed);
+  }, [previewKind, movementCandidates, room, snapshot, selected, actionMode, selectedAbilityId, movementPath, withdrawArmed, runArmed, gmMoveMode, gmMoveTarget, participant?.role]);
 
-  return { active, selected, targets, enemyTargets, aidAllies, pendingAidBuffs, gmMoveTarget, selectedAbility, abilityTargets, targetDistanceFeet, rangePreview, pendingOpportunities, hasPendingOpportunities, chargePreviewPath, bullRushPreviewPath, displayedPath, movementPathCost, displayedPathCosts, highlightedCells };
+  return { active, selected, targets, enemyTargets, aidAllies, pendingAidBuffs, gmMoveTarget, selectedAbility, abilityTargets, targetDistanceFeet, rangePreview, pendingOpportunities, hasPendingOpportunities, chargePreviewPath, bullRushPreviewPath, displayedPath, movementPathCost, displayedPathCosts, highlightedCells, previewKind, movementPreview, movementCandidates };
 }

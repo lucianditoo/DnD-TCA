@@ -369,6 +369,7 @@ test.describe('Smoke Test Táctico Visual', () => {
     await expect(page.getByTestId('movement-speed-preview')).toContainText('Velocidad efectiva: 15 ft');
     await expect(page.getByTestId('movement-speed-preview')).toContainText('Entangled ×1/2');
     await expect(page.getByRole('button', { name: 'Correr (×4/×3 velocidad)' })).toBeDisabled();
+    await page.getByTestId('movement-five-foot-mode').click();
     await page.locator('[data-testid="cell-2-3"]').click();
     await expect(page.getByRole('button', { name: 'Confirmar paso de 5 pies' })).toBeEnabled();
   });
