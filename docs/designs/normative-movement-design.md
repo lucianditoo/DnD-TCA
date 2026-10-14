@@ -1171,11 +1171,25 @@ Este capítulo especifica la integración productiva autoritativa de la **Move A
 - **NO altera** la fase de preparación (`room.phase === "preparation"`): la colocación inicial de tokens permanece como colocación libre gobernada por sus validaciones existentes fuera de I4/I5.
 - Los helpers legacy compartidos (`validateMovePath`, `calculatePathStepCostsFeet`, `calculatePathCostFeet`) se conservan sin alteración para sustentar las acciones tácticas no migradas y el preview del cliente.
 - Las ODRs normativas **ODR-D1B-C3-01** (Squeezing + Terreno Difícil) y **ODR-D1B-I5-1** (persistencia de `squeezingAxis`) permanecen abiertas y no se resuelven en este sprint.
+- **Sin asunción de Double Move ni movimiento segmentado productivo:** I6 migra únicamente la Move Action ordinaria. La economía productiva vigente (`canUseMoveAction`) rechaza tajantemente un segundo `move-combatant` si `usedMoveAction === true`. Cualquier soporte futuro para gastar la acción estándar en un segundo movimiento pertenece al diseño formal de economía de acciones y Double Move, no a I6.
 
 ### 8.2 Autoridad y Responsabilidad del Action Consumer (`handleMoveCombatant`)
 El handler `handleMoveCombatant` retiene la responsabilidad de:
 1. **Control y Turno:** Verificar pertenencia del actor (`requireCombatantControl`), fase activa (`ensureActiveTurn`) y disponibilidad general de acción (`Rules.evaluateActionAvailability`).
-2. **Economía de Acción:** Evaluar `canUseMoveAction(snapshot, combatant)` y verificar que no existan modos de ataque preparados incompatibles (`room.currentTurn.attackMode !== "none"`).
+2. **Economía de Acción y Gating Exacto de Ataque:**
+   - Evaluar `canUseMoveAction(snapshot, combatant)`.
+   - Preservar con exactitud el gating vigente de modo de ataque:
+     ```ts
+     if (
+       room.currentTurn.attackMode === "full" ||
+       (room.currentTurn.attackMode === "standard" && !room.currentTurn.usedStandardAction)
+     ) {
+       throw new Error(
+         "No puede realizar un movimiento normal mientras tenga preparado un modo de ataque (Estandar o Completo). Cancele la preparacion primero."
+       );
+     }
+     ```
+     *(Nótese: si `attackMode === "standard"` pero `usedStandardAction === true`, el ataque estándar ya fue ejecutado y la Move Action ordinaria subsiguiente es legal según la semántica productiva actual).*
 3. **Derivación Autoritativa del Presupuesto:** Calcular el presupuesto disponible de la acción sin admitir inputs del cliente ni duplicar fórmulas:
    ```ts
    const effectiveSpeedFeet = Rules.totalSpeedFeet(snapshot, combatant);
@@ -1183,10 +1197,33 @@ El handler `handleMoveCombatant` retiene la responsabilidad de:
    ```
 4. **Contexto Inicial:** Extraer `initialContext = { normalDiagonalStepsThisTurn: room.currentTurn.normalDiagonalStepsThisTurn }`.
 
-### 8.3 Secuencia Exacta de Acrobacias e Interrupción
-Para preservar la semántica actual de chequeo de ruta antes de tiradas y la proyección determinista del prefijo:
-1. **Resolución Candidata Completa:** Se invoca `resolveMovementPipeline` sobre la ruta candidata con `isAcrobatic = !!command.isAcrobatic`.
-   - Si el resultado NO es `ready`, se rechaza el comando inmediatamente (por ejemplo, ruta topológicamente ilegal o presupuesto insuficiente). No se realiza ninguna tirada de dados ni mutación.
+### 8.3 Coste Normativo de Acrobacias y Secuencia Exacta de Interrupción
+
+#### 8.3.1 Naturaleza del Coste x2 en Acrobacias
+En el motor D&D 3.5 del repositorio (Sprint 023 / `MOVE-ACROBATIC` en Registry):
+> Moverse de forma acrobática (Piruetas / Tumble) cuesta el doble de movimiento por casilla (`stepCost *= 2`).
+
+Arquitectónicamente, este x2 es una **contribución de Movement Cost por Step**, no una deducción abstracta de presupuesto.
+- En la infraestructura legacy, `calculatePathStepCostsFeet` aplicaba `if (isAcrobatic) stepCost *= 2`.
+- Para que I6 no pierda silenciosamente este coste ×2 al conectarse a `resolveMovementPipeline`, `MovementCostStep` y `assessMovementCost` (o el puente normativo en `movementCost.ts`) deben recibir explícitamente `isAcrobatic?: boolean`.
+- **Composición de Costes con Acrobacias:**
+  1. **Acrobacias normal (sin DT ni Squeezing):**
+     - Ortogonal: base 5 ft, coste 10 ft (5 * 2).
+     - Diagonal: base 5/10 ft (alternado), coste 10/20 ft (duplicado), incrementa contador diagonal en 1.
+  2. **Acrobacias + Terreno Difícil:**
+     - Siguiendo la regla PHB de Tumble en terreno difícil (CD incrementada y coste cumulativo) y la semántica multiplicativa de D&D 3.5:
+     - Ortogonal: base 5 ft, DT = 10 ft, Acrobático = 20 ft (duplicado).
+     - Diagonal: base 5 ft, DT fijo = 15 ft, Acrobático = 30 ft (15 * 2). No altera la paridad normal.
+  3. **Acrobacias + Squeezing (sin DT):**
+     - Ortogonal: base 5 ft, Squeezing = 10 ft, Acrobático = 20 ft.
+     - Diagonal: base 5/10 ft, Squeezing = 10/20 ft, Acrobático = 20/40 ft.
+  4. **Acrobacias + Squeezing + DT:**
+     - Permanece bloqueado por **ODR-D1B-C3-01** (`unsupported-cost-combination`).
+- Esta ampliación controlada de `movementCost.ts` asegura que la autoridad de coste resida exclusivamente en el Rule Engine y que `commitMovementResolution` acredite con exactitud el gasto en `movementUsedFeet` sin recalcular nada.
+
+#### 8.3.2 Secuencia Transaccional de Tiradas y confirmedPath
+1. **Resolución Candidata Completa:** Se invoca `resolveMovementPipeline` sobre la ruta candidata completa con `isAcrobatic = !!command.isAcrobatic`.
+   - Si el resultado NO es `ready`, se rechaza el comando inmediatamente. Cero tiradas de dados y cero mutación.
 2. **Detección de Pasos a Través de Enemigos:** Se inspecciona `resolution.steps`. Si un step atraviesa casillas ocupadas por un enemigo vivo y `isAcrobatic` es true:
    - Se realiza la tirada de Acrobacias (CD 25).
    - Los resultados de las tiradas se acumulan en un búfer local de publicación (`pendingLogs`).
@@ -1196,13 +1233,23 @@ Para preservar la semántica actual de chequeo de ruta antes de tiradas y la pro
    - Si hubo interrupción pero existe un prefijo válido, se re-ejecuta `resolveMovementPipeline` **exclusivamente sobre `confirmedPath`**, reutilizando el mismo `snapshot`, `initialContext`, `availableBudgetFeet` e `isAcrobatic = true`.
    - La nueva resolución del prefijo es la única que avanza al Commit. Sus `resultingContext` y costes reflejan con exactitud los steps efectivamente transitados.
 
-### 8.4 Ataques de Oportunidad (AoO)
-1. Sobre el camino final confirmado, se ejecuta `findTriggeredOpportunityAttacksForPath`:
-   - Se procesan tiradas de CD 15 de Acrobacias para esquivar AdO según la regla vigente, acumulando mensajes en el búfer local.
-   - Si hubo interrupción por Acrobacias fallida, se genera el AdO correspondiente del enemigo interceptor.
-2. Las oportunidades resultantes se conservan localmente y **solo se encolan** en `room.pendingOpportunityAttacks` tras un Commit exitoso.
+### 8.4 Ataques de Oportunidad (AoO) y Métrica Consumida
+1. **Métrica Entregada al Helper de AoO:**
+   - En `findTriggeredOpportunityAttacksForPath(room, mover, path, distanceMovedFeet, ...)`:
+     - El parámetro histórico `distanceMovedFeet` se utiliza internamente para dos propósitos:
+       1. Gate de paso mínimo: `if (distanceMovedFeet <= room.board.cellSizeFeet || path.length === 0) return [];`
+       2. Asignación a cada AdO: `movementCostFeet: Math.max(0, distanceMovedFeet - costBeforeOrigin)`.
+     - Por lo tanto, este parámetro representa **Movement Cost de la ruta**, no distancia euclidiana ni Spatial Distance.
+     - En I6, se pasa explícitamente `resolution.totalCostFeet` a `findTriggeredOpportunityAttacksForPath`.
+2. **Tiradas CD 15 de Acrobacias:**
+   - Se evalúan las tiradas CD 15 para evadir AdO sobre las oportunidades disparadas en el camino confirmado.
+   - Los logs de las tiradas se acumulan en el búfer local.
+   - Si hubo interrupción por Acrobacias fallida (CD 25), se genera el AdO correspondiente del enemigo interceptor.
+3. **Encolado Post-Commit:**
+   - Las oportunidades resultantes se conservan localmente y **solo se encolan** en `room.pendingOpportunityAttacks` tras un Commit exitoso.
 
-### 8.5 Compromiso Atómico (Commit) y Publicación Transaccional
+### 8.5 Compromiso Atómico (Commit) y Frontera de Publicación
+
 1. **Precondiciones:** Se construye `preconditions`:
    - `expectedTurnCombatantId: combatant.id`
    - `expectedRound: room.round`
@@ -1210,10 +1257,26 @@ Para preservar la semántica actual de chequeo de ruta antes de tiradas y la pro
    - `expectedMovementUsedFeet: room.currentTurn.movementUsedFeet`
    - `expectedDiagonalContext: initialContext`
 2. **Ejecución de Commit:** Se invoca `commitMovementResolution({ room, combatant: authoritativeCombatant, resolution, preconditions })`.
-   - Si el Commit retorna `rejected`: se aborta la ejecución arrojando un error descriptivo. El búfer local de logs y AdOs se descarta. `room` y `combatant` quedan con **cero mutaciones**.
-3. **Publicación (Solo si `committed`):**
-   - Se aplica la economía de turno: `room.currentTurn.usedMoveAction = true`.
-   - Se vuelcan los logs de Acrobacias/AdO del búfer local a `room.log`.
-   - Se añade el log oficial de movimiento informando casillas, coste y modo espacial.
-   - Se encolan las `finalOpportunities` en `room.pendingOpportunityAttacks`.
-   - Se sincroniza la fase (`syncEncounterPhase(room)`) y se emite `broadcast(room)`.
+   - Si el Commit retorna `rejected`: se aborta la ejecución arrojando un error descriptivo. El búfer local de logs y AdOs se descarta íntegramente. `room` y `combatant` quedan con **cero mutaciones** (sin `usedMoveAction`, sin logs de dados y sin AdOs).
+3. **Publicación Transaccional (Solo si `committed`):**
+   - **Economía:** `room.currentTurn.usedMoveAction = true`.
+   - **Logs de Dados:** Se vuelcan los logs acumulados en el búfer local a `room.log`.
+   - **Log de Movimiento:**
+     - Consume `resolution.totalCostFeet` como el coste de movimiento consumido.
+     - Consume `commitResult.movementUsedFeetAfter` como el total consumido en el turno.
+     - Documentación de deuda semántica: la frase histórica `combatant.name + " avanza " + distance + " pies..."` ha reflejado históricamente el coste de ruta (`totalCostFeet`). I6 mantiene la coherencia de este log informando el coste consumido (`resolution.totalCostFeet`), y reporta `commitResult.distanceMovedFeet` únicamente si se requiere trazar la longitud base de la ruta, sin confundirlo con Spatial Distance.
+   - **Transición Espacial:** Si cambió de modo espacial (Squeezing), se emite el log correspondiente derivado de `commitResult.finalSpatialMode`.
+   - **AdOs y Fase:** Se encolan las oportunidades en `room.pendingOpportunityAttacks`, se ejecuta `syncEncounterPhase(room)` y se difunde mediante `broadcast(room)`.
+
+### 8.6 Divergencia Temporal con UI / Preview
+Dado que en I6 el frontend continuará consumiendo temporalmente los helpers legacy:
+1. **Diagonales en Terreno Difícil:**
+   - Servidor I4/I5: coste fijo normativo de 15 ft sin consumir paridad normal.
+   - Preview legacy (`calculatePathStepCostsFeet`): aplica 15 ft (impar) / 20 ft (par) alternado.
+   - *Impacto:* Rutas con múltiples diagonales en terreno difícil pueden mostrar en la UI un coste ligeramente mayor o menor que el computado autoritativamente por el servidor. El servidor es la única autoridad y rechazará o aceptará según el valor normativo exacto.
+2. **Squeezing:**
+   - Servidor I4/I5: deriva huellas multicasilla con compresión `srd_squeezing` y duplica el coste base.
+   - Preview legacy: calcula coste mirando anclas individuales (`narrowCells.includes`).
+3. **Acrobacias:**
+   - Ambos aplican duplicación de coste (x2), pero la resolución del servidor valida paridad estricta paso a paso.
+4. *Estrategia:* No se modifica el cliente en I6. La migración del preview a helpers isomórficos derivados de I4 se abordará en un sprint posterior de Presentation/Preview.
