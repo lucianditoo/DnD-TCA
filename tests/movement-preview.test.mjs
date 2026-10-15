@@ -104,7 +104,7 @@ test("I7 action availability is separate from legal prediction and keeps I6 gati
   assert.equal(getOrdinaryMoveBlockedReason(createCombatRulesSnapshot(room),actor.id,true),null);
   room.currentTurn.usedStandardAction=false;assert.ok(getOrdinaryMoveBlockedReason(createCombatRulesSnapshot(room),actor.id,true));
 });
-for(const [name,overrides,kind] of [["placement",{phase:"preparation"},"placement"],["gm",{gmMoveMode:true},"gm-placement"],["withdraw",{withdrawArmed:true},"legacy-withdraw"],["run",{runArmed:true},"legacy-run"],["5ft",{fiveFootStepArmed:true},"legacy-five-foot-step"],["charge",{actionMode:"tactics",tacticMode:"charge"},"legacy-charge"],["bull rush",{actionMode:"tactics",tacticMode:"bull-rush"},"legacy-forced"],["demo",{isDemoActive:true},"none"],["D5",{isMapEditing:true},"none"]]) {
+for(const [name,overrides,kind] of [["placement",{phase:"preparation"},"placement"],["gm",{gmMoveMode:true},"gm-placement"],["withdraw",{withdrawArmed:true},"withdraw"],["run",{runArmed:true},"legacy-run"],["5ft",{fiveFootStepArmed:true},"legacy-five-foot-step"],["charge",{actionMode:"tactics",tacticMode:"charge"},"legacy-charge"],["bull rush",{actionMode:"tactics",tacticMode:"bull-rush"},"legacy-forced"],["demo",{isDemoActive:true},"none"],["D5",{isMapEditing:true},"none"]]) {
  test(`I7 previewKind isolates ${name}`,()=>assert.equal(getMovementPreviewKind({phase:"active",actionMode:"move",tacticMode:"total-defense",gmMoveMode:false,withdrawArmed:false,runArmed:false,fiveFootStepArmed:false,...overrides}),kind));
 }
 for(const tumble of [false,true]) test(`I7 payload only intent, Tumble=${tumble}, height preserved`,()=>{

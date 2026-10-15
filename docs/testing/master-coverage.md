@@ -15,7 +15,15 @@ Consumidores: Revisores que verifican las validaciones de un commit.
 Este documento consolida las directrices y el reporte de cobertura de testing
 del motor de combate D&D 3.5.
 
-## Baseline de código más reciente — D-1B-I8 Withdraw Server Integration
+## Baseline de código más reciente — D-1B-I9 Withdraw Preview Integration
+
+**907/907 pruebas unitarias/integración**, **99/99 focalizadas** (preview ordinary + Withdraw/paridad con handler I8), typecheck y build verdes en los tres workspaces, **120/120 aserciones WebSocket reales** (script intacto, regresión servidor) y **33/33 escenarios Playwright**.
+
+I9 añade 53 pruebas de adapter/paridad/pureza/presentación y 11 escenarios UI con transporte controlado y handler I8 real sin cambios. Verifica ×2/×1 y Diehard/speed, contexto no cero/DT/stacking, V1 helpless/aliado/dead/Large no-anchor/altura, precedencia budget, corrupción y transiciones H/V, economía bloqueada separada, payload/stale y ghost compartido en dos modos/cuatro cámaras. El turno nuevo del mismo actor limpia intención Withdraw por identidad/ronda; room-update del mismo turno recompone sin borrar. No cambia shared/server/protocolo ni las reglas de otros consumidores; el único ajuste al test ordinary es el kind Withdraw esperado.
+
+Ejecución local Windows/Node 24.18.0. Build conserva advertencia preexistente de bundle >500 kB. Servidores propios detenidos al terminar. Windows CI remoto se verifica sobre el SHA publicado después del push; no se deduce aprobación arquitectónica de estos resultados.
+
+## Baseline histórica — D-1B-I8 Withdraw Server Integration
 
 **854/854 pruebas unitarias/integración**, **172/172 focalizadas** (Withdraw/helper AdO y movement integration/resolution/commit), typecheck y build verdes en los tres workspaces, **120/120 aserciones WebSocket reales** y **22/22 escenarios Playwright**.
 

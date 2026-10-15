@@ -448,10 +448,10 @@ export function buildBoardPresentationModel(params: {
     }
   }
 
-  const ordinary = movementPreview !== null;
+  const hasNormativePreview = movementPreview !== null;
   const evaluatedPreview = movementPreview?.status === "legal" || movementPreview?.status === "over-budget" ? movementPreview : null;
   const routeFinal = chargePreviewPath?.at(-1);
-  const routeFootprintKeys = new Set(ordinary
+  const routeFootprintKeys = new Set(hasNormativePreview
     ? evaluatedPreview?.steps.at(-1)?.occupiedCells.map(cellKey) ?? []
     : routeFinal && routeFootprintCombatant
       ? getCombatantOccupiedCells({ ...routeFootprintCombatant, position: routeFinal }, snapshot).map(cellKey) : []);
@@ -507,13 +507,13 @@ export function buildBoardPresentationModel(params: {
     const routeIndex = displayedPath.findIndex((step) => step.x === x && step.y === y);
     const isRouteFootprint = routeFootprintKeys.has(key);
     const routeStep = routeIndex >= 0 ? evaluatedPreview?.steps[routeIndex] : projectedStepsByCell.get(key);
-    const routeGhost = ordinary && isRouteFootprint;
-    const routeStatus: TacticalCellPresentation["routeStatus"] = !ordinary || (routeIndex < 0 && !routeStep) ? null
+    const routeGhost = hasNormativePreview && isRouteFootprint;
+    const routeStatus: TacticalCellPresentation["routeStatus"] = !hasNormativePreview || (routeIndex < 0 && !routeStep) ? null
       : movementPreview?.status === "illegal" ? (routeIndex === movementPreview.failedStepIndex ? "illegal" : "unassessed")
       : routeStep && evaluatedPreview ? (routeStep.cumulativeCostFeet > evaluatedPreview.availableBudgetFeet ? "over-budget" : "legal") : "unassessed";
     const requiresAcrobatics = !!routeStep && !!evaluatedPreview?.acrobaticsChecks.some(check => check.stepIndex === routeStep.stepIndex);
     const routeAxis = routeStep?.squeezingAxis ?? null;
-    const routeLabel = ordinary && routeIndex >= 0
+    const routeLabel = hasNormativePreview && routeIndex >= 0
       ? routeStep ? `${routeStep.cumulativeCostFeet} ft${requiresAcrobatics ? " · CD25" : ""}${routeAxis ? ` · ${routeAxis}` : ""}`
         : routeStatus === "illegal" ? "Inválido" : "No evaluado" : null;
     const candidateStatus = highlight.includes("preview-over-budget") ? "Excede presupuesto"
@@ -550,7 +550,7 @@ export function buildBoardPresentationModel(params: {
     }
 
     const routeClass =
-      routeIndex >= 0 || isRouteFootprint || (ordinary && projectedStepsByCell.has(key))
+      routeIndex >= 0 || isRouteFootprint || (hasNormativePreview && projectedStepsByCell.has(key))
         ? " route-cell" +
           (routeIndex === displayedPath.length - 1 || isRouteFootprint ? " route-end" : "") +
           (chargePreviewPath ? " charge-route" : "")
@@ -588,7 +588,7 @@ export function buildBoardPresentationModel(params: {
       className: `cell${highlight}${routeClass}${movementClass}${aoeClass}${aoeAffectedClass}${hazardClass}${terrainClass}`,
       routeIndex,
       routeStatus, routeGhost, routeLabel, previewLabel, routeAxis, requiresAcrobatics,
-      routeStepCost: routeIndex >= 0 ? (ordinary ? routeStep?.cumulativeCostFeet ?? null : displayedPathCosts[routeIndex] ?? null) : null
+      routeStepCost: routeIndex >= 0 ? (hasNormativePreview ? routeStep?.cumulativeCostFeet ?? null : displayedPathCosts[routeIndex] ?? null) : null
     });
   }
 

@@ -1,12 +1,13 @@
 import React from "react";
 import type { MovementPreviewProjection } from "../../movementPreview";
 
-export function MovementPreviewSummary({ preview, blockedReason }: { preview: MovementPreviewProjection; blockedReason: string | null }) {
+export function MovementPreviewSummary({ preview, blockedReason, isWithdraw = false }: { preview: MovementPreviewProjection; blockedReason: string | null; isWithdraw?: boolean }) {
   return <div className="movement-preview-summary" data-testid="movement-preview" data-preview-status={preview.status} role="status" aria-live="polite">
-    {preview.status === "empty" && <p>Disponible: {preview.availableBudgetFeet} ft. Dibuja una ruta para previsualizarla.</p>}
-    {preview.status === "legal" && <p>Ruta prevista: {preview.totalCostFeet} ft. Quedarían {preview.remainingBudgetFeet} ft.</p>}
-    {preview.status === "over-budget" && <p>Ruta válida pero excede movimiento. Coste {preview.totalCostFeet} ft. Exceso {preview.excessFeet} ft. Saldo: {preview.remainingBudgetFeet} ft.</p>}
-    {preview.status === "illegal" && <p>Ruta inválida: {preview.reason} Paso {preview.failedStepIndex + 1}. Coste no evaluado.</p>}
+    {isWithdraw && blockedReason && "availableBudgetFeet" in preview && <p>Límite de evaluación: {preview.availableBudgetFeet} ft; acción bloqueada.</p>}
+    {preview.status === "empty" && <p>{isWithdraw && blockedReason ? "Dibuja una ruta para evaluarla." : <>Disponible: {preview.availableBudgetFeet} ft. Dibuja una ruta para previsualizarla.</>}</p>}
+    {preview.status === "legal" && <p>Ruta prevista: {preview.totalCostFeet} ft. {isWithdraw && blockedReason ? "Evaluación hipotética de ruta." : <>Quedarían {preview.remainingBudgetFeet} ft.</>}</p>}
+    {preview.status === "over-budget" && <p>{isWithdraw ? "Ruta evaluada por Movement; excede el límite de Retirada. Policy V1 no completada." : "Ruta válida pero excede movimiento."} Coste {preview.totalCostFeet} ft. Exceso {preview.excessFeet} ft. Saldo: {preview.remainingBudgetFeet} ft.</p>}
+    {preview.status === "illegal" && <p>Ruta inválida{isWithdraw ? preview.reasonSource === "withdraw-policy" ? " (Regla de Retirada V1)" : " (Movement)" : ""}: {preview.reason} Paso {preview.failedStepIndex + 1}. Coste no evaluado.</p>}
     {preview.status === "unavailable" && <p>Preview no disponible: {preview.reason}</p>}
     {(preview.status === "legal" || preview.status === "over-budget") && <>
       <p>Paridad diagonal prevista: {preview.projectedContext.normalDiagonalStepsThisTurn}.</p>

@@ -1693,7 +1693,7 @@ No se ejecutan ni modifican tests en I8 Design. Gates del próximo sprint: npm t
 
 ### 11.1 Estado, alcance y SSOT
 
-**ARCHITECTURE / AUDIT / DESIGN ONLY. Awaiting Architecture Review and Proceed.** Baseline auditado limpio en master, coincidente con origin/master: `791fb4bacfe82bddb1bc3af1324de2e9b74e622b`. I6/I7 aprobados; I8 TECHNICALLY APPROVED tras I8R1 según el owner. Windows CI del código I8 SUCCESS sobre `af60111c843aac3ed23922f6fba30173edebdbaf`; I8R1 solo corrigió lifecycle documental. No se implementa ni se modifican/ejecutan tests en esta entrega.
+**IMPLEMENTACIÓN Y DoD LOCAL COMPLETADOS; READY FOR ARCHITECTURE REVIEW EXTERNA.** Diseño técnicamente aprobado y Proceed explícito sobre `041bee05f6f4a5aa571dea778827eb51cbccbdb0`. La auditoría y las tareas futuras conservadas abajo registran el diseño original ejecutado, sin autorizar trabajo adicional. Baseline auditado limpio en master, coincidente con origin/master: `791fb4bacfe82bddb1bc3af1324de2e9b74e622b`. I6/I7 aprobados; I8 TECHNICALLY APPROVED tras I8R1 según el owner. Windows CI del código I8 SUCCESS sobre `af60111c843aac3ed23922f6fba30173edebdbaf`; I8R1 solo corrigió lifecycle documental. En la entrega de diseño no se implementaron ni ejecutaron tests; esta ejecución incorpora la evidencia real en master-coverage y walkthrough.
 
 Único alcance futuro: preview **web** de Withdraw activo, con las APIs shared y el servidor I8 intactos. Este capítulo posee integración/presentación; [Withdraw Rev. 3](withdraw/design.md) conserva reglas particulares, §10.5 documenta el caller servidor y §8.3/§8.7/§6.13 conservan coste/eje/contexto. No duplicar matriz RAW. Run/5ft/Charge/forced/GM/preparation/spell range, AoO predictivo completo, D-7/Double Move/Spring Attack quedan fuera. No nuevos contratos, schemas, comandos ni protocolo.
 
@@ -1801,11 +1801,11 @@ F. Large squeezed: dos modos muestran mismo ghost/axis y cuatro cámaras no camb
 
 Fixtures UI controlan **solo transporte/estado inicial** y ejecutan handler real sin cambios (como harness I7); no hay dados de Tumble para Withdraw ni necesidad de mockear RNG normativo. La suite WebSocket real I8 sigue siendo regresión de transporte/servidor, no se presenta como prueba de preview. Suites I6/I7/I8, Run/5ft/Charge, D-5/demo y renderer deben seguir verdes. Gates al implementar: npm test, typecheck, build, WebSocket, Playwright completos y CI Windows observado después de push; conteos reales entonces, ninguno nuevo en I9 Design.
 
-### 11.8 Plan de implementación propuesto — único plan activo I9
+### 11.8 Plan de implementación ejecutado — referencia I9
 
-**No aprobado; ejecutar solo tras Architecture Review y Proceed. Nivel B** por wiring/presentación web de reglas existentes usando contratos shared actuales, sin alterar la autoridad ni el comportamiento del consumidor. La thin V1 policy no define RAW nuevo; su riesgo de copia se acota mediante paridad con servidor real (§11.5). Si requiere nuevo helper shared/regla/servidor → C; contratos/infraestructura → D y nueva Review antes de ampliar. No rebajar esos cambios a B por conveniencia.
+**Referencia ejecutada; implementación y DoD local completados. Nivel B** por wiring/presentación web de reglas existentes usando contratos shared actuales, sin alterar la autoridad ni el comportamiento del consumidor. La thin V1 policy no define RAW nuevo; su riesgo de copia se acota mediante paridad con servidor real (§11.5). Si requiere nuevo helper shared/regla/servidor → C; contratos/infraestructura → D y nueva Review antes de ampliar. No rebajar esos cambios a B por conveniencia.
 
-Conforme a .agents/AGENTS.md Fase 3, A/B permite omitir archivo separado. El usuario condiciona el root implementation_plan.md a que sea exigido: **se omite** y se conserva este plan completo en el NDD ya canónico, sin duplicar plan activo en raíz. INDEX enlaza a esta sección. Los planes I7/I8 ejecutados no se reabren. Esta sección no concede Proceed.
+En el diseño aprobado se utilizó la opción de .agents/AGENTS.md Fase 3 para Nivel B: plan completo embebido sin archivo separado. No se creó root implementation_plan.md. Esta sección conserva el plan aprobado como referencia ejecutada, no como plan activo pendiente de Proceed; las instrucciones históricas siguientes no autorizan trabajo adicional. I7/I8 permanecen cerrados como referencias independientes. No se requiere un nuevo Proceed para I9; se espera únicamente Architecture Review externa de la implementación publicada.
 
 | Orden / archivo futuro | Trabajo autorizado solo después de Proceed | Frontera/aceptación |
 |---|---|---|
@@ -1845,6 +1845,6 @@ Riesgos cerrados: drift V1/guards → tests con handler real; post-policy vs exc
 17. Envío: use-tactical-action/withdraw con ids, to y path existentes.
 18. No envío: coste/budget/contexto/axis/mode/status/fingerprint/proofs/exenciones/isAcrobatic.
 19. Legacy restante: Run/5ft/Charge/forced/spell/GM/preparation y sus helpers; Move I7 se preserva normativo.
-20. Evidencia futura: matriz §11.7 y E2E A…F, resolver + handler real, pureza/stale/ambos renderers; no tests implementados ahora.
+20. Evidencia ejecutada: adapter/resolver/handler I8 real, pureza, V1, gates, stale, payload y ambos renderers; resultados concretos en master-coverage y walkthrough.
 21. Governance: futuro B estrictamente web; C/D si alcance exige shared/reglas/server/contratos; plan único embebido permitido por Fase 3.
-22. **Cero ODR bloqueantes. Awaiting Architecture Review and Proceed.** Diseño no aprobado aún y ninguna implementación autorizada por este documento.
+22. **Cero ODR bloqueantes. IMPLEMENTACIÓN COMPLETADA; Ready for Architecture Review externa. No se requiere un nuevo Proceed.**

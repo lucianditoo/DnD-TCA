@@ -13,7 +13,7 @@ Consumidores: Agentes al retomar el proyecto y propietario al priorizar tareas.
 
 ## Continuidad inmediata de D-1B
 
-- Obtener Architecture Review y Proceed de **I9 Withdraw preview web**: [NDD Capítulo 11](docs/designs/normative-movement-design.md#capítulo-11--i9-withdraw-normative-preview-parity) y [plan propuesto único embebido](docs/designs/normative-movement-design.md#118-plan-de-implementación-propuesto--único-plan-activo-i9). No implementar antes de esa aprobación.
+- Obtener Architecture Review externa de I9 Withdraw Preview Integration publicada: [NDD Capítulo 11](docs/designs/normative-movement-design.md#capítulo-11--i9-withdraw-normative-preview-parity), [plan ejecutado](docs/designs/normative-movement-design.md#118-plan-de-implementación-ejecutado--referencia-i9) y [evidencia](walkthrough.md). El CI no sustituye esa aprobación.
 - Mantener Run como segundo consumidor servidor recomendado, sujeto a diseño/Review propios; 5ft/Charge, AoO predictivo, rango de conjuro y D-7 siguen separados. No ampliar I9 para resolverlos.
 
 ## Diseños espaciales pendientes
