@@ -1,11 +1,11 @@
 # Implementation Plan — Withdraw Server Normative Movement Integration (seleccionado por D-1B-I8)
 
-Responsabilidad: plan temporal de la **única** migración futura seleccionada: Withdraw servidor.
+Responsabilidad: referencia del plan aprobado y ejecutado de la migración de Withdraw servidor.
 Autoridad: derivada del [NDD D-1B §10.5](../normative-movement-design.md#105-diseño-completo-del-consumidor-seleccionado--withdraw-servidor); reglas propias en [Withdraw Rev. 3](../withdraw/design.md).
 Lifecycle: Referencia de implementación ejecutada; no es un plan activo.
 Reemplaza: ningún plan de implementación original de Withdraw; ese plan registra su entrega previa, no esta migración.
 Complementa: [estado](../../../PROJECT_STATUS.md), [pendientes](../../../TODO.md), [walkthrough](../../../walkthrough.md).
-Consumidores: Architecture Reviewer y desarrolladores/agentes después de Proceed específico.
+Consumidores: Architecture Reviewer y desarrolladores/agentes que consultan la implementación ejecutada.
 
 **IMPLEMENTACIÓN Y DoD LOCAL COMPLETADOS; READY FOR ARCHITECTURE REVIEW EXTERNA.** Diseño técnicamente aprobado y Proceed explícito sobre `61c7e96c0e084b0fb64c960cd3ee60e4444f9650`. Nivel C, sin cambios shared/web/protocolo. El plan aprobado conservado abajo documenta tareas originales y no autoriza migraciones adicionales. Evidencia final en walkthrough/master-coverage; Windows CI se observa tras el push.
 
@@ -56,4 +56,4 @@ Gates futuros obligatorios: `npm test`, `npm run typecheck`, `npm run build`, `n
 - Preview separado: puede discrepar con coste normativo hasta migración posterior; servidor decide. No constituye ODR de este caller.
 - Rollback operativo: revertir el commit de migración; sin migración de datos/protocolo. No se diseña rollback por daño/AdO después de una ruta ya comprometida.
 
-**Cero ODR bloqueantes para Withdraw servidor. Awaiting Architecture Review and Proceed.**
+**Cero ODR bloqueantes para Withdraw servidor. IMPLEMENTACIÓN COMPLETADA; Ready for Architecture Review externa. No se requiere un nuevo Proceed.**
