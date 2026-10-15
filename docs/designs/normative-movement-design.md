@@ -2007,3 +2007,312 @@ handleRun usa snapshot actor, ruta recta y budget existentes, Resolution/context
 Precisiones contra las APIs reales: CombatRulesSnapshot no contiene round; se captura room.round antes de Resolution, como I8, sin ampliar contratos. La geometría vigente rechaza diagonal Large sobre narrow (projectMovementFootprint retorna null); el consumer prueba ese rechazo atómico. El coste diagonal squeezing 15/base5 es contrato del assessment genérico, no una ruta Run actualmente legal. La matriz §12.10 se interpreta sujeta a esa legalidad, sin cambiar geometry/shared para fabricar aceptación. Blinded, Entangled y Exhausted ya declaran FORBID_RUN: sus rates no habilitan Run; se verifica budget proyectado y rechazo, y el caso aceptado con buff se prueba sobre armadura pesada (60→90).
 
 Evidencia local: 981/981 globales, 168/168 Run + Resolution/Commit focalizadas, typecheck/build verdes, 134/134 WebSocket (14 nuevas) y 33/33 UI. No cambios shared/web/schema ni metadata AdO. No dependencia D-7 ni cierre de DT-018/DT-019; preview sigue legacy-run. Plan reubicado como referencia ejecutada; no nueva aprobación de implementación asumida.
+
+## Capítulo 13 — I11 Run Normative Preview Parity
+
+### 13.1 Estado, autoridad y alcance
+
+**DISEÑO SOLAMENTE; Awaiting Architecture Review and Proceed.** Baseline auditado:
+`98030357b857a66c1d1e0f860b46a97614c9b659`, con I10 Run servidor aprobado
+y Windows CI verde según decisión del owner. Este capítulo diseña exclusivamente
+la futura migración del preview web de Run; no autoriza implementación.
+
+Movement continúa gobernado por este NDD. Las reglas de Run, su presupuesto,
+elegibilidad, consecuencias y decisiones RAW permanecen en
+[run-design.md](run-design.md). I10 y `handleRun` son el oracle productivo; este
+capítulo no redefine sus reglas. Quedan fuera Five-Foot Step, Charge, servidor
+Run, D-7, predictor de AdO, visión y resistencia multi-round.
+
+La futura implementación es **Nivel B** si se limita a `apps/web/**`, tests y
+documentación consumiendo contratos shared existentes. Si requiere cualquier
+helper shared nuevo, modificación servidor, schema/protocolo o contrato base,
+debe detenerse y reclasificarse C/D antes de escribir ese cambio.
+
+### 13.2 Auditoría del baseline real
+
+| Fuente | Hallazgo comprobado |
+|---|---|
+| `apps/web/src/movementPreview.ts` | `MovementPreviewKind` contiene `legacy-run`. Ordinary e I9 Withdraw poseen adapters normativos; la unión `reasonSource` solo distingue `movement` y `withdraw-policy`. |
+| `hooks/useBoardSelection.ts` | Ordinary/Withdraw consumen Resolution, candidatos y proyección. Run cae en ramas legacy: `calculatePathCostFeet`, `calculatePathStepCostsFeet` y `getHighlightedCells`. |
+| `viewModel.ts` | `getHighlightedCells` calcula un rango Run con `runSpeedMultiplier`, velocidad efectiva menos `movementUsedFeet`, y autoría paso a paso mediante `isLegalNextPathStep`. Esto no representa el budget total/turno virgen ni la ruta canónica I10. |
+| `App.tsx` | Run comparte `movementPath` con Move/Withdraw; cada click adyacente agrega un Step libre. Confirmación toma el último Step como destino y envía únicamente `use-tactical-action/run` con `to`; nunca envía `path`. |
+| `ActionsPanel` | Arma/desarma Run y presenta coste/rango legacy; todavía no recibe proyección normativa, disponibilidad Run separada ni consecuencia informativa de exposición. |
+| `Board` / `presentationModel.ts` / renderer | Ya consumen `MovementPreviewProjection` para ghost, coste, status, footprints, Squeezing y ambos renderers. No necesitan un modelo Run paralelo. |
+| `handleRun` | Orden real: pending AdO → attackMode → `canRun` → contexto → `buildStraightPath` → `runSpeedBudgetFeet` → Resolution → DT → V1 → AdO/preflight → Commit → consecuencias/publicación. El outer handler ya valida phase, actor, ownership, turno y `Rules.evaluateActionAvailability`. |
+| Shared | `buildStraightPath`, `runSpeedBudgetFeet`, `canRun`, `resolveMovementPipeline`, `isDifficultTerrain`, footprints, `FeatCatalog.runContribution` y evidencia de Steps ya están exportados. No falta contrato shared para un adapter web. |
+| Tests | I10 cubre servidor/puro; I7/I9 cubren adapters, UI y stale updates. No existe aún una suite Run preview normativa. |
+
+La divergencia no es solo visual: el usuario redacta una Route libre que el
+servidor descarta. El preview puede enseñar coste, ocupación y geometría de una
+ruta distinta de la que I10 confirmará desde el mismo destino. Esa doble autoría
+debe desaparecer.
+
+### 13.3 Decisión de autoría: destino sobre ocho rayos
+
+Run será **endpoint-driven**. Se adopta la opción B, selección restringida a
+los ocho rayos válidos desde la posición inicial del actor:
+
+1. al armar Run, la UI enumera destinos horizontales, verticales y diagonales
+   de 45° hasta los límites del tablero;
+2. cada destino se evalúa con `buildRunMovementPreview(snapshot, actorId,
+   destination)`;
+3. el adapter invoca la única autoridad geométrica `buildStraightPath` y esa
+   ruta canónica alimenta `resolveMovementPipeline`;
+4. el click selecciona un único `runDestination`; no agrega Steps libres;
+5. el ghost y costes muestran exactamente `projection.path`/`projection.steps`;
+6. confirmar envía solo el destino y el servidor reconstruye la ruta.
+
+No se escanea `width × height`, no hay BFS/A*, ni pathfinding. La enumeración
+recorre como máximo ocho rayos (`O(width + height)` destinos). Evaluar todos los
+endpoints puede recorrer prefijos de esos rayos; queda acotado al grid táctico,
+memoizado por snapshot/actor/destino y preserva feedback completo legal/ilegal/
+over-budget. No se extrae una abstracción shared para esta enumeración: es UX.
+
+Una celda fuera de los ocho rayos **no es seleccionable ni se resalta**. El panel
+explica “Correr requiere un destino horizontal, vertical o diagonal de 45°”. No
+se hace snapping ni se transforma en ruta normal. El adapter conserva defensa
+explícita para inputs programáticos de pendiente inválida y devuelve `illegal`
+con `reasonSource: "run-policy"`; así tests y futuros callers nunca pueden
+disfrazar una pendiente inválida de ruta legal. Destino igual al origen sigue el
+mismo resultado; `buildStraightPath` devuelve null. `destination.zFeet` no crea
+movimiento vertical: conforme I10, la ruta preserva `origin.zFeet` y el destino
+de iguales x/y sigue siendo desplazamiento cero inválido.
+
+### 13.4 Adapter, proyección y disponibilidad
+
+La API web especializada será conceptualmente:
+
+- `buildRunMovementPreview({ snapshot, actorId, destination })`;
+- `buildRunCandidates({ snapshot, actorId })` para los ocho rayos;
+- `getRunPreviewAvailability(snapshot, actorId, canControl)`.
+
+No recibe path libre ni `isAcrobatic`. Reutiliza `MovementPreviewProjection` y
+extiende únicamente su `reasonSource` web a:
+`"movement" | "withdraw-policy" | "run-policy"`. No se requieren sub-sources
+DT/V1: el mensaje ya identifica la policy y la razón. `MovementPreviewKind`
+cambia `legacy-run` por `run`; `legacy-five-foot-step`, `legacy-charge` y
+`legacy-forced` permanecen intactos.
+
+Preparación estructural exige snapshot, actor, turno/contexto finito y actor del
+turno. La proyección de ruta es independiente de la disponibilidad de acción:
+una ruta puede seguir mostrándose aunque Run esté bloqueado. El adapter:
+
+1. representa destino ausente como `empty`;
+2. obtiene el budget con `runSpeedBudgetFeet(snapshot, actor)`;
+3. construye ruta con `buildStraightPath` o produce `run-policy/illegal`;
+4. invoca Resolution con `isAcrobatic: false` y el
+   `normalDiagonalStepsThisTurn` real;
+5. proyecta `illegal-route` como `movement/illegal`;
+6. proyecta `insufficient-budget` como `over-budget` con ruta completa, coste,
+   exceso y contexto; no trunca ni busca otro endpoint;
+7. solo sobre `ready`, aplica DT sobre `resolution.steps[].occupiedCells` usando
+   `isDifficultTerrain`;
+8. solo sobre `ready` sin DT, aplica thin Run V1;
+9. si todas pasan, devuelve `legal`.
+
+`RunPreviewAvailability` queda separado y contiene al menos status, budget,
+multiplicador/label (`×4` o `×3`), `blockedReason` y copy de exposición. Reutiliza
+`Rules.evaluateActionAvailability` y `canRun`; replica solo los guards reales
+que viven fuera de `canRun`: control, phase/actor/turn, pending AdO y
+`attackMode === "none"`, respetando el orden externo/handler de I10. No reconstruye
+los flags internos de `canRun` en React. Disabled/Diehard sin autorización
+full-round queda bloqueado; no existe variante ×1/standard.
+
+Budget es exactamente `runSpeedBudgetFeet(snapshot, actor)`, no velocidad base,
+no velocidad visual multiplicada, no saldo ordinario y no resta
+`movementUsedFeet`. `canRun` exige turno virgen; los cambios de armadura, buffs,
+rates, Speed y `CANNOT_MOVE` entran por autoridades shared existentes.
+
+### 13.5 Precedencia y thin policies Run
+
+La precedencia visible replica I10:
+
+1. setup estructural y disponibilidad (esta última se presenta por separado);
+2. straight path inválido;
+3. Movement `illegal-route`;
+4. Movement `insufficient-budget`;
+5. Run DT;
+6. Run V1 occupancy.
+
+Por tanto, `over-budget + DT` muestra over-budget; `illegal Movement + DT`
+muestra Movement; `ready + DT` muestra Run policy DT; `ready + no DT + blocker
+V1` muestra Run policy V1. La disponibilidad bloqueada no reescribe el status de
+ruta: deshabilita confirmación y agrega una razón separada.
+
+DT inspecciona cada celda de cada footprint confirmado. Esto incluye celdas no
+ancla Large y huellas comprimidas; no reconstruye footprints, no usa solo el
+anchor y no evalúa DT después de insuficiencia.
+
+La thin V1 policy replica el comportamiento observable de I10 exclusivamente
+post-ready/post-DT:
+
+- tránsito: bloquea enemigo non-dead;
+- tránsito aliado: permitido cuando Movement core lo permite;
+- endpoint: bloquea cualquier ocupante non-dead;
+- dead: ignorado;
+- consume `resolution.steps[].occupiedCells`, footprints shared y `lifeStatus`;
+- no reancla actor ni recalcula geometría.
+
+Esta duplicación localizada no se promueve a `TacticalMovementPolicy`. El control
+de drift se logra con tests que comparan adapter, Resolution y handler I10 real
+en rooms independientes; no compartiendo una policy que pudiera estar equivocada
+en ambas sedes.
+
+### 13.6 Contexto diagonal, Squeezing y presentación
+
+El adapter copia `snapshot.currentTurn.normalDiagonalStepsThisTurn`, incluso si
+es distinto de cero. No calcula 5/10 ni reinicia contexto. La proyección consume
+directamente `steps`, `spatialMode`, `squeezingAxis`, `cumulativeCostFeet` y
+`projectedContext` de Resolution.
+
+La misma evidencia debe presentar natural→H/V, persistencia H/V, rotación H↔V
+y salida a natural cuando la geometría shared lo permita. Eje ausente/corrupto
+produce unavailable/error de integridad; no se infiere. La diagonal Large narrow
+que hoy rechaza geometry sigue rechazada: una tabla de coste genérica no autoriza
+una ruta geométricamente imposible. El preview no agrega/remueve efectos ni mueve
+optimistamente el token.
+
+`MovementPreviewProjection` sigue alimentando `BoardPresentationModel`, vista 2D
+y `TacticalScene3D`; no se crea `RunPresentationModel`. Ghost, costes, status y
+axis proceden de Resolution. La cámara no altera reglas.
+
+El panel muestra copy informativo, derivado de
+`FeatCatalog.runContribution(actor.featIds)`:
+
+- sin contribución: “Al correr perderá Destreza/Esquiva a la CA hasta el inicio
+  de su próximo turno.”;
+- con contribución: “Con la dote Correr conserva ese bono.”
+
+No se busca manualmente `srd_run`, no se simula `EffectManager` ni se muestra un
+efecto aplicado antes del room-update. También muestra: “Correr puede provocar
+ataques de oportunidad incluso al abandonar la huella inicial. El servidor
+resolverá los AdO definitivos.” No predice amenazas, cantidad, seguridad ni RNG.
+Tumble queda oculto/off, `isAcrobatic` siempre false y no aparecen CD15/CD25.
+
+### 13.7 Estado local, wiring, confirmación y reset
+
+`App` introduce `runDestination: Position | null`. Es el único estado local nuevo
+y la fuente de intención Run. `movementPath` continúa exclusivamente para
+ordinary/Withdraw/5ft y no se reutiliza como autoridad de Run. El hook deriva
+`runPreview`; `displayedPath` y costes Run salen de su ruta canónica, no de una
+ruta dibujada. Esta separación minimiza acoplamiento y evita romper consumers
+existentes.
+
+Confirmar Run exige conjuntamente:
+
+- `previewKind === "run"`;
+- destination presente;
+- `projection.status === "legal"`;
+- `RunPreviewAvailability.blockedReason === null`;
+- control permitido y ausencia de locks de demo/editor.
+
+El payload permanece exactamente `{ type: "use-tactical-action", action:
+"run", roomCode, actorId, combatantId, to }`. Nunca incluye path, coste, budget,
+contexto, axis, status, pruebas DT/V1, fingerprint, consecuencia de feat ni
+información AdO.
+
+Se limpia `runDestination` al cambiar actor, turno, ronda, acción, cancelar Run,
+activar otra familia, entrar en GM placement/preparation/demo/editor, terminar
+combate o limpiar overlays. Un room-update del mismo actor/turno conserva el
+destino y recalcula inmediatamente ruta, budget, armadura, Speed, FORBID_RUN,
+economía, terrain, ocupación, axis y disponibilidad. Si deja de ser un destino
+estructuralmente válido se conserva como evidencia illegal hasta nueva selección,
+salvo que cambie actor/turno. No hay movimiento/efecto optimista; un intent viejo
+queda sujeto a I10 sobre el estado actual.
+
+La futura limpieza legacy de Run comprende exclusivamente:
+
+- `legacy-run` → `run`;
+- factor/rango `runArmed` en `getHighlightedCells`;
+- autoría Run mediante `isLegalNextPathStep`;
+- coste Run mediante `calculatePathCostFeet` y `calculatePathStepCostsFeet`;
+- dependencia Run de `movementPath` libre.
+
+No se borran esos helpers mientras los consuman 5ft, Charge, spells, placement,
+GM u otras ramas. `legacy-five-foot-step`, `legacy-charge`, forced y consumers
+ajenos permanecen legacy.
+
+### 13.8 Verificación futura y control de drift
+
+#### Adapter y helpers web
+
+- sin destino/empty; pendiente inválida; desplazamiento cero; contexto/actor
+  unavailable; legal; over-budget; Movement illegal; DT Run-policy; occupancy
+  Run-policy; pureza/no RNG; zFeet conforme I10; contexto diagonal inicial no cero;
+- disponibilidad bloqueada independiente de ruta; Disabled sin variante;
+- enumeración de ocho rayos, sin celdas fuera de rayos ni snapping;
+- footprint Large DT no-ancla; Squeezing H/V/rotación/salida y corrupción de eje.
+
+#### Paridad adapter ↔ Resolution ↔ handler I10
+
+Usar rooms independientes y handler real para: ortogonal, vertical, diagonal,
+dos diagonales=15, paridad inicial1→10, ×4 exacto/exceso, heavy ×3 exacto/exceso,
+buff sobre heavy, FORBID_RUN, Disabled, DT, precedencia overbudget+DT, Large
+non-anchor DT, enemy active/disabled/dying/stable, ally tránsito/final, dead,
+zFeet y Squeezing válido/corrupto. Las expectativas de policy permanecen
+independientes; no se extrae una función compartida servidor/web solo para hacer
+pasar paridad.
+
+#### UI E2E
+
+1. destino en rayo produce ruta canónica y payload solo `to`;
+2. pendiente inválida no puede presentarse como legal;
+3. dos diagonales muestran/servidor confirma 15 y mismo contexto;
+4. heavy muestra ×3 y coincide con servidor;
+5. DT muestra Run-policy y servidor rechaza igual;
+6. overbudget+DT conserva precedencia de budget;
+7. FORBID_RUN mantiene ruta evaluable con acción bloqueada;
+8. room-update retenido/liberado recomputa armadura, Speed, terrain y economía;
+9. Squeezing usa misma evidencia 2D/2.5D y servidor persiste autoridad;
+10. antes de room-update no aparece `srd_running_exposed` local.
+
+WebSocket I10 ya cubre servidor: no se modifica su script por diseño y en futura
+implementación solo se ejecuta como regresión, salvo evidencia de transporte no
+cubierta. DoD futuro completo Nivel B: unit/integration, typecheck, build,
+WebSocket, Playwright, diff-check y CI Windows.
+
+### 13.9 Plan de implementación futuro (Nivel B, no autorizado)
+
+No se crea `implementation_plan.md` raíz: Governance permite plan embebido para
+Nivel B y este capítulo es la única autoridad activa de I11.
+
+1. Extender tipos web de preview (`run`, `run-policy`) y agregar adapter,
+   candidatos por ocho rayos y availability, sin shared/server.
+2. Escribir tests adapter/paridad con handler I10 real y rooms independientes.
+3. Conectar hook a `runDestination`, projection/candidates y presentation común.
+4. Separar estado Run en App, reset lifecycle, confirm guard y payload solo `to`.
+5. Adaptar ActionsPanel/Summary con budget/availability/exposición/AdO y ocultar Tumble.
+6. Retirar solo las ramas legacy Run auditadas en viewModel/hook/App.
+7. Añadir E2E UI A–J y ejecutar DoD completo; actualizar evidencia solo entonces.
+
+Si cualquiera de estos pasos exige modificar shared, server, schema o protocolo,
+detener la implementación y solicitar reclasificación/revisión; no improvisar.
+
+### 13.10 Respuestas explícitas — 26 preguntas
+
+1. UX actual: draft adyacente libre en `movementPath`, highlights/coste/rango legacy y envío del último Step como `to`.
+2. Diverge porque I10 ignora el draft y reconstruye una línea recta canónica desde origen hasta `to`.
+3. Sí: Run preview será endpoint-driven.
+4. `buildStraightPath` shared construye el path, tanto web predictiva como servidor autoritativo.
+5. Destinos sobre ocho rayos, con estados por adapter y click directo.
+6. Ocho rayos; no escaneo del board completo, BFS ni A*.
+7. Fuera de rayos no seleccionable; adapter defensivo devuelve `run-policy/illegal`, sin snapping.
+8. `runSpeedBudgetFeet`; ×4/×3 y Speed efectiva vienen de shared.
+9. Projection describe ruta; `RunPreviewAvailability` describe si la acción puede confirmarse.
+10. Orden: straight inválido → Movement illegal → budget → DT → V1; availability paralela no reescribe ruta.
+11. `reasonSource` web añade `run-policy`; reason distingue DT/V1 sin subsource.
+12. DT inspecciona todas las `occupiedCells` de Steps ready mediante `isDifficultTerrain`.
+13. V1 thin post-DT: enemy non-dead transit, cualquier non-dead endpoint, ally transit permitido, dead ignorado.
+14. Tests enfrentan adapter, Resolution y handler I10 real sin policy compartida nueva.
+15. Copia el contexto diagonal actual y consume proyección shared; nunca reset ni fórmula local.
+16. Steps presentan modo/eje/coste/ghost; no inferencia ni efecto local.
+17. Copy derivado de `FeatCatalog.runContribution`; no simulación de efecto.
+18. Disclaimer: puede provocar AdO desde huella inicial; servidor resuelve, sin predictor.
+19. Tumble oculto/off e `isAcrobatic:false`; sin CD15/CD25.
+20. `runDestination` separado; `movementPath` queda para otros consumers.
+21. Payload existente con ids, action run y `to` únicamente.
+22. Se eliminan kind/factor/rango/coste/autoría/movementPath legacy exclusivos de Run.
+23. 5ft, Charge, forced, spells, placement/GM y helpers aún compartidos permanecen legacy.
+24. Matriz §13.8 compara rutas, budget, policies, disponibilidad, Squeezing y stale con handler real.
+25. Nivel B mientras solo toque web/tests/docs; cualquier cambio shared/server/protocolo detiene y reclasifica.
+26. **No hay ODR bloqueantes para este diseño. Awaiting Architecture Review and Proceed; cero implementación autorizada.**

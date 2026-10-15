@@ -17,6 +17,8 @@
 
 I10 Run servidor implementado con diseño aprobado y Proceed sobre 4c2aecc, Nivel C: Resolution/Commit comunes, contexto real, stats base/gasto total, políticas DT/V1 y exposición con preflight puro. [Capítulo 12](docs/designs/normative-movement-design.md#capítulo-12--i10-run-server-normative-integration), [plan ejecutado](docs/designs/movement/run-implementation-plan.md) y [evidencia real](docs/testing/master-coverage.md). DoD local completo; Ready for Architecture Review externa, sin nuevo Proceed. Preview Run permanece legacy-run; shared/web/protocolo intactos.
 
+D-1B-I11 Run Preview Parity queda **DISEÑADO** en el [Capítulo 13](docs/designs/normative-movement-design.md#capítulo-13--i11-run-normative-preview-parity): autoría endpoint-driven sobre ocho rayos, ruta shared canónica, disponibilidad separada y precedencia idéntica a I10. Solo documentación; Awaiting Architecture Review and Proceed, sin cambios de código/tests ni nueva evidencia técnica.
+
 ## Integración de D-1B
 
 | Etapa | Estado comprobado en el código |

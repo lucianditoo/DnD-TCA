@@ -1,39 +1,45 @@
-# Walkthrough — D-1B-I10 Run Server Integration
+# Walkthrough — D-1B-I11 Run Normative Preview Parity Design
 
-Canonical responsibility: Cambios y evidencia del cierre de implementación I10.
-Supersedes: Walkthrough I10 Design, preservado en Git.
-Complements: [NDD Capítulo 12](docs/designs/normative-movement-design.md#capítulo-12--i10-run-server-normative-integration), [plan ejecutado](docs/designs/movement/run-implementation-plan.md), [coverage](docs/testing/master-coverage.md).
-Derived from: Diseño aprobado y Proceed explícito del owner sobre 4c2aeccd4c52915176084005c1aa0bbd08924b79.
-Lifecycle: Rotativo; implementación completada, Ready for Architecture Review externa.
+Canonical responsibility: Auditoría y propuesta de diseño para llevar el preview web de Run al pipeline normativo compartido.
+Supersedes: Walkthrough I10 Server Integration, preservado en Git.
+Complements: [NDD Capítulo 13](docs/designs/normative-movement-design.md#capítulo-13--i11-run-normative-preview-parity), [Run Design](docs/designs/run-design.md), [Registry](docs/rules/registry.md).
+Derived from: Baseline `98030357b857a66c1d1e0f860b46a97614c9b659` y auditoría directa del código productivo posterior a I10.
+Lifecycle: Rotativo; diseño terminado, Awaiting Architecture Review and Proceed.
 
 ## Resultado
 
-Baseline limpio master/origin/master aprobado; Nivel C, sin nuevo Proceed. Se modificó únicamente handleRun en producción. Snapshot actor para construir ruta recta, budget efectivo ×4/×3 y Resolution; actor canónico vivo para Commit. Captura contexto real sin default, origen xyz, turno y gasto del snapshot. Como CombatRulesSnapshot no contiene round, captura room.round antes de resolver, siguiendo I8 sin ampliar contrato.
+El Sprint D-1B-I11 quedó limitado a documentación arquitectónica. No modifica código, tests, contratos compartidos, schemas, Rule IDs ni comportamiento observable.
 
-Preserva guards/canRun/ownership/wire. Errores en orden illegal→budget→DT→V1; steps confirmados para policies, sin reanclado ni fallback. AdO recibe coste total y evidencia de steps, sin exención ni cambio de metadata/early return global. Commit es única autoridad de posición/squeezing/eje/gasto/stats base/contexto. Después: usedFullAttack, efecto, logs/pending y broadcast único. No flags redundantes, esfuerzo Disabled ni syncEncounterPhase.
+La auditoría confirmó una asimetría concreta: el servidor Run ya usa `buildStraightPath`, presupuesto efectivo, Movement Resolution y Authoritative Commit; el cliente todavía identifica el preview como `legacy-run`, permite construir una ruta arbitraria paso a paso y usa cálculos legacy para coste y resaltado.
 
-Efecto: intent desde snapshot feat; preflight add puro descartado antes de Commit. Segundo add contra room vigente y asignación solo de effectInstances preserva la transición espacial. Stacking ignore conserva instancia/duración y status log histórico; con srd_run no hay exposición/status. Garantía síncrona sin await ni extensión fingerprint. No rollback genérico ni excepciones tragadas.
+El Capítulo 13 define la paridad futura sin duplicar autoridad:
 
-## Verificación real
+- Run se previsualiza por destino sobre los ocho rayos ortogonales/diagonales válidos desde el origen.
+- Cada candidato reconstruye exactamente la ruta recta canónica mediante `buildStraightPath`; no hay snapping, BFS, A* ni barrido exhaustivo del tablero.
+- El adapter web especializado `buildRunMovementPreview` consume Route Validation, Movement Cost, presupuesto Run efectivo, Difficult Terrain, V1 y contexto diagonal real.
+- La disponibilidad de la acción permanece separada de la legalidad de una ruta concreta.
+- El cliente mantiene solo el destino elegido; ruta, coste, contexto proyectado, huellas y trazabilidad se derivan nuevamente en cada render relevante.
+- El payload productivo continúa enviando únicamente `to`; el servidor sigue siendo la autoridad y reconstruye la ruta.
+- Squeezing, terreno difícil, contribuciones de dotes, AoO y errores conservan las autoridades existentes; no se introducen excepciones Run ni lógica paralela.
 
-| Gate | Resultado |
-|---|---|
-| Run servidor/puro + Movement Resolution/Commit focalizados | 168/168 |
-| npm test, incluido fixture puro normalizado final | 981/981 |
-| npm run typecheck | Verde, tres workspaces |
-| npm run build | Verde, tres workspaces |
-| node scripts/e2e-websocket.mjs | 134/134 |
-| npm run test:ui | 33/33 |
-| git diff --check y enlaces/anchors | Verificados antes del commit |
+## Auditoría trazable
 
-Se conservan históricos R1..R18; 74 casos Run nuevos y 14 checks WebSocket nuevos. Oracle shared para coste/contexto/huellas, expectativas independientes de policy; handler real y room completo/broadcast verificados en rechazos. Stale inyecta mutaciones externas mediante consulta AdO con mocks acotados a t.mock y compara contra estado inmediatamente anterior al Commit, sin revertir mutación ajena. Preflight fallido no escribe movimiento/economía/efecto/logs/pending; éxito con squeezing demuestra conservación tras segundo add.
+Se inspeccionaron completamente las autoridades documentales requeridas y los consumidores reales en shared, web, server y tests. Se verificaron especialmente `apps/web/src/movementPreview.ts`, `useBoardSelection.ts`, `viewModel.ts`, `App.tsx`, `ActionsPanel.tsx`, `MovementPreviewSummary.tsx`, `Board.tsx`, el handler productivo `handleRun`, los módulos normativos de movimiento y las suites de preview/Run existentes.
 
-Dos fixtures exploratorios se corrigieron contra autoridad real, sin tocar reglas: Blinded sí declara FORBID_RUN (rate proyectada se comprueba pero Run rechaza); Large diagonal narrow está prohibida por geometría existente (se prueba rechazo atómico, no aceptación artificial). Coste genérico hampered 15/base5 no implica ruta Run legal. Buff heavy aceptado demuestra 20+10, luego ×3=90 sin doble reducción. Diagonal normal contexto0→dos pasos15 y contexto1→un paso10 se ejecutan realmente.
+Las 26 preguntas obligatorias del sprint quedaron respondidas explícitamente en el NDD. No se detectó un bloqueo arquitectónico ni fue necesario abrir una ODR.
 
-UI necesitó ejecución con permisos de servidores locales/Chromium tras cancelar arranque sandbox sin puertos disponibles. Un intento diagnóstico de node sobre dist sin loader no resuelve exports TS shared; se usó arranque tsx existente, sin cambiar infraestructura. WebSocket corrió separado de UI contra servidor real y se detuvo el proceso propio al finalizar. Build mantiene advertencia preexistente de bundle >500 kB. Ninguna modificación a demo, renderer ni tests UI.
+## Alcance futuro condicionado
 
-## Fronteras y documentación
+La sección 13.9 contiene un plan embebido de implementación futura, no autorizado por este sprint. Si recibe Proceed y permanece restringido a web, tests y documentación, corresponde Nivel B. Cualquier necesidad de modificar shared, server, schemas o protocolo obliga a detenerse y reclasificar antes de implementar.
 
-packages/shared, apps/web, schemas/protocolo, otros handlers, .claude/settings.local.json y test.txt intactos. Helpers legacy permanecen usados por 5ft/Charge. Run preview sigue legacy-run; I11 recomendado separado, D-7 y otras migraciones fuera. No se implementa resistencia/visión ni se cierra DT-018/DT-019. Registry mantiene estado MOVE-RUN: no se amplía cobertura RAW ni se cambia Rule ID; evidencia detallada actual en master-coverage, sin modificar catálogos/checklists por una integración de caller.
+La futura remediación deberá retirar exclusivamente la rama `legacy-run` y sus consumidores cuando la paridad esté demostrada; los helpers legacy todavía utilizados por otras acciones permanecen fuera de alcance. D-1B-I6 y cualquier nueva semántica de movimiento continúan separados.
 
-Plan raíz migrado a docs/designs/movement/run-implementation-plan.md tras gates verdes; enlaces entrantes corregidos y root eliminado, referencia ejecutada sin estado activo Awaiting Proceed. NDD Capítulo 12 conserva auditoría del baseline y contrato aprobado, agrega cierre/precisiones reales; snapshots y localizador sincronizados. Enlaces/anchors, responsabilidades y alcance se verifican antes del commit único/push origin/master. Windows CI se comprueba después del push sobre head_sha exacto. Implementación pendiente únicamente de Architecture Review externa; no autoaprobada.
+## Validación documental
+
+- Diff limitado a Markdown aprobado del sprint.
+- Enlaces y referencias cruzadas comprobados.
+- `git diff --check` comprobado antes del commit.
+- No se ejecutaron suites de código ni CI: el sprint no contiene cambios ejecutables y no genera evidencia funcional nueva.
+- `test.txt` se preservó sin seguimiento y fuera del commit.
+
+Estado final: diseño listo para Architecture Review y Proceed explícito antes de cualquier implementación.
