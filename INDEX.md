@@ -76,7 +76,9 @@ implementación cerrados (`large-footprints-v1-implementation-plan.md`,
 
 ## Decisiones, diseños y auditorías
 
-- [I9 Withdraw preview — diseño e implementación](docs/designs/normative-movement-design.md#capítulo-11--i9-withdraw-normative-preview-parity): [plan ejecutado embebido](docs/designs/normative-movement-design.md#118-plan-de-implementación-ejecutado--referencia-i9), implementación completada; Ready for Architecture Review externa. Sin plan activo pendiente de Proceed ni archivo retroactivo en raíz.
+- [I10 Run servidor — diseño pendiente](docs/designs/normative-movement-design.md#capítulo-12--i10-run-server-normative-integration): único [plan activo I10](implementation_plan.md), Awaiting Architecture Review and Proceed; reglas propias en [Run](docs/designs/run-design.md).
+
+- [I9 Withdraw preview — diseño e implementación](docs/designs/normative-movement-design.md#capítulo-11--i9-withdraw-normative-preview-parity): [plan ejecutado embebido](docs/designs/normative-movement-design.md#118-plan-de-implementación-ejecutado--referencia-i9), implementación completada y TECHNICALLY APPROVED según el owner (9b8f8dd); referencia ejecutada, sin plan activo I9.
 
 - [Plan I8 Withdraw servidor ejecutado](docs/designs/movement/withdraw-implementation-plan.md): integración aprobada y ejecutada con Proceed, derivada del [NDD Capítulo 10](docs/designs/normative-movement-design.md#capítulo-10--i8-tactical-movement-consumers-migration-sequencing); TECHNICALLY APPROVED tras I8R1 (791fb4b), según el owner. Referencia ejecutada, separada de la referencia I9.
 - [Plan I7 ejecutado](docs/designs/movement-preview/implementation-plan.md): referencia de Preview Parity técnicamente aprobado sobre 67f6c36; permanece separado de la referencia ejecutada I8.

@@ -1,41 +1,25 @@
-# Walkthrough — D-1B-I9 Withdraw Normative Preview Integration
+# Walkthrough — D-1B-I10 Design
 
-Responsabilidad: evidencia de implementación, gates y límites de I9.
-Autoridad: registro; [NDD Capítulo 11](docs/designs/normative-movement-design.md#capítulo-11--i9-withdraw-normative-preview-parity), reglas propias en [Withdraw Rev. 3](docs/designs/withdraw/design.md).
-Lifecycle: Rotativo.
-Reemplaza: walkthrough I9 Design, conservado en Git.
-Complementa: [plan ejecutado](docs/designs/normative-movement-design.md#118-plan-de-implementación-ejecutado--referencia-i9), [estado](PROJECT_STATUS.md), [pendientes](TODO.md), [coverage](docs/testing/master-coverage.md).
-Consumidores: Architecture Reviewer y agentes que consultan la implementación publicada.
+Canonical responsibility: Evidencia del cierre documental de diseño I10.
+Supersedes: Walkthrough I9 implementado, preservado en Git.
+Complements: [NDD Capítulo 12](docs/designs/normative-movement-design.md#capítulo-12--i10-run-server-normative-integration), [plan activo](implementation_plan.md), [estado](PROJECT_STATUS.md), [pendientes](TODO.md).
+Derived from: Auditoría de HEAD 9b8f8dd58bba9b79d18bcd3fcdf38dc97708e3a8 y orden del owner.
+Lifecycle: Rotativo; entrega documental, Awaiting Architecture Review and Proceed.
 
-## Resultado y alcance
+## Resultado
 
-Baseline limpio master/origin/master `041bee05f6f4a5aa571dea778827eb51cbccbdb0`; diseño técnicamente aprobado y Proceed explícito del owner, Nivel B. Implementación exclusivamente apps/web, tests de preview/paridad y UI, documentación de cierre. packages/shared, apps/server, schemas/protocolo, scripts/e2e-websocket.mjs y .claude/settings.local.json permanecen intactos; ningún unrelated incorporado.
+Baseline limpio master/origin/master coincide con el solicitado. I6/I7/I8/I9 aprobados según el owner; Windows CI I9 SUCCESS informado, sin atribuir esa aprobación a esta auditoría. Entrega actual Nivel A; implementación propuesta Nivel C, pendiente de aprobación y Proceed.
 
-buildWithdrawMovementPreview y buildWithdrawCandidates son wrappers explícitos, sin opción isAcrobatic. Reutilizan mapper de Resolution y enumerador privado de vecinos, sin framework de acciones. Ordinary conserva budget/Tumble/CD25. Withdraw obtiene límite ×2/×1 por gates Disabled shared (también Diehard), contador diagonal real y false fijo; copia xyz/draft y valida estado espacial también vacío. Una evaluación del draft y hasta ocho extensiones, memoizadas sobre snapshot actual, sin scan/BFS/pathfinding.
+Se extendió NDD Movement con Capítulo 12, inventario de fuentes auditadas y 24 respuestas de diseño. Run-specific RAW sigue en run-design; solo se agregó allí status factual/cross-reference e identificación del material histórico. Se creó único plan activo raíz exigido por AGENTS Fase 3, separado de referencias ejecutadas I6–I9. INDEX, PROJECT_STATUS y TODO actualizados según su responsabilidad.
 
-Policy V1 privada después de ready: intersecciones entre occupiedCells de steps y huellas shared de otros, primer blocker y reasonSource. Illegal/movement vs withdraw-policy no inventa coste/pasos/contexto; insufficient-budget conserva ruta completa y no ejecuta V1, según precedencia I8. No Commit, RNG, logs, efectos ni autoridad cliente. Disponibilidad separada consume guards shared y economía real; gasto previo mantiene evaluación hipotética con límite completo, sin residual ni confundir bloqueo con ilegalidad de ruta.
+APIs Resolution/Commit actuales suficientes, sin shared nuevo. Caller conserva straight path de rules.ts, altura de origen y budget efectivo ×4/×3. Precedencia cerrada illegal → budget → DT → V1, sin DT sobre insufficient. Footprints solo de steps. Contexto real y contabilidad base/total quedan en Commit. Evidencia final modo/eje viene de último step y resultado committed, no de campos top-level inexistentes en Resolution.
 
-Hook/panel/Board consumen la misma proyección. App permite editar candidatos legales/excedidos/ilegales, preserva altura, elimina bloqueo por token/reanclado de destino para Withdraw y protege su primera rama de confirmación antes del envío. Payload exacto de intención copiada, sin coste/budget/axis/contexto/status/fingerprint/isAcrobatic. No optimismo ni retry. Textos normal full-round ×2 vs limitada estándar ×1, esfuerzo solo servidor y exención inicial completa sin predictor AdO; Tumble/CD25 ocultos en Withdraw.
+Atomicidad exposición cerrada en §12.7: preflight add puro descarta room devuelto; tras Commit add sobre estado vigente y asignación solo de effectInstances. No room de snapshot que sobrescriba posición/eje/contabilidad. Validaciones de id/eje/cadenas auditadas, garantía condicionada a catálogo estático/flujo síncrono; no promesa de rollback arbitrario. Guards Run no se confunden con fingerprint. Sin exención AdO, nueva regla squeezing ni variante Disabled.
 
-El kind withdraw reemplaza solo legacy-withdraw. Se retiran del flujo Withdraw los costes/rango/validator legacy y turnVirgin local; helpers siguen para Run/5ft/Charge/spells/GM/preparation. PresentationModel comparte evidencia con ambos renderers; solo se aclara su nombre interno de proyección normativa, sin geometría nueva ni cambios en TacticalScene3D/Board. Token y eje publicados no se alteran hasta room-update. Reset local por actor/ronda cubre turno nuevo del mismo actor (el callback WebSocket existente solo detecta cambios de actor); actualizaciones del mismo actor/turno no borran draft.
+Matriz futura de tests cubre A–I y E2E real; distingue cobertura existente de propuesta e inyección stale controlada de comandos WebSocket seriales. Preview permanece legacy-run; I11 separado recomendado. D-7 y deudas D-2/DT-018, D-4/DT-019 intactas. Cero ODR bloqueantes de diseño; no implementación autorizada.
 
-## Verificación
+## DoD documental
 
-| Gate | Resultado local |
-|---|---|
-| npm test | 907/907 |
-| Preview ordinary + Withdraw/paridad focalizados | 99/99 |
-| npm run typecheck | Verde, tres workspaces |
-| npm run build | Verde, tres workspaces |
-| node scripts/e2e-websocket.mjs, sin cambios | 120/120 |
-| npm run test:ui | 33/33 |
+Se verificaron alcance exclusivamente Markdown, `git diff --check`, enlaces/anchors internos nuevos, referencias de autoridades y plan activo único I10. Root implementation_plan.md existe como plan pendiente de este sprint; I8 e I9 permanecen referencias ejecutadas. Registry MOVE-RUN/deudas y evidencia master-coverage se inspeccionaron, sin cambiar su estado ni registrar pruebas inexistentes.
 
-Los oracles son resolveMovementPipeline y handleUseTacticalAction I8 real sobre rooms independientes, sin función V1 de test compartida con producción. Nuevos tests cubren coste/contexto/speed, budgets/Diehard, V1 discriminante y orden budget, toda transición/eje/corrupción, no mutación/RNG/candidatos xyz, gates separados y presentación común. Los 11 UI ejecutan handler real mediante transporte controlado: dos DT=30, contexto inicial, limitada exacto/exceso/esfuerzo, dying/active/aliado/dead, room-update terrain/economy, turno nuevo misma criatura, Intent retrasado N+1 y ghost/coste/eje en dos modos/cuatro cámaras. WebSocket es regresión del servidor real, no evidencia de preview por sí solo.
-
-Se corrigieron fixtures exploratorios para respetar la integridad source-first (efectos compartidos en lugar de traits derivados inventados y estructura completa de amenaza crítica). Paralyzed tiene speed 0: se prueba bloqueo separado más exceso de presupuesto real, no se fuerza una ruta legal con un límite inexistente. La suite completa se repitió tras añadir reset/test del turno nuevo del mismo actor. Esa repetición tuvo un timeout total de 30 segundos al salir de la demo en el primer test existente (los 11 I9 pasaron); se repitió la suite sin compilaciones ni unitarias paralelas y pasó completa, sin modificar demo ni su test. No se cambiaron reglas para satisfacer expectativas. Build conserva advertencia previa >500 kB; servidores propios detenidos al terminar.
-
-## Cierre documental
-
-Capítulo 11/§11.8 marcado como referencia ejecutada y preguntas de lifecycle cerradas: implementación completada, sin nuevo Proceed. Instrucciones históricas del plan aprobado preservadas, sin plan activo duplicado ni root implementation_plan.md retroactivo. PROJECT_STATUS/TODO/INDEX/master-coverage sincronizados; Registry/checklists no cambian porque no se implementan reglas nuevas. Enlaces/anchors locales, diff check y frontera de archivos verificados antes del commit.
-
-DoD local completo. Tras el commit único y push origin/master, se verifica Windows CI sobre el SHA publicado y se informa su resultado real al owner. Ready for Architecture Review; sin autoaprobación. Run/5ft/Charge y los demás follow-ups permanecen separados.
+No se modificaron código, tests, scripts, schemas, shared/server/web ni archivos excluidos. No se ejecutaron suites técnicas ni CI para esta entrega Markdown. El commit documental único se publica en origin/master sin force. Diseño y plan pendientes de Architecture Review y Proceed; sin autoaprobación.

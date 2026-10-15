@@ -15,6 +15,8 @@
 - GitHub Actions sobre Windows es el gate canónico de cierre para la revisión
   publicada.
 
+I10 Run servidor: auditoría/diseño completados en [Capítulo 12](docs/designs/normative-movement-design.md#capítulo-12--i10-run-server-normative-integration); [plan activo](implementation_plan.md), futura implementación Nivel C sobre APIs existentes. Awaiting Architecture Review and Proceed. Solo documentación publicada; Run sigue legacy y preview legacy-run. Sin nueva evidencia técnica ni cambios en master-coverage.
+
 ## Integración de D-1B
 
 | Etapa | Estado comprobado en el código |
@@ -27,7 +29,7 @@
 | I6 — Move Action Productive Integration | Integrado para Move ordinario activo; eje persistente/copia/snapshot y compatibilidad mínima legacy. TECHNICALLY APPROVED (650f22d). |
 | I7 — Normative Movement Preview Parity | Implementado en web usando resolveMovementPipeline existente: draft/candidatos, coste/contexto, Tumble/CD25 contingente y ghost común 2D/2.5D. Servidor/shared/protocolo sin cambios. TECHNICALLY APPROVED (67f6c36), Windows CI SUCCESS. |
 
-I8 Withdraw servidor TECHNICALLY APPROVED tras I8R1 según el owner; [plan ejecutado](docs/designs/movement/withdraw-implementation-plan.md). I9 implementado tras diseño aprobado y Proceed sobre 041bee0: preview Withdraw web normativo, budget ×2/×1, disponibilidad separada, V1 y evidencia compartida 2D/2.5D. Servidor/shared/protocolo y script WebSocket intactos. [NDD Capítulo 11](docs/designs/normative-movement-design.md#capítulo-11--i9-withdraw-normative-preview-parity) y [plan ejecutado embebido](docs/designs/normative-movement-design.md#118-plan-de-implementación-ejecutado--referencia-i9). DoD local verde; Ready for Architecture Review externa. Run/5ft/Charge y D-7 permanecen fuera del alcance.
+I8 Withdraw servidor TECHNICALLY APPROVED tras I8R1 según el owner; [plan ejecutado](docs/designs/movement/withdraw-implementation-plan.md). I9 implementado tras diseño aprobado y Proceed sobre 041bee0: preview Withdraw web normativo, budget ×2/×1, disponibilidad separada, V1 y evidencia compartida 2D/2.5D. Servidor/shared/protocolo y script WebSocket intactos. [NDD Capítulo 11](docs/designs/normative-movement-design.md#capítulo-11--i9-withdraw-normative-preview-parity) y [plan ejecutado embebido](docs/designs/normative-movement-design.md#118-plan-de-implementación-ejecutado--referencia-i9). I9 TECHNICALLY APPROVED según el owner sobre 9b8f8dd58bba9b79d18bcd3fcdf38dc97708e3a8; Windows CI SUCCESS. Run/5ft/Charge y D-7 permanecen fuera del alcance de I9.
 
 La presentación incorpora un **renderer WebGL táctico 2.5D** con respaldo `2D`, cámara orbital limitada, cuatro presets y sprites pixel-art, estrictamente desacoplado sobre el grid autoritativo 2D con huellas multicasilla. No es todavía el motor espacial 3D normativo: las alturas visuales son cosméticas y los NDD espaciales siguen siendo el destino de migración mecánica. CI verde no significa V1 completa.
 

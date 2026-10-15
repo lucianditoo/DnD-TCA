@@ -1848,3 +1848,154 @@ Riesgos cerrados: drift V1/guards → tests con handler real; post-policy vs exc
 20. Evidencia ejecutada: adapter/resolver/handler I8 real, pureza, V1, gates, stale, payload y ambos renderers; resultados concretos en master-coverage y walkthrough.
 21. Governance: futuro B estrictamente web; C/D si alcance exige shared/reglas/server/contratos; plan único embebido permitido por Fase 3.
 22. **Cero ODR bloqueantes. IMPLEMENTACIÓN COMPLETADA; Ready for Architecture Review externa. No se requiere un nuevo Proceed.**
+
+## Capítulo 12 — I10 Run Server Normative Integration
+
+### 12.1 Estado, autoridades y alcance
+
+**DESIGN ONLY. Awaiting Architecture Review and Proceed.** Auditoría sobre master/origin/master `9b8f8dd58bba9b79d18bcd3fcdf38dc97708e3a8`, limpio. I6/I7/I8/I9 técnicamente aprobados según el owner; Windows CI I9 SUCCESS informado por el owner. Este capítulo no afirma implementación I10 ni ejecución nueva de tests/CI.
+
+La integración pertenece a Movement; las reglas y decisiones D-1 a D-5 permanecen exclusivamente en [Run](run-design.md). Este capítulo documenta su adaptación a APIs existentes, sin redefinir RAW. El único [plan activo](../../implementation_plan.md) detalla ejecución futura. Entrega documental Nivel A; futura implementación **Nivel C** por tocar orquestación/resolver servidor (§5.2 Governance). Si aparece necesidad de contratos, EffectManager/Reducer o infraestructura, detener y reclasificar D antes de implementarla.
+
+### 12.2 Auditoría verificable del baseline
+
+| Fuente inspeccionada | Hallazgo relevante |
+|---|---|
+| `apps/server/src/commands/tacticalCommands.ts`, `handleUseTacticalAction` | Phase active, actor existente, ownership, turno activo, snapshot y evaluateActionAvailability anteceden al dispatch Run. |
+| Mismo archivo, `handleRun` | Pendientes AdO → attackMode none → canRun → buildStraightPath → runSpeedBudgetFeet → validateMovePath(false,false) → DT → V1 → AdO → commitSpatialTransition → stats manual → gasto manual → usedFullAttack → movement/spatial logs → pendientes/logs AdO → contribución dote → efecto/status log si corresponde → broadcast. No esfuerzo Disabled ni syncEncounterPhase en esta rama. |
+| `apps/server/src/combat/spatialTransition.ts` | Valida evidencia modo/eje, mantiene srd_squeezing y posición; no presupuesto/contexto/stats. Continúa necesario para otros callers. |
+| `packages/shared/src/rules.ts` | validateMovePath delega geometría, usa coste legacy con paridad local y rechaza exceso antes de DT del caller. canRun delega canFullAttack (incluye Disabled full-round, amenaza crítica y flags de economía), rechaza movimiento/move/5ft y consume FORBID_RUN reducido. No existe Limited Run. |
+| `packages/shared/src/equipmentStats.ts`, `rules.ts` | getEquippedArmorEntry selecciona categoría; getArmorAdjustedSpeedFeet aplica tabla de armadura una vez en projectMovementSpeed. totalSpeedFeet consume proyección con buffs/efectos/rates. runSpeedBudgetFeet multiplica ese resultado por runSpeedMultiplier, sin aplicar de nuevo tabla de armadura. |
+| `packages/shared/src/movementResolution.ts` | API existente acepta budget numérico y contexto inicial; legalidad → coste → comparación. illegal-route no tiene steps; insufficient-budget sí tiene evidencia completa; ready es consumible por Commit. No contiene policies Run ni economía. |
+| `packages/shared/src/routeValidation.ts` | Adyacencia, límites, huella, terreno, esquinas, no repetición y ocupación genérica. Enemigo no helpless bloquea tránsito sin Acrobacias; endpoint no helpless bloquea. dying/stable pueden superar esta capa; V1 Run sigue necesaria. |
+| `packages/shared/src/movementCost.ts` | Diagonal normal 5/10 contextual; squeezing/DT son hampering, diagonal fija 15 con duplicaciones adicionales. Base de ruta separada de coste. Run usa false para Acrobacias; no hay otro flag hampering genérico que inventar. |
+| `packages/shared/src/movementCommit.ts` | Referencia viva canónica, turno/ronda/origen/gasto/contexto/fingerprint y evidencia espacial antes de escribir; mantiene squeezing/eje y confirma posición, stats base, gasto total y contexto. No economía ni publicación. |
+| `packages/shared/src/effects/manager.ts`, `catalog.ts`, `reducer.ts`, `tick.ts`, `types.ts`, `contracts.ts`, `queries.ts`, `index.ts` | add es puro; valida id y eje; copia instancia, evalúa colisiones/cadena y devuelve room. running_exposed usa NO_DEX_TO_AC, onStack ignore, sin upgrade; reducer aporta overrides; tick expira until_turn solo con secuencia posterior y actor/fase coincidentes. |
+| `packages/shared/src/featCatalog.ts` | runContribution conserva Destreza solo por contribución declarativa, actualmente srd_run; ningún otro beneficio. |
+| `docs/designs/run-design.md`, este NDD | D-1/D-3/D-5 implementadas históricamente; D-2/D-4 diferidas. I8 fija patrón servidor y no autoriza migrar otros consumers sin diseño. |
+| `tests/run.test.mjs`, `tests/run-server.test.mjs` | R-U1..21: guards, presupuesto efectivo/armadura, geometría y dote. R1..R18: exacto/exceso ×4, heavy exacto, pendiente inválida, DT, Disabled/Fatigued, economía, escrituras, origen AdO, efecto/dote, ownership/schema y Move regresión. No demuestran todavía integración normativa Run. Fixture servidor carece de normalDiagonalStepsThisTurn: completarla en futura implementación, sin fallback productivo. |
+| `tests/withdraw-server.test.mjs` | Patrón I8 de integración real: contexto/coste, V1, ejes, guards, stale inyectado y ausencia de publicación parcial; reutilizar patrón, no semánticas limited/exención. |
+| `tests/movement-resolution.test.mjs`, `tests/movement-commit.test.mjs` | Evidencia shared de contexto inicial no cero, diferencias legacy, coste/base, identidad y precondiciones stale; no sustituye pruebas del caller Run. |
+| `scripts/e2e-websocket.mjs` | Escenario existente Run bajo Entangled rechaza; no constituye cobertura real de toda la migración. Escenarios I8 son regresión. No se ejecutó ni modificó script en diseño. |
+| `apps/web/src/movementPreview.ts`, `hooks/useBoardSelection.ts`, `viewModel.ts`, `components/ActionsPanel/ActionsPanel.tsx` | Kind legacy-run; hook normativo para ordinary/withdraw. Run conserva highlights/validación legacy, factor ×4/×3 y gating/panel propios. No hay paridad normativa Run demostrada. |
+
+### 12.3 Frontera y APIs sin extensiones
+
+**Sí**, resolveMovementPipeline y commitMovementResolution sirven sin cambios. No RunMovementResolver ni RunBudgetPolicy shared. Snapshot actor (buscado por id dentro del snapshot) para resolver/policies; actor canónico vivo de room para Commit. Capturar precondiciones del snapshot antes de cálculos. No pasar el actor vivo como sustituto accidental del actor snapshot.
+
+El caller construye `candidatePath = buildStraightPath(snapshotActor.position, command.to)` desde rules.ts, autoridad compartida ya usada por Run/Carga. Acepta horizontal/vertical/45°, rechaza otra pendiente y longitud cero. Cada paso conserva origin.zFeet; **destination.zFeet se ignora actualmente**, incluso un destino de igual xy y otra altura es inválido por cero desplazamiento. Preservar este comportamiento, sin vuelo/escalada ni nueva validación vertical o cambio del wire. Resolution recibe la ruta; no la elige, trunca ni busca otra.
+
+El caller entrega `runSpeedBudgetFeet(snapshot, snapshotActor)` como availableBudgetFeet total. canRun exige gasto previo cero: no restar otra vez ni hacer budget residual. La armadura ya redujo velocidad efectiva; ×3 heavy frente a ×4 resto es el límite de acción, no multiplicador del coste de cada step. Speed 30 → 120; heavy speed efectiva 20 → 60; efectos de velocidad entran solo por proyección existente. No usar baseSpeedFeet crudo.
+
+initialContext copia `snapshot.currentTurn.normalDiagonalStepsThisTurn` real aunque no sea cero; Commit publica projectedContext. Turno virgen normalmente produce cero, no autoriza reset ni default artificial. Fixtures completos; no D-7.
+
+### 12.4 Precedencia de rechazos y policies
+
+Orden cerrado: guards → construcción straight path → **illegal-route → insufficient-budget → Run DT → V1**. Conservar precedencia actual del caller aunque cambie el cálculo normativo que determina exceso. Si Resolution es insufficient-budget, **no ejecutar DT ni V1**, aun teniendo steps; gana presupuesto si también existe DT. illegal-route gana antes de comparar budget, incluida ocupación genérica que rechace la ruta. Esta elección preserva la estructura legacy y el patrón I8; alternativa DT primero descartada por alterar el error autoritativo sin necesidad.
+
+Solo sobre ready, DT inspecciona `resolution.steps[].occupiedCells` con isDifficultTerrain(snapshot,x,y), incluyendo celdas no ancla Large. El booleano isDifficultTerrain de cada step ya es equivalente; conservar una sola inspección de evidencia. No reconstruir huella, reanclar actor ni usar fallback. DT no se convierte en prohibición genérica de Movement. Se evalúan footprints de pasos, no se añade prohibición nueva sobre origen abandonado.
+
+V1, también solo sobre ready sin DT: intersección footprintCellKey de pasos confirmados con huellas shared de otros en snapshot; ignorar dead; tránsito bloquea todo enemy non-dead, endpoint cualquier non-dead. Ally transit permitido por esta policy, sujeto a legalidad genérica. dying/stable enemigos quedan rechazados aquí si superaron core; active/disabled suelen rechazarse antes por core. No unificar error de core y V1 artificialmente. Respetar zFeet mediante keys/geometría shared. No TacticalOccupancyPolicy nueva; seguir patrón I8 local sin extraer framework.
+
+### 12.5 Squeezing, coste y contabilidad
+
+No hay prohibición Run nueva por squeezing. Geometría shared decide natural→H/V, H/V persistido, H↔V y salida natural. Consumir sus steps; no inferir eje por dirección en servidor. Corrupción de instancia/eje puede lanzar error de integridad durante proyección: propagar rechazo sin mutación ni recuperación heurística.
+
+Precisión de contrato: **MovementResolutionResult no expone finalSpatialMode ni squeezingAxis de nivel superior**. La evidencia final está en el último `resolution.steps` (spatialMode/squeezingAxis), y el resultado committed sí expone finalSpatialMode/squeezingAxis. Usar esos campos reales sin ampliar API. Commit mantiene efecto srd_squeezing y eje, incluso cambio H↔V; log de entrada/salida compara modo anterior capturado con final confirmado, sin inventar log de cambio de modo al solo rotar eje.
+
+| Ruta a evaluar con budget Run | Coste / base / contexto esperados |
+|---|---|
+| Un ortogonal normal | 5 / 5 / sin cambio |
+| Dos diagonales normales, inicial 0 | 15 / 15 / 2 |
+| Una diagonal normal, inicial 1 | 10 / 10 / 2 |
+| Ortogonal squeezing | 10 / 5 / sin cambio |
+| Diagonal squeezing | 15 / 5 / sin consumir paridad normal |
+| Squeezing + DT | Se calcula evidencia shared; si excede gana budget, si ready rechaza DT; nunca Commit. |
+| Modificadores de speed | Cambian budget proyectado, sin alterar fórmula de coste. |
+
+Única escritura de contabilidad: Commit suma totalCostFeet a movementUsedFeet y totalBaseRouteCostFeet a stats.distanceMovedFeet, y publica contexto. El caller no vuelve a sumar ni copia distancia legacy. No agregar hampering nuevo ni Acrobacias.
+
+### 12.6 AdO, economía y publicación
+
+Bufferizar findTriggeredOpportunityAttacksForPath(snapshot,snapshotActor,candidatePath,resolution.totalCostFeet, callback Rules.canMakeOpportunityAttack, **false, undefined, resolution.steps**). Sin exemptDepartureCellKeys propio; undefined usa conjunto vacío existente. No AdO adicional por comenzar Run. Mantener early return actual de distancia ≤ cellSizeFeet y metadata movementCostFeet calculada con contador local 5/10 del helper; esta integración cambia input total/evidencia, no corrige globalmente metadata. Origen completo puede provocar; reglas de reactor/AOO-03, amenaza, LoE/Cover/ocultación y múltiples reactores siguen en helper. Pendientes se resuelven manualmente tras ruta confirmada, sin interrupción/predictor web nuevo.
+
+Antes de Commit: capturar modo previo, calcular policy/effect intent, oportunidades y datos/textos de logs en buffers; ninguna escritura a posición, efectos, gasto, stats, contexto, economía, log ni pending. IDs locales pueden prepararse sin publicarlos; ningún RNG de reglas ni tirada de esfuerzo. Crear entradas makeLog solo para publicación o mantenerlas descartables en buffer.
+
+Tras committed: `usedFullAttack = true` solamente; no escribir usedMoveAction/usedStandardAction/usedFiveFootStep, ni renombrar marcador. Aplicar efecto Run si procede conforme §12.7; publicar movement/spatial/status logs y pendientes/logs AdO respetando orden visible previo (unshift invierte inserciones; reordenar aplicación de efecto no obliga a cambiar orden visible). Un solo broadcast al terminar. No añadir syncEncounterPhase ni esfuerzo Disabled a Run.
+
+Guards conservan canRun, attackMode, full-round, Disabled prohibition, FORBID_RUN (Fatigued y cualquier fuente declarativa), pending, ownership/phase/turn. Ataques ordinarios previos bloquean por usedStandardAction/usedFullAttack en estados válidos; canRun/canFullAttack no inspeccionan attacksMade directamente. Una fixture con solo attacksMade inconsistente no autoriza introducir un guard nuevo. Fingerprint no autoriza acción ni sustituye estos gates; no añadir variante ×1 ni usar canUseMoveAction como reemplazo de autorización full-round.
+
+### 12.7 Efecto Run y garantía de atomicidad
+
+Sin contribución keepsDexBonusWhileRunning, preparar una instancia tipada existente: effectId srd_running_exposed, instanceId único local, source creature con actor.id, targets [actor.id], appliedAtEvent ActionResolved con round capturado (preservar contrato actual), duration until_turn con anchorCombatantId actor.id, phase start y appliedAtSequence del room previo. Commit no incrementa eventSequence. Tick exige un TurnStarted posterior de ese actor y sequence mayor; no expira al inicio de otro actor ni en evento de misma secuencia. Con srd_run no se construye/aplica exposición ni status log correspondiente; no beneficios adicionales de dote. onStack ignore evita duplicar una exposición ya existente, sin renovar silenciosamente su duración.
+
+**Riesgo auditado:** add puede lanzar por id desconocido, squeezingAxis inválido y cadena upgrade_to de catálogo inválida (también al inspeccionar efectos existentes con targets solapados). No valida genéricamente schema completo, source/targets/duration ni es API de transacción. No afirmar un validate inexistente ni ausencia absoluta de fallos de infraestructura.
+
+**Decisión concreta, sin shared nuevo:** una vez preparado el intent y buffers, antes de Commit ejecutar preflight puro `EffectManager.add(room, instance)` y **descartar por completo** el room devuelto. add no muta entradas; esto ejercita validaciones reales y stacking sobre colección vigente, sin aplicar efecto. Si lanza, abortar sin Commit ni publicación. No persistir esa colección ni el room precomputado. Sin feat no hay excepción a este preflight; con feat no se requiere add.
+
+Después de Commit, ejecutar add otra vez **sobre room actual** y publicar únicamente `room.effectInstances = returnedRoom.effectInstances`. Nunca Object.assign con resultado de preflight ni reemplazar room/actor/currentTurn desde snapshot anterior. Así preserva posición, stats, contador y srd_squeezing recién confirmados. Commit solo puede cambiar colección mediante squeezing válido conocido; running_exposed y squeezing no son cadena de severidad relacionada ni upgrade. Catálogo estático y flujo síncrono sin callbacks externos mutantes entre preflight/Commit/add hacen deterministas las validaciones de la segunda llamada. Source/targets/duration provienen de constructor tipado del caller y se prueban explícitamente, no de wire.
+
+Garantía: los rechazos de negocio/validación deterministas del efecto se detectan antes del Commit, y el add posterior usa estado vigente; no se promete rollback frente a OOM, monkeypatch arbitrario o excepción de transporte. Si en implementación se descubre validación dependiente de estado postmovimiento distinta de squeezing, o necesidad de efecto con callbacks/async, parar y revisar diseño/reclasificar; no hacer catch que publique movimiento sin consecuencia ni introducir transacción genérica a escondidas. Prueba discriminante futura: preflight falla → cero Commit/escrituras; Commit rechaza → ningún efecto aplicado; Commit entra/rota squeezing y add posterior mantiene eje/posición/contabilidad, con una exposición como máximo.
+
+### 12.8 Stale y modelo síncrono
+
+Precondiciones copiadas: expectedTurnCombatantId, expectedRound, expectedOrigin xyz, expectedMovementUsedFeet, expectedDiagonalContext; Resolution lleva fingerprint. Commit recibe actor vivo exacto de room, no clon. Rechazo stale/invalid descarta todos los buffers; no economía, efecto, logs, pending ni broadcast. Comparar estado inmediatamente anterior a Commit cuando el test inyecta una modificación externa: no deshacer esa modificación ajena.
+
+Fingerprint cubre estado espacial/huellas (incluido eje), tablero/terreno/ocupación, speed efectiva y sus componentes, CANNOT_MOVE y gasto. No garantiza categoría heavy si speed coincide, Run feat, FORBID_RUN ni todos los flags de economía/attackMode. Handler actual es síncrono, sin await; helpers productivos son puros y callback AdO solo consulta Rules. No hay ventana de otro comando entre Resolve y Commit. No extender fingerprint para esas reglas.
+
+La garantía depende de mantener ese modelo y guards al inicio. Tests stale pueden inyectar cambio de dependencias Movement en el callback AdO como I8; eso no prueba autorización Run ante mutación arbitraria fuera del modelo. Si se introduce await, callback mutante o reentrada, repetir guards Run y reconstruir presupuesto/intents/resolución sobre snapshot fresco antes de Commit; detener/revisar alcance si cambia el modelo actual. No aprobar silenciosamente resultados cacheados con feat/armadura/FORBID/economía obsoletos.
+
+### 12.9 Retirada legacy, impacto y alternativas
+
+handleRun dejará validateMovePath, commitSpatialTransition, distanceFeet legacy, sumas manuales y fallback de footprints. Mantener imports/helpers mientras otros consumidores (5ft, Charge y otros) los usen; buildStraightPath y runSpeedBudgetFeet siguen fuentes actuales. No borrar calculadores globales por migrar una rama.
+
+Rule Engine/catálogos/CombatSnapshot/equipment/ownership/wire mantienen contratos: cambiar caller servidor, pruebas y docs. Sin TurnState nuevo, schema, protocolo, dependencia npm ni extensión shared. Web queda **legacy-run**, con divergencias conocidas de preview hasta sprint separado recomendado **I11 Run Preview**; no diseñarlo ni tocar apps/web en futura I10. Un bloqueo web imposible exige detener/reclasificar, no ampliación implícita. No dependencia de D-7. D-2 resistencia/Constitución/descanso (DT-018) y D-4 visión (DT-019) permanecen según Run/registro de deuda.
+
+Alternativas descartadas: resolver/budget policy Run en shared (number basta); recalcular huellas (duplica autoridad); DT antes de budget (altera precedencia); prohibir squeezing (nueva regla); actualizar room precomputado (pisaría Commit); confiar solo en tipado para add (no ejercita cadena real); migrar preview o metadata AdO aquí (otro alcance).
+
+### 12.10 Diseño de pruebas futuras, no ejecutadas
+
+Usar handler real y rooms independientes; oracle shared para coste/contexto, expectativas explícitas para policies. No crear helper V1 de test que replique producción. Completar fixture de contador y comparar room completo/broadcasts en rechazo.
+
+| Grupo | Casos de aceptación/rechazo obligatorios |
+|---|---|
+| A — Route/cost | Orthogonal 5, diagonal 5, dos diagonales 15, initial parity 1→10; ×4 exacto120/exceso125, heavy ×3 exacto60/exceso65; speed buff/rate sobre armadura una vez. Stats base y gasto total distinguibles. |
+| B — Straight | Horizontal, vertical, 45°, pendiente inválida, zero xy, origin.zFeet conservado y destination.zFeet ignorado; sin path cliente. |
+| C — DT/precedencia | Primer/medio step, no-ancla Large, squeezing+DT; illegal+DT gana ilegal, legal overbudget+DT gana budget, ready+DT gana DT antes V1; ningún fallback/reanclado. |
+| D — Squeezing | Natural→H/V, H persist, V persist, H↔V con fixtures geométricamente válidos, salida natural; eje ausente/inválido/duplicado aborta sin publicación; gasto10/base5 y diagonal15/base5. Efecto Run conserva squeezing confirmado. |
+| E — Occupancy | Enemy active/disabled/dying/stable tránsito/final; ally tránsito/final; dead; Large no-ancla y alturas. Distinguir rechazo core del adicional V1. |
+| F — AdO | Origen amenazado con ruta >5 provoca; pasos posteriores, Large/eje confirmado, varios reactores, sin exención; verificar helper recibe totalCostFeet y steps; preservar early return y metadata local vigente. |
+| G — Guards | Pending, attackMode, gasto previo, usedStandard/Move/FullAttack/5ft, attacksMade, Disabled/Diehard economy full-round, FORBID_RUN, wrong actor/control/phase/turn. Solo usedFullAttack cambia tras éxito. |
+| H — Efecto | Sin feat aplica, con feat ausente; source/target/duration/sequence correctos, siguiente turno propio expira, otro actor no; stacking exactamente una instancia; preflight puro y add posterior solo tras Commit; fallo preflight deja room intacto. |
+| I — Stale/atomicidad | Referencia viva, turno, ronda, origen xyz, gasto, contexto, fingerprint de movilidad/terreno/ocupación, eje; rechazo conserva estado precommit, sin economía/efecto/log/AdO/broadcast. Éxito conserva Commit tras segundo add. |
+
+Shared Resolution/Commit y Withdraw I8 quedan como regresión; añadir asserts del consumer en run-server y geometría/budget en run.test si faltan, sin duplicar suites core ni relajar reglas para fixtures.
+
+E2E WebSocket futuro, servidor real: (1) ×4 accepted verifica posición/gasto/usedFullAttack; (2) heavy ×3 exacto y exceso; (3) dos diagonales normales con coste15/contexto2; (4) DT rechaza sin room-update de éxito ni cambio de estado; (5) reactor amenaza origen y se publica pending sin exención; (6) sin/con feat comprueba efecto correcto/ausente y duración; (7) invalid/actor/turn rechazo sin publicación parcial. Stale entre Resolve/Commit no es reproducible enviando dos comandos síncronos por socket: probarlo mediante inyección de integración, sin hook productivo nuevo. En socket corroborar rechazo observable y estado autoritativo posterior; no fingir concurrencia inexistente.
+
+### 12.11 Respuestas de cierre y ODR
+
+1. Resolve sin cambios: sí (§12.3).
+2. Commit sin cambios: sí, actor vivo y precondiciones (§12.8).
+3. candidatePath: caller mediante buildStraightPath de rules.ts.
+4. ×4/×3: runSpeedBudgetFeet/velocidad efectiva, fuera de core.
+5. DT vs overbudget: gana budget; illegal primero (§12.4).
+6. DT: occupiedCells confirmadas, sin reanclado.
+7. Contexto: contador real copiado, Commit publica proyección.
+8. Squeezing: steps/último step y Commit; no campos top-level ficticios.
+9. V1: ready después de DT, policy local no-dead.
+10. AdO: helper actual, totalCostFeet/steps, sin exención.
+11. Buffer: intent efecto, oportunidades y evidencia/textos de logs, sin escrituras.
+12. Publicación: economía/efecto/logs/pending y broadcast único tras committed.
+13. usedFullAttack: exclusivamente tras committed.
+14. Exposición: intent existente, preflight puro descartado y add sobre room postcommit.
+15. Fallo add: validaciones deterministas ejercitadas antes; garantía síncrona y catálogo fijo, sin rollback ficticio (§12.7).
+16. srd_run: conserva Destreza, no efecto ni beneficios nuevos.
+17. Stale: descartar buffers y rechazar sin publicación.
+18. Retirar de Run: validateMovePath/spatialTransition/contabilidad y footprint fallback legacy.
+19. Mantener: straight path, budget y helpers usados por otras ramas.
+20. Preview: legacy-run; I11 separado recomendado.
+21. D-7: no dependencia ni implementación.
+22. D-2/D-4: DT-018/DT-019 intactas.
+23. Governance futura: C; D si cambia infraestructura/contratos.
+24. **Cero ODR bloqueantes de diseño. Awaiting Architecture Review and Proceed.** No autoriza implementación ni declara aprobación externa.
