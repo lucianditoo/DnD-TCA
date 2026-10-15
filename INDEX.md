@@ -76,7 +76,9 @@ implementación cerrados (`large-footprints-v1-implementation-plan.md`,
 
 ## Decisiones, diseños y auditorías
 
-- [Plan I8 Withdraw servidor ejecutado](docs/designs/movement/withdraw-implementation-plan.md): integración aprobada y ejecutada con Proceed, derivada del [NDD Capítulo 10](docs/designs/normative-movement-design.md#capítulo-10--i8-tactical-movement-consumers-migration-sequencing); Ready for Architecture Review externa. No queda plan activo en raíz.
+- [I9 Withdraw preview — diseño y auditoría](docs/designs/normative-movement-design.md#capítulo-11--i9-withdraw-normative-preview-parity): único [plan propuesto embebido](docs/designs/normative-movement-design.md#118-plan-de-implementación-propuesto--único-plan-activo-i9), pendiente de Architecture Review y Proceed. Nivel futuro B; sin plan duplicado en raíz (Fase 3 permite omitir archivo separado).
+
+- [Plan I8 Withdraw servidor ejecutado](docs/designs/movement/withdraw-implementation-plan.md): integración aprobada y ejecutada con Proceed, derivada del [NDD Capítulo 10](docs/designs/normative-movement-design.md#capítulo-10--i8-tactical-movement-consumers-migration-sequencing); TECHNICALLY APPROVED tras I8R1 (791fb4b), según el owner. Referencia ejecutada, separada del plan propuesto I9.
 - [Plan I7 ejecutado](docs/designs/movement-preview/implementation-plan.md): referencia de Preview Parity técnicamente aprobado sobre 67f6c36; permanece separado de la referencia ejecutada I8.
 - [Plan I6 ejecutado](docs/designs/movement/implementation-plan.md): referencia de implementación de Move Action técnicamente aprobada (650f22d); reubicado de raíz tras DoD.
 - [`docs/designs/movement/i5r2-implementation-plan.md`](docs/designs/movement/i5r2-implementation-plan.md): plan cerrado y técnicamente aprobado de D-1B-I5R1/I5R2 (Movement Resolution / Commit Remediation).

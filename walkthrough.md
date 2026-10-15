@@ -1,39 +1,36 @@
-# Walkthrough — D-1B-I8 Withdraw Server Normative Movement Integration
+# Walkthrough — D-1B-I9 Design: Withdraw Normative Preview Parity
 
-Responsabilidad: evidencia de implementación, validaciones y límites de I8.
-Autoridad: registro; integración en [NDD Capítulo 10](docs/designs/normative-movement-design.md#capítulo-10--i8-tactical-movement-consumers-migration-sequencing), reglas en [Withdraw Rev. 3](docs/designs/withdraw/design.md).
+Responsabilidad: evidencia de auditoría, decisiones y alcance documental I9.
+Autoridad: registro; integración en [NDD Capítulo 11](docs/designs/normative-movement-design.md#capítulo-11--i9-withdraw-normative-preview-parity), reglas propias en [Withdraw Rev. 3](docs/designs/withdraw/design.md).
 Lifecycle: Rotativo.
-Reemplaza: walkthrough I8 Design, conservado en Git.
-Complementa: [plan ejecutado](docs/designs/movement/withdraw-implementation-plan.md), [estado](PROJECT_STATUS.md), [pendientes](TODO.md), [coverage](docs/testing/master-coverage.md).
-Consumidores: Architecture Reviewer y agentes que consultan la implementación publicada.
+Reemplaza: walkthrough I8 ejecutado, conservado en Git.
+Complementa: [plan propuesto único](docs/designs/normative-movement-design.md#118-plan-de-implementación-propuesto--único-plan-activo-i9), [estado](PROJECT_STATUS.md), [pendientes](TODO.md), [índice](INDEX.md).
+Consumidores: Architecture Reviewer y agentes que implementarán solo tras Proceed específico.
 
-## Resultado y alcance
+## Baseline y auditoría
 
-Baseline limpio y sincronizado `61c7e96c0e084b0fb64c960cd3ee60e4444f9650`. Diseño técnicamente aprobado y Proceed explícito del owner, Nivel C. Se migró exclusivamente handleWithdraw/imports necesarios, tests asociados y WebSocket E2E. packages/shared/src, apps/web, schemas/protocolo, spatialTransition global y otros callers no cambian; tampoco .claude/settings.local.json ni archivos unrelated.
+Baseline limpio master/origin/master `791fb4bacfe82bddb1bc3af1324de2e9b74e622b`. I6/I7 aprobados; I8 TECHNICALLY APPROVED tras I8R1 según el owner. Windows CI del código I8 SUCCESS sobre af60111; I8R1 fue documental. Esta entrega es diseño únicamente: ningún código/test productivo modificado ni suite técnica ejecutada.
 
-Resolution recibe actor del snapshot, ruta xyz copiada (path o fallback to), budget efectivo propio ×2/×1, contador diagonal real e isAcrobatic=false. Se mantienen guards y ocupación V1 externa desde occupiedCells, sin reanclar/fallback. El helper AdO recibe totalCostFeet/steps y exención inicial completa; sus metadata/early return siguen intactos. Oportunidades quedan locales hasta Commit.
+Inspeccionados movementPreview, useBoardSelection, viewModel, App, ActionsPanel/summary, presentationModel, Board y TacticalScene3D; referencia real handleWithdraw I8 y contratos de Resolution/Cost/Commit/Route/rules. Releídos puntos pertinentes de tests Withdraw/I7 y del WebSocket real. Inventario de call sites y responsabilidades en NDD §11.2.
 
-Commit recibe la referencia viva y precondiciones de turno/ronda/origen xyz/gasto/paridad; ready no se altera. Solo Commit escribe posición, squeezing/eje, contexto, gasto total y stats base. Se retiraron del caller validateMovePath/ST y sumas manuales. Economía full-round o estándar limitada, logs, pendientes y esfuerzo Disabled se publican después de committed, antes de un único broadcast. No retry, aceptación de prefijo, nueva economía, sync adicional ni rollback de consecuencias posteriores. Axis H↔V no inventa entrada/salida de squeezing.
+Confirmado legacy-withdraw: el hook no crea proyección/candidatos; calcula total/pasos legacy y llama getHighlightedCells. viewModel usa factor ×2/×1 y budget residual, escanea tablero y valida vía isLegalNextPathStep/validateMovePath. App preserva altura y permite editar estados inválidos solo para ordinary, reancla destino Withdraw con otro helper y su rama de envío retorna antes del guard ordinary. El panel anuncia full-round ×2 incondicionalmente, aunque el rango legacy contempla Disabled ×1. La presentación ya admite la misma evidencia de proyección; su variable ordinary en realidad indica que hay una proyección normativa.
 
-La UI Withdraw permanece legacy por decisión aprobada. Run, Five-Foot Step, Charge, Move I6, preview I7, D-7, forced/GM/preparation y rango de conjuros quedan fuera. Ningún helper legacy compartido se elimina.
+## Decisiones cerradas
 
-## Validación
+Opción B: buildWithdrawMovementPreview separado y privados comunes mínimos de proyección/estructura/vecinos, sin framework de acciones ni llamar ordinary para corregir luego su budget. Mismo MovementPreviewProjection con reasonSource en illegal; disponibilidad/variante separadas. Budget total ×2/×1 del snapshot y gates Disabled reales, contador diagonal real y false fijo para isAcrobatic.
 
-| Gate | Resultado local |
-|---|---|
-| npm test | 854/854 |
-| Withdraw + movement integration/resolution/commit focalizados | 172/172 |
-| npm run typecheck | Verde, tres workspaces |
-| npm run build | Verde, tres workspaces |
-| node scripts/e2e-websocket.mjs | 120/120 |
-| npm run test:ui | 22/22 |
+Thin V1 policy web solo después de ready, basada en steps occupiedCells y huellas shared de otros, sin geometría nueva ni reanclado. Riesgo de drift con servidor reconocido y mitigado por tests futuros contra handler I8 real independiente, incluidos helpless/Large no-anchor/dead/aliado y precedencia. Si resolver devuelve insufficient-budget no se ejecuta V1, igual que I8: UI muestra exceso y policy no completada, no falsa Retirada legal. Illegal no fabrica coste/steps/prefijo.
 
-Pruebas nuevas comparan el handler con el resolver real, sin duplicar fórmula RAW. Cubren DT fijo de dos diagonales, contexto no cero, stacking/contabilidad, budgets/guards, V1 helpless/dead/aliado/Large, todas las transiciones H/V/natural, corrupción de eje, huellas comprimidas y metadata AdO, payload/fallback y stale de actor/referencia/turno/ronda/origen/gasto/contexto/movilidad/eje. El harness stale muta estado desde un callback shared mockeado solo en tests; verifica igualdad contra el estado inmediatamente previo a Commit y ausencia de buffers/esfuerzo/publicación, sin nueva API productiva.
+Con gasto previo, acción bloqueada separadamente de la ruta; nunca budget residual ficticio. Se puede mantener un draft diagnóstico con límite completo hipotético claramente etiquetado, sin Disponible/Quedarían ni confirmación. Variante normal full-round ×2 vs limitada estándar ×1 (incluido Diehard), esfuerzo solo servidor. No predictor AdO: texto de huella inicial completa exenta y provocación posterior posible; sin Tumble/CD25/CD15 ni isAcrobatic wire.
 
-Disabled conserva gasto estándar, esfuerzo único y transición dying; Diehard en -9 HP verifica muerte/TPK por esfuerzo antes de publicar. Fixtures antiguos ahora inicializan el contador explícito, sin fallback productivo. Se corrigieron fixtures exploratorios de salida de squeezing (debían conservar legal el eje en origen) y una expectativa de outcome: dying no es muerte/TPK. WebSocket AdO inicialmente no provocaba porque los reactores seguían Flat-Footed; darles su primer turno resolvió el fixture sin cambiar reglas. Gates finales completos verdes. Advertencia de bundle >500 kB preexistente; servidores propios detenidos.
+Wiring/kind withdraw y máximo ocho candidatos desde draft/origen, altura I7 preservada; una proyección para panel/ambos renderers, sin token/effect/context mutation ni reglas por cámara. Confirmación Withdraw incorpora guard propio antes del mismo Intent; resets de familia/actor/turno y recomposición de mismo actor ante room-update se distinguen. Stale N→N+1 siempre resuelto por servidor.
 
-## Cierre documental
+Nivel futuro B solo web/tests/docs sobre contratos vigentes; shared/reglas/server requerirían C y contratos/infraestructura D con nueva Review. Fase 3 de .agents/AGENTS.md permite omitir plan separado para A/B y el owner condiciona el root a que sea obligatorio: se conserva el plan completo único en §11.8, pendiente de aprobación; root implementation_plan.md permanece ausente. No se reabren planes ejecutados I7/I8. Matriz de paridad y E2E A…F en §11.7; 22 preguntas respondidas en §11.9. Cero ODR bloqueantes, ninguna autoaprobación.
 
-Plan retirado de raíz a docs/designs/movement/withdraw-implementation-plan.md; no se reemplazó la referencia de creación original Withdraw, solo se mantuvo su enlace entrante. INDEX/PROJECT_STATUS/TODO/master-coverage sincronizados; NDD recibe solo estado factual posterior, sin rediseño. Enlaces/anchors locales, scope y diff check verificados. Registry/checklists no cambian: integración de regla existente, sin nueva cobertura normativa declarada.
+## DoD documental
 
-DoD local completo; commit único y push origin/master. Windows CI se observa sobre el SHA publicado y se informa al owner. Ready for Architecture Review; no se autoaprueba el sprint. Preview Withdraw y siguientes consumidores requieren su propio alcance/revisión.
+Solo cinco Markdown: NDD existente, PROJECT_STATUS, TODO, INDEX y este walkthrough, cada uno según su responsabilidad. Withdraw NDD sigue propietario de V1; no se duplica allí Movement Cost. master-coverage, Registry, tests, scripts y código permanecen intactos; no nuevas afirmaciones de cobertura/CI ejecutados en esta entrega.
+
+Verificados antes del commit: diff check, enlaces/anchors locales, SSOT, auditoría real, un solo plan propuesto pendiente de Proceed, scope solo Markdown y ausencia de root plan duplicado/unrelated. Commit documental único y push origin/master; CI técnico no requerido.
+
+Awaiting Architecture Review and Proceed.

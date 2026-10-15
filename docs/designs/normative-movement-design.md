@@ -1688,3 +1688,163 @@ No se ejecutan ni modifican tests en I8 Design. Gates del próximo sprint: npm t
 15. **D-7:** no depende; no múltiples Routes voluntarias/Double Move/fragmentación/Spring Attack.
 16. **Governance:** C por integración de resolver servidor; elevar a D si se requirieran contratos/infraestructura, con nueva Review.
 17. **Tests:** matriz §10.6; equivalencia de políticas conservadas y oracle normativo para las diferencias intencionales de coste/contexto/stats. **Cero ODR bloqueantes de Withdraw**; pendientes de otros consumidores delimitados, sin autoaprobación.
+
+## Capítulo 11 — I9: Withdraw Normative Preview Parity
+
+### 11.1 Estado, alcance y SSOT
+
+**ARCHITECTURE / AUDIT / DESIGN ONLY. Awaiting Architecture Review and Proceed.** Baseline auditado limpio en master, coincidente con origin/master: `791fb4bacfe82bddb1bc3af1324de2e9b74e622b`. I6/I7 aprobados; I8 TECHNICALLY APPROVED tras I8R1 según el owner. Windows CI del código I8 SUCCESS sobre `af60111c843aac3ed23922f6fba30173edebdbaf`; I8R1 solo corrigió lifecycle documental. No se implementa ni se modifican/ejecutan tests en esta entrega.
+
+Único alcance futuro: preview **web** de Withdraw activo, con las APIs shared y el servidor I8 intactos. Este capítulo posee integración/presentación; [Withdraw Rev. 3](withdraw/design.md) conserva reglas particulares, §10.5 documenta el caller servidor y §8.3/§8.7/§6.13 conservan coste/eje/contexto. No duplicar matriz RAW. Run/5ft/Charge/forced/GM/preparation/spell range, AoO predictivo completo, D-7/Double Move/Spring Attack quedan fuera. No nuevos contratos, schemas, comandos ni protocolo.
+
+### 11.2 Auditoría del baseline real
+
+Referencias relativas a raíz, por símbolos/call sites vigentes; no trasladar como actuales números históricos de I7.
+
+| Superficie inspeccionada | Comportamiento verificado y gap Withdraw | Cambio futuro acotado |
+|---|---|---|
+| apps/web/src/movementPreview.ts — MovementPreviewKind/getMovementPreviewKind | withdrawArmed produce legacy-withdraw. buildMovementPreview resuelve solo ordinary, resta gasto a speed, anota Tumble/CD25; candidates llama ese adapter. getOrdinaryMoveBlockedReason usa la economía Move, no Withdraw | Nuevo kind withdraw y wrapper propio, sin reutilizar presupuesto/guardas/Tumble ordinarios |
+| hooks/useBoardSelection.ts — movementPreview/movementCandidates | Ambas memos se activan solo para ordinary-move; Withdraw no tiene proyección. movementPathCost usa calculatePathCostFeet, displayedPathCosts calculatePathStepCostsFeet, highlightedCells getHighlightedCells | Rama Withdraw normativa y snapshot único; pasos/texto/candidatos desde la misma proyección |
+| viewModel.ts — getHighlightedCells/isLegalNextPathStep | withdrawFactor usa lifeStatus disabled ? 1 : 2. maxDistance resta gasto a speed×factor; recorre width×height y delega candidate draft a isLegalNextPathStep/validateMovePath. No usa contexto real | Retirar parámetro/factor y uso de esta rama para Withdraw; no escaneo de tablero normativo |
+| App.tsx — handleCellClick | Solo ordinary acepta candidatos illegal/over-budget y preserva altura con ordinaryGridPosition. Para Withdraw el token ajeno bloquea click antes de construir draft | Aplicar autoría normativa también a withdraw, sin bloquear por token ni reanclar huella |
+| App.tsx — confirmMovementPath | Primera rama withdrawArmed envía use-tactical-action/withdraw con to/path y limpia overlays; retorna antes del guard ordinary. No verifica aún proyección Withdraw | Guard específico legal + disponibilidad antes del mismo payload; no añadir metadata |
+| App.tsx — ActionsPanel props | isMoveDestinationOccupied solo se evita en ordinary; Withdraw usa isCombatantDestinationOccupied que reancla actor para la huella final | Evitar ese chequeo para ambos previews normativos; usar policy desde steps para Withdraw |
+| App.tsx — resets | onToggleWithdraw ya limpia draft, run/5ft e isAcrobatic; efecto por previewKind/selected id desactiva Tumble. clearActionOverlays/toggleGM limpian flags; cambio de turno limpia draft/Tumble/5ft pero no explicita withdrawArmed/runArmed en ese callback | Mantener resets y hacer explícita limpieza Withdraw en cambio de actor/turno; no conservar una intención del actor anterior. Demo/editor desactivan preview por kind none |
+| ActionsPanel.tsx — bloque Move/Withdraw | Solo ordinary recibe MovementPreviewSummary/Tumble. turnVirgin local no usa todas las guardas shared. Texto/botón anuncia siempre full-round ×2 y «turno completo»; no distingue limitada Disabled aunque el rango legacy sí usa ×1 | Disponibilidad compartida web del seleccionado, variante/etiqueta correctas y summary común; no dos budgets en panel |
+| MovementPreviewSummary.tsx | Renderiza cinco estados, saldo/contexto/eje/CD25 y blockedReason separado. El nombre del prop superior ordinaryMoveBlockedReason no sirve como guarda Withdraw | Contexto de etiqueta/disponibilidad por acción; Tumble solo ordinary; razón de error identificable |
+| Board/presentationModel.ts — buildBoardPresentationModel | Acepta MovementPreviewProjection; variable local ordinary significa realmente movementPreview != null. Usa steps occupiedCells/axis/cumulative y ghost final; sin projection usa reanclado legacy para maniobras. Illegal no tiene pasos evaluados | Reutilizar misma evidencia para Withdraw, renombrar variable local a significado presentacional si ayuda; no duplicar ramas geométricas |
+| Board/Board.tsx | Recibe preview; unavailable corta presentación con alerta; cells usan routeLabel/status/axis/ghost/aria. Grid crea posiciones a z=0 y App corrige solo ordinary | Mismas props/evidencia, autoría Withdraw preserva z en App; no reglas nuevas en Board |
+| Board/renderer/TacticalScene3D.tsx | Consume presentation.cells: colores, sprite routeLabel y spans scene-cell con status/axis/ghost/coste; sin resolver ni fórmulas | Mismo pipeline, misma evidencia; cámara no altera predicción |
+| server/commands/tacticalCommands.ts — handleWithdraw | Guards propios; full-round/standard Disabled; budget speed×2/×1; snapshotActor, contexto real, resolveMovementPipeline(false), rechaza budget antes de policy; V1 desde occupiedCells; Commit vivo, economía/esfuerzo/AdO/logs/broadcast posteriores | Oracle de paridad, **sin cambios de servidor** |
+| shared movementResolution/movementCost/routeValidation/movementCommit/rules | Resolver portable puro compone geometría/coste/budget; legality permite ciertos helpless que V1 restringe. Commit escribe estado/gasto/base/contexto/eje; no es preview. Rules provee speed, disponibilidad y gates Disabled/Move; helper AoO tiene metadata legacy deliberadamente conservada | Consumo de APIs existentes; cero Commit/AdO helper/efectos/RNG en cliente |
+
+Tests inspeccionados: tests/movement-preview.test.mjs compara I7/resolver y presentación; tests-ui/movement-preview.spec.ts intercepta transporte y ejecuta handler Move real, con publish/hold/release para stale. tests/withdraw-server.test.mjs prueba handler I8 frente al resolver, V1 helpless/Large, budgets/guardas, ejes, stale y esfuerzo/outcome; tests/withdraw.test.mjs cubre exención AdO. scripts/e2e-websocket.mjs tiene diez aserciones I8 reales (DT, budget/economía/ocupación, AdO y Disabled), **no** preview Withdraw. Son bases reutilizables; no existe paridad UI Withdraw implementada. master-coverage no se modifica ni se atribuyen pruebas futuras como ejecutadas.
+
+### 11.3 Decisión de adapter y contrato presentacional
+
+Se elige **B: buildWithdrawMovementPreview separado con proyección común de Resolution** en movementPreview.ts. Su input público es snapshot/actorId/path, sin opción isAcrobatic; buildWithdrawCandidates recibe esos mismos inputs. buildMovementPreview conserva su API/semántica ordinary. Extraer únicamente privados pequeños para validar precondiciones estructurales, proyectar resultado shared y enumerar ocho vecinos. Cada wrapper determina inputs explícitos y llama resolveMovementPipeline una vez por ruta; no llamar al wrapper ordinary y reemplazar su budget después. El mapper común no posee reglas de Withdraw ni coste propio. Withdraw aplica su comprobación V1 explícitamente entre resultado ready y mapper; ordinary conserva sus anotaciones de Acrobacias sin heredar V1.
+
+Opción A (generalizar todo con budget, isAcrobatic y callback post-policy configurables) descartada: permite combinaciones inválidas de intención/capacidad y parece un framework táctico antes de contar tres casos. Se reutiliza proyección/mecánica de vecinos, no un registry de Run/Charge/5ft ni un segundo MovementResolver. No extracción shared necesaria: la matemática/huella ya es portable.
+
+Reutilizar **MovementPreviewProjection** con extensión web mínima: en illegal, añadir reasonSource: movement | withdraw-policy (también asignar movement en el wrapper ordinary). No nuevo contrato shared. Mantener draft copiado, cinco estados y todos los datos evaluados solo en legal/over-budget; Withdraw siempre isAcrobatic=false y acrobaticsChecks vacío. Variante y disponibilidad se entregan **separadamente**, no como flags normativos de la ruta, mediante WithdrawPreviewAvailability con variant normal | limited, actionLabel, budgetFeet y blockedReason. Si faltan precondiciones para derivar esos datos, availability puede ser unavailable con reason, sin budget ficticio.
+
+Estados:
+
+- empty: ruta vacía; sin Resolution ni pasos. Budget de evaluación solo si snapshot/actor/contexto/movilidad son válidos. Validar también huella inicial para no ocultar corrupción de eje.
+- legal: ready y policy V1 aceptada; conserva evidencia original. Significa predicción de ruta compatible, **no** autorización ni Commit exitoso.
+- over-budget: insufficient-budget; conservar toda la ruta/steps/coste/contexto/saldo firmado/exceso. **No** ejecutar V1 después: I8 rechaza por presupuesto antes de ese loop. Para Withdraw texto «Ruta evaluada por Movement; excede el límite de Retirada. Policy V1 no completada»; no «Retirada legal» ni falsa prueba de ocupación. Ghost describe evidencia espacial, no autorización V1. Probar ruta simultáneamente over-budget y helpless para fijar esta precedencia.
+- illegal/movement: illegal-route de shared; reason/failedStepIndex/draft, sin steps, coste ni contexto inventados.
+- illegal/withdraw-policy: ready bloqueado por V1; reason y stepIndex del primer bloqueo, reasonSource withdraw-policy; descartar evidencia evaluada en la proyección pública igual que illegal I7. No exponer un coste 0 ni re-resolver prefijo. La UI distingue «Regla de Retirada V1» de «Movement» sin otra autoridad geométrica.
+- unavailable: snapshot/actor ausente, fase/actor de turno incompatible o estado espacial/contexto estructuralmente inseguro. Catch de integridad, sin orientación por defecto ni fallback legacy. Restricción de control/economía no se disfraza de illegal.
+
+### 11.4 Budget, variante y disponibilidad separados
+
+El wrapper Withdraw deriva un **límite total de evaluación** usando Rules.totalSpeedFeet(snapshot, snapshotActor) y los mismos gates que I8: canDisabledCombatantTakeAction(full-round); si falla, la variante es limitada y el permiso exige además standard. Normal ×2, limitada ×1. No usar vida nominal como sustituto del gate (Diehard también puede usar economía Disabled), ni speed−gasto, ni restar gasto al límite. Copiar normalDiagonalStepsThisTurn real, incluso no cero; nunca fórmula de diagonales ni reset cliente.
+
+Definir getWithdrawBlockedReason(snapshot, actorId, canControl) usando APIs existentes. Comprobar control, snapshot/fase activa/actor del turno y Rules.evaluateActionAvailability; luego pendingOpportunityAttacks, canUseMoveAction, attackMode none, !usedStandardAction, !usedFiveFootStep, attacksMade==0, movementUsedFeet==0 y autorización full-round/standard limitada. canUseMoveAction conserva activeAttackThreat, canTakeTurn, CANNOT_MOVE, total defense, usedMoveAction y usedFullAttack. Guardas/razones siguen el orden productivo tras las precondiciones UI. Los locks demo/editor bloquean interacción/kind sin cambiar reglas. Ningún fingerprint sustituye estos gates.
+
+Decisión explícita para **movementUsedFeet != 0**: availability **action-blocked**, no budget residual y no illegal geométrico. Con estado válido se puede conservar/recalcular el draft usando el límite completo hipotético ×2/×1, y mostrar su route status más el bloqueo. En tal caso el panel dice «Límite de evaluación: X ft; acción bloqueada»; no «Disponible»/«Quedarían X para actuar», ni permite armar por primera vez/confirmar. Otros bloqueos económicos o de control siguen la misma separación. Si el bloqueo llega mientras estaba armada, conservar draft editable para diagnóstico/Undo/Clear/cancelación; confirmar nunca. Snapshot estructuralmente inválido es unavailable, no hipótesis.
+
+La metadata de variante/budget se calcula una vez por snapshot/actor y se comparte entre draft/candidatos/panel. La función de disponibilidad puede bloquear standard en limitada mientras aún identifica variant limited para explicar el intento; no transforma un fallo de permiso en una variante normal. Errores de integridad no fabrican metadata. Textos:
+
+- Normal: «Retirada — hasta 2× velocidad — acción de asalto completo».
+- Limitada: «Retirada limitada — hasta 1× velocidad — acción estándar».
+- Ambas: «Tu huella inicial completa está exenta; el resto de la ruta puede provocar AdO. El servidor resolverá los AdO definitivos».
+
+No computar amenazas, cantidad/seguridad de AdO, CD15/CD25 ni usar findTriggeredOpportunityAttacksForPath en web. El texto no promete evitar todo AdO y no oculta el esfuerzo Disabled del servidor; puede indicar «la retirada limitada puede causar esfuerzo; el servidor aplica sus consecuencias», sin preaplicar daño/outcome.
+
+### 11.5 Thin V1 policy: frontera y control de drift
+
+Privado web acotado, solo para Withdraw y **solo después de ready**: iterar resolution.steps ordenados; crear keys con footprintCellKey de occupiedCells; para otros combatientes excluir actor y solo lifeStatus==dead; en tránsito bloquear other.type!=actor.type; en último step bloquear cualquier otro no-dead. Intersección con getCombatantOccupiedCells(other,snapshot), autoridad shared también para altura/eje/huella enemiga. Primer bloqueo determina reason/failedStepIndex. No construir actor-at-position, no inferir modo/eje, no segunda validación de esquinas/bounds/adherencia ni recalcular coste.
+
+Esto conserva literalmente la policy I8: dying/stable enemigo en tránsito o destino bloquea, aliado intermedio puede pasar, final aliado no-dead bloquea; dead conserva excepción. Shared puede rechazar primero un enemigo consciente; reasonSource será movement en ese caso. Helpless es el caso que demuestra el post-check V1. No distinguir por una lista local de HP: lifeStatus compartido incluye Disabled/Diehard y es la única clasificación vital.
+
+Se acepta **web-only** porque no cambia la regla ni la autoridad, solo presenta una intersección sobre evidencia y predice una restricción ya implementada. Riesgo real: dos sedes de la policy de consumidor y de sus gates/budget. Mitigación obligatoria: tabla de fixtures común de **inputs**, nunca un oracle V1 web compartido con el servidor; ejecutar adapter y handler I8 real en rooms independientes y comparar aceptación/rechazo/no mutación. El handler real es oracle adicional al resolver, no solo tests unitarios de una copia del loop. Incluir casos discriminantes helpless no-anchor Large, aliado, dead, budget combinado y tipo/altura. Si no puede lograrse paridad con estas APIs o surge cambio de regla/shared/server, detener: reclasificación C por policy shared/reglas, D si contratos/infraestructura; nueva Review/Proceed. No extraer anticipadamente para mantener un B ficticio.
+
+### 11.6 Wiring, autoría y presentación
+
+Kind **withdraw** sustituye exclusivamente legacy-withdraw; legacy-run/legacy-five-foot-step/legacy-charge/legacy-forced quedan idénticos. Hook selecciona wrapper ordinary o Withdraw explícitamente antes de coste/candidatos. Memo de draft + buildWithdrawCandidates sobre el mismo primitive privado de vecinos que I7, desde última ancla o actor; preparar snapshot/actor/budget/contexto/variant una vez y reutilizarlos. Máximo ocho extensiones completas, una resolución por extensión y otra para el draft, cero BFS/A*/range scan. Dependencias: snapshot, actor, path, kind y metadata relevante; ordinary conserva isAcrobatic, Withdraw fuerza false aunque el estado local todavía no se haya reseteado.
+
+App extiende la ruta de autoría normativa a ordinary-move **y withdraw**: candidate status legal/over-budget/illegal es editable; unavailable no extiende. No filtrar token enemigo antes de adapter. Preservar zFeet del último draft o actor mediante helper I7 existente (puede renombrarse internamente de forma descriptiva, sin cambiar semántica ordinary). No usar z=0 del grid como nueva altura normativa. Undo/Clear/cancelación disponibles también cuando el draft/acción están bloqueados; no truncar por presupuesto, no permitir confirmación de illegal/exceso/empty/unavailable. No se da excepción local «Tumble permite enemigo» a Withdraw.
+
+Al armar Withdraw: limpiar path, run/5ft y Tumble; ocultar checkbox/CD25, sin isAcrobatic en payload. Mantener limpieza por kind/actor y hacer explícito reset Withdraw en cambio de turno/actor, cambio a tácticas/GM/preparation/demo/editor/fin de combate o clearActionOverlays tras envío, según lifecycle existente. Un room-update del **mismo actor/turno** solo invalida memo/recompone ruta y disponibilidad, sin borrar el draft ni simular éxito. Si cambia economía a bloqueada, mostrar bloqueo separado; si cambia terreno/efectos/ocupación, evaluar ruta íntegra actual. No mutar Room/currentTurn/stats/effects/logs/posición durante dibujo, toggle, cámara o cancelación.
+
+ActionsPanel reutiliza summary para ambos, pero recibe razón de disponibilidad de la acción seleccionada, no ordinaryMoveBlockedReason para Withdraw. Una prop presentacional de etiqueta/variante/budget caption basta; no nuevo componente con fórmulas. Sustituir el turnVirgin duplicado de Withdraw y sus textos ×2 incondicionales por metadata/blockedReason; Run mantiene su disponibilidad. Botón armar exige disponibilidad; cancelar sigue habilitado si ya está armada aunque llegue bloqueo. Confirmar Retirada exige kind withdraw, projection legal y ningún bloqueo/control/lock. Repetir ese guard en **la primera rama Withdraw de confirmMovementPath**, antes del envío; no confiar solo en disabled del botón. Ordinary conserva getOrdinaryMoveBlockedReason y Run/5ft/Charge no reciben gates normativos Withdraw.
+
+Eliminar para Withdraw el prop isMoveDestinationOccupied reanclado, puesto que policy/Resolution son la fuente. BoardPresentationModel ya admite proyección común: suministrar la misma al panel y Board; interpretar su variable ordinary como «tiene proyección normativa», no añadir un branch de reglas Withdraw. Ghost final legal/over-budget y etiquetas acumuladas/axis/cells desde Resolution; illegal solo anclas intentadas/índice fallido sin pasos inventados. Board 2D y TacticalScene3D consumen las mismas cells/labels/status; no resolver/coste ni inferencia de eje en renderer. Cámara/presets no cambian cálculo; token publicado y srd_squeezing/eje permanecen intactos hasta room-update.
+
+**Intent/stale:** payload existente exacto type use-tactical-action, action withdraw, roomCode, actorId, combatantId, to último step y path íntegro copiado. No cost/budget/context/mode/axis/status/fingerprint/proof/exemptions/isAcrobatic. No cambiar schemas/WebSocket ni acknowledgements. Tras envío, clearActionOverlays/error actual; ningún movimiento/gasto/efecto optimista ni retry. Preview N no bloquea servidor: al recibir Intent en N+1 I8 reautoriza/resuelve y puede rechazar aunque N fuese legal.
+
+### 11.7 Verificación futura de paridad y E2E
+
+Dos oracles complementarios: resolveMovementPipeline para evidencia de Movement sobre mismos inputs, y **handleUseTacticalAction real I8** para gates/variante/V1/aceptación/Commit. No usar fórmula propia ni sustituir handler por un mock que devuelva la proyección cliente. Ambos operan en clones independientes del mismo room inicial; registrar broadcasts/estado final y errores. Con action disponible y preview legal, esperar Commit equivalente en posición/coste/contexto/eje y stats base. Con action bloqueada, servidor rechaza aunque la ruta hipotética sea legal. No exigir igualdad de mensajes localizados si reasonSource/categoría y aceptación son las mismas; no exigir side effects del servidor a un preview puro.
+
+| Grupo futuro | Casos y evidencia mínima |
+|---|---|
+| Coste/contexto | Ortho/diagonal, dos normales, contexto inicial no cero, DT diagonal y dos DT=30, normal→DT→normal; adapter evidencia == resolver, handler gasta totalCostFeet y actualiza projectedContext. Sin duplicar matriz en React. |
+| Budget/variante | Normal ×2 exacto/exceso, limitada ×1 exacto/exceso, speed efectiva por efecto/equipo; Diehard con economía Disabled. full-round/standard gates, nunca presupuesto residual cuando gasto!=0. |
+| Separación de acción | Control, fase/actor, availability, pending/critical, canUseMoveAction/CANNOT_MOVE/total defense, standard/move/full/5ft/attacks/attackMode/gasto previo. Ruta legal con acción bloqueada conserva estado de ruta y no confirma. Limitar unavailable a estructura/integridad/precondiciones de actor/fase. |
+| V1 | Enemigo active/disabled/dying/stable tránsito/final, aliado intermedio/final, dead, Large no-anchor y xyz. Distinguir movement vs withdraw-policy; razón/índice correcto; illegal sin coste/steps. Over-budget+helpless no afirma V1 aprobada y coincide con rechazo por budget del servidor. |
+| Squeezing | H/V entrada/persistencia/giros/salida natural, squeezing+DT si geometría admite, eje corrupto/duplicado/axisless → unavailable. Steps/ghost/axis desde shared, no logs/efectos cliente. |
+| Pureza/edición | Deep-freeze snapshot/path cuando proceda, repeticiones/draft/cancel/Undo/Clear/cámara sin mutación ni RNG. Máximo ocho candidatos, misma altura/contador/budget; legal/exceso/illegal editables, sin recorte. |
+| Presentación | Una proyección panel/Board, dos modos/cuatro cámaras, acumulados y saldo, bloqueo separado, etiqueta normal/limitada y esfuerzo no aplicado, texto de exención inicial sin amenaza calculada. Tumble/CD25 ausentes en Withdraw y conservados ordinary. |
+| Intent/stale | Claves exactas de intención; room-update mismo actor recompone terreno/economía sin borrar ruta; turno nuevo limpia. Intent retrasado se evalúa en N+1, sin optimistic state ni retry ni derivados enviados. |
+
+E2E propuestos (tests-ui/withdraw-preview.spec.ts nuevo, o casos bien aislados en movement-preview.spec.ts):
+
+A. Dos diagonales DT: panel/labels 30 ft, confirmar Withdraw y handler I8/room-update gasta 30; payload solo intención.
+B. Contexto inicial !=0: primera diagonal usa contador real y coincide con servidor. Transporte controlado como I7 permite fixture difícil de crear por protocolo sin añadir API productiva.
+C. Disabled: UI identifica limitada estándar ×1, exacto/exceso correctos; al confirmar handler consume estándar, no full-round, esfuerzo posterior solo servidor. Variante de HP negativos Diehard en tests de paridad.
+D. Helpless en tránsito/endpoint: mostrar illegal/withdraw-policy y bloquear Confirmar. **Separadamente**, enviar el mismo Intent por transporte de test al handler real para probar rechazo aunque se omita UI; no habilitar botón ni nueva API productiva para forzarlo. Incluir enemigo consciente con illegal/movement, aliado/dead y Large no-anchor.
+E. Stale: N legal; publish N+1 con DT cambia exceso y con economía bloquea acción; draft se conserva. En caso separado, hold/release Intent N mientras el estado autoritativo cambia a N+1; servidor rechaza/resuelve N+1 sin optimismo. No publicar economy y esperar que la ruta se vuelva geométricamente illegal.
+F. Large squeezed: dos modos muestran mismo ghost/axis y cuatro cámaras no cambian cálculo; confirmar persiste eje idéntico en servidor. Token original inmóvil antes del room-update.
+
+Fixtures UI controlan **solo transporte/estado inicial** y ejecutan handler real sin cambios (como harness I7); no hay dados de Tumble para Withdraw ni necesidad de mockear RNG normativo. La suite WebSocket real I8 sigue siendo regresión de transporte/servidor, no se presenta como prueba de preview. Suites I6/I7/I8, Run/5ft/Charge, D-5/demo y renderer deben seguir verdes. Gates al implementar: npm test, typecheck, build, WebSocket, Playwright completos y CI Windows observado después de push; conteos reales entonces, ninguno nuevo en I9 Design.
+
+### 11.8 Plan de implementación propuesto — único plan activo I9
+
+**No aprobado; ejecutar solo tras Architecture Review y Proceed. Nivel B** por wiring/presentación web de reglas existentes usando contratos shared actuales, sin alterar la autoridad ni el comportamiento del consumidor. La thin V1 policy no define RAW nuevo; su riesgo de copia se acota mediante paridad con servidor real (§11.5). Si requiere nuevo helper shared/regla/servidor → C; contratos/infraestructura → D y nueva Review antes de ampliar. No rebajar esos cambios a B por conveniencia.
+
+Conforme a .agents/AGENTS.md Fase 3, A/B permite omitir archivo separado. El usuario condiciona el root implementation_plan.md a que sea exigido: **se omite** y se conserva este plan completo en el NDD ya canónico, sin duplicar plan activo en raíz. INDEX enlaza a esta sección. Los planes I7/I8 ejecutados no se reabren. Esta sección no concede Proceed.
+
+| Orden / archivo futuro | Trabajo autorizado solo después de Proceed | Frontera/aceptación |
+|---|---|---|
+| 1 — baseline/lectura | Reader Pipeline; confirmar servidor I8 aprobado y origen limpio, localizar callers actuales si cambia HEAD | No sobrescribir unrelated ni cambiar baseline en silencio |
+| 2 — movementPreview.ts | Wrapper Withdraw, mapper/estructura común mínimos, metadata de budget/variante y blocked reason, thin V1 post-ready, reasonSource, kind withdraw; enumerador común + buildWithdrawCandidates | Sin ordinary budget para Withdraw, matemática/Commit/RNG propios ni framework Run |
+| 3 — tests/movement-preview.test.mjs y/o nuevo tests/withdraw-preview.test.mjs | Matriz de inputs comparada con resolver y handler real, pureza, disponibilidad separada, V1 y precedencia budget | Tests de policy cliente con oracle servidor independiente; no modificar servidor/shared para fixtures |
+| 4 — hooks/useBoardSelection.ts | Memo current draft y ocho candidatos, preparar misma metadata/snapshot; rutas/coste/labels compartidos panel/Board | Ni calculatePathCostFeet ni calculatePathStepCostsFeet/getHighlightedCells para Withdraw |
+| 5 — App.tsx | Autoría normativa/click z, reset exclusivo de familia/actor/turno, props de disponibilidad específicas, guard en confirmación Withdraw, mismo Intent | Sin reanclado destino, isAcrobatic heredado, optimistic mutation ni nuevos campos wire |
+| 6 — ActionsPanel/ActionsPanel.tsx y MovementPreviewSummary.tsx | Textos ×2/full-round vs ×1/standard, límite hipotético cuando blocked, V1 source, cancelar/editar; Tumble solo ordinary | No usar turnVirgin local ni coste/saldo matemático JSX paralelo |
+| 7 — viewModel.ts | Quitar exclusivamente parámetro withdrawArmed/factor ×2/×1 del helper legacy y su caller (un único caller auditado); maxDistance conserva Run/otros | No borrar helpers usados por Run/5ft/Charge/spell/GM/preparation |
+| 8 — Board/presentationModel.ts y, solo si wiring lo exige, Board.tsx/renderer/TacticalScene3D.tsx | Compartir proyección/labels; aclarar variable ordinary presentacional | Sin branch de geometría/coste Withdraw; estilos solo si estados existentes no bastan |
+| 9 — tests-ui/withdraw-preview.spec.ts (preferido nuevo) | A…F de §11.7 con handler I8 y captura de Intent; preservar tests-ui/movement-preview.spec.ts ordinary | No test API productiva; room-update stale y bloqueo/route separados |
+| 10 — validación/cierre | Gates completos y regresiones; master-coverage solo con resultados ejecutados, estado/TODO/walkthrough/INDEX; registrar ejecución de este plan sin dejar activo duplicado; commit único/push/CI | Ready for Architecture Review externa, sin autoaprobación |
+
+Retirada legacy exacta: branch/calls Withdraw del hook a calculatePathCostFeet y calculatePathStepCostsFeet, getHighlightedCells→isLegalNextPathStep→validateMovePath para autoría Withdraw, factor/rango Withdraw en viewModel, kind legacy-withdraw, turnVirgin/texto full-round universal y chequeo reanclado de destino para Withdraw. Helpers/shared legacy, aritmética de Run, costos Charge/spell y placement siguen intactos. Ningún archivo apps/server, packages/shared, schema/protocolo, scripts/e2e-websocket.mjs ni .claude/settings.local.json necesita cambio. Tests de servidor existentes se ejecutan como oracle/regresión; no migrar fixtures/reglas para acomodar al cliente.
+
+Riesgos cerrados: drift V1/guards → tests con handler real; post-policy vs exceso → precedencia explícita I8; blocked con budget → límite hipotético etiquetado, sin residual; altura de grid → helper I7; Tumble transitorio → false hardcoded en wrapper; renderer variable ordinary → evidencia común; refactor mapper → regresión I7. Rollback operativo: revertir commit web, sin migración de datos ni wire. No hay dependencia D-7 ni ODR bloqueante.
+
+### 11.9 Respuestas explícitas — 22 preguntas
+
+1. Legacy actual: tabla §11.2 (kind/hook cost-step-highlight, viewModel factor/validator, panel budget/texto, App destino y confirmación).
+2. Retiro futuro: último párrafo §11.8, solo Withdraw; no eliminación de helpers compartidos.
+3. Projection: sí, misma union con reasonSource en illegal; metadata de acción aparte.
+4. Adapter: opción B, buildWithdrawMovementPreview separado; mapper/validación estructural/vecinos privados comunes, API ordinary preservada.
+5. Budget: wrapper web prepara speed efectiva ×2/×1 del mismo snapshot siguiendo gates Disabled; no nueva policy shared.
+6. Limited: variante limitada ×1 estándar, también con Diehard, bloqueo explicado sin falsa exigencia full-round.
+7. V1: thin policy solo post-ready sobre steps occupiedCells y huellas shared de otros, primer índice, no reanclado.
+8. Web-only: suficiente para predictor existente; no cambia autoridad. Necesidad shared/server obliga reclasificación, no implementación aquí.
+9. Drift: fixtures discriminantes y aceptación/error contra handler I8 real independiente, no solo resolver ni un mock de policy.
+10. Contexto: copiar normalDiagonalStepsThisTurn real, sin reset/fórmula y con tests no cero.
+11. Exceso: ruta completa, saldo firmado/coste shared, sin truncado; V1 no completada, no prometer Retirada legal.
+12. Bloqueo: reason separado; con gasto previo se evalúa límite total hipotético claramente etiquetado y se bloquea acción, no ruta geométrica.
+13. Axis: evidencia de steps desde snapshot/shared; no efectos ni inferencia cliente.
+14. Board 2D: misma proyección/cells/ghost/labels, token publicado sin mover.
+15. TacticalScene3D: mismo presentation model, sin cálculo ni reglas por cámara.
+16. Tumble: reset/oculto, wrapper false, checks CD25 vacíos; no nuevo AoO predictor.
+17. Envío: use-tactical-action/withdraw con ids, to y path existentes.
+18. No envío: coste/budget/contexto/axis/mode/status/fingerprint/proofs/exenciones/isAcrobatic.
+19. Legacy restante: Run/5ft/Charge/forced/spell/GM/preparation y sus helpers; Move I7 se preserva normativo.
+20. Evidencia futura: matriz §11.7 y E2E A…F, resolver + handler real, pureza/stale/ambos renderers; no tests implementados ahora.
+21. Governance: futuro B estrictamente web; C/D si alcance exige shared/reglas/server/contratos; plan único embebido permitido por Fase 3.
+22. **Cero ODR bloqueantes. Awaiting Architecture Review and Proceed.** Diseño no aprobado aún y ninguna implementación autorizada por este documento.

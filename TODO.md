@@ -13,8 +13,8 @@ Consumidores: Agentes al retomar el proyecto y propietario al priorizar tareas.
 
 ## Continuidad inmediata de D-1B
 
-- Obtener Architecture Review externa de la implementación I8 **Withdraw servidor** publicada: [NDD Capítulo 10](docs/designs/normative-movement-design.md#capítulo-10--i8-tactical-movement-consumers-migration-sequencing), [plan ejecutado](docs/designs/movement/withdraw-implementation-plan.md) y [evidencia](walkthrough.md). El CI no sustituye la aprobación arquitectónica.
-- Diseñar preview normativo Withdraw como sprint separado tras aceptación del servidor; Run sigue segundo consumidor servidor recomendado, sujeto a diseño/Review propios. Mantener otros previews tácticos, AoO predictivo, corrección de rango de conjuro y D-7/movimiento segmentado como follow-ups separados; no ampliar la migración seleccionada para resolverlos.
+- Obtener Architecture Review y Proceed de **I9 Withdraw preview web**: [NDD Capítulo 11](docs/designs/normative-movement-design.md#capítulo-11--i9-withdraw-normative-preview-parity) y [plan propuesto único embebido](docs/designs/normative-movement-design.md#118-plan-de-implementación-propuesto--único-plan-activo-i9). No implementar antes de esa aprobación.
+- Mantener Run como segundo consumidor servidor recomendado, sujeto a diseño/Review propios; 5ft/Charge, AoO predictivo, rango de conjuro y D-7 siguen separados. No ampliar I9 para resolverlos.
 
 ## Diseños espaciales pendientes
 
