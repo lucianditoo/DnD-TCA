@@ -2,6 +2,8 @@
 
 ## 0. Estado
 
+**Nota de estado I8:** Withdraw está implementado en el baseline `67f6c3659e3e6be5b3111b8f1855d8c44dc212c9`; las frases de Fase 2/3 y el plan de creación conservados abajo pertenecen al diseño original. Sus reglas específicas siguen siendo propiedad de este NDD. La nueva migración **solo servidor** al engine normativo está en diseño, no autorizada; véase §8. No confundir ese Proceed pendiente con el de la implementación original ya realizada.
+
 Fase 2/3 — diseño formal. **Pendiente de ✅ `Proceed`; cero código de producción ni tests modificados.** Esta revisión responde a la auditoría externa que detectó una afirmación falsa en la Rev. 2 sobre la economía de Carga; la Fase 1 de esta revisión re-verificó el contrato completo campo a campo. Fuente RAW: corpus `combat/05:196`, `combat/08:134`.
 
 ## 1. Corrección de la Rev. 2 (auditoría aceptada)
@@ -70,4 +72,12 @@ Sub-acción declarativa con servidor autoritativo (el cliente solo envía `{ act
 
 ---
 
-**Detención**: NDD corregido y auditable. A la espera de ✅ `Proceed`. Sin código, sin Run, sin Concealment.
+**Detención del diseño original**: NDD corregido y auditable. La frase de espera de Proceed corresponde a aquella entrega; la acción original está implementada en el baseline I8.
+
+## 8. Integración normativa propuesta por I8 — sin cambio de reglas del consumidor
+
+Autoridad de integración: [NDD D-1B §10.5](../normative-movement-design.md#105-diseño-completo-del-consumidor-seleccionado--withdraw-servidor), con [plan temporal activo](../../../implementation_plan.md). **Awaiting Architecture Review and Proceed** para esta migración futura, Nivel C. I8 no modifica código ni tests.
+
+La referencia a validateMovePath/commitSpatialTransition y distanceFeet en §4/§5 describe la implementación legacy auditada. Para el futuro seleccionado, esas sedes se sustituyen por Resolution/Commit comunes según D-1B: gasto usa coste total, stats usa distancia base y contexto/eje vienen del engine. No se reinterpretan aquí full-round, rama limitada Disabled/esfuerzo, prohibición de Acrobacias/tránsito enemigo, exención de huella inicial ni resolución de AdO posterior al desplazamiento completo. Esas reglas siguen en este consumidor. Preview normativo será una entrega posterior; ningún contrato shared nuevo ni D-7 es requisito de esta migración.
+
+Los pasos de creación original y sus números de línea históricos no son un segundo plan activo de migración. La nota antigua de que implementation_plan.md era ignorado corresponde al contexto histórico; la política vigente es GOVERNANCE y .agents/AGENTS.md.

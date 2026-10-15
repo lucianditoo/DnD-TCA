@@ -76,7 +76,8 @@ implementación cerrados (`large-footprints-v1-implementation-plan.md`,
 
 ## Decisiones, diseños y auditorías
 
-- [Plan I7 ejecutado](docs/designs/movement-preview/implementation-plan.md): referencia del plan aprobado de Preview Parity, reubicado tras DoD local; Ready for Architecture Review externa. No queda plan activo en raíz.
+- [Plan activo de Withdraw servidor](implementation_plan.md): única migración futura seleccionada por I8, derivada del [NDD Capítulo 10](docs/designs/normative-movement-design.md#capítulo-10--i8-tactical-movement-consumers-migration-sequencing); Awaiting Architecture Review and Proceed.
+- [Plan I7 ejecutado](docs/designs/movement-preview/implementation-plan.md): referencia de Preview Parity técnicamente aprobado sobre 67f6c36; permanece separado del plan activo I8.
 - [Plan I6 ejecutado](docs/designs/movement/implementation-plan.md): referencia de implementación de Move Action técnicamente aprobada (650f22d); reubicado de raíz tras DoD.
 - [`docs/designs/movement/i5r2-implementation-plan.md`](docs/designs/movement/i5r2-implementation-plan.md): plan cerrado y técnicamente aprobado de D-1B-I5R1/I5R2 (Movement Resolution / Commit Remediation).
 

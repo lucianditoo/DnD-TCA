@@ -13,8 +13,8 @@ Consumidores: Agentes al retomar el proyecto y propietario al priorizar tareas.
 
 ## Continuidad inmediata de D-1B
 
-- Obtener Architecture Review externa de la implementación I7 Preview Parity publicada; [NDD Capítulo 9](docs/designs/normative-movement-design.md#capítulo-9--i7-normative-movement-preview-parity), [plan ejecutado](docs/designs/movement-preview/implementation-plan.md) y [evidencia](walkthrough.md). No deducir aprobación arquitectónica del CI.
-- Mantener previews tácticos, AoO predictivo, corrección de rango de conjuro y D-7/movimiento segmentado como follow-ups separados; no ampliar I7 para resolverlos.
+- Obtener Architecture Review y Proceed específico para la migración **solo servidor de Withdraw**, única seleccionada por I8: [NDD Capítulo 10](docs/designs/normative-movement-design.md#capítulo-10--i8-tactical-movement-consumers-migration-sequencing) y [plan activo](implementation_plan.md). Sin implementación antes de ese Proceed.
+- Mantener previews tácticos, AoO predictivo, corrección de rango de conjuro y D-7/movimiento segmentado como follow-ups separados; no ampliar la migración seleccionada para resolverlos.
 
 ## Diseños espaciales pendientes
 
