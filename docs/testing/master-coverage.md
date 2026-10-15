@@ -15,7 +15,15 @@ Consumidores: Revisores que verifican las validaciones de un commit.
 Este documento consolida las directrices y el reporte de cobertura de testing
 del motor de combate D&D 3.5.
 
-## Baseline de código más reciente — D-1B-I9 Withdraw Preview Integration
+## Baseline de código más reciente — D-1B-I10 Run Server Integration
+
+**981/981 pruebas unitarias/integración**, **168/168 focalizadas** (Run servidor/puro + Movement Resolution/Commit), typecheck y build verdes en los tres workspaces, **134/134 aserciones WebSocket reales** y **33/33 escenarios Playwright**.
+
+I10 añade 74 casos de integración Run y 14 checks WebSocket. Verifica coste/contexto real, exacto/exceso ×4/×3, buff sobre velocidad ya ajustada por armadura, rates que no evitan FORBID_RUN, línea/xyz, DT no-ancla y precedencia, V1 estados/altura, natural/H/V/rotación/salida/corrupción, gasto total/stats base, AdO inicial/posterior/múltiples, guards, efecto/dote/stacking/tick, preflight fallido sin Commit y stale con cero publicación parcial. Segundo add conserva el estado confirmado. Diagonal Large narrow sigue rechazada por geometría existente: no se declara una aceptación Run 15/base5 inexistente.
+
+Solo handleRun cambia en producción; shared/web/schema/otros consumidores intactos, preview legacy-run. Fixtures Run completan contador sin fallback productivo. Windows/Node 24.18.0. Build conserva advertencia previa >500 kB. UI ejecutada con permiso de servidores/browser locales tras detener arranque sandbox no disponible; 33/33, sin cambiar tests UI. Servidor propio WebSocket detenido. CI remoto se verifica tras push sobre el SHA exacto; no se infiere aprobación externa.
+
+## Baseline histórica — D-1B-I9 Withdraw Preview Integration
 
 **907/907 pruebas unitarias/integración**, **99/99 focalizadas** (preview ordinary + Withdraw/paridad con handler I8), typecheck y build verdes en los tres workspaces, **120/120 aserciones WebSocket reales** (script intacto, regresión servidor) y **33/33 escenarios Playwright**.
 

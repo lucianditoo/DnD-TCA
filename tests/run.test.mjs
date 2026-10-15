@@ -15,7 +15,7 @@ import { makeTestCombatant, makeTestRoom, inventoryEquipment } from "./test-util
 
 function turnState(patch = {}) {
   return {
-    combatantId: "runner", movementUsedFeet: 0, usedMoveAction: false, usedStandardAction: false,
+    combatantId: "runner", movementUsedFeet: 0, normalDiagonalStepsThisTurn: 0, usedMoveAction: false, usedStandardAction: false,
     usedFullAttack: false, usedFiveFootStep: false, usedSwiftAction: false, usedTotalDefense: false,
     usedStabilization: false, attacksMade: 0, attackMode: "none", defensiveFightingDeclared: false,
     ...patch

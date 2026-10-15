@@ -13,8 +13,8 @@ Consumidores: Agentes al retomar el proyecto y propietario al priorizar tareas.
 
 ## Continuidad inmediata de D-1B
 
-- Obtener Architecture Review y Proceed para I10 Run servidor: [NDD Capítulo 12](docs/designs/normative-movement-design.md#capítulo-12--i10-run-server-normative-integration) y único [plan activo](implementation_plan.md). No implementar antes; I9 ya técnicamente aprobado según el owner.
-- Tras aprobación, ejecutar únicamente slice servidor I10 y gates previstos; mantener Run preview legacy-run. Recomendar I11 preview Run separado. 5ft/Charge, metadata global AdO, predictor y D-7 permanecen fuera de I10.
+- Obtener Architecture Review externa de I10 Run servidor implementado: [NDD Capítulo 12](docs/designs/normative-movement-design.md#capítulo-12--i10-run-server-normative-integration), [plan ejecutado](docs/designs/movement/run-implementation-plan.md) y [evidencia](docs/testing/master-coverage.md). Implementación y DoD local completados; no requiere nuevo Proceed.
+- Tras aprobación de I10, recomendar diseño I11 preview Run separado; hasta entonces permanece legacy-run. 5ft/Charge, metadata global AdO, predictor y D-7 siguen fuera de I10.
 
 ## Diseños espaciales pendientes
 

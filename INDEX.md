@@ -76,7 +76,7 @@ implementación cerrados (`large-footprints-v1-implementation-plan.md`,
 
 ## Decisiones, diseños y auditorías
 
-- [I10 Run servidor — diseño pendiente](docs/designs/normative-movement-design.md#capítulo-12--i10-run-server-normative-integration): único [plan activo I10](implementation_plan.md), Awaiting Architecture Review and Proceed; reglas propias en [Run](docs/designs/run-design.md).
+- [I10 Run servidor — implementación](docs/designs/normative-movement-design.md#capítulo-12--i10-run-server-normative-integration): [plan ejecutado](docs/designs/movement/run-implementation-plan.md), Ready for Architecture Review externa; sin plan activo raíz ni nuevo Proceed. Reglas propias en [Run](docs/designs/run-design.md).
 
 - [I9 Withdraw preview — diseño e implementación](docs/designs/normative-movement-design.md#capítulo-11--i9-withdraw-normative-preview-parity): [plan ejecutado embebido](docs/designs/normative-movement-design.md#118-plan-de-implementación-ejecutado--referencia-i9), implementación completada y TECHNICALLY APPROVED según el owner (9b8f8dd); referencia ejecutada, sin plan activo I9.
 

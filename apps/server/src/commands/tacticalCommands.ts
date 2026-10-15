@@ -165,65 +165,73 @@ function handleRun(room: CombatRoom, snapshot: CombatRulesSnapshot<import("@dnd-
   const turnCheck = canRun(snapshot, combatant);
   if (!turnCheck.ok) throw new Error(turnCheck.error);
 
-  const path = buildStraightPath(combatant.position, command.to);
-  if (!path) throw new Error("No hay una línea recta hacia ese destino; Correr exige movimiento en línea recta.");
+  const snapshotActor = snapshot.combatants.find(actor => actor.id === combatant.id);
+  if (!snapshotActor || !Number.isFinite(snapshot.currentTurn.normalDiagonalStepsThisTurn)) {
+    throw new Error("El contexto de movimiento de Correr esta incompleto.");
+  }
+  const initialContext = { normalDiagonalStepsThisTurn: snapshot.currentTurn.normalDiagonalStepsThisTurn };
+  const preconditions = {
+    expectedTurnCombatantId: snapshot.currentTurn.combatantId,
+    // CombatRulesSnapshot has no round field; capture the live round before Resolution, as in I8.
+    expectedRound: room.round,
+    expectedOrigin: { ...snapshotActor.position },
+    expectedMovementUsedFeet: snapshot.currentTurn.movementUsedFeet,
+    expectedDiagonalContext: initialContext
+  };
+  const candidatePath = buildStraightPath(snapshotActor.position, command.to);
+  if (!candidatePath) throw new Error("No hay una línea recta hacia ese destino; Correr exige movimiento en línea recta.");
+  const availableBudgetFeet = runSpeedBudgetFeet(snapshot, snapshotActor as typeof combatant);
+  const resolution = resolveMovementPipeline({ context: snapshot, combatant: snapshotActor as typeof combatant,
+    path: candidatePath, initialContext, availableBudgetFeet, isAcrobatic: false });
+  if (resolution.kind !== "ready") throw new Error(resolution.kind === "illegal-route" ? resolution.reason
+    : `${combatant.name} intenta mover ${resolution.requiredCostFeet} pies, pero solo tiene ${resolution.availableBudgetFeet} pies disponibles.`);
 
-  const budgetFeet = runSpeedBudgetFeet(snapshot, combatant);
-  const validation = validateMovePath(snapshot, combatant, path, budgetFeet, false, false);
-  if (!validation.ok || !validation.value) throw new Error(validation.error);
-
-  // Prohibición absoluta de terreno difícil (no solo recargo de coste, a diferencia del
-  // movimiento normal): cualquier casilla atravesada que sea terreno difícil rechaza toda la ruta.
-  const crossesDifficultTerrain = validation.value.steps.some((step, stepIndex) => {
-    const stepPosition = validation.value!.path[stepIndex];
-    const occupiedCells = step?.occupiedCells ?? getCombatantOccupiedCells({ ...combatant, position: { ...stepPosition } }, snapshot);
-    return occupiedCells.some((cell) => isDifficultTerrain(snapshot, cell.x, cell.y));
-  });
-  if (crossesDifficultTerrain) throw new Error("No puede correr a través de terreno difícil.");
-
-  // V1: sin Acrobacias y sin atravesar enemigos (mismo precedente que Retirada); destino sin solapar a nadie.
-  const finalStep = validation.value.path[validation.value.path.length - 1];
-  for (let stepIndex = 0; stepIndex < validation.value.path.length; stepIndex++) {
-    const step = validation.value.path[stepIndex];
-    const projectedStep = validation.value.steps[stepIndex];
-    const stepKeys = new Set((projectedStep?.occupiedCells ?? getCombatantOccupiedCells({ ...combatant, position: { ...step } }, snapshot)).map(footprintCellKey));
-    const isFinal = stepIndex === validation.value.path.length - 1;
-    const blocker = snapshot.combatants.find((other) =>
-      other.id !== combatant.id &&
+  // Run-only policies follow budget verification and consume confirmed footprints exclusively.
+  if (resolution.steps.some(step => step.occupiedCells.some(cell => isDifficultTerrain(snapshot, cell.x, cell.y)))) {
+    throw new Error("No puede correr a través de terreno difícil.");
+  }
+  for (const step of resolution.steps) {
+    const stepKeys = new Set(step.occupiedCells.map(footprintCellKey));
+    const isFinal = step.stepIndex === resolution.steps.length - 1;
+    const blocker = snapshot.combatants.find(other =>
+      other.id !== snapshotActor.id &&
       lifeStatus(other as Parameters<typeof lifeStatus>[0]) !== "dead" &&
-      (isFinal || other.type !== combatant.type) &&
-      getCombatantOccupiedCells(other, snapshot).some((cell) => stepKeys.has(footprintCellKey(cell)))
+      (isFinal || other.type !== snapshotActor.type) &&
+      getCombatantOccupiedCells(other, snapshot).some(cell => stepKeys.has(footprintCellKey(cell)))
     );
-    if (blocker) {
-      throw new Error(isFinal
-        ? "No puede terminar de correr sobre la casilla de " + blocker.name + "."
-        : "No puede correr a traves de " + blocker.name + " (Correr V1 no admite Acrobacias).");
-    }
+    if (blocker) throw new Error(isFinal
+      ? "No puede terminar de correr sobre la casilla de " + blocker.name + "."
+      : "No puede correr a traves de " + blocker.name + " (Correr V1 no admite Acrobacias).");
   }
 
-  // D-1: sin exención de huella inicial — se reutiliza la generación normal de AdO por camino.
-  const distanceFeet = validation.value.distanceFeet;
   const opportunities = findTriggeredOpportunityAttacksForPath(
-    snapshot,
-    combatant,
-    validation.value.path,
-    distanceFeet,
-    (reactor) => Rules.canMakeOpportunityAttack(snapshot, reactor, combatant.id),
-    false,
-    undefined,
-    validation.value.steps
+    snapshot, snapshotActor as typeof combatant, candidatePath, resolution.totalCostFeet,
+    reactor => Rules.canMakeOpportunityAttack(snapshot, reactor, snapshotActor.id),
+    false, undefined, resolution.steps
   );
+  const wasSqueezing = room.effectInstances.some(instance =>
+    instance.effectId === "srd_squeezing" && instance.targets?.includes(combatant.id));
+  const keepsDex = FeatCatalog.runContribution(snapshotActor.featIds ?? []).keepsDexBonusWhileRunning;
+  const preparedInstance = keepsDex ? undefined : {
+    instanceId: cryptoId("effect"),
+    effectId: "srd_running_exposed" as const,
+    source: { type: "creature" as const, id: snapshotActor.id },
+    targets: [snapshotActor.id],
+    appliedAtEvent: { type: "ActionResolved" as const, round: preconditions.expectedRound },
+    duration: { type: "until_turn" as const, anchorCombatantId: snapshotActor.id,
+      phase: "start" as const, appliedAtSequence: room.eventSequence }
+  };
+  // Pure preflight: exercise catalog/stacking validation, discard the returned room entirely.
+  if (preparedInstance) EffectManager.add(room, preparedInstance);
+  const result = commitMovementResolution({ room, combatant, resolution, preconditions });
+  if (result.kind === "rejected") throw new Error(result.reason);
 
-  // ── Commit atomico (patrón handleWithdraw/handleCharge) ────────────────────
-  const spatialTransition = commitSpatialTransition(room, combatant, finalStep, validation.value.finalSpatialMode === "natural"
-    ? { spatialMode: "natural" }
-    : { spatialMode: "squeezing", squeezingAxis: validation.value.steps[validation.value.steps.length - 1].squeezingAxis! });
-  combatant.stats.distanceMovedFeet += distanceFeet;
-  room.currentTurn.movementUsedFeet += distanceFeet;
-  room.currentTurn.usedFullAttack = true; // marcador vigente de "acción de asalto completo consumida"
-  room.log.unshift(makeLog("movement", combatant.name + " corre " + distanceFeet + " pies en línea recta (acción de asalto completo)."));
-  if (spatialTransition.previousMode !== spatialTransition.currentMode) {
-    room.log.unshift(makeLog("movement", spatialTransition.currentMode === "squeezing"
+  room.currentTurn.usedFullAttack = true;
+  // Reapply against the post-Commit room: never overwrite confirmed Movement with preflight state.
+  if (preparedInstance) room.effectInstances = EffectManager.add(room, preparedInstance).effectInstances;
+  room.log.unshift(makeLog("movement", combatant.name + " corre " + resolution.totalCostFeet + " pies en línea recta (acción de asalto completo)."));
+  if (wasSqueezing !== (result.finalSpatialMode === "squeezing")) {
+    room.log.unshift(makeLog("movement", result.finalSpatialMode === "squeezing"
       ? combatant.name + " entra en compresion espacial."
       : combatant.name + " recupera su huella natural."));
   }
@@ -231,29 +239,8 @@ function handleRun(room: CombatRoom, snapshot: CombatRulesSnapshot<import("@dnd-
     room.pendingOpportunityAttacks.push(...opportunities);
     for (const opportunity of opportunities) room.log.unshift(makeLog("opportunity", opportunity.reason + " Resolver ataque de oportunidad con tirada manual."));
   }
-
-  // D-3/D-5: sin la dote de Correr, se pierde Destreza (y, por la simplificación documentada,
-  // también Esquiva) a la CA hasta el inicio del propio próximo turno.
-  const keepsDex = FeatCatalog.runContribution(combatant.featIds ?? []).keepsDexBonusWhileRunning;
-  if (!keepsDex) {
-    const instance = {
-      instanceId: cryptoId("effect"),
-      effectId: "srd_running_exposed" as const,
-      source: { type: "creature" as const, id: combatant.id },
-      targets: [combatant.id],
-      appliedAtEvent: { type: "ActionResolved" as const, round: room.round },
-      duration: {
-        type: "until_turn" as const,
-        anchorCombatantId: combatant.id,
-        phase: "start" as const,
-        appliedAtSequence: room.eventSequence
-      }
-    };
-    const nextRoom = EffectManager.add(room, instance);
-    Object.assign(room, nextRoom);
-    room.log.unshift(makeLog("status", combatant.name + " pierde su bonificador de Destreza a la CA por correr sin la dote de Correr, hasta el inicio de su próximo turno."));
-  }
-
+  // Preserve the historical status message, including when onStack ignore keeps an existing instance.
+  if (preparedInstance) room.log.unshift(makeLog("status", combatant.name + " pierde su bonificador de Destreza a la CA por correr sin la dote de Correr, hasta el inicio de su próximo turno."));
   broadcast(room);
 }
 

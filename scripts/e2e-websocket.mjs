@@ -846,5 +846,43 @@ for (const scenario of ['normal', 'dt', 'aoo', 'reject', 'disabled']) {
     }
   } finally { state.ws.close(); }
 }
+// I10: real Run commands, no client path or test-only server hooks.
+for (const scenario of ['x4','heavy','diagonal','dt','aoo','feat','invalid']) {
+  const state=await connectAndSend({type:'create-room',name:`I10 ${scenario}`});
+  const roomCode=state.room.code,actorId=state.participant.id;
+  const issue=command=>send(state,{roomCode,actorId,...command});
+  const pos=(x,y)=>({x,y,zFeet:0});
+  try {
+    await issue({type:'update-board',board:{width:40,height:20,cellSizeFeet:5,difficultTerrainCells:scenario==='dt'?['3,2']:[]}});
+    const heavy=scenario==='heavy';
+    await issue({type:'add-profile-combatant',profile:{...heroProfile,id:'i10-hero',name:'I10 Hero',baseSpeedFeet:30,
+      inventory:heavy?[...heroProfile.inventory,{itemId:'i10-heavy',catalogId:'banded_mail'}]:heroProfile.inventory,
+      equipmentSlots:{...heroProfile.equipmentSlots,armorItemId:heavy?'i10-heavy':null},featIds:scenario==='feat'?['srd_run']:[],abilities:[],preparedSpellLoadout:[]}});
+    const hero=state.room.combatants.find(c=>c.name==='I10 Hero');
+    await issue({type:'gm-move-combatant',combatantId:hero.id,to:pos(2,2)});
+    await issue({type:'add-profile-combatant',profile:{...enemyProfile,id:'i10-enemy',name:'I10 Enemy'}});
+    const enemy=state.room.combatants.find(c=>c.name==='I10 Enemy');
+    await issue({type:'gm-move-combatant',combatantId:enemy.id,to:scenario==='aoo'?pos(1,2):pos(35,15)});
+    await issue({type:'set-initiative',combatantId:hero.id,initiative:20});
+    await issue({type:'set-initiative',combatantId:enemy.id,initiative:1});await issue({type:'sort-initiative'});
+    if(scenario==='aoo')for(let i=0;i<2;i++)await issue({type:'end-turn'});
+    const run=(to,id=hero.id)=>issue({type:'use-tactical-action',action:'run',combatantId:id,to});
+    if(scenario==='dt'||scenario==='invalid') {
+      const before=JSON.stringify(state.room),errors=state.errors.length;
+      await run(pos(6,2),scenario==='invalid'?enemy.id:hero.id);
+      record(`I10 Run ${scenario}: rejection leaves authoritative state unchanged`,state.errors.length===errors+1&&JSON.stringify(state.room)===before,state.errors.at(-1));
+    } else {
+      const to=scenario==='x4'?pos(26,2):heavy?pos(14,2):scenario==='diagonal'?pos(4,4):pos(6,2);
+      const cost=scenario==='x4'?120:heavy?60:scenario==='diagonal'?15:20;
+      if(heavy){const before=JSON.stringify(state.room),errors=state.errors.length;await run(pos(15,2));record('I10 Run heavy excess rejects without mutation',state.errors.length===errors+1&&JSON.stringify(state.room)===before,state.errors.at(-1));}
+      const errors=state.errors.length;await run(to);
+      const moved=state.room.combatants.find(c=>c.id===hero.id),turn=state.room.currentTurn;
+      record(`I10 Run ${scenario}: position, normative cost/base, full-round and context`,state.errors.length===errors&&JSON.stringify(moved.position)===JSON.stringify(to)&&turn.movementUsedFeet===cost&&moved.stats.distanceMovedFeet===cost&&turn.usedFullAttack&&!turn.usedMoveAction&&!turn.usedStandardAction&&turn.normalDiagonalStepsThisTurn===(scenario==='diagonal'?2:0),JSON.stringify({errors:state.errors,turn,position:moved.position}));
+      const effect=state.room.effectInstances.find(e=>e.effectId==='srd_running_exposed'&&e.targets.includes(hero.id));
+      record(`I10 Run ${scenario}: exposure follows feat and duration contract`,scenario==='feat'?!effect:!!effect&&effect.source.id===hero.id&&effect.duration.type==='until_turn'&&effect.duration.anchorCombatantId===hero.id&&effect.duration.phase==='start'&&typeof effect.duration.appliedAtSequence==='number',JSON.stringify(effect));
+      if(scenario==='aoo')record('I10 Run origin threat has no Withdraw exemption',state.room.pendingOpportunityAttacks.length===1&&state.room.pendingOpportunityAttacks[0].attackerId===enemy.id,JSON.stringify(state.room.pendingOpportunityAttacks));
+    }
+  } finally {state.ws.close();}
+}
 console.log(JSON.stringify(results, null, 2));
 if (results.some(r => !r.ok)) process.exitCode = 1;

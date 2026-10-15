@@ -1853,9 +1853,9 @@ Riesgos cerrados: drift V1/guards → tests con handler real; post-policy vs exc
 
 ### 12.1 Estado, autoridades y alcance
 
-**DESIGN ONLY. Awaiting Architecture Review and Proceed.** Auditoría sobre master/origin/master `9b8f8dd58bba9b79d18bcd3fcdf38dc97708e3a8`, limpio. I6/I7/I8/I9 técnicamente aprobados según el owner; Windows CI I9 SUCCESS informado por el owner. Este capítulo no afirma implementación I10 ni ejecución nueva de tests/CI.
+**IMPLEMENTACIÓN Y DoD LOCAL COMPLETADOS; Ready for Architecture Review externa. No se requiere un nuevo Proceed.** Diseño técnicamente aprobado y Proceed explícito del owner sobre `4c2aeccd4c52915176084005c1aa0bbd08924b79`. La auditoría §12.2 conserva evidencia del baseline previo `9b8f8dd58bba9b79d18bcd3fcdf38dc97708e3a8`; las instrucciones de diseño siguientes se preservan como contrato aprobado. Evidencia ejecutada en [master-coverage](../testing/master-coverage.md). No se autoaprueba la implementación.
 
-La integración pertenece a Movement; las reglas y decisiones D-1 a D-5 permanecen exclusivamente en [Run](run-design.md). Este capítulo documenta su adaptación a APIs existentes, sin redefinir RAW. El único [plan activo](../../implementation_plan.md) detalla ejecución futura. Entrega documental Nivel A; futura implementación **Nivel C** por tocar orquestación/resolver servidor (§5.2 Governance). Si aparece necesidad de contratos, EffectManager/Reducer o infraestructura, detener y reclasificar D antes de implementarla.
+La integración pertenece a Movement; las reglas y decisiones D-1 a D-5 permanecen exclusivamente en [Run](run-design.md). Este capítulo documenta su adaptación a APIs existentes, sin redefinir RAW. El [plan ejecutado](movement/run-implementation-plan.md) conserva la secuencia aprobada; no hay plan activo en raíz. Implementación **Nivel C** por tocar orquestación/resolver servidor (§5.2 Governance). Si aparece necesidad de contratos, EffectManager/Reducer o infraestructura, detener y reclasificar D antes de implementarla.
 
 ### 12.2 Auditoría verificable del baseline
 
@@ -1953,7 +1953,7 @@ Rule Engine/catálogos/CombatSnapshot/equipment/ownership/wire mantienen contrat
 
 Alternativas descartadas: resolver/budget policy Run en shared (number basta); recalcular huellas (duplica autoridad); DT antes de budget (altera precedencia); prohibir squeezing (nueva regla); actualizar room precomputado (pisaría Commit); confiar solo en tipado para add (no ejercita cadena real); migrar preview o metadata AdO aquí (otro alcance).
 
-### 12.10 Diseño de pruebas futuras, no ejecutadas
+### 12.10 Diseño de pruebas y evidencia ejecutada
 
 Usar handler real y rooms independientes; oracle shared para coste/contexto, expectativas explícitas para policies. No crear helper V1 de test que replique producción. Completar fixture de contador y comparar room completo/broadcasts en rechazo.
 
@@ -1998,4 +1998,12 @@ E2E WebSocket futuro, servidor real: (1) ×4 accepted verifica posición/gasto/u
 21. D-7: no dependencia ni implementación.
 22. D-2/D-4: DT-018/DT-019 intactas.
 23. Governance futura: C; D si cambia infraestructura/contratos.
-24. **Cero ODR bloqueantes de diseño. Awaiting Architecture Review and Proceed.** No autoriza implementación ni declara aprobación externa.
+24. **Cero ODR bloqueantes. IMPLEMENTACIÓN COMPLETADA; Ready for Architecture Review externa. No se requiere un nuevo Proceed.**
+
+### 12.12 Cierre de implementación I10
+
+handleRun usa snapshot actor, ruta recta y budget existentes, Resolution/contexto real y Commit con referencia viva. Policies DT/V1 consumen steps confirmados y respetan illegal→budget→DT→V1. Solo Commit escribe movimiento/stats base/eje/contexto. Exposición usa preflight puro descartado y segundo add sobre room postcommit, asignando únicamente effectInstances; economía/logs/pending/broadcast ocurren tras committed. Preservado status log histórico incluso con onStack ignore, sin duplicar ni renovar instancia.
+
+Precisiones contra las APIs reales: CombatRulesSnapshot no contiene round; se captura room.round antes de Resolution, como I8, sin ampliar contratos. La geometría vigente rechaza diagonal Large sobre narrow (projectMovementFootprint retorna null); el consumer prueba ese rechazo atómico. El coste diagonal squeezing 15/base5 es contrato del assessment genérico, no una ruta Run actualmente legal. La matriz §12.10 se interpreta sujeta a esa legalidad, sin cambiar geometry/shared para fabricar aceptación. Blinded, Entangled y Exhausted ya declaran FORBID_RUN: sus rates no habilitan Run; se verifica budget proyectado y rechazo, y el caso aceptado con buff se prueba sobre armadura pesada (60→90).
+
+Evidencia local: 981/981 globales, 168/168 Run + Resolution/Commit focalizadas, typecheck/build verdes, 134/134 WebSocket (14 nuevas) y 33/33 UI. No cambios shared/web/schema ni metadata AdO. No dependencia D-7 ni cierre de DT-018/DT-019; preview sigue legacy-run. Plan reubicado como referencia ejecutada; no nueva aprobación de implementación asumida.

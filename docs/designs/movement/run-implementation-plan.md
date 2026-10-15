@@ -1,14 +1,14 @@
-# D-1B-I10 — Plan activo de Run servidor normativo
+# D-1B-I10 — Plan ejecutado de Run servidor normativo
 
-Canonical responsibility: Secuencia ejecutable y verificación de la futura integración I10 servidor.
+Canonical responsibility: Referencia de la secuencia aprobada y ejecutada de integración I10 servidor.
 Supersedes: —; no reemplaza planes ejecutados I6/I7/I8/I9.
-Complements: [NDD Movement Capítulo 12](docs/designs/normative-movement-design.md#capítulo-12--i10-run-server-normative-integration), [Run](docs/designs/run-design.md).
+Complements: [NDD Movement Capítulo 12](../normative-movement-design.md#capítulo-12--i10-run-server-normative-integration), [Run](../run-design.md).
 Derived from: Auditoría sobre 9b8f8dd58bba9b79d18bcd3fcdf38dc97708e3a8 y .agents/AGENTS.md Fase 3.
-Lifecycle: Único plan activo I10; Awaiting Architecture Review and Proceed.
+Lifecycle: Referencia de implementación ejecutada; no es un plan activo. Ready for Architecture Review externa. No se requiere un nuevo Proceed.
 
 ## Gate y frontera
 
-No ejecutado. Requiere Architecture Review y Proceed explícito antes de código/tests. Futura implementación Nivel C: caller servidor sobre APIs shared existentes; D si requiere infraestructura/contratos. Este plan operacionaliza decisiones de §12, sin copiar RAW ni convertir el cierre documental en autorización.
+IMPLEMENTACIÓN Y DoD LOCAL COMPLETADOS. Diseño técnicamente aprobado y Proceed explícito del owner sobre 4c2aeccd4c52915176084005c1aa0bbd08924b79. Las instrucciones futuras siguientes conservan el plan aprobado como referencia histórica de ejecución. Implementación Nivel C: caller servidor sobre APIs shared existentes; D si requiere infraestructura/contratos. Este plan operacionaliza decisiones de §12, sin copiar RAW ni convertir el cierre documental en autorización.
 
 Permitidos tras Proceed: `apps/server/src/commands/tacticalCommands.ts` (rama handleRun y ajuste mínimo de imports), `tests/run-server.test.mjs`, `tests/run.test.mjs` si falta cobertura de helpers, `scripts/e2e-websocket.mjs` para escenarios reales Run, documentación afectada por evidencia. Conservar shared, apps/web, schemas/wire y consumidores ajenos. No .claude/settings.local.json ni test.txt. No cambios preventivos en EffectManager, resolver, Commit, spatialTransition ni extracción de framework. Si la auditoría de implementación prueba bloqueo, detener y reportar/reclasificar.
 
@@ -28,7 +28,7 @@ Permitidos tras Proceed: `apps/server/src/commands/tacticalCommands.ts` (rama ha
 
 ## Verificación futura
 
-Matriz completa obligatoria: [§12.10](docs/designs/normative-movement-design.md#1210-diseño-de-pruebas-futuras-no-ejecutadas). Cubrir exacto/exceso ×4/×3 y speed; straight xyz; contexto inicial no cero; DT no-ancla y precedencia doble; transiciones/ejes/corrupción; gasto/base; V1 estados/alturas; AdO inicial/posterior/múltiples; guards/economía; efecto/dote/tick; stale y ausencia de publicación parcial.
+Matriz completa obligatoria: [§12.10](../normative-movement-design.md#1210-diseño-de-pruebas-y-evidencia-ejecutada). Cubrir exacto/exceso ×4/×3 y speed; straight xyz; contexto inicial no cero; DT no-ancla y precedencia doble; transiciones/ejes/corrupción; gasto/base; V1 estados/alturas; AdO inicial/posterior/múltiples; guards/economía; efecto/dote/tick; stale y ausencia de publicación parcial.
 
 Pruebas de atomicidad discriminantes: fallo preflight antes de Commit sin cambios; stale inyectado en callback de consulta como I8 descarta buffers y conserva estado inmediatamente anterior a Commit; segundo add conserva squeezing/eje/posición/stats/contexto recién confirmados. No afirmar que un mock de excepción arbitraria postcommit pruebe rollback inexistente. No nuevo hook productivo ni suite shared duplicada.
 
@@ -40,4 +40,4 @@ Gates de implementación futura: `npm test`, `npm run typecheck`, `npm run build
 
 Presupuesto no residual ni doble penalización armadura; errores DT/budget ordenados; costos normativos separados de stats; actor snapshot vs referencia viva; persistencia squeezing preservada por add posterior; no fingerprint que aparente autorizar Run. Mantener tramo síncrono y catálogo estático. Si aparece await/reentrada/efecto dependiente de posición tras Commit, revisar §12.7–12.8 antes de ejecutar; no extender fingerprint o transacción por conveniencia.
 
-D-2/DT-018 y D-4/DT-019 permanecen diferidas. D-7, 5ft, Charge, metadata global AdO y Run preview (I11 recomendado) fuera del sprint. No nuevas ODR bloqueantes de diseño. Este plan está pendiente; ninguna casilla de implementación/validación técnica se declara completada.
+D-2/DT-018 y D-4/DT-019 permanecen diferidas. D-7, 5ft, Charge, metadata global AdO y Run preview (I11 recomendado) fuera del sprint. No nuevas ODR bloqueantes de diseño. Este plan fue ejecutado. Gates locales completos verdes; evidencia en [master-coverage](../../testing/master-coverage.md). IMPLEMENTACIÓN COMPLETADA; Ready for Architecture Review externa. No se requiere un nuevo Proceed.
