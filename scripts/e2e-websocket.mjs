@@ -793,5 +793,58 @@ record('Demo: exit-demo destruye la sesion y emite demo-exited', demoClient.demo
 demoClient.ws.close();
 
 gm.ws.close(); ownershipGm.ws.close(); ownerA.ws.close(); ownerB.ws.close(); stabilizationGm.ws.close(); profileGm.ws.close(); profilePlayer.ws.close(); largeGm.ws.close(); diehardGm.ws.close(); gmTouch.ws.close(); player.ws.close(); gmHaste.ws.close(); gmAoo.ws.close(); gmDiagonalAoo.ws.close(); gmMultiAoo.ws.close(); gmDiagonalMelee.ws.close(); gmCharge.ws.close(); gmAid.ws.close(); gmPassThrough.ws.close(); gmFlanking.ws.close(); gmFfs.ws.close(); gmFa.ws.close(); gmDef.ws.close(); gmDisabled.ws.close(); gmStun.ws.close(); gmEntangled.ws.close(); gmBlinded.ws.close(); gmConditionPanel.ws.close(); conditionPanelPlayer.ws.close(); gmLoe.ws.close(); mapGm.ws.close(); mapPlayer.ws.close();
+// I8: exercise the real WebSocket dispatcher/Withdraw handler, without test-only APIs.
+for (const scenario of ['normal', 'dt', 'aoo', 'reject', 'disabled']) {
+  const state = await connectAndSend({ type: 'create-room', name: `I8 ${scenario}` });
+  const roomCode = state.room.code; const actorId = state.participant.id;
+  const issue = command => send(state, { roomCode, actorId, ...command });
+  try {
+    await issue({ type: 'update-board', board: { width: 20, height: 20, cellSizeFeet: 5,
+      difficultTerrainCells: scenario === 'dt' ? ['3,3', '4,4'] : [] } });
+    await issue({ type: 'add-profile-combatant', profile: { ...heroProfile, id: 'i8-hero', name: 'I8 Hero',
+      baseSpeedFeet: 30, equipmentSlots: { ...heroProfile.equipmentSlots, armorItemId: null }, abilities: [], preparedSpellLoadout: [] } });
+    const hero = state.room.combatants.find(c => c.name === 'I8 Hero');
+    await issue({ type: 'gm-move-combatant', combatantId: hero.id, to: { x: 2, y: 2, zFeet: 0 } });
+    for (const [index, to] of (scenario === 'aoo' ? [{ x: 1, y: 2, zFeet: 0 }, { x: 6, y: 1, zFeet: 0 }] : [{ x: 17, y: 17, zFeet: 0 }]).entries()) {
+      await issue({ type: 'add-profile-combatant', profile: { ...enemyProfile, id: `i8-enemy-${index}`, name: `I8 Enemy ${index}` } });
+      const enemy = state.room.combatants.find(c => c.name === `I8 Enemy ${index}`);
+      await issue({ type: 'gm-move-combatant', combatantId: enemy.id, to });
+      await issue({ type: 'set-initiative', combatantId: enemy.id, initiative: 1 });
+    }
+    if (scenario === 'disabled') await issue({ type: 'gm-set-hp', combatantId: hero.id, hpCurrent: 0 });
+    await issue({ type: 'set-initiative', combatantId: hero.id, initiative: 20 });
+    await issue({ type: 'sort-initiative' });
+    // Let both reactors act once: Flat-Footed correctly forbids their first-round AoO.
+    if (scenario === 'aoo') for (let turn=0; turn<state.room.combatants.length; turn++) await issue({ type: 'end-turn' });
+    const move = path => issue({ type: 'use-tactical-action', action: 'withdraw', combatantId: hero.id, path, to: path.at(-1) });
+    const pos = (x,y) => ({ x,y,zFeet:0 });
+    if (scenario === 'reject') {
+      let before = JSON.stringify(state.room); let errors = state.errors.length;
+      await move(Array.from({ length:12 }, (_,i) => pos(i+3,i+3)));
+      record('I8 Withdraw WebSocket: budget rejection has zero mutation', state.errors.length === errors+1 && JSON.stringify(state.room) === before, state.errors.at(-1));
+      const blocker = state.room.combatants.find(c => c.type === 'enemy');
+      await issue({ type: 'gm-move-combatant', combatantId: blocker.id, to: pos(3,2) });
+      before=JSON.stringify(state.room); errors=state.errors.length;
+      await move([pos(3,2)]);
+      record('I8 Withdraw WebSocket: occupied endpoint rejection has zero mutation', state.errors.length === errors+1 && JSON.stringify(state.room) === before, state.errors.at(-1));
+      await issue({ type: 'gm-move-combatant', combatantId: blocker.id, to: pos(17,17) });
+      await move([pos(3,2)]); before=JSON.stringify(state.room); errors=state.errors.length;
+      await move([pos(4,2)]);
+      record('I8 Withdraw WebSocket: consumed full-round rejects without mutation', state.errors.length === errors+1 && JSON.stringify(state.room) === before, state.errors.at(-1));
+    } else {
+      const path = scenario === 'dt' ? [pos(3,3),pos(4,4)] : scenario === 'aoo' ? Array.from({ length:7 }, (_,i)=>pos(i+3,2)) : [pos(3,2),pos(4,2)];
+      await move(path);
+      const result=state.room.combatants.find(c=>c.id===hero.id); const turn=state.room.currentTurn;
+      const cost=scenario==='dt'?30:scenario==='aoo'?35:10;
+      record(`I8 Withdraw WebSocket ${scenario}: normative cost, final position and economy`,
+        state.errors.length===0 && turn.movementUsedFeet===cost && JSON.stringify(result.position)===JSON.stringify(path.at(-1)) &&
+        (scenario==='disabled' ? turn.usedStandardAction && !turn.usedFullAttack : turn.usedFullAttack && !turn.usedStandardAction) && !turn.usedMoveAction,
+        JSON.stringify({ errors:state.errors, turn, position:result.position }));
+      if(scenario==='dt') record('I8 Withdraw WebSocket DT: stats use base and hampered diagonals do not consume parity', result.stats.distanceMovedFeet===10 && turn.normalDiagonalStepsThisTurn===0, JSON.stringify(result.stats));
+      if(scenario==='aoo') record('I8 Withdraw WebSocket: initial footprint exempt, later threat pending after full route', state.room.pendingOpportunityAttacks.length===1 && state.room.pendingOpportunityAttacks[0].attackerId===state.room.combatants.find(c=>c.name==='I8 Enemy 1').id, JSON.stringify(state.room.pendingOpportunityAttacks));
+      if(scenario==='disabled') record('I8 Withdraw WebSocket limited: effort once and dying state', result.hpCurrent===-1 && state.room.log.filter(e=>/pierde 1 HP por esfuerzo/.test(e.message)).length===1, JSON.stringify({hp:result.hpCurrent,log:state.room.log.slice(0,4)}));
+    }
+  } finally { state.ws.close(); }
+}
 console.log(JSON.stringify(results, null, 2));
 if (results.some(r => !r.ok)) process.exitCode = 1;

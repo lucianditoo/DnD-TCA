@@ -1,13 +1,13 @@
 # Implementation Plan — Withdraw Server Normative Movement Integration (seleccionado por D-1B-I8)
 
 Responsabilidad: plan temporal de la **única** migración futura seleccionada: Withdraw servidor.
-Autoridad: derivada del [NDD D-1B §10.5](docs/designs/normative-movement-design.md#105-diseño-completo-del-consumidor-seleccionado--withdraw-servidor); reglas propias en [Withdraw Rev. 3](docs/designs/withdraw/design.md).
-Lifecycle: Temporal activo, diseño únicamente.
+Autoridad: derivada del [NDD D-1B §10.5](../normative-movement-design.md#105-diseño-completo-del-consumidor-seleccionado--withdraw-servidor); reglas propias en [Withdraw Rev. 3](../withdraw/design.md).
+Lifecycle: Referencia de implementación ejecutada; no es un plan activo.
 Reemplaza: ningún plan de implementación original de Withdraw; ese plan registra su entrega previa, no esta migración.
-Complementa: [estado](PROJECT_STATUS.md), [pendientes](TODO.md), [walkthrough](walkthrough.md).
+Complementa: [estado](../../../PROJECT_STATUS.md), [pendientes](../../../TODO.md), [walkthrough](../../../walkthrough.md).
 Consumidores: Architecture Reviewer y desarrolladores/agentes después de Proceed específico.
 
-**Awaiting Architecture Review and Proceed. NO IMPLEMENTAR.** Baseline auditado `67f6c3659e3e6be5b3111b8f1855d8c44dc212c9`; I6/I7 técnicamente aprobados por el owner. Nivel futuro **C** (GOVERNANCE §5.2), aun sin cambios shared. I8 entrega solo documentación; no es autorización de ejecución.
+**IMPLEMENTACIÓN Y DoD LOCAL COMPLETADOS; READY FOR ARCHITECTURE REVIEW EXTERNA.** Diseño técnicamente aprobado y Proceed explícito sobre `61c7e96c0e084b0fb64c960cd3ee60e4444f9650`. Nivel C, sin cambios shared/web/protocolo. El plan aprobado conservado abajo documenta tareas originales y no autoriza migraciones adicionales. Evidencia final en walkthrough/master-coverage; Windows CI se observa tras el push.
 
 ## 1. Alcance y archivos
 
@@ -37,7 +37,7 @@ Consumidores: Architecture Reviewer y desarrolladores/agentes después de Procee
 
 ## 3. Validación y aceptación
 
-La matriz canónica de pruebas de esta integración es [NDD §10.6](docs/designs/normative-movement-design.md#106-verificación-futura-y-fronteras-de-regresión). Demostrar:
+La matriz canónica de pruebas de esta integración es [NDD §10.6](../normative-movement-design.md#106-verificación-futura-y-fronteras-de-regresión). Demostrar:
 
 - Guards y políticas Withdraw existentes equivalentes: turno virgen, ×2/×1, ocupación V1, economía mínima, esfuerzo y exención inicial completa; cero mutación/publicación de éxito ante rechazo.
 - Diferencias intencionales del engine: coste normativo DT/stacking, contador real y stats base I6. No exigir igualdad al legacy donde precisamente se elimina su divergencia.

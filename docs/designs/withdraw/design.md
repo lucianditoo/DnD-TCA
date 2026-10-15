@@ -2,7 +2,7 @@
 
 ## 0. Estado
 
-**Nota de estado I8:** Withdraw está implementado en el baseline `67f6c3659e3e6be5b3111b8f1855d8c44dc212c9`; las frases de Fase 2/3 y el plan de creación conservados abajo pertenecen al diseño original. Sus reglas específicas siguen siendo propiedad de este NDD. La nueva migración **solo servidor** al engine normativo está en diseño, no autorizada; véase §8. No confundir ese Proceed pendiente con el de la implementación original ya realizada.
+**Nota de estado I8:** Withdraw está implementado en el baseline `67f6c3659e3e6be5b3111b8f1855d8c44dc212c9`; las frases de Fase 2/3 y el plan de creación conservados abajo pertenecen al diseño original. Sus reglas específicas siguen siendo propiedad de este NDD. La migración **solo servidor** al engine normativo fue ejecutada con diseño aprobado y Proceed explícito sobre 61c7e96; véase §8. La implementación espera Review externa, no un nuevo Proceed de diseño.
 
 Fase 2/3 — diseño formal. **Pendiente de ✅ `Proceed`; cero código de producción ni tests modificados.** Esta revisión responde a la auditoría externa que detectó una afirmación falsa en la Rev. 2 sobre la economía de Carga; la Fase 1 de esta revisión re-verificó el contrato completo campo a campo. Fuente RAW: corpus `combat/05:196`, `combat/08:134`.
 
@@ -76,7 +76,7 @@ Sub-acción declarativa con servidor autoritativo (el cliente solo envía `{ act
 
 ## 8. Integración normativa propuesta por I8 — sin cambio de reglas del consumidor
 
-Autoridad de integración: [NDD D-1B §10.5](../normative-movement-design.md#105-diseño-completo-del-consumidor-seleccionado--withdraw-servidor), con [plan temporal activo](../../../implementation_plan.md). **Awaiting Architecture Review and Proceed** para esta migración futura, Nivel C. I8 no modifica código ni tests.
+Autoridad de integración: [NDD D-1B §10.5](../normative-movement-design.md#105-diseño-completo-del-consumidor-seleccionado--withdraw-servidor), con [plan ejecutado](../movement/withdraw-implementation-plan.md). Diseño aprobado y ejecutado con Proceed explícito (Nivel C); DoD local verde y Ready for Architecture Review externa. La entrega de diseño anterior no había modificado código/tests.
 
 La referencia a validateMovePath/commitSpatialTransition y distanceFeet en §4/§5 describe la implementación legacy auditada. Para el futuro seleccionado, esas sedes se sustituyen por Resolution/Commit comunes según D-1B: gasto usa coste total, stats usa distancia base y contexto/eje vienen del engine. No se reinterpretan aquí full-round, rama limitada Disabled/esfuerzo, prohibición de Acrobacias/tránsito enemigo, exención de huella inicial ni resolución de AdO posterior al desplazamiento completo. Esas reglas siguen en este consumidor. Preview normativo será una entrega posterior; ningún contrato shared nuevo ni D-7 es requisito de esta migración.
 

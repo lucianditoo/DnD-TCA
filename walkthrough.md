@@ -1,34 +1,39 @@
-# Walkthrough — D-1B-I8 Design: Tactical Movement Consumers Migration Sequencing
+# Walkthrough — D-1B-I8 Withdraw Server Normative Movement Integration
 
-Responsabilidad: evidencia de auditoría, decisión de secuencia y entrega documental I8.
-Autoridad: registro; integración en [NDD D-1B Capítulo 10](docs/designs/normative-movement-design.md#capítulo-10--i8-tactical-movement-consumers-migration-sequencing).
+Responsabilidad: evidencia de implementación, validaciones y límites de I8.
+Autoridad: registro; integración en [NDD Capítulo 10](docs/designs/normative-movement-design.md#capítulo-10--i8-tactical-movement-consumers-migration-sequencing), reglas en [Withdraw Rev. 3](docs/designs/withdraw/design.md).
 Lifecycle: Rotativo.
-Reemplaza: walkthrough I7, conservado en Git.
-Complementa: [plan activo](implementation_plan.md), [estado](PROJECT_STATUS.md), [pendientes](TODO.md), [índice](INDEX.md).
-Consumidores: Architecture Reviewer y agentes que ejecutarán únicamente tras Proceed específico.
+Reemplaza: walkthrough I8 Design, conservado en Git.
+Complementa: [plan ejecutado](docs/designs/movement/withdraw-implementation-plan.md), [estado](PROJECT_STATUS.md), [pendientes](TODO.md), [coverage](docs/testing/master-coverage.md).
+Consumidores: Architecture Reviewer y agentes que consultan la implementación publicada.
 
-## Resultado
+## Resultado y alcance
 
-Baseline limpio y sincronizado master/origin/master: `67f6c3659e3e6be5b3111b8f1855d8c44dc212c9`. I6/I7 TECHNICALLY APPROVED por el owner; Windows CI I7 SUCCESS. Entrega exclusivamente audit/design; no es Proceed ni implementación. No se modificaron ni ejecutaron tests productivos, código web/server/shared, schemas/protocolo ni configuración local.
+Baseline limpio y sincronizado `61c7e96c0e084b0fb64c960cd3ee60e4444f9650`. Diseño técnicamente aprobado y Proceed explícito del owner, Nivel C. Se migró exclusivamente handleWithdraw/imports necesarios, tests asociados y WebSocket E2E. packages/shared/src, apps/web, schemas/protocolo, spatialTransition global y otros callers no cambian; tampoco .claude/settings.local.json ni archivos unrelated.
 
-**Único consumidor seleccionado: Withdraw servidor.** Run es segundo recomendado, sin plan de implementación propio en esta entrega. Five-Foot Step requiere cerrar su excepción de coste/contabilidad/paridad; Charge requiere delimitar selección/geometría/terreno y movimiento→ataque. Ninguno se migra ahora. La decisión no depende de D-7 para Withdraw aislado.
+Resolution recibe actor del snapshot, ruta xyz copiada (path o fallback to), budget efectivo propio ×2/×1, contador diagonal real e isAcrobatic=false. Se mantienen guards y ocupación V1 externa desde occupiedCells, sin reanclar/fallback. El helper AdO recibe totalCostFeet/steps y exención inicial completa; sus metadata/early return siguen intactos. Oportunidades quedan locales hasta Commit.
 
-## Auditoría y decisiones
+Commit recibe la referencia viva y precondiciones de turno/ronda/origen xyz/gasto/paridad; ready no se altera. Solo Commit escribe posición, squeezing/eje, contexto, gasto total y stats base. Se retiraron del caller validateMovePath/ST y sumas manuales. Economía full-round o estándar limitada, logs, pendientes y esfuerzo Disabled se publican después de committed, antes de un único broadcast. No retry, aceptación de prefijo, nueva economía, sync adicional ni rollback de consecuencias posteriores. Axis H↔V no inventa entrada/salida de squeezing.
 
-Se inspeccionaron tacticalCommands, movementCommands I6, spatialTransition, rules, movementResolution, movementCommit, movementCost y routeValidation, además de chargeResolver, previews web y pruebas/diseños existentes. Tabla de quince aspectos por consumidor y referencias a símbolos reales en NDD §10.2; comparación explícita de complejidad/shared/server/UI/D-7/regresión/reglas/beneficio/reutilización en §10.4.
+La UI Withdraw permanece legacy por decisión aprobada. Run, Five-Foot Step, Charge, Move I6, preview I7, D-7, forced/GM/preparation y rango de conjuros quedan fuera. Ningún helper legacy compartido se elimina.
 
-Withdraw conserva turno virgen y economía existente; presupuesto caller ×2/×1, contexto diagonal real e isAcrobatic=false. Mantiene ocupación V1 más estricta que Route Validation y la exención inicial completa fuera del core. Resolution ready genuino alimenta Commit sin cambios shared; se retiran del caller validateMovePath, ST y sumas manuales. Commit escribe coste total a gasto, distancia base a stats, contexto y efecto/eje. Esta diferencia de stats frente al legacy se declara y probará, sin duplicar contabilidad.
+## Validación
 
-AdO usa el bridge existente con Resolution.steps; se declara su metadata local/early return y no se presenta como Movement Cost normativo por paso. Buffer antes del Commit, economía/logs/pendientes/esfuerzo después y un único broadcast coherente. Se conserva desplazamiento completo y AdO posterior, sin nueva interrupción/rollback. Preview legacy-withdraw se migra en sprint separado. Ninguna fórmula del consumidor entra en el core.
+| Gate | Resultado local |
+|---|---|
+| npm test | 854/854 |
+| Withdraw + movement integration/resolution/commit focalizados | 172/172 |
+| npm run typecheck | Verde, tres workspaces |
+| npm run build | Verde, tres workspaces |
+| node scripts/e2e-websocket.mjs | 120/120 |
+| npm run test:ui | 22/22 |
 
-Hallazgos documentales resueltos con notas de estado: NDD y plan de creación original de Withdraw conservaban frases de aprobación pendiente y un trío de economía Rev. 2 ya superado. Se identifican como referencias originales, subordinadas a Rev. 3 y al código; no hay dos planes activos de migración. No se reescribe su contrato RAW. También se detectó que W26/W27 menciona Charge en su título pero solo ejecuta Move; se exige cobertura Charge real en regresión futura. Fixtures de servidor antiguos carecen del contador diagonal: plan exige corregirlos al implementar, sin fallback productivo.
+Pruebas nuevas comparan el handler con el resolver real, sin duplicar fórmula RAW. Cubren DT fijo de dos diagonales, contexto no cero, stacking/contabilidad, budgets/guards, V1 helpless/dead/aliado/Large, todas las transiciones H/V/natural, corrupción de eje, huellas comprimidas y metadata AdO, payload/fallback y stale de actor/referencia/turno/ronda/origen/gasto/contexto/movilidad/eje. El harness stale muta estado desde un callback shared mockeado solo en tests; verifica igualdad contra el estado inmediatamente previo a Commit y ausencia de buffers/esfuerzo/publicación, sin nueva API productiva.
 
-Nivel futuro C por integración en comandos/resolver servidor (GOVERNANCE §5.2), aunque no cambie shared. Una necesidad de contratos/infraestructura exige detener y reclasificar con Review nueva. Las 17 preguntas quedan respondidas en §10.7 y el plan operativo cubre exclusivamente Withdraw. Cero ODR bloqueantes del seleccionado; decisiones de consumidores posteriores no se disfrazan de dependencias de D-7.
+Disabled conserva gasto estándar, esfuerzo único y transición dying; Diehard en -9 HP verifica muerte/TPK por esfuerzo antes de publicar. Fixtures antiguos ahora inicializan el contador explícito, sin fallback productivo. Se corrigieron fixtures exploratorios de salida de squeezing (debían conservar legal el eje en origen) y una expectativa de outcome: dying no es muerte/TPK. WebSocket AdO inicialmente no provocaba porque los reactores seguían Flat-Footed; darles su primer turno resolvió el fixture sin cambiar reglas. Gates finales completos verdes. Advertencia de bundle >500 kB preexistente; servidores propios detenidos.
 
-## DoD documental
+## Cierre documental
 
-NDD canónico ampliado; NDD Withdraw recibe solo nota de estado y vínculo de integración. Plan temporal completo en raíz; INDEX, PROJECT_STATUS y TODO sincronizados con sus responsabilidades. master-coverage/Registry y checklists permanecen intactos: no hay reglas implementadas ni nueva evidencia de tests en esta entrega.
+Plan retirado de raíz a docs/designs/movement/withdraw-implementation-plan.md; no se reemplazó la referencia de creación original Withdraw, solo se mantuvo su enlace entrante. INDEX/PROJECT_STATUS/TODO/master-coverage sincronizados; NDD recibe solo estado factual posterior, sin rediseño. Enlaces/anchors locales, scope y diff check verificados. Registry/checklists no cambian: integración de regla existente, sin nueva cobertura normativa declarada.
 
-Verificados antes del commit: diff check; enlaces/anchors locales tocados; responsabilidad SSOT; baseline y auditoría real; diff solo Markdown, sin archivos unrelated; exactamente una migración futura seleccionada y cero ODR bloqueantes. No se ejecutan gates técnicos ni se requiere CI para este cierre documental. Commit único y push origin/master, sin force push.
-
-Awaiting Architecture Review and Proceed.
+DoD local completo; commit único y push origin/master. Windows CI se observa sobre el SHA publicado y se informa al owner. Ready for Architecture Review; no se autoaprueba el sprint. Preview Withdraw y siguientes consumidores requieren su propio alcance/revisión.

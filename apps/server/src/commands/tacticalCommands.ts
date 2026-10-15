@@ -1,4 +1,4 @@
-import { applyDamage, canStandardAttack, canUseFiveFootStep, canUseMoveAction, canDisabledCombatantTakeAction, canRun, runSpeedBudgetFeet, buildStraightPath, isDifficultTerrain, findTriggeredOpportunityAttacksForPath, getAttackContextModifiers, getCombatantOccupiedCells, footprintCellKey, isAdjacent, lifeStatus, makeLog, Rules, threatensTarget, createCombatRulesSnapshot, validateMovePath, validateStandUp, getEffectiveAbilityModifier, hasEffectTrait, FeatCatalog, EffectManager, cryptoId, type ClientCommand, type CombatRoom, type CombatRulesSnapshot } from "@dnd-tactical/shared";
+import { resolveMovementPipeline, commitMovementResolution, applyDamage, canStandardAttack, canUseFiveFootStep, canUseMoveAction, canDisabledCombatantTakeAction, canRun, runSpeedBudgetFeet, buildStraightPath, isDifficultTerrain, findTriggeredOpportunityAttacksForPath, getAttackContextModifiers, getCombatantOccupiedCells, footprintCellKey, isAdjacent, lifeStatus, makeLog, Rules, threatensTarget, createCombatRulesSnapshot, validateMovePath, validateStandUp, getEffectiveAbilityModifier, hasEffectTrait, FeatCatalog, EffectManager, cryptoId, type ClientCommand, type CombatRoom, type CombatRulesSnapshot } from "@dnd-tactical/shared";
 import { requireCombatantControl } from "../auth/control.js";
 import { resolveAttack, resolveWeaponAttackSource } from "../combat/attackResolver.js";
 import { applyStartOfNextTurnBuff } from "../combat/buffRules.js";
@@ -69,19 +69,30 @@ function handleWithdraw(room: CombatRoom, snapshot: CombatRulesSnapshot<import("
     if (!standardCheck.ok) throw new Error(standardCheck.error);
   }
 
+  const snapshotActor = snapshot.combatants.find(actor => actor.id === combatant.id);
+  if (!snapshotActor || !Number.isFinite(snapshot.currentTurn.normalDiagonalStepsThisTurn)) {
+    throw new Error("El contexto de movimiento de la Retirada esta incompleto.");
+  }
+  const initialContext = { normalDiagonalStepsThisTurn: snapshot.currentTurn.normalDiagonalStepsThisTurn };
+  const preconditions = {
+    expectedTurnCombatantId: snapshot.currentTurn.combatantId,
+    expectedRound: room.round,
+    expectedOrigin: { ...snapshotActor.position },
+    expectedMovementUsedFeet: snapshot.currentTurn.movementUsedFeet,
+    expectedDiagonalContext: initialContext
+  };
   const speedFeet = Rules.totalSpeedFeet(snapshot, combatant);
-  const budgetFeet = isLimitedWithdraw ? speedFeet : speedFeet * 2;
-  const movePath = command.path && command.path.length > 0 ? command.path : [command.to];
-  const validation = validateMovePath(snapshot, combatant, movePath, budgetFeet, false, false);
-  if (!validation.ok || !validation.value) throw new Error(validation.error);
+  const availableBudgetFeet = isLimitedWithdraw ? speedFeet : speedFeet * 2;
+  const candidatePath = (command.path && command.path.length > 0 ? command.path : [command.to]).map(step => ({ ...step }));
+  const resolution = resolveMovementPipeline({ context: snapshot, combatant: snapshotActor as typeof combatant,
+    path: candidatePath, initialContext, availableBudgetFeet, isAcrobatic: false });
+  if (resolution.kind !== "ready") throw new Error(resolution.kind === "illegal-route" ? resolution.reason
+    : `${combatant.name} intenta mover ${resolution.requiredCostFeet} pies, pero solo tiene ${resolution.availableBudgetFeet} pies disponibles.`);
 
   // V1: sin Acrobacias y sin atravesar enemigos (NDD Rev. 3 §5); destino sin solapar a nadie.
-  const finalStep = validation.value.path[validation.value.path.length - 1];
-  for (let stepIndex = 0; stepIndex < validation.value.path.length; stepIndex++) {
-    const step = validation.value.path[stepIndex];
-    const projectedStep = validation.value.steps[stepIndex];
-    const stepKeys = new Set((projectedStep?.occupiedCells ?? getCombatantOccupiedCells({ ...combatant, position: { ...step } }, snapshot)).map(footprintCellKey));
-    const isFinal = stepIndex === validation.value.path.length - 1;
+  for (const step of resolution.steps) {
+    const stepKeys = new Set(step.occupiedCells.map(footprintCellKey));
+    const isFinal = step.stepIndex === resolution.steps.length - 1;
     const blocker = snapshot.combatants.find((other) =>
       other.id !== combatant.id &&
       lifeStatus(other as Parameters<typeof lifeStatus>[0]) !== "dead" &&
@@ -95,35 +106,27 @@ function handleWithdraw(room: CombatRoom, snapshot: CombatRulesSnapshot<import("
     }
   }
 
-  // Huella inicial completa (todas las celdas para Large+): exenta del disparo de AdO.
-  const exemptDepartureCellKeys = new Set(getCombatantOccupiedCells(combatant, snapshot).map(footprintCellKey));
-  const distanceFeet = validation.value.distanceFeet;
+  // Precommit evidence stays local; the helper preserves its existing AoO policy.
+  const exemptDepartureCellKeys = new Set(getCombatantOccupiedCells(snapshotActor, snapshot).map(footprintCellKey));
   const opportunities = findTriggeredOpportunityAttacksForPath(
-    snapshot,
-    combatant,
-    validation.value.path,
-    distanceFeet,
-    (reactor) => Rules.canMakeOpportunityAttack(snapshot, reactor, combatant.id),
-    false,
-    exemptDepartureCellKeys,
-    validation.value.steps
+    snapshot, snapshotActor as typeof combatant, candidatePath, resolution.totalCostFeet,
+    reactor => Rules.canMakeOpportunityAttack(snapshot, reactor, combatant.id),
+    false, exemptDepartureCellKeys, resolution.steps
   );
-
-  // ── Commit atomico (patrón handleCharge) ───────────────────────────────────
   const wasDisabledAtActionStart = lifeStatus(combatant) === "disabled";
-  const spatialTransition = commitSpatialTransition(room, combatant, finalStep, validation.value.finalSpatialMode === "natural"
-    ? { spatialMode: "natural" }
-    : { spatialMode: "squeezing", squeezingAxis: validation.value.steps[validation.value.steps.length - 1].squeezingAxis! });
-  combatant.stats.distanceMovedFeet += distanceFeet;
-  room.currentTurn.movementUsedFeet += distanceFeet;
+  const wasSqueezing = room.effectInstances.some(instance =>
+    instance.effectId === "srd_squeezing" && instance.targets?.includes(combatant.id));
+  const result = commitMovementResolution({ room, combatant, resolution, preconditions });
+  if (result.kind === "rejected") throw new Error(result.reason);
+
   if (isLimitedWithdraw) {
     room.currentTurn.usedStandardAction = true; // retirada limitada: accion estandar, NO asalto completo
   } else {
     room.currentTurn.usedFullAttack = true; // marcador vigente de "accion de asalto completo consumida"
   }
-  room.log.unshift(makeLog("movement", combatant.name + " se retira del combate: " + distanceFeet + " pies" + (isLimitedWithdraw ? " (retirada limitada: accion estandar)" : " (accion de asalto completo)") + ". Su posicion inicial no provoca ataques de oportunidad."));
-  if (spatialTransition.previousMode !== spatialTransition.currentMode) {
-    room.log.unshift(makeLog("movement", spatialTransition.currentMode === "squeezing"
+  room.log.unshift(makeLog("movement", combatant.name + " se retira del combate: " + resolution.totalCostFeet + " pies" + (isLimitedWithdraw ? " (retirada limitada: accion estandar)" : " (accion de asalto completo)") + ". Su posicion inicial no provoca ataques de oportunidad."));
+  if (wasSqueezing !== (result.finalSpatialMode === "squeezing")) {
+    room.log.unshift(makeLog("movement", result.finalSpatialMode === "squeezing"
       ? combatant.name + " entra en compresion espacial."
       : combatant.name + " recupera su huella natural."));
   }

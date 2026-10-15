@@ -15,7 +15,15 @@ Consumidores: Revisores que verifican las validaciones de un commit.
 Este documento consolida las directrices y el reporte de cobertura de testing
 del motor de combate D&D 3.5.
 
-## Baseline de código más reciente — D-1B-I7 (Ready for Architecture Review)
+## Baseline de código más reciente — D-1B-I8 Withdraw Server Integration
+
+**854/854 pruebas unitarias/integración**, **172/172 focalizadas** (Withdraw/helper AdO y movement integration/resolution/commit), typecheck y build verdes en los tres workspaces, **120/120 aserciones WebSocket reales** y **22/22 escenarios Playwright**.
+
+Withdraw servidor usa las APIs shared existentes sin alterarlas. Pruebas de paridad contra resolveMovementPipeline sobre los mismos inputs verifican coste/contexto/huellas, stats base, presupuesto efectivo ×2/×1, ocupación V1 (incluido Large no-anchor), ejes H/V/giros/salida/corrupción, AdO con exención completa y metadata vigente, guards, stale Commit sin gasto/logs/pendientes/broadcast ni esfuerzo, y Disabled/Diehard/outcome. Diez aserciones WebSocket nuevas ejecutan el dispatcher/handler reales; no se atribuye a títulos históricos cobertura que no ejecutan. Run/5ft/Charge/Move y UI permanecen intactos.
+
+Ejecución local Windows/Node 24.18.0. Build conserva advertencia preexistente de bundle >500 kB. El fixture WebSocket AdO deja actuar a sus reactores para superar correctamente Flat-Footed antes de probar la provocación. Servidores propios detenidos al finalizar. Windows CI remoto se verifica sobre el SHA publicado después del push; aprobación arquitectónica sigue siendo externa.
+
+## Baseline histórica — D-1B-I7
 
 **792/792 pruebas unitarias/integración**, **55/55 focalizadas** (adapter de preview y presentación 2.5D), typecheck y build verdes en los tres workspaces, **110/110 aserciones WebSocket** y **22/22 escenarios Playwright**. La prueba focalizada stale se repitió con una aserción adicional de recomposición por room-update: **1/1**.
 
