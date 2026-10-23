@@ -109,6 +109,7 @@ export const cancelAttackModeSchema = z.object({
 export const resolveSavingThrowSchema = z.object({
   type: z.literal("resolve-saving-throw"),
   roomCode: z.string().min(1),
+  actorId: z.string().min(1),
   targetId: z.string().min(1),
   saveType: z.enum(["fortitude", "reflex", "will"]),
   dc: z.number().int(),

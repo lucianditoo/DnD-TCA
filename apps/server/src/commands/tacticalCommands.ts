@@ -509,7 +509,7 @@ function handleStandUp(room: CombatRoom, snapshot: CombatRulesSnapshot<import("@
 export function handleResolveSavingThrow(room: CombatRoom, command: Extract<ClientCommand, { type: "resolve-saving-throw" }>): void {
   if (room.phase !== "active") throw new Error("Esta accion solo esta disponible con el combate en curso.");
   const target = findCombatant(room, command.targetId);
-  // requireCombatantControl(command.actorId, target); // El DM también puede lanzar salvaciones si es necesario
+  requireCombatantControl(command.actorId, target);
   const snapshot = createCombatRulesSnapshot(room);
 
   const result = resolveSavingThrow(snapshot, target, command.saveType, command.dc, command.d20Roll);
