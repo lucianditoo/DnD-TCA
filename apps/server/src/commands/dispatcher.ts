@@ -11,7 +11,7 @@ import { handleChooseAidBonus, handleUseTacticalAction, handleDeclareAttackMode,
 import { handleResolveGrappleEscape, handleResolveSpecialManeuver, type ManeuverDiceSource } from "./specialManeuverCommands.js";
 import { handleEquipItem, handleUnequipItem } from "./equipmentCommands.js";
 import { ensureLegacyRoomShape } from "../room/roomState.js";
-import { rooms, send } from "../room/roomStore.js";
+import { clients, rooms, send } from "../room/roomStore.js";
 import { validateClientCommand } from "../validation/validateClientCommand.js";
 import { isDemoRoom } from "../demo/sessionStore.js";
 
@@ -118,6 +118,15 @@ export function dispatchCommand(socket: WebSocket, command: ClientCommand): void
   }
   if (isDemoRoom(command.roomCode)) {
     throw new Error("Las salas de demostracion son de solo lectura y no admiten comandos manuales de combate.");
+  }
+  // Only the server's socket registration establishes the caller's identity and room.
+  // Keep this at the public boundary: internal demo commands use their trusted context.
+  const participant = clients.get(socket);
+  if (!participant || participant.id !== command.actorId) {
+    throw new Error("Participante no encontrado para esta conexion WebSocket.");
+  }
+  if (participant.roomCode !== command.roomCode.toUpperCase()) {
+    throw new Error("El participante no pertenece a esta sala.");
   }
   dispatchCommandCore(socket, command);
 }
