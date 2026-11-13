@@ -95,7 +95,7 @@ Estas deudas generan riesgo de regresión o complican implementaciones futuras p
 <a id="dt-007"></a>
 ### ~~DT-007: Límite de 1 AdO por criatura por ronda sin implementar~~ ✅ RESUELTO
 
-**Resolución (Sprint 021, 2026-07-16)**: D&D 3.5 exige que un combatiente realice como máximo 1 Ataque de Oportunidad por ronda, o más si posee "Reflejos de Combate" (1 + Mod DEX), pero nunca más de 1 AdO contra el mismo objetivo en la misma ronda. Se implementó un tracking inmutable en `CombatantStats` (`opportunityAttacksThisRound` y `targetsAttackedThisRoundViaAoO`) que se incrementa en `attackCommands.ts` de forma atómica. La validación autoritativa en `rules.ts` restringe los ataques correctamente respetando los históricos (Irreversibilidad a 20 sprints) y la regla del objetivo único. El contador se resetea vía `tickLayer.ts` puramente al comienzo de cada ronda.
+**Resolución (Sprint 021, 2026-07-16)**: D&D 3.5 exige que un combatiente realice como máximo 1 Ataque de Oportunidad por ronda, o más si posee "Reflejos de Combate" (1 + Mod DEX), con un máximo de un AdO por oportunidad. Se implementó un tracking inmutable en `CombatantStats` (`opportunityAttacksThisRound` y `targetsAttackedThisRoundViaAoO`) que se incrementa en `attackCommands.ts` de forma atómica. La validación autoritativa en `rules.ts` restringe los ataques correctamente respetando los históricos (Irreversibilidad a 20 sprints) y la agrupación de salidas por reactor, provocador y ronda. El contador se resetea vía `tickLayer.ts` puramente al comienzo de cada ronda.
 
 ---
 

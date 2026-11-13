@@ -1,6 +1,7 @@
+import { advanceTurn } from "../apps/server/src/combat/turnManager.ts";
 import test from "node:test";
 import assert from "node:assert/strict";
-import { Rules } from "../packages/shared/dist/index.js";
+import { Rules } from "@dnd-tactical/shared";
 import { makeTestCombatant, makeTestRoom } from "./test-utils.mjs";
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -51,13 +52,20 @@ test("AOO-03 (c): el reinicio del contador por ronda restaura la reaccion (contr
   const spent = makeTestCombatant({ stats: { ...base.stats, opportunityAttacksThisRound: 1 } });
   assert.equal(Rules.canMakeOpportunityAttack(makeRoom(spent), spent), false);
 
-  // El servidor (roundTickListener, Sprint 032) pone el contador a 0 al cambiar de ronda;
-  // este test fija que el oráculo puro responde al contador reiniciado.
-  const reset = { ...spent, stats: { ...spent.stats, opportunityAttacksThisRound: 0, targetsAttackedThisRoundViaAoO: [] } };
-  assert.equal(Rules.canMakeOpportunityAttack(makeRoom(reset), reset), true, "Contador reiniciado: puede reaccionar de nuevo.");
+  spent.stats.movementOpportunityTargetsThisRound = ["enemy"];
+  const room = makeRoom(spent);
+  room.turnOrder = [spent.id];
+  room.activeTurnIndex = 0;
+  const round = room.round;
+  advanceTurn(room);
+  assert.equal(room.round, round + 1);
+  const reset = room.combatants[0];
+  assert.equal(reset.stats.opportunityAttacksThisRound, 0);
+  assert.deepEqual(reset.stats.movementOpportunityTargetsThisRound, []);
+  assert.equal(Rules.canMakeOpportunityAttack(makeRoom(reset), reset), true);
 });
 
-test("AOO-03 (d): restriccion DT-007 de objetivo unico por ronda", () => {
+test("AOO-03 (d): provocaciones independientes", () => {
   const base = makeTestCombatant();
   const combatant = makeTestCombatant({
     featIds: ["srd_combat_reflexes"],
@@ -65,6 +73,6 @@ test("AOO-03 (d): restriccion DT-007 de objetivo unico por ronda", () => {
     stats: { ...base.stats, opportunityAttacksThisRound: 1, targetsAttackedThisRoundViaAoO: ["enemy-1"] }
   });
   const room = makeRoom(combatant);
-  assert.equal(Rules.canMakeOpportunityAttack(room, combatant, "enemy-1"), false, "Mismo objetivo ya golpeado esta ronda: bloqueado.");
+  assert.equal(Rules.canMakeOpportunityAttack(room, combatant, "enemy-1"), true, "Una provocación independiente puede gastar el cupo restante");
   assert.equal(Rules.canMakeOpportunityAttack(room, combatant, "enemy-2"), true, "Objetivo distinto dentro del limite: permitido.");
 });

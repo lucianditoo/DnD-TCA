@@ -1,3 +1,4 @@
+import { findStationaryOpportunityAttacks } from "../combat/opportunityAttackResolver.js";
 import { applyDamage, averageDiceDamage, canStandardAttack, getAttackContextModifiers, lifeStatus, makeLog, Rules, createCombatRulesSnapshot, type ClientCommand, type CombatRoom, SpellsCatalog, type Ability, threatensTarget, getCellsIntersectedByAoE, getCombatantOccupiedCells, footprintCellKey, type Combatant } from "@dnd-tactical/shared";
 import { requireCombatantControl } from "../auth/control.js";
 import { attackRangeFeet, makeDamageBundle, resolveAttack, type ResolvedAttackSource } from "../combat/attackResolver.js";
@@ -129,6 +130,7 @@ export function handleRollStabilization(room: CombatRoom, command: Extract<Clien
 
 export interface CastSpellExecutionOptions {
   readonly diceRoller?: (sides: number) => number;
+  readonly resumed?: boolean;
 }
 
 export function handleCastSpell(
@@ -138,7 +140,7 @@ export function handleCastSpell(
 ): void {
   if (room.phase !== "active") throw new Error("Esta accion solo esta disponible con el combate en curso.");
   const caster = findCombatant(room, command.casterId);
-  requireCombatantControl(command.actorId, caster);
+  if (!options.resumed) requireCombatantControl(command.actorId, caster);
   ensureActiveTurn(room, caster.id);
   const wasDisabledAtActionStart = lifeStatus(caster) === "disabled";
 
@@ -169,30 +171,16 @@ export function handleCastSpell(
 
   const draft = structuredClone(room) as CombatRoom;
 
-  if (Rules.actionProvokesOpportunityAttack(snapshot, caster, "cast-spell")) {
-    const enemies = snapshot.combatants.filter(e => 
-      e.id !== caster.id && 
-      e.type !== caster.type && 
-      lifeStatus(e) === "active" && 
-      threatensTarget(snapshot, e, caster) && 
-      Rules.canMakeOpportunityAttack(snapshot, e, caster.id)
-    );
-    if (enemies.length > 0) {
-      room.pendingOpportunityAttacks.push(...enemies.map(e => ({
-        id: crypto.randomUUID(),
-        attackerId: e.id,
-        targetId: caster.id,
-        attackerPosition: e.position,
-        origin: caster.position,
-        destination: caster.position,
-        reason: `${caster.name} provoca por conjuro.`,
-        createdAt: new Date().toISOString()
-      })));
-      room.log.unshift(makeLog("attack", `${caster.name} provoca ${enemies.length} Ataques de Oportunidad al lanzar un conjuro.`));
-      syncEncounterPhase(room);
-      broadcast(room);
-      return;
-    }
+  const opportunities = options.resumed || spell.castingTime.kind === "swift"
+    ? []
+    : findStationaryOpportunityAttacks(snapshot, caster, "lanza un conjuro");
+  if (opportunities.length > 0) {
+    room.pendingStationaryAction = { command, damageTaken: [], actorRole: caster.controlledBy.type };
+    room.pendingOpportunityAttacks.push(...opportunities);
+    room.log.unshift(makeLog("attack", caster.name + " provoca por conjuro."));
+    syncEncounterPhase(room);
+    broadcast(room);
+    return;
   }
 
   const draftCaster = findCombatant(draft, caster.id);

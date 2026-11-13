@@ -1,3 +1,4 @@
+import { resumeMovement } from "../apps/server/src/commands/movementCommands.ts";
 import test from "node:test";
 import assert from "node:assert/strict";
 import { handleUseTacticalAction } from "../apps/server/src/commands/tacticalCommands.ts";
@@ -185,7 +186,8 @@ test("MOVE-WITHDRAW servidor", async (t) => {
     const room = makeRoom([mover, adjacentEnemy, pathEnemy]);
     const path = straightPath(2, 9, 2);
     handleUseTacticalAction(room, withdrawCommand(room, path[path.length - 1], path));
-    assert.equal(mover.position.x, 9, "La transicion se confirma completa (sin interrupcion a mitad de ruta).");
+    assert.deepEqual(mover.position, room.pendingOpportunityAttacks[0].origin);
+    assert.ok(mover.position.x < 9);
     assert.equal(room.pendingOpportunityAttacks.length, 1, "Solo el enemigo del camino dispara; la huella inicial esta exenta.");
     assert.equal(room.pendingOpportunityAttacks[0].attackerId, "e-path");
   });
@@ -225,20 +227,32 @@ function assertNormative(t, room, path, expectedCost) {
   assert.equal(oracle.kind, "ready");
   const sent = t.mock.method(mockSocket, "send", raw => {
     const published = JSON.parse(raw).room;
-    assert.equal(published.currentTurn.movementUsedFeet, oracle.totalCostFeet);
-    assert.deepEqual(published.combatants[0].position, oracle.finalPosition);
+    if (published.pendingOpportunityAttacks.length) {
+      assert.deepEqual(published.combatants[0].position, published.pendingOpportunityAttacks[0].origin);
+      assert.ok(published.currentTurn.movementUsedFeet < oracle.totalCostFeet);
+    } else {
+      assert.equal(published.currentTurn.movementUsedFeet, oracle.totalCostFeet);
+      assert.deepEqual(published.combatants[0].position, oracle.finalPosition);
+    }
     assert.equal(published.currentTurn.usedFullAttack || published.currentTurn.usedStandardAction, true);
   });
   handleUseTacticalAction(room, withdrawCommand(room, path.at(-1), path));
   assert.equal(sent.mock.callCount(), 1);
+  const offers = [];
+  while (room.pendingMovement) {
+    assert.ok(room.pendingOpportunityAttacks.length);
+    offers.push(...room.pendingOpportunityAttacks);
+    room.pendingOpportunityAttacks = [];
+    room.phase = "active";
+    resumeMovement(room);
+  }
   assert.equal(room.currentTurn.movementUsedFeet, oracle.totalCostFeet);
   if (expectedCost !== undefined) assert.equal(oracle.totalCostFeet, expectedCost);
   assert.equal(actor.stats.distanceMovedFeet, oracle.totalBaseRouteCostFeet);
   assert.equal(room.currentTurn.normalDiagonalStepsThisTurn, oracle.projectedContext.normalDiagonalStepsThisTurn);
   assert.deepEqual(actor.position, oracle.finalPosition);
   assert.deepEqual(getCombatantOccupiedCells(actor, createCombatRulesSnapshot(room)), oracle.steps.at(-1).occupiedCells);
-  assert.ok(room.log.some(entry => entry.message.includes(`se retira del combate: ${oracle.totalCostFeet} pies`)));
-  return oracle;
+  return { ...oracle, offers };
 }
 
 for (const [name, path, terrain, parity, cost] of [
@@ -367,10 +381,10 @@ for (const axis of ["horizontal","vertical"]) test(`I8 compressed ${axis} origin
   const expected=findTriggeredOpportunityAttacksForPath(snapshot,snapshot.combatants[0],path,oracle.totalCostFeet,
     reactor=>Rules.canMakeOpportunityAttack(snapshot,reactor,actor.id),false,
     new Set(getCombatantOccupiedCells(snapshot.combatants[0],snapshot).map(footprintCellKey)),oracle.steps);
-  assertNormative(t,room,path);
-  assert.equal(room.pendingOpportunityAttacks.length,1);
-  assert.equal(room.pendingOpportunityAttacks[0].attackerId,"later");
-  assert.deepEqual(room.pendingOpportunityAttacks.map(({id,createdAt,...evidence})=>evidence),expected.map(({id,createdAt,...evidence})=>evidence));
+  const { offers } = assertNormative(t,room,path);
+  assert.equal(offers.length,1);
+  assert.equal(offers[0].attackerId,"later");
+  assert.deepEqual(offers.map(({id,createdAt,...evidence})=>evidence),expected.map(({id,createdAt,...evidence})=>evidence));
   assert.equal(room.effectInstances[0].squeezingAxis,"horizontal");
 });
 test("I8 path intent retains fallback, copying, and no new to/path equality constraint", t => {

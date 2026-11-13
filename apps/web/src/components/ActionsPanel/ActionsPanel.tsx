@@ -106,7 +106,7 @@ export function ActionsPanel(props: {
   onGmForceOutcome: (outcome: CombatOutcome) => void;
   onGmNoteChange: (value: string) => void;
   onGmAddNote: () => void;
-  onResolveOpportunity: (id: string) => void;
+  onResolveOpportunity: (id: string, decline?: boolean) => void;
   activeEffects: ActiveEffectView[];
   applicableEffects: ApplicableEffectOption[];
   effectToApplyId: string;
@@ -554,6 +554,7 @@ export function ActionsPanel(props: {
             <strong>{attacker?.name ?? "Atacante"} contra {target?.name ?? "objetivo"}</strong>
             <small>{opportunity.reason}</small>
             <button onClick={() => props.onResolveOpportunity(opportunity.id)} disabled={props.isInteractionLocked || !props.canResolveOpportunity(attacker)}><Swords size={16} /> Resolver con d20/daño actual</button>
+            <button onClick={() => props.onResolveOpportunity(opportunity.id, true)} disabled={props.isInteractionLocked || !props.canResolveOpportunity(attacker)}>Declinar AdO</button>
           </div>;
         })}
       </div></Collapsible>}

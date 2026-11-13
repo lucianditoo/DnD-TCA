@@ -66,7 +66,7 @@ test("canMakeOpportunityAttack accounts for Combat Reflexes feat", () => {
   assert.equal(Rules.canMakeOpportunityAttack(snapshot2, enemy, "target1"), false);
 });
 
-test("canMakeOpportunityAttack blocks same target multiple times", () => {
+test("canMakeOpportunityAttack permits an independent provocation from the same target", () => {
   const room = makeTestRoom();
   const enemy = makeTestCombatant({ 
     id: "enemy", 
@@ -92,6 +92,6 @@ test("canMakeOpportunityAttack blocks same target multiple times", () => {
   room.combatants = [enemy];
 
   const snapshot = createCombatRulesSnapshot(room);
-  assert.equal(Rules.canMakeOpportunityAttack(snapshot, enemy, "target1"), false);
+  assert.equal(Rules.canMakeOpportunityAttack(snapshot, enemy, "target1"), true);
   assert.equal(Rules.canMakeOpportunityAttack(snapshot, enemy, "target2"), true);
 });

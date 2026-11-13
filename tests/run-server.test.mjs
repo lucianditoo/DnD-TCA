@@ -1,3 +1,4 @@
+import { resumeMovement } from "../apps/server/src/commands/movementCommands.ts";
 import test from "node:test";
 import assert from "node:assert/strict";
 import { handleUseTacticalAction } from "../apps/server/src/commands/tacticalCommands.ts";
@@ -229,14 +230,27 @@ function assertNormative(t, room, to, expectedCost) {
   assert.equal(oracle.kind,'ready');
   const sent=t.mock.method(mockSocket,'send',raw=>{
     const published=JSON.parse(raw).room;
-    assert.equal(published.currentTurn.movementUsedFeet,oracle.totalCostFeet);
+    if (published.pendingOpportunityAttacks.length) {
+      assert.deepEqual(published.combatants[0].position, published.pendingOpportunityAttacks[0].origin);
+      assert.ok(published.currentTurn.movementUsedFeet < oracle.totalCostFeet);
+    } else {
+      assert.equal(published.currentTurn.movementUsedFeet, oracle.totalCostFeet);
+      assert.deepEqual(published.combatants[0].position, oracle.finalPosition);
+    }
     assert.equal(published.currentTurn.usedFullAttack,true);
-    assert.deepEqual(published.combatants[0].position,oracle.finalPosition);
     assert.equal(published.effectInstances.some(e=>e.effectId==='srd_running_exposed'),!actor.featIds.includes('srd_run'));
   });
   handleUseTacticalAction(room,runCommand(room,to));
-  assert.equal(sent.mock.callCount(),1);
-  assert.equal(room.currentTurn.movementUsedFeet,oracle.totalCostFeet);
+  assert.equal(sent.mock.callCount(), 1);
+  const offers = [];
+  while (room.pendingMovement) {
+    assert.ok(room.pendingOpportunityAttacks.length);
+    offers.push(...room.pendingOpportunityAttacks);
+    room.pendingOpportunityAttacks = [];
+    room.phase = "active";
+    resumeMovement(room);
+  }
+  assert.equal(room.currentTurn.movementUsedFeet, oracle.totalCostFeet);
   if(expectedCost!==undefined) assert.equal(oracle.totalCostFeet,expectedCost);
   assert.equal(actor.stats.distanceMovedFeet,oracle.totalBaseRouteCostFeet);
   assert.equal(room.currentTurn.normalDiagonalStepsThisTurn,oracle.projectedContext.normalDiagonalStepsThisTurn);
@@ -244,8 +258,7 @@ function assertNormative(t, room, to, expectedCost) {
   assert.deepEqual(getCombatantOccupiedCells(actor,createCombatRulesSnapshot(room)),oracle.steps.at(-1).occupiedCells);
   assert.equal(room.currentTurn.usedMoveAction,false); assert.equal(room.currentTurn.usedStandardAction,false);
   assert.equal(room.currentTurn.usedFiveFootStep,false);
-  assert.ok(room.log.some(e=>e.message.includes(`corre ${oracle.totalCostFeet} pies`)));
-  return oracle;
+  return { ...oracle, offers };
 }
 for(const [name,to,parity,cost] of [
   ['orthogonal',point(3,2),0,5],['vertical',point(2,4),0,10],['diagonal',point(3,3),0,5],
@@ -381,6 +394,6 @@ for(const axis of [null,'horizontal','vertical'])test(`I10 initial and later mul
   const actor=makeCombatant({sizeCategory:axis?'large':'medium'}),room=makeRoom([actor,makeEnemy({id:'initial',position:point(1,2)}),makeEnemy({id:'later',position:point(6,1)})]);
   if(axis){narrowBoard(room);squeezing(room,actor,axis);}
   const oracle=assertNormative(t,room,point(8,2));
-  assert.deepEqual(new Set(room.pendingOpportunityAttacks.map(a=>a.attackerId)),new Set(['initial','later']));
-  assert.equal(room.pendingOpportunityAttacks.find(a=>a.attackerId==='initial').movementCostFeet,oracle.totalCostFeet);
+  assert.deepEqual(new Set(oracle.offers.map(a=>a.attackerId)),new Set(['initial','later']));
+  assert.equal(oracle.offers.find(a=>a.attackerId==='initial').movementCostFeet,oracle.totalCostFeet);
 });

@@ -141,6 +141,7 @@ test("Ataque de oportunidad que amenaza crítico no pierde daño y bloquea/resue
     createdAt: new Date().toISOString()
   };
   room.pendingOpportunityAttacks.push(aoo);
+  room.phase = "opportunity-resolution";
   
   // Resolve opportunity attack with 19 (critical threat)
   handleResolveOpportunityAttack(room, {

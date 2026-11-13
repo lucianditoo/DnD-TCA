@@ -177,3 +177,118 @@ test("gm-clear-opportunities respeta critical-confirmation si hay amenaza", () =
   assert.equal(room.pendingOpportunityAttacks.length, 0);
   assert.equal(room.phase, "critical-confirmation");
 });
+
+test("un disparo suspendido continúa una sola vez tras un AdO fallido", async () => {
+  const { dispatchCommand } = await import("../apps/server/src/commands/dispatcher.ts");
+  const { rooms } = await import("../apps/server/src/room/roomStore.ts");
+  const { room, attacker, enemy } = createTestRoom();
+  rooms.set(room.code, room);
+  try {
+    room.currentTurn.attackMode = "standard";
+    dispatchCommand(mockSocketPlayer, { type: "resolve-attack", roomCode: room.code, actorId: "player-actor", attackerId: attacker.id, targetId: enemy.id, d20Roll: 15, damage: 3 });
+    assert.equal(room.currentTurn.attacksMade, 0);
+    const [opportunity] = room.pendingOpportunityAttacks;
+    const response = { type: "resolve-opportunity-attack", roomCode: room.code, actorId: "gm-actor", opportunityId: opportunity.id, d20Roll: 1, damage: 1 };
+    dispatchCommand(mockSocketGM, response);
+    assert.equal(room.currentTurn.attacksMade, 1);
+    assert.equal(room.pendingStationaryAction, undefined);
+    assert.throws(() => dispatchCommand(mockSocketGM, response), /no encontrado/i);
+    assert.equal(room.currentTurn.attacksMade, 1);
+  } finally {
+    rooms.delete(room.code);
+  }
+});
+for (const [damage, stops] of [[2, false], [21, true]]) {
+  test("movimiento tras AdO con daño " + damage, async () => {
+    const { dispatchCommand } = await import("../apps/server/src/commands/dispatcher.ts");
+    const { rooms } = await import("../apps/server/src/room/roomStore.ts");
+    const { room, attacker } = createTestRoom();
+    rooms.set(room.code, room);
+    try {
+      const origin = { ...attacker.position };
+      const to = { x: 1, y: 3, zFeet: 0 };
+      dispatchCommand(mockSocketPlayer, {
+        type: "move-combatant", roomCode: room.code, actorId: "player-actor", combatantId: attacker.id,
+        to, path: [{ x: 1, y: 2, zFeet: 0 }, to]
+      });
+      const [opportunity] = room.pendingOpportunityAttacks;
+      dispatchCommand(mockSocketGM, {
+        type: "resolve-opportunity-attack", roomCode: room.code, actorId: "gm-actor",
+        opportunityId: opportunity.id, d20Roll: 18, damage
+      });
+      assert.equal(attacker.hpCurrent, 20 - damage);
+      assert.deepEqual(attacker.position, stops ? origin : to);
+      assert.equal(room.currentTurn.movementUsedFeet, stops ? 0 : 10);
+      assert.equal(attacker.stats.distanceMovedFeet, stops ? 0 : 10);
+      assert.equal(room.currentTurn.usedMoveAction, true);
+    } finally {
+      rooms.delete(room.code);
+    }
+  });
+}
+for (const [ranks, castSucceeds] of [[0, false], [20, true]]) {
+  test("Concentración tras AdO con " + ranks + " rangos", async (t) => {
+    const { dispatchCommand } = await import("../apps/server/src/commands/dispatcher.ts");
+    const { rooms } = await import("../apps/server/src/room/roomStore.ts");
+    const { room, attacker, enemy } = createTestRoom();
+    attacker.skillRanks = { ...attacker.skillRanks, concentration: ranks };
+    attacker.preparedSpells = [{ slotId: "cure", spellId: "srd_cure_light_wounds", isExpended: false }];
+    t.mock.method(Math, "random", () => 0);
+    rooms.set(room.code, room);
+    try {
+      dispatchCommand(mockSocketPlayer, { type: "cast-spell", roomCode: room.code, actorId: "player-actor",
+        casterId: attacker.id, targetId: attacker.id, slotId: "cure", amount: 3, d20Roll: null });
+      assert.equal(attacker.preparedSpells[0].isExpended, false);
+      const [opportunity] = room.pendingOpportunityAttacks;
+      assert.equal(opportunity.attackerId, enemy.id);
+      dispatchCommand(mockSocketGM, { type: "resolve-opportunity-attack", roomCode: room.code, actorId: "gm-actor",
+        opportunityId: opportunity.id, d20Roll: 18, damage: 5 });
+      assert.equal(attacker.hpCurrent, castSucceeds ? 18 : 15);
+      assert.equal(attacker.preparedSpells[0].isExpended, true);
+      assert.equal(room.currentTurn.usedStandardAction, true);
+      assert.equal(room.pendingStationaryAction, undefined);
+    } finally {
+      rooms.delete(room.code);
+    }
+  });
+}
+for (const [action, damage, stop] of [
+  ["run", 2, false], ["run", 21, true],
+  ["withdraw", 2, false], ["withdraw", 21, true],
+  ["charge", 2, false], ["charge", 21, true]
+]) {
+  test(action + ": publica el prefijo y " + (stop ? "se detiene" : "continúa"), async () => {
+    const { dispatchCommand } = await import("../apps/server/src/commands/dispatcher.ts");
+    const { rooms } = await import("../apps/server/src/room/roomStore.ts");
+    const { room, attacker, enemy } = createTestRoom();
+    Object.assign(attacker, inventoryEquipment("longsword"));
+    enemy.position = { x: action === "withdraw" ? 3 : 2, y: action === "withdraw" ? 2 : 1, zFeet: 0 };
+    const defender = { ...enemy, id: "charge-target", position: { x: 1, y: 6, zFeet: 0 } };
+    if (action === "charge") room.combatants.push(defender);
+    if (action === "run" && !stop) room.combatants.push({ ...attacker, id: "ally-on-route", position: { x: 1, y: 3, zFeet: 0 } });
+    const to = { x: 1, y: 5, zFeet: 0 };
+    const path = [2, 3, 4, 5].map(y => ({ ...to, y }));
+    if (action === "withdraw") enemy.position = { x: 2, y: 3, zFeet: 0 };
+    rooms.set(room.code, room);
+    try {
+      dispatchCommand(mockSocketPlayer, { type: "use-tactical-action", roomCode: room.code,
+        actorId: "player-actor", combatantId: attacker.id, action, to, path, targetId: defender.id, d20Roll: 18, damage: 2 });
+      const [offer] = room.pendingOpportunityAttacks;
+      assert.ok(offer);
+      assert.deepEqual(attacker.position, offer.origin);
+      const spent = room.currentTurn.movementUsedFeet;
+      assert.ok(spent < 20);
+      assert.equal(room.currentTurn.usedFullAttack, true);
+      assert.equal(defender.hpCurrent, 15);
+      dispatchCommand(mockSocketGM, { type: "resolve-opportunity-attack", roomCode: room.code,
+        actorId: "gm-actor", opportunityId: offer.id, d20Roll: 18, damage });
+      assert.deepEqual(attacker.position, stop ? offer.origin : to);
+      assert.equal(room.currentTurn.movementUsedFeet, stop ? spent : 20);
+      assert.equal(attacker.stats.distanceMovedFeet, stop ? spent : 20);
+      assert.equal(room.currentTurn.usedFullAttack, true);
+      assert.equal(defender.hpCurrent, action === "charge" && !stop ? 13 : 15);
+    } finally {
+      rooms.delete(room.code);
+    }
+  });
+}

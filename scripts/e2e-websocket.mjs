@@ -243,7 +243,7 @@ await send(gmAoo, { type: 'end-turn', roomCode: aooCode, actorId: aooGmId });
 record('AdO pendiente bloquea terminar turno', gmAoo.room.currentTurn.combatantId === aooBane.id && gmAoo.errors.some(e => /ataques de oportunidad pendientes/i.test(e)), 'turno=' + gmAoo.room.currentTurn.combatantId + ' errors=' + gmAoo.errors.join(' | '));
 await send(gmAoo, { type: 'resolve-opportunity-attack', roomCode: aooCode, actorId: aooGmId, opportunityId: pendingAoo.id, d20Roll: 15, damage: 1 });
 const stoppedBane = gmAoo.room.combatants.find(c => c.id === aooBane.id);
-record('AdO se resuelve contra casilla abandonada antes del destino', stoppedBane.position.x === 2 && stoppedBane.position.y === 4 && !gmAoo.errors.some(e => /fuera del alcance/i.test(e)), 'pos=' + JSON.stringify(stoppedBane.position) + ' errors=' + gmAoo.errors.join(' | '));
+record('AdO con daño ordinario conserva el destino', stoppedBane.position.x === pendingAoo.destination.x && stoppedBane.position.y === pendingAoo.destination.y && !gmAoo.errors.some(e => /fuera del alcance/i.test(e)), 'pos=' + JSON.stringify(stoppedBane.position) + ' errors=' + gmAoo.errors.join(' | '));
 const gmDiagonalAoo = await connectAndSend({ type: 'create-room', name: 'GM Diagonal AOO Test' });
 const diagonalCode = gmDiagonalAoo.room.code; const diagonalGmId = gmDiagonalAoo.participant.id;
 await send(gmDiagonalAoo, { type: 'add-catalog-combatant', roomCode: diagonalCode, actorId: diagonalGmId, category: 'heroes', templateId: 'bane' });
@@ -260,7 +260,7 @@ await send(gmDiagonalAoo, { type: 'move-combatant', roomCode: diagonalCode, acto
 const diagonalPendingAoo = gmDiagonalAoo.room.pendingOpportunityAttacks[0];
 await send(gmDiagonalAoo, { type: 'resolve-opportunity-attack', roomCode: diagonalCode, actorId: diagonalGmId, opportunityId: diagonalPendingAoo.id, d20Roll: 15, damage: 1 });
 const diagonalStoppedBane = gmDiagonalAoo.room.combatants.find(c => c.id === diagonalBane.id);
-record('AdO diagonal cuenta como 5 ft y se puede resolver', diagonalStoppedBane.position.x === 2 && diagonalStoppedBane.position.y === 4 && !gmDiagonalAoo.errors.some(e => /fuera del alcance/i.test(e)), 'pos=' + JSON.stringify(diagonalStoppedBane.position) + ' errors=' + gmDiagonalAoo.errors.join(' | '));
+record('AdO diagonal cuenta como 5 ft y se puede resolver', diagonalStoppedBane.position.x === diagonalPendingAoo.destination.x && diagonalStoppedBane.position.y === diagonalPendingAoo.destination.y && !gmDiagonalAoo.errors.some(e => /fuera del alcance/i.test(e)), 'pos=' + JSON.stringify(diagonalStoppedBane.position) + ' errors=' + gmDiagonalAoo.errors.join(' | '));
 const gmMultiAoo = await connectAndSend({ type: 'create-room', name: 'GM Multi AOO Test' });
 const multiCode = gmMultiAoo.room.code; const multiGmId = gmMultiAoo.participant.id;
 await send(gmMultiAoo, { type: 'add-catalog-combatant', roomCode: multiCode, actorId: multiGmId, category: 'heroes', templateId: 'bane' });
@@ -582,7 +582,8 @@ await send(gmStun, { type: 'end-turn', roomCode: stunCode, actorId: stunGmId });
 // Wait, el efecto dura hasta el final de su turno. Si se lo aplicaron en SU turno, dura hasta el final de ESTE turno.
 record('Stunned: el efecto expira al terminar el turno de Bane', !gmStun.room.effectInstances.some(e => e.effectId === 'srd_stunned'), 'effectInstances=' + JSON.stringify(gmStun.room.effectInstances));
 
-// Bane puede moverse de nuevo
+// Bane puede moverse de nuevo. Aislamos la expiración de una reacción de movimiento.
+await send(gmStun, { type: 'gm-move-combatant', roomCode: stunCode, actorId: stunGmId, combatantId: stunEnemy.id, to: { x: 9, y: 6, zFeet: 0 } });
 await send(gmStun, { type: 'move-combatant', roomCode: stunCode, actorId: stunGmId, combatantId: stunBane.id, to: { x: 5, y: 4, zFeet: 0 } });
 record('Stunned: recupera acciones tras expirar', gmStun.room.combatants.find(c => c.id === stunBane.id).position.y === 4, gmStun.errors.join(' | '));
 
@@ -834,6 +835,12 @@ for (const scenario of ['normal', 'dt', 'aoo', 'reject', 'disabled']) {
     } else {
       const path = scenario === 'dt' ? [pos(3,3),pos(4,4)] : scenario === 'aoo' ? Array.from({ length:7 }, (_,i)=>pos(i+3,2)) : [pos(3,2),pos(4,2)];
       await move(path);
+      if (scenario === "aoo") {
+        const [offer] = state.room.pendingOpportunityAttacks;
+        const atTrigger = state.room.combatants.find(c => c.id === hero.id);
+        record("I8 Withdraw publica solo el prefijo y exime la huella inicial", !!offer && offer.attackerId === state.room.combatants.find(c => c.name === "I8 Enemy 1").id && JSON.stringify(atTrigger.position) === JSON.stringify(offer.origin) && state.room.currentTurn.movementUsedFeet < 35);
+        if (offer) await issue({type:"resolve-opportunity-attack",opportunityId:offer.id,d20Roll:1,damage:1});
+      }
       const result=state.room.combatants.find(c=>c.id===hero.id); const turn=state.room.currentTurn;
       const cost=scenario==='dt'?30:scenario==='aoo'?35:10;
       record(`I8 Withdraw WebSocket ${scenario}: normative cost, final position and economy`,
@@ -841,7 +848,6 @@ for (const scenario of ['normal', 'dt', 'aoo', 'reject', 'disabled']) {
         (scenario==='disabled' ? turn.usedStandardAction && !turn.usedFullAttack : turn.usedFullAttack && !turn.usedStandardAction) && !turn.usedMoveAction,
         JSON.stringify({ errors:state.errors, turn, position:result.position }));
       if(scenario==='dt') record('I8 Withdraw WebSocket DT: stats use base and hampered diagonals do not consume parity', result.stats.distanceMovedFeet===10 && turn.normalDiagonalStepsThisTurn===0, JSON.stringify(result.stats));
-      if(scenario==='aoo') record('I8 Withdraw WebSocket: initial footprint exempt, later threat pending after full route', state.room.pendingOpportunityAttacks.length===1 && state.room.pendingOpportunityAttacks[0].attackerId===state.room.combatants.find(c=>c.name==='I8 Enemy 1').id, JSON.stringify(state.room.pendingOpportunityAttacks));
       if(scenario==='disabled') record('I8 Withdraw WebSocket limited: effort once and dying state', result.hpCurrent===-1 && state.room.log.filter(e=>/pierde 1 HP por esfuerzo/.test(e.message)).length===1, JSON.stringify({hp:result.hpCurrent,log:state.room.log.slice(0,4)}));
     }
   } finally { state.ws.close(); }
@@ -876,11 +882,16 @@ for (const scenario of ['x4','heavy','diagonal','dt','aoo','feat','invalid']) {
       const cost=scenario==='x4'?120:heavy?60:scenario==='diagonal'?15:20;
       if(heavy){const before=JSON.stringify(state.room),errors=state.errors.length;await run(pos(15,2));record('I10 Run heavy excess rejects without mutation',state.errors.length===errors+1&&JSON.stringify(state.room)===before,state.errors.at(-1));}
       const errors=state.errors.length;await run(to);
+      if (scenario === "aoo") {
+        const [offer] = state.room.pendingOpportunityAttacks;
+        const atTrigger = state.room.combatants.find(c => c.id === hero.id);
+        record("I10 Run publica la huella inicial y espera la reacción", !!offer && offer.attackerId === enemy.id && JSON.stringify(atTrigger.position) === JSON.stringify(offer.origin) && state.room.currentTurn.movementUsedFeet === 0);
+        if (offer) await issue({type:"resolve-opportunity-attack",opportunityId:offer.id,d20Roll:1,damage:1});
+      }
       const moved=state.room.combatants.find(c=>c.id===hero.id),turn=state.room.currentTurn;
       record(`I10 Run ${scenario}: position, normative cost/base, full-round and context`,state.errors.length===errors&&JSON.stringify(moved.position)===JSON.stringify(to)&&turn.movementUsedFeet===cost&&moved.stats.distanceMovedFeet===cost&&turn.usedFullAttack&&!turn.usedMoveAction&&!turn.usedStandardAction&&turn.normalDiagonalStepsThisTurn===(scenario==='diagonal'?2:0),JSON.stringify({errors:state.errors,turn,position:moved.position}));
       const effect=state.room.effectInstances.find(e=>e.effectId==='srd_running_exposed'&&e.targets.includes(hero.id));
       record(`I10 Run ${scenario}: exposure follows feat and duration contract`,scenario==='feat'?!effect:!!effect&&effect.source.id===hero.id&&effect.duration.type==='until_turn'&&effect.duration.anchorCombatantId===hero.id&&effect.duration.phase==='start'&&typeof effect.duration.appliedAtSequence==='number',JSON.stringify(effect));
-      if(scenario==='aoo')record('I10 Run origin threat has no Withdraw exemption',state.room.pendingOpportunityAttacks.length===1&&state.room.pendingOpportunityAttacks[0].attackerId===enemy.id,JSON.stringify(state.room.pendingOpportunityAttacks));
     }
   } finally {state.ws.close();}
 }

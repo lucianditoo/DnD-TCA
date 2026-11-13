@@ -51,5 +51,6 @@ export const resolveOpportunityAttackSchema = z.object({
   opportunityId: z.string().min(1),
   d20Roll: z.number().int().nullable(),
   damage: z.number().int().nullable(),
-  isAutoRoll: z.boolean().optional()
+  isAutoRoll: z.boolean().optional(),
+  decline: z.boolean().optional()
 }).strict();

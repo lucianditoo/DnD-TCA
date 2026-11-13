@@ -1,5 +1,15 @@
 # Master Testing Coverage
 
+## Regresiones de ataques de oportunidad
+
+Las pruebas de cupo distinguen provocaciones independientes del mismo objetivo.
+La suite de fases comprueba que un disparo suspendido se reanuda una sola vez.
+La demo verifica que el conjuro continúa tras resolver la reacción y que el
+actor conserva Derribado hasta que termina el AdO por levantarse.
+Move, Run, Withdraw y Charge confirman el tramo previo al AdO y vuelven a validar el resto. Las regresiones de fase comprueban que el daño ordinario permite seguir, la incapacitación conserva posición y coste del prefijo y el ataque de Charge solo ocurre al completar el recorrido.
+
+Candidato aislado de AdO (Nivel D): 992/992 pruebas, typecheck y build correctos, 134/134 comprobaciones WebSocket y 33/33 escenarios Chromium (incluidas las tres escenas de la demo). Chromium usó puertos alternativos en la copia de verificación. Dictamen independiente de Nemotron: APROBADO.
+
 Responsabilidad: Evidencia global de pruebas por cierre de código.
 Autoridad: Registro
 Lifecycle: Snapshot vivo
@@ -15,7 +25,7 @@ Consumidores: Revisores que verifican las validaciones de un commit.
 Este documento consolida las directrices y el reporte de cobertura de testing
 del motor de combate D&D 3.5.
 
-## Baseline de código más reciente — D-1B-I10 Run Server Integration
+## Baseline histórica — D-1B-I10 Run Server Integration
 
 **981/981 pruebas unitarias/integración**, **168/168 focalizadas** (Run servidor/puro + Movement Resolution/Commit), typecheck y build verdes en los tres workspaces, **134/134 aserciones WebSocket reales** y **33/33 escenarios Playwright**.
 

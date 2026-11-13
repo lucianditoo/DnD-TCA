@@ -12,7 +12,8 @@ export const sizeCategorySchema = z.enum(["fine", "diminutive", "tiny", "small",
 export const creatureTypeIdSchema = z.enum(["aberration", "animal", "construct", "dragon", "elemental", "fey", "giant", "humanoid", "magical_beast", "monstrous_humanoid", "ooze", "outsider", "plant", "undead", "vermin"]);
 export const combatFeatureIdSchema = z.custom<`srd_sneak_attack_${number}d6`>((value) => typeof value === "string" && /^srd_sneak_attack_\d+d6$/.test(value));
 export const skillRanksSchema = z.object({
-  escape_artist: z.number().int().nonnegative()
+  escape_artist: z.number().int().nonnegative(),
+  concentration: z.number().int().nonnegative().optional()
 }).strict();
 
 export const abilityScoresSchema = z.object({

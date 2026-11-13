@@ -546,7 +546,7 @@ function CombatApp() {
     setMovementPath((current) => current.slice(0, -1));
   }
 
-  function resolveOpportunity(opportunityId: string) {
+  function resolveOpportunity(opportunityId: string, decline = false) {
     if (!room || !participant) return;
     const opportunity = room.pendingOpportunityAttacks.find((item) => item.id === opportunityId);
     const attacker = room.combatants.find((combatant) => combatant.id === opportunity?.attackerId);
@@ -556,8 +556,9 @@ function CombatApp() {
       roomCode: room.code,
       actorId: participant.id,
       opportunityId,
-      d20Roll: autoD20 ? null : getD20Roll(),
-      damage: autoD20 ? null : getDamageRoll(attacker),
+      decline,
+      d20Roll: decline || autoD20 ? null : getD20Roll(),
+      damage: decline || autoD20 ? null : getDamageRoll(attacker),
       isAutoRoll: autoD20
     });
   }

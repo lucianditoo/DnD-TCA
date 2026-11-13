@@ -4,8 +4,8 @@ import { attackRangeFeet, resolveAttack, resolveCriticalConfirmation, resolveWea
 import { applyStartOfNextTurnBuff } from "../combat/buffRules.js";
 import { ensureActiveTurn } from "../combat/turnManager.js";
 import { findTriggeredRangedOpportunityAttacks, pruneInvalidOpportunityAttacks } from "../combat/opportunityAttackResolver.js";
-import { checkCombatOutcome, findCombatant, logStatusChange, movementDistanceFeet, sameCell, syncEncounterPhase } from "../room/roomState.js";
-import { getAttackContextModifiers, getAttackRoutine, getGrappleAttackEligibility, getWeaponAttackTypeForTarget, Rules } from "@dnd-tactical/shared";
+import { checkCombatOutcome, findCombatant, logStatusChange, movementDistanceFeet, syncEncounterPhase } from "../room/roomState.js";
+import { getOpportunityAttackLegality, threatensTarget, getAttackContextModifiers, getAttackRoutine, getGrappleAttackEligibility, getWeaponAttackTypeForTarget, Rules } from "@dnd-tactical/shared";
 import { broadcast } from "../room/roomStore.js";
 import { applyDisabledExertion } from "../combat/lifeStatusEffects.js";
 import { cloneCombatRoom, commitCombatRoomTransaction } from "../room/roomTransaction.js";
@@ -14,6 +14,7 @@ import { rollDice } from "../combat/diceRoller.js";
 
 export interface PhysicalAttackExecutionOptions {
   readonly diceRoller?: (sides: number) => number;
+  readonly resumed?: boolean;
 }
 
 function rollDiceExpression(expression: string | undefined, roller: (sides: number) => number, fallback: number): number {
@@ -81,7 +82,7 @@ function resolveAttackIntent(
 function handleResolveAttackDraft(room: CombatRoom, command: Extract<ClientCommand, { type: "resolve-attack" }>, options: PhysicalAttackExecutionOptions): void {
   if (room.phase !== "active") throw new Error("Esta accion solo esta disponible con el combate en curso.");
   const attacker = findCombatant(room, command.attackerId);
-  requireCombatantControl(command.actorId, attacker);
+  if (!options.resumed) requireCombatantControl(command.actorId, attacker);
   ensureActiveTurn(room, attacker.id);
   if (room.currentTurn.attackMode === "none") throw new Error("Debe preparar un modo de ataque (Estandar o Completo) antes de atacar.");
 
@@ -138,7 +139,7 @@ function handleResolveAttackDraft(room: CombatRoom, command: Extract<ClientComma
     // Sprint 053B (Blind Targeting, NDD §13.7/§13.8): casilla elegida sin ningún combatiente
     // atacable. Consume el intento de ataque, la acción y la munición exactamente igual que un
     // ataque fallido contra un objetivo real — nunca revela que la casilla estaba vacía.
-    resolveBlindSquareMiss(room, snapshot, attacker, square!, fightingDefensively, wasDisabledAtActionStart);
+    resolveBlindSquareMiss(room, snapshot, attacker, square!, fightingDefensively, wasDisabledAtActionStart, command, options);
     return;
   }
 
@@ -189,14 +190,15 @@ function handleResolveAttackDraft(room: CombatRoom, command: Extract<ClientComma
   const ammunition = attackType === "ranged" ? validateAttackAmmunition(attacker, weaponEntry) : { ok: true as const, value: { required: false, availableQuantity: 0 } };
   if (!ammunition.ok || !ammunition.value) throw new Error(ammunition.error ?? "No hay munición disponible.");
   const roller = options.diceRoller ?? rollDice;
-  const rolls = resolveCommandRolls(command, source, roller);
-  const rangedOpportunities = findTriggeredRangedOpportunityAttacks(snapshot, attacker, attackDistance);
+  const rangedOpportunities = options.resumed ? [] : findTriggeredRangedOpportunityAttacks(snapshot, attacker, attackDistance);
   if (rangedOpportunities.length > 0) {
+    room.pendingStationaryAction = { command, damageTaken: [], actorRole: attacker.controlledBy.type };
     room.pendingOpportunityAttacks.push(...rangedOpportunities);
     room.log.unshift(makeLog("attack", `${attacker.name} provoca ${rangedOpportunities.length} Ataques de Oportunidad al usar un ataque a distancia.`));
     syncEncounterPhase(room);
     return;
   }
+  const rolls = resolveCommandRolls(command, source, roller);
   const isIterative = room.currentTurn.attacksMade > 0;
   const attackNum = room.currentTurn.attacksMade + 1;
   const attackLabel = isIterative 
@@ -355,19 +357,7 @@ function resolveThreatOutcome(
   if (threat.opportunityAttackId) {
     const opportunity = room.pendingOpportunityAttacks.find((o) => o.id === threat.opportunityAttackId);
     if (opportunity) {
-      const targetAlreadyStopped = sameCell(target.position, opportunity.origin);
-      const opportunityMovementFeet = targetAlreadyStopped ? 0 : opportunity.movementCostFeet ?? movementDistanceFeet(opportunity.origin, opportunity.destination, room.board.cellSizeFeet);
-      
-      if (opportunityMovementFeet === 0) {
-        room.log.unshift(makeLog("opportunity", "El ataque de oportunidad contra " + target.name + " se resuelve sin desplazar al objetivo."));
-      } else if (finalDamage > 0) {
-        commitSpatialTransition(room, target, opportunity.origin, { spatialMode: "natural" });
-          target.stats.distanceMovedFeet = Math.max(0, target.stats.distanceMovedFeet - opportunityMovementFeet);
-        room.log.unshift(makeLog("opportunity", target.name + " no logra abandonar la casilla amenazada y vuelve a su posicion original."));
-      } else {
-        commitSpatialTransition(room, target, opportunity.destination, { spatialMode: "natural" });
-          room.log.unshift(makeLog("opportunity", target.name + " completa el movimiento porque el ataque de oportunidad no lo detuvo."));
-      }
+      finishMovementReaction(room, target, opportunity);
       room.pendingOpportunityAttacks = room.pendingOpportunityAttacks.filter((o) => o.id !== threat.opportunityAttackId);
     }
   }
@@ -401,21 +391,40 @@ export function handleCancelAttackThreat(room: CombatRoom, command: Extract<Clie
 
 export function handleResolveOpportunityAttack(room: CombatRoom, command: Extract<ClientCommand, { type: "resolve-opportunity-attack" }>, options: PhysicalAttackExecutionOptions = {}): void {
   const opportunity = room.pendingOpportunityAttacks.find((item) => item.id === command.opportunityId);
+  if (room.phase !== "opportunity-resolution") throw new Error("Ataque de oportunidad no encontrado en esta fase.");
   if (!opportunity) throw new Error("Ataque de oportunidad no encontrado.");
   const attacker = findCombatant(room, opportunity.attackerId);
   const target = findCombatant(room, opportunity.targetId);
   requireTurnControl(command.actorId, attacker);
-  if (lifeStatus(attacker) !== "active") throw new Error(attacker.name + " no puede hacer ataque de oportunidad en su estado actual.");
-  const attackerCurrentPosition = { ...attacker.position };
-  const targetCurrentPosition = { ...target.position };
+  const earliest = room.pendingOpportunityAttacks.find(item => item.targetId === opportunity.targetId && item.movementCostFeet !== undefined);
+  if (opportunity.movementCostFeet !== undefined && earliest && !sameOpportunityPosition(earliest.origin, opportunity.origin)) {
+    throw new Error("Resuelve primero las reacciones del tramo anterior.");
+  }
+  if (command.decline) {
+    room.pendingOpportunityAttacks = room.pendingOpportunityAttacks.filter(item => item.id !== opportunity.id);
+    pruneInvalidOpportunityAttacks(room);
+    broadcast(room);
+    return;
+  }
+  if (lifeStatus(attacker) !== "active" || !Rules.canMakeOpportunityAttack(createCombatRulesSnapshot(room), attacker)) throw new Error(attacker.name + " no puede hacer ataque de oportunidad en su estado actual.");
+  const attackerCurrentPosition = attacker.position;
+  const targetCurrentPosition = target.position;
   const source = resolveWeaponAttackSource(attacker, "melee");
   const roller = options.diceRoller ?? rollDice;
   const rolls = resolveCommandRolls(command, source, roller);
   let result: ReturnType<typeof resolveAttack>;
   try {
-    attacker.position = opportunity.attackerPosition ? { ...opportunity.attackerPosition } : attacker.position;
-    target.position = opportunity.origin;
+    if (room.pendingMovement && !sameOpportunityPosition(target.position, opportunity.origin)) {
+      throw new Error("El objetivo ya no se encuentra en la posicion de la provocacion.");
+    }
+    if (!room.pendingMovement) {
+      attacker.position = opportunity.attackerPosition ? { ...opportunity.attackerPosition } : attacker.position;
+      target.position = opportunity.origin;
+    }
     const oppSnapshot = createCombatRulesSnapshot(room);
+    if (!threatensTarget(oppSnapshot, attacker, target) || !getOpportunityAttackLegality(oppSnapshot, attacker, target).allowed) {
+      throw new Error("La reaccion ya no es legal en la posicion de la provocacion.");
+    }
     const context = getAttackContextModifiers(oppSnapshot, attacker, target);
     const tactical = context.byAttackType.melee;
     result = resolveAttack(oppSnapshot, attacker, target, rolls.d20Roll, rolls.damage, "ataque de oportunidad", tactical.attackBonus, {
@@ -457,27 +466,35 @@ export function handleResolveOpportunityAttack(room: CombatRoom, command: Extrac
     return;
   }
 
-  checkCombatOutcome(room);
   applyAttackMutations(room, attacker, target, rolls.d20Roll, movementDistanceFeet(opportunity.attackerPosition ?? attackerCurrentPosition, opportunity.origin, room.board.cellSizeFeet), "ataque de oportunidad", result);
 
-  const targetAlreadyStopped = sameCell(targetCurrentPosition, opportunity.origin);
-  const opportunityMovementFeet = targetAlreadyStopped ? 0 : opportunity.movementCostFeet ?? movementDistanceFeet(opportunity.origin, opportunity.destination, room.board.cellSizeFeet);
-  if (opportunityMovementFeet === 0) {
-    commitSpatialTransition(room, target, targetCurrentPosition, { spatialMode: "natural" });
-      room.log.unshift(makeLog("opportunity", "El ataque de oportunidad contra " + target.name + " se resuelve sin desplazar al objetivo."));
-    room.pendingOpportunityAttacks = room.pendingOpportunityAttacks.filter((item) => item.id !== command.opportunityId);
-  } else if (result.hits && result.damage > 0) {
-    commitSpatialTransition(room, target, opportunity.origin, { spatialMode: "natural" });
-          target.stats.distanceMovedFeet = Math.max(0, target.stats.distanceMovedFeet - opportunityMovementFeet);
-    room.log.unshift(makeLog("opportunity", target.name + " no logra abandonar la casilla amenazada y vuelve a su posicion original."));
-    room.pendingOpportunityAttacks = room.pendingOpportunityAttacks.filter((item) => item.id !== command.opportunityId);
-  } else {
-    commitSpatialTransition(room, target, opportunity.destination, { spatialMode: "natural" });
-          room.log.unshift(makeLog("opportunity", target.name + " completa el movimiento porque el ataque de oportunidad no lo detuvo."));
-    room.pendingOpportunityAttacks = room.pendingOpportunityAttacks.filter((item) => item.id !== command.opportunityId);
-  }
+  finishMovementReaction(room, target, opportunity);
+  room.pendingOpportunityAttacks = room.pendingOpportunityAttacks.filter(item => item.id !== opportunity.id);
+  checkCombatOutcome(room);
   pruneInvalidOpportunityAttacks(room);
   broadcast(room);
+}
+
+function sameOpportunityPosition(a: Position, b: Position): boolean {
+  return a.x === b.x && a.y === b.y && (a.zFeet ?? 0) === (b.zFeet ?? 0);
+}
+
+function finishMovementReaction(room: CombatRoom, target: Combatant, opportunity: CombatRoom["pendingOpportunityAttacks"][number]): void {
+  if (room.pendingMovement || opportunity.movementCostFeet === undefined || room.currentTurn.combatantId !== target.id) return;
+  const snapshot = createCombatRulesSnapshot(room);
+  if (["active", "disabled"].includes(lifeStatus(target)) && Rules.evaluateActionAvailability(snapshot, target).ok) return;
+  const prefix = opportunity.movementPrefix;
+  if (!sameOpportunityPosition(target.position, opportunity.origin)) {
+    commitSpatialTransition(room, target, opportunity.origin, prefix?.squeezingAxis
+      ? { spatialMode: "squeezing", squeezingAxis: prefix.squeezingAxis }
+      : { spatialMode: "natural" });
+    room.currentTurn.movementUsedFeet = Math.max(0, room.currentTurn.movementUsedFeet - opportunity.movementCostFeet);
+    if (prefix) room.currentTurn.normalDiagonalStepsThisTurn = prefix.diagonalSteps;
+    target.stats.distanceMovedFeet = Math.max(0, target.stats.distanceMovedFeet - (prefix?.remainingBaseFeet ?? opportunity.movementCostFeet));
+  }
+  room.pendingOpportunityAttacks = room.pendingOpportunityAttacks.filter(item =>
+    item.targetId !== target.id || item.movementCostFeet === undefined || sameOpportunityPosition(item.origin, opportunity.origin));
+  room.log.unshift(makeLog("opportunity", target.name + " no puede continuar el movimiento."));
 }
 
 export function applyAttackMutations(room: CombatRoom, attacker: ReturnType<typeof findCombatant>, target: ReturnType<typeof findCombatant>, d20Roll: number, range: number, label: string, result: ReturnType<typeof resolveAttack>, logOptions?: { blindSquareLog?: boolean }) {
@@ -561,7 +578,9 @@ function resolveBlindSquareMiss(
   attacker: Combatant,
   square: Position,
   fightingDefensively: boolean,
-  wasDisabledAtActionStart: boolean
+  wasDisabledAtActionStart: boolean,
+  command: Extract<ClientCommand, { type: "resolve-attack" }>,
+  options: PhysicalAttackExecutionOptions
 ): void {
   const rangeFeet = distanceFeet(attacker.position, square, room.board.cellSizeFeet);
   const attackType = getWeaponAttackTypeForPosition(attacker, rangeFeet);
@@ -573,8 +592,9 @@ function resolveBlindSquareMiss(
   const ammunition = attackType === "ranged" ? validateAttackAmmunition(attacker, weaponEntry) : { ok: true as const, value: { required: false, availableQuantity: 0 } };
   if (!ammunition.ok || !ammunition.value) throw new Error(ammunition.error ?? "No hay munición disponible.");
 
-  const rangedOpportunities = findTriggeredRangedOpportunityAttacks(snapshot, attacker, rangeFeet);
+  const rangedOpportunities = options.resumed ? [] : findTriggeredRangedOpportunityAttacks(snapshot, attacker, rangeFeet);
   if (rangedOpportunities.length > 0) {
+    room.pendingStationaryAction = { command, damageTaken: [], actorRole: attacker.controlledBy.type };
     room.pendingOpportunityAttacks.push(...rangedOpportunities);
     room.log.unshift(makeLog("attack", `${attacker.name} provoca ${rangedOpportunities.length} Ataques de Oportunidad al usar un ataque a distancia.`));
     syncEncounterPhase(room);

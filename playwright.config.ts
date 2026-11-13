@@ -22,12 +22,18 @@ export default defineConfig({
     },
   ],
 
-  webServer: {
-    command: 'npm run test:serve',
-    url: 'http://localhost:5173',
-    reuseExistingServer: !process.env.CI,
-    env: {
-      TEST_MODE: 'true',
-    }
-  },
+  webServer: [
+    {
+      // Keep the in-memory room and its WebSocket alive for the entire test run.
+      command: 'node --import tsx apps/server/src/index.ts',
+      url: 'http://127.0.0.1:3333/health',
+      reuseExistingServer: false,
+      env: { TEST_MODE: 'true' },
+    },
+    {
+      command: 'npm --workspace @dnd-tactical/web run dev -- --strictPort',
+      url: 'http://localhost:5173',
+      reuseExistingServer: false,
+    },
+  ],
 });

@@ -2316,3 +2316,12 @@ detener la implementación y solicitar reclasificación/revisión; no improvisar
 24. Matriz §13.8 compara rutas, budget, policies, disponibilidad, Squeezing y stale con handler real.
 25. Nivel B mientras solo toque web/tests/docs; cualquier cambio shared/server/protocolo detiene y reclasifica.
 26. **No hay ODR bloqueantes para este diseño. Awaiting Architecture Review and Proceed; cero implementación autorizada.**
+
+## Capítulo 14 — Interrupciones por AdO en Run, Withdraw y Charge
+
+Esta sección sustituye la secuencia histórica de confirmación y publicación de Run (§12.6–12.7) y Withdraw (§10) cuando hay una reacción pendiente. La selección y validación de la ruta conservan las políticas de cada acción.
+
+- El servidor confirma el prefijo hasta el origen de la primera provocación y publica esa posición. La distancia, la paridad diagonal y el eje espacial corresponden a los pasos confirmados.
+- Tras resolver o declinar las reacciones del paso, el servidor revalida el tramo pendiente con el estado vivo. El daño ordinario permite continuar. La incapacitación detiene al actor en la posición confirmada y conserva la economía consumida.
+- Withdraw conserva la exención de su huella inicial. Run conserva su exposición durante la reacción. Charge ejecuta su ataque una sola vez, después de completar el recorrido y comprobar alcance y línea de efecto en la posición alcanzada.
+- El estado compartido del movimiento pendiente conserva la acción y los datos necesarios para reanudarla. El servidor mantiene la autoridad sobre la posición y la elegibilidad de cada reacción.

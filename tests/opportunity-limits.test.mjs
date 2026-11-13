@@ -51,7 +51,7 @@ describe("DT-007: Opportunity Attack Limits", () => {
     assert.equal(Rules.canMakeOpportunityAttack(snapshot, attacker), false, "Debe denegarle el 4to AdO al superar su maximo.");
   });
 
-  test("3. Restriccion Estricta de Objetivo Unico por Ronda", () => {
+  test("3. Provocaciones independientes contra el mismo objetivo", () => {
     const room = makeTestRoom({ combatants: [makeTestCombatant()] });
     const attacker = room.combatants[0];
     
@@ -71,7 +71,7 @@ describe("DT-007: Opportunity Attack Limits", () => {
     
     // Segundo intento contra el MISMO "Enemigo A" -> Debe ser rechazado
     snapshot = createCombatRulesSnapshot(room);
-    assert.equal(Rules.canMakeOpportunityAttack(snapshot, attacker, "enemy-A"), false, "Debe denegar un 2do AdO contra el MISMO enemigo en la misma ronda");
+    assert.equal(Rules.canMakeOpportunityAttack(snapshot, attacker, "enemy-A"), true, "Una provocación independiente puede gastar el cupo restante");
     
     // Tercer intento contra "Enemigo B" -> Valido
     assert.equal(Rules.canMakeOpportunityAttack(snapshot, attacker, "enemy-B"), true, "Puede hacer un 2do AdO contra un enemigo DIFERENTE");

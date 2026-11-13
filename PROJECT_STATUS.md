@@ -4,6 +4,11 @@
 > publicado. Los estados oficiales de reglas viven únicamente en
 > [`docs/rules/registry.md`](docs/rules/registry.md).
 
+## Cierre local de estabilización
+
+- **P1 — Ataques de oportunidad: cerrado localmente, Nivel D.** Nemotron emitió dictamen APROBADO. Incluye cupo y elegibilidad, reanudación de acciones estacionarias y movimiento por tramos. La evidencia del candidato aislado se registra en la [matriz de cobertura](docs/testing/master-coverage.md#regresiones-de-ataques-de-oportunidad).
+- La observación de Charge contra criaturas indefensas continúa [abierta](TODO.md#ataques-de-oportunidad-y-carga).
+
 ## Estado actual
 
 - Rama de integración: `master`.

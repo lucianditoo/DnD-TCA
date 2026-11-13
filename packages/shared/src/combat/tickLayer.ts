@@ -16,11 +16,12 @@ export function roundTickListener(room: CombatRoom, event: CombatEvent): CombatR
     const hasAoOs = (nextC.stats.opportunityAttacksThisRound ?? 0) !== 0;
     const hasAoOTargets = nextC.stats.targetsAttackedThisRoundViaAoO && nextC.stats.targetsAttackedThisRoundViaAoO.length > 0;
     
-    if (hasAoOs || hasAoOTargets) {
+    if (hasAoOs || hasAoOTargets || nextC.stats.movementOpportunityTargetsThisRound?.length) {
       nextC.stats = { 
         ...nextC.stats, 
         opportunityAttacksThisRound: 0,
-        targetsAttackedThisRoundViaAoO: [] 
+        targetsAttackedThisRoundViaAoO: [],
+        movementOpportunityTargetsThisRound: []
       };
       mutated = true;
     }

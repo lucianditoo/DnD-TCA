@@ -94,7 +94,7 @@ test.describe('Smoke Test Táctico Visual', () => {
     // 6. Resolución: GM limpia AdO
     // Tenemos que abrir el panel GM porque está en un collapsible
     await page.getByText('Panel GM').click();
-    await page.getByRole('button', { name: 'Limpiar AdO' }).click();
+    await page.getByRole('button', { name: 'Declinar AdO', exact: true }).click();
 
     // Esperar que desaparezca el cartel
     await expect(page.getByText('Hay ataques de oportunidad pendientes')).not.toBeVisible();

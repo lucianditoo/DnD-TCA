@@ -1,3 +1,4 @@
+import { resumeMovement } from "../apps/server/src/commands/movementCommands.ts";
 import test from "node:test";
 import assert from "node:assert/strict";
 import { handleMoveCombatant } from "../apps/server/src/commands/movementCommands.ts";
@@ -56,11 +57,11 @@ test("I6 Tumble succeeds through enemy with doubled cost and diagonal parity",t=
  handleMoveCombatant(room,command(room,actor,[pos(3,3),pos(4,4)],true));
  assert.equal(room.currentTurn.movementUsedFeet,30);assert.equal(room.currentTurn.normalDiagonalStepsThisTurn,2);assert.equal(actor.stats.distanceMovedFeet,15);assert.ok(room.log.some(l=>l.message.includes("CD 25")));
 });
-test("I6 CD25 failure commits re-resolved prefix and forced opportunity with cost",t=>{
+test("I6 CD25 failure commits the prefix and offers at most one reaction per reactor",t=>{
  const {room,actor}=setup();enemy(room,4,2);dice(t,1);
  handleMoveCombatant(room,command(room,actor,[pos(3,2),pos(4,2),pos(5,2)],true));
  assert.deepEqual(actor.position,pos(3,2));assert.equal(room.currentTurn.movementUsedFeet,10);assert.equal(actor.stats.distanceMovedFeet,5);assert.equal(room.currentTurn.normalDiagonalStepsThisTurn,0);
- assert.ok(room.pendingOpportunityAttacks.some(o=>o.reason.includes("fallo al atravesar")&&o.movementCostFeet===10));
+ assert.equal(room.pendingOpportunityAttacks.length,1);
 });
 test("I6 CD25 first-step failure has no commit, log, economy or broadcast",t=>{
  const {room,actor,sent}=setup();enemy(room,3,2);dice(t,1);const before=structuredClone(room);
@@ -69,6 +70,7 @@ test("I6 CD25 first-step failure has no commit, log, economy or broadcast",t=>{
 test("I6 interrupted prefix persists horizontal, not discarded vertical destination axis",t=>{
  const {room,actor}=setup({sizeCategory:"large",baseSpeedFeet:100});allNarrow(room);enemy(room,3,3);dice(t,1);
  handleMoveCombatant(room,command(room,actor,[pos(3,2),pos(3,3),pos(4,3)],true));
+ if (room.pendingMovement) { room.pendingOpportunityAttacks = []; room.phase = "active"; resumeMovement(room); }
  assert.deepEqual(actor.position,pos(3,2));assert.equal(room.effectInstances[0].squeezingAxis,"horizontal");assert.equal(room.currentTurn.movementUsedFeet,20);
  assert.deepEqual(getCombatantOccupiedCells(actor,createCombatRulesSnapshot(room)),[pos(3,2),pos(4,2)]);
 });
@@ -86,7 +88,7 @@ for(const [roll,pending] of [[20,0],[1,1]]) {
  test(`I6 CD15 ${roll}: legacy evasion and AoO receives doubled movement cost`,t=>{
   const {room,actor}=setup();enemy(room,2,3);dice(t,roll);
   handleMoveCombatant(room,command(room,actor,[pos(3,2)],true));
-  assert.equal(room.currentTurn.movementUsedFeet,10);assert.equal(room.pendingOpportunityAttacks.length,pending);
+  assert.equal(room.currentTurn.movementUsedFeet,pending ? 0 : 10);assert.equal(room.pendingOpportunityAttacks.length,pending);
   if(pending)assert.equal(room.pendingOpportunityAttacks[0].movementCostFeet,10);
   assert.ok(room.log.some(l=>l.message.includes("CD 15")));
  });

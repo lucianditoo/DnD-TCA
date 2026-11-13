@@ -1,3 +1,4 @@
+import type { SqueezingAxis } from "./movementContracts.js";
 import type { EffectInstance } from "./effects/index.js";
 import type { ProductionEffectId } from "./effects/catalog.js";
 import type { Trait } from "./effects/contracts.js";
@@ -17,8 +18,8 @@ export type CreatureTypeId = "aberration" | "animal" | "construct" | "dragon" | 
 export type CombatFeatureId = `srd_sneak_attack_${number}d6`;
 export type SpecialManeuverId = "trip" | "bull_rush" | "grapple";
 export type SavingThrowType = "fortitude" | "reflex" | "will";
-export type SkillId = "escape_artist";
-export type SkillRanks = Readonly<Record<SkillId, number>>;
+export type SkillId = "escape_artist" | "concentration";
+export type SkillRanks = Readonly<Record<"escape_artist", number> & Partial<Record<"concentration", number>>>;
 
 export interface Position { x: number; y: number; zFeet: number; }
 export interface Board {
@@ -299,7 +300,7 @@ export interface CreatureCatalog { heroes: CreatureTemplate[]; enemies: Creature
 export interface GameCatalog { creatures: CreatureCatalog; abilities: Ability[]; }
 export type StoredProfile = CreatureTemplate & { updatedAt: string };
 
-export interface CombatantStats { damageDealt: number; damageTaken: number; distanceMovedFeet: number; attacksMade: number; hits: number; misses: number; opportunityAttacksMade: number; opportunityAttacksThisRound: number; readonly targetsAttackedThisRoundViaAoO: readonly string[]; kills: number; timesDroppedToZero: number; healingReceived: number; }
+export interface CombatantStats { damageDealt: number; damageTaken: number; distanceMovedFeet: number; attacksMade: number; hits: number; misses: number; opportunityAttacksMade: number; opportunityAttacksThisRound: number; readonly targetsAttackedThisRoundViaAoO: readonly string[]; readonly movementOpportunityTargetsThisRound?: readonly string[]; kills: number; timesDroppedToZero: number; healingReceived: number; }
 
 export interface CombatantSnapshot {
   id: string;
@@ -373,6 +374,8 @@ export interface OpportunityAttack {
   origin: Position;
   destination: Position;
   movementCostFeet?: number;
+  movementStepIndex?: number;
+  movementPrefix?: { remainingBaseFeet: number; diagonalSteps: number; squeezingAxis?: SqueezingAxis };
   reason: string;
   createdAt: string;
   provokingCells?: Position[];
@@ -420,7 +423,13 @@ export interface PendingCoupDeGrace {
   readonly weaponId: string | null;
 }
 
-export interface CombatRoom { code: string; board: Board; combatants: Combatant[]; turnOrder: string[]; activeTurnIndex: number; round: number; phase: EncounterPhase; outcome: CombatOutcome; completedAt: string | null; currentTurn: TurnState; pendingOpportunityAttacks: OpportunityAttack[]; log: CombatLogEntry[]; activeAttackThreat: AttackThreatState | null; pendingCoupDeGrace: PendingCoupDeGrace | null; effectInstances: EffectInstance<ProductionEffectId>[]; eventSequence: number; }
+export interface PendingStationaryAction {
+  command: Extract<ClientCommand, { type: "cast-spell" | "resolve-attack" }> | Extract<ClientCommand, { action: "stand-up" }>;
+  damageTaken: number[];
+  actorRole: ParticipantRole;
+}
+
+export interface CombatRoom { pendingStationaryAction?: PendingStationaryAction; pendingMovement?: { kind: "move" | "run" | "withdraw" | "charge"; charge?: Extract<ClientCommand, { action: "charge" }>; exemptDepartureCells?: string[]; evadedReactors?: string[]; startedDisabled?: boolean; actorId: string; path: Position[]; remainingBudget: number; isAcrobatic: boolean; origin: Position }; code: string; board: Board; combatants: Combatant[]; turnOrder: string[]; activeTurnIndex: number; round: number; phase: EncounterPhase; outcome: CombatOutcome; completedAt: string | null; currentTurn: TurnState; pendingOpportunityAttacks: OpportunityAttack[]; log: CombatLogEntry[]; activeAttackThreat: AttackThreatState | null; pendingCoupDeGrace: PendingCoupDeGrace | null; effectInstances: EffectInstance<ProductionEffectId>[]; eventSequence: number; }
 export interface CombatRulesSnapshot<TEffectId extends string = string> {
   readonly board: {
     readonly width: number;
@@ -452,7 +461,7 @@ export type SizedStructuralMatch<T, K> = {
   [P in keyof T]: P extends keyof K ? true : never;
 };
 
-type _EphemeralRoomKeys = "code" | "log" | "completedAt" | "outcome" | "turnOrder" | "activeTurnIndex" | "round" | "eventSequence";
+type _EphemeralRoomKeys = "code" | "log" | "completedAt" | "outcome" | "turnOrder" | "activeTurnIndex" | "round" | "eventSequence" | "pendingStationaryAction" | "pendingMovement";
 type _RequiredSnapshotKeys = Omit<CombatRoom, _EphemeralRoomKeys>;
 type _RoomSnapshotExhaustiveGuard = SizedStructuralMatch<_RequiredSnapshotKeys, CombatRulesSnapshot>;
 type _AssertGuard<T extends Record<string, true>> = T;
@@ -494,7 +503,7 @@ export type ClientCommand =
   | { type: "choose-aid-bonus"; roomCode: string; actorId: string; combatantId: string; buffId: string; choice: "attack" | "ac" }
   | { type: "use-ability"; roomCode: string; actorId: string; casterId: string; targetId: string; abilityId: string; amount: number | null }
   | { type: "resolve-ability-attack"; roomCode: string; actorId: string; casterId: string; targetId: string; abilityId: string; d20Roll: number; damage: number | null }
-  | { type: "resolve-opportunity-attack"; roomCode: string; actorId: string; opportunityId: string; d20Roll: number | null; damage: number | null; isAutoRoll?: boolean }
+  | { type: "resolve-opportunity-attack"; roomCode: string; actorId: string; opportunityId: string; d20Roll: number | null; damage: number | null; isAutoRoll?: boolean; decline?: boolean }
   | { type: "equip-item"; roomCode: string; actorId: string; combatantId: string; itemId: string; slot: "mainHand" | "offHand" | "armor" }
   | { type: "unequip-item"; roomCode: string; actorId: string; combatantId: string; slot: "mainHand" | "offHand" | "armor" }
   | { type: "resolve-special-maneuver"; roomCode: string; actorId: string; maneuver:

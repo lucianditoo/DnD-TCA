@@ -1,8 +1,10 @@
-import { resolveMovementPipeline, commitMovementResolution, applyDamage, canStandardAttack, canUseFiveFootStep, canUseMoveAction, canDisabledCombatantTakeAction, canRun, runSpeedBudgetFeet, buildStraightPath, isDifficultTerrain, findTriggeredOpportunityAttacksForPath, getAttackContextModifiers, getCombatantOccupiedCells, footprintCellKey, isAdjacent, lifeStatus, makeLog, Rules, threatensTarget, createCombatRulesSnapshot, validateMovePath, validateStandUp, getEffectiveAbilityModifier, hasEffectTrait, FeatCatalog, EffectManager, cryptoId, type ClientCommand, type CombatRoom, type CombatRulesSnapshot } from "@dnd-tactical/shared";
-import { requireCombatantControl } from "../auth/control.js";
+import { suspendMovement } from "./movementCommands.js";
+import { enqueueMovementOpportunities, findStationaryOpportunityAttacks } from "../combat/opportunityAttackResolver.js";
+import { distanceBetweenFootprintsFeet, getLineOfEffect, resolveEquippedWeaponProfile, resolveMovementPipeline, commitMovementResolution, applyDamage, canStandardAttack, canUseFiveFootStep, canUseMoveAction, canDisabledCombatantTakeAction, canRun, runSpeedBudgetFeet, buildStraightPath, isDifficultTerrain, findTriggeredOpportunityAttacksForPath, getAttackContextModifiers, getCombatantOccupiedCells, footprintCellKey, isAdjacent, lifeStatus, makeLog, Rules, threatensTarget, createCombatRulesSnapshot, validateMovePath, validateStandUp, getEffectiveAbilityModifier, hasEffectTrait, FeatCatalog, EffectManager, cryptoId, type ClientCommand, type CombatRoom, type CombatRulesSnapshot } from "@dnd-tactical/shared";
+import { requireCombatantControl, requireTurnControl } from "../auth/control.js";
 import { resolveAttack, resolveWeaponAttackSource } from "../combat/attackResolver.js";
 import { applyStartOfNextTurnBuff } from "../combat/buffRules.js";
-import { calculatePathDistanceFeet, canCharge, findChargePath } from "../combat/chargeResolver.js";
+import { canCharge, findChargePath } from "../combat/chargeResolver.js";
 import { ensureActiveTurn } from "../combat/turnManager.js";
 import { pruneInvalidOpportunityAttacks } from "../combat/opportunityAttackResolver.js";
 import { checkCombatOutcome, findCombatant, logStatusChange } from "../room/roomState.js";
@@ -17,10 +19,10 @@ import { resolveAutomaticCritical } from "../combat/attackResolver.js";
 import { isValidCoupDeGraceTarget, EffectReducer, distanceFeet } from "@dnd-tactical/shared";
 import { syncEncounterPhase } from "../room/roomState.js";
 
-export function handleUseTacticalAction(room: CombatRoom, command: Extract<ClientCommand, { type: "use-tactical-action" }>): void {
+export function handleUseTacticalAction(room: CombatRoom, command: Extract<ClientCommand, { type: "use-tactical-action" }>, resumed = false): void {
   if (room.phase !== "active") throw new Error("Esta accion solo esta disponible con el combate en curso.");
   const combatant = findCombatant(room, command.combatantId);
-  requireCombatantControl(command.actorId, combatant);
+  if (!resumed) requireCombatantControl(command.actorId, combatant);
   ensureActiveTurn(room, combatant.id);
   const snapshot = createCombatRulesSnapshot(room);
 
@@ -31,7 +33,7 @@ export function handleUseTacticalAction(room: CombatRoom, command: Extract<Clien
   if (command.action === "charge") return handleCharge(room, snapshot, command, combatant);
   if (command.action === "aid-another") return handleAidAnother(room, snapshot, command, combatant);
   if (command.action === "five-foot-step") return handleFiveFootStep(room, snapshot, command, combatant);
-  if (command.action === "stand-up") return handleStandUp(room, snapshot, command, combatant);
+  if (command.action === "stand-up") return handleStandUp(room, snapshot, command, combatant, resumed);
   if (command.action === "withdraw") return handleWithdraw(room, snapshot, command, combatant);
   if (command.action === "run") return handleRun(room, snapshot, command, combatant);
   if (command.action === "coup-de-grace") return handleCoupDeGrace(room, snapshot, command, combatant);
@@ -116,6 +118,13 @@ function handleWithdraw(room: CombatRoom, snapshot: CombatRulesSnapshot<import("
   const wasDisabledAtActionStart = lifeStatus(combatant) === "disabled";
   const wasSqueezing = room.effectInstances.some(instance =>
     instance.effectId === "srd_squeezing" && instance.targets?.includes(combatant.id));
+  if (suspendMovement(room, snapshot, combatant, candidatePath, availableBudgetFeet, false, opportunities, preconditions,
+      { kind: "withdraw", startedDisabled: wasDisabledAtActionStart, exemptDepartureCells: [...exemptDepartureCellKeys] }, resolution)) {
+    if (isLimitedWithdraw) room.currentTurn.usedStandardAction = true;
+    else room.currentTurn.usedFullAttack = true;
+    broadcast(room);
+    return;
+  }
   const result = commitMovementResolution({ room, combatant, resolution, preconditions });
   if (result.kind === "rejected") throw new Error(result.reason);
 
@@ -131,7 +140,7 @@ function handleWithdraw(room: CombatRoom, snapshot: CombatRulesSnapshot<import("
       : combatant.name + " recupera su huella natural."));
   }
   if (opportunities.length > 0) {
-    room.pendingOpportunityAttacks.push(...opportunities);
+    enqueueMovementOpportunities(room, opportunities);
     for (const opportunity of opportunities) room.log.unshift(makeLog("opportunity", opportunity.reason + " Resolver ataque de oportunidad con tirada manual."));
   }
 
@@ -223,6 +232,12 @@ function handleRun(room: CombatRoom, snapshot: CombatRulesSnapshot<import("@dnd-
   };
   // Pure preflight: exercise catalog/stacking validation, discard the returned room entirely.
   if (preparedInstance) EffectManager.add(room, preparedInstance);
+  if (suspendMovement(room, snapshot, combatant, candidatePath, availableBudgetFeet, false, opportunities, preconditions, { kind: "run" }, resolution)) {
+    room.currentTurn.usedFullAttack = true;
+    if (preparedInstance) room.effectInstances = EffectManager.add(room, preparedInstance).effectInstances;
+    broadcast(room);
+    return;
+  }
   const result = commitMovementResolution({ room, combatant, resolution, preconditions });
   if (result.kind === "rejected") throw new Error(result.reason);
 
@@ -236,7 +251,7 @@ function handleRun(room: CombatRoom, snapshot: CombatRulesSnapshot<import("@dnd-
       : combatant.name + " recupera su huella natural."));
   }
   if (opportunities.length > 0) {
-    room.pendingOpportunityAttacks.push(...opportunities);
+    enqueueMovementOpportunities(room, opportunities);
     for (const opportunity of opportunities) room.log.unshift(makeLog("opportunity", opportunity.reason + " Resolver ataque de oportunidad con tirada manual."));
   }
   // Preserve the historical status message, including when onStack ignore keeps an existing instance.
@@ -330,23 +345,48 @@ function handleCharge(room: CombatRoom, snapshot: CombatRulesSnapshot<import("@d
 
   const wasDisabledAtActionStart = lifeStatus(combatant) === "disabled";
 
-  const movementDistance = calculatePathDistanceFeet(combatant.position, chargePath.value, room.board.cellSizeFeet);
-  const opportunities = findTriggeredOpportunityAttacksForPath(
-    snapshot,
-    combatant,
-    chargePath.value,
-    movementDistance,
-    (c) => Rules.canMakeOpportunityAttack(snapshot, c, combatant.id)
-  );
-  commitSpatialTransition(room, combatant, chargePath.value[chargePath.value.length - 1], { spatialMode: "natural" });
-  combatant.stats.distanceMovedFeet += movementDistance;
-  room.currentTurn.movementUsedFeet += movementDistance;
-  room.currentTurn.usedFullAttack = true;
-  room.log.unshift(makeLog("movement", combatant.name + " carga " + movementDistance + " pies hacia " + target.name + "."));
-  if (opportunities.length > 0) {
-    room.pendingOpportunityAttacks.push(...opportunities);
-    for (const opportunity of opportunities) room.log.unshift(makeLog("opportunity", opportunity.reason + " Resolver ataque de oportunidad con tirada manual."));
+  const initialContext = { normalDiagonalStepsThisTurn: snapshot.currentTurn.normalDiagonalStepsThisTurn };
+  const availableBudgetFeet = Rules.totalSpeedFeet(snapshot, combatant) * 2;
+  const path = chargePath.value;
+  const resolution = resolveMovementPipeline({ context: snapshot, combatant, path, initialContext, availableBudgetFeet });
+  if (resolution.kind !== "ready" || resolution.steps.some(step => step.isDifficultTerrain || step.spatialMode !== "natural")) {
+    throw new Error("La ruta de Carga debe estar despejada y dentro del presupuesto.");
   }
+  const preconditions = {
+    expectedTurnCombatantId: snapshot.currentTurn.combatantId, expectedRound: room.round,
+    expectedOrigin: { ...combatant.position }, expectedMovementUsedFeet: room.currentTurn.movementUsedFeet,
+    expectedDiagonalContext: initialContext
+  };
+  const opportunities = findTriggeredOpportunityAttacksForPath(snapshot, combatant, path,
+    resolution.totalCostFeet, reactor => Rules.canMakeOpportunityAttack(snapshot, reactor),
+    false, undefined, resolution.steps);
+  if (suspendMovement(room, snapshot, combatant, path, availableBudgetFeet, false, opportunities, preconditions,
+      { kind: "charge", charge: command, startedDisabled: wasDisabledAtActionStart }, resolution)) {
+    room.currentTurn.usedFullAttack = true;
+    broadcast(room);
+    return;
+  }
+  const committed = commitMovementResolution({ room, combatant, resolution, preconditions });
+  if (committed.kind === "rejected") throw new Error(committed.reason);
+  room.currentTurn.usedFullAttack = true;
+  completeCharge(room, command, wasDisabledAtActionStart);
+}
+
+export function completeCharge(room: CombatRoom, command: Extract<ClientCommand, { action: "charge" }>, wasDisabledAtActionStart = false): void {
+  const combatant = room.combatants.find(actor => actor.id === command.combatantId);
+  const target = room.combatants.find(actor => actor.id === command.targetId);
+  if (!combatant || !target || lifeStatus(target) === "dead") {
+    broadcast(room);
+    return;
+  }
+  const snapshot = createCombatRulesSnapshot(room);
+  if (!getLineOfEffect(snapshot, combatant, target).hasLineOfEffect ||
+      distanceBetweenFootprintsFeet(snapshot, combatant, target) > (resolveEquippedWeaponProfile(combatant).profile.meleeReachFeet || room.board.cellSizeFeet)) {
+    room.log.unshift(makeLog("attack", combatant.name + " no puede completar el ataque de Carga."));
+    broadcast(room);
+    return;
+  }
+  room.log.unshift(makeLog("movement", combatant.name + " completa su Carga."));
   const tactical = getAttackContextModifiers(snapshot, combatant, target).byAttackType.melee;
   const result = resolveAttack(snapshot, combatant, target, command.d20Roll, command.damage, "carga", 2 + tactical.attackBonus, { source: resolveWeaponAttackSource(combatant, "melee"), diceRoller: rollDice, cover: tactical.cover, concealment: tactical.concealment });
   result.attackParts.push("carga +2");
@@ -451,11 +491,22 @@ function handleFiveFootStep(room: CombatRoom, snapshot: CombatRulesSnapshot<impo
   broadcast(room);
 }
 
-function handleStandUp(room: CombatRoom, snapshot: CombatRulesSnapshot<import("@dnd-tactical/shared").ProductionEffectId>, command: Extract<ClientCommand, { type: "use-tactical-action"; action: "stand-up" }>, combatant: ReturnType<typeof findCombatant>): void {
+function handleStandUp(room: CombatRoom, snapshot: CombatRulesSnapshot<import("@dnd-tactical/shared").ProductionEffectId>, command: Extract<ClientCommand, { type: "use-tactical-action"; action: "stand-up" }>, combatant: ReturnType<typeof findCombatant>, resumed: boolean): void {
   const validation = validateStandUp(snapshot, combatant);
   if (!validation.ok || !validation.value) throw new Error(validation.error);
 
   const wasDisabledAtActionStart = lifeStatus(combatant) === "disabled";
+
+  const opportunities = !resumed && validation.value.provokesOpportunityAttacks
+    ? findStationaryOpportunityAttacks(snapshot, combatant, "se levanta")
+    : [];
+  if (opportunities.length) {
+    room.pendingStationaryAction = { command, damageTaken: [], actorRole: combatant.controlledBy.type };
+    room.pendingOpportunityAttacks.push(...opportunities);
+    syncEncounterPhase(room);
+    broadcast(room);
+    return;
+  }
 
   // Remove PRONE effect directly
   room.effectInstances = room.effectInstances.filter(ei => {
@@ -468,34 +519,6 @@ function handleStandUp(room: CombatRoom, snapshot: CombatRulesSnapshot<import("@
   room.currentTurn.usedMoveAction = true;
   room.log.unshift(makeLog("movement", combatant.name + " se levanta consumiendo " + validation.value.costFeet + " pies de movimiento. " + validation.value.labelParts.join(", ") + "."));
 
-  const opportunities = [];
-  if (validation.value.provokesOpportunityAttacks) {
-    const enemies = room.combatants.filter(c => c.type !== combatant.type && lifeStatus(c) === "active");
-    for (const enemy of enemies) {
-      if (Rules.canMakeOpportunityAttack(snapshot, enemy, combatant.id) && threatensTarget(snapshot, enemy, combatant)) {
-        opportunities.push({
-          id: "opp-" + Math.random().toString(36).slice(2, 10),
-          attackerId: enemy.id,
-          targetId: combatant.id,
-          trigger: "stand-up",
-          reason: `${enemy.name} ataca a ${combatant.name} por levantarse.`,
-          isValid: true,
-          positionAtTrigger: { ...combatant.position },
-          attackMode: "melee" as const,
-          sourceEffectId: null,
-          attackerPosition: { ...enemy.position },
-          origin: { ...combatant.position },
-          destination: { ...combatant.position },
-          createdAt: new Date().toISOString()
-        });
-      }
-    }
-  }
-  room.pendingOpportunityAttacks.push(...opportunities);
-  if (opportunities.length > 0) {
-    room.log.unshift(makeLog("attack", `${combatant.name} provoca ${opportunities.length} Ataques de Oportunidad al levantarse.`));
-  }
-
   const exertion = applyDisabledExertion(combatant, { wasDisabledAtActionStart, actionKind: "move", actionWasExerting: false });
   if (exertion.applied) {
     room.log.unshift(makeLog("status", combatant.name + " actua incapacitado con " + exertion.previousHp + " HP y pierde 1 HP por esfuerzo. HP: " + exertion.currentHp + "/" + combatant.hpMax + "."));
@@ -503,13 +526,14 @@ function handleStandUp(room: CombatRoom, snapshot: CombatRulesSnapshot<import("@
   }
 
   checkCombatOutcome(room);
+  syncEncounterPhase(room);
   broadcast(room);
 }
 
 export function handleResolveSavingThrow(room: CombatRoom, command: Extract<ClientCommand, { type: "resolve-saving-throw" }>): void {
   if (room.phase !== "active") throw new Error("Esta accion solo esta disponible con el combate en curso.");
   const target = findCombatant(room, command.targetId);
-  // requireCombatantControl(command.actorId, target); // El DM también puede lanzar salvaciones si es necesario
+  requireTurnControl(command.actorId, target);
   const snapshot = createCombatRulesSnapshot(room);
 
   const result = resolveSavingThrow(snapshot, target, command.saveType, command.dc, command.d20Roll);
@@ -587,31 +611,15 @@ function handleCoupDeGrace(room: CombatRoom, snapshot: CombatRulesSnapshot<impor
   }
 
   if (Rules.actionProvokesOpportunityAttack(snapshot, combatant, "coup-de-grace")) {
-    const enemies = snapshot.combatants.filter(e =>
-      e.id !== combatant.id &&
-      e.type !== combatant.type &&
-      lifeStatus(e) === "active" &&
-      threatensTarget(snapshot, e, combatant) &&
-      Rules.canMakeOpportunityAttack(snapshot, e, combatant.id)
-    );
-    if (enemies.length > 0) {
+    const opportunities = findStationaryOpportunityAttacks(snapshot, combatant, "intenta un golpe de gracia");
+    if (opportunities.length > 0) {
       room.pendingCoupDeGrace = {
         actorId: combatant.id,
         targetId: target.id,
         weaponId: source.name
       };
 
-      room.pendingOpportunityAttacks.push(...enemies.map(e => ({
-        id: crypto.randomUUID(),
-        attackerId: e.id,
-        targetId: combatant.id,
-        attackerPosition: e.position,
-        origin: combatant.position,
-        destination: combatant.position,
-        reason: `${combatant.name} provoca por Golpe de gracia.`,
-        createdAt: new Date().toISOString()
-      })));
-      room.log.unshift(makeLog("attack", `${combatant.name} provoca ${enemies.length} Ataques de Oportunidad al intentar un Golpe de gracia.`));
+      room.pendingOpportunityAttacks.push(...opportunities);
       syncEncounterPhase(room);
       broadcast(room);
       return;

@@ -1,17 +1,18 @@
+import { rollDice } from "../combat/diceRoller.js";
 import type { WebSocket } from "ws";
-import type { ClientCommand } from "@dnd-tactical/shared";
+import { createCombatRulesSnapshot, getEffectiveAbilityModifier, lifeStatus, makeLog, Rules, SpellsCatalog, type CombatRoom, type ClientCommand } from "@dnd-tactical/shared";
 import { handleResolveAttack, handleResolveOpportunityAttack, handleResolveAttackConfirmation, handleCancelAttackThreat } from "./attackCommands.js";
 import { handleResolveAbilityAttack, handleRollStabilization, handleUseAbility, handleCastSpell } from "./abilityCommands.js";
 import { handleAddCatalogCombatant, handleAddDemoCombatant, handleAddProfileCombatant } from "./combatantCommands.js";
 import { handleGmAddLog, handleGmApplyEffect, handleGmApplyEnvironmentalHazard, handleGmRemoveEffect, handleGmClearOpportunities, handleGmForceOutcome, handleGmMoveCombatant, handleGmSetHp, handleGmSetStatus, handleHealCombatant } from "./gmCommands.js";
 import { handleEndTurn, handleSetInitiative, handleSortInitiative } from "./initiativeCommands.js";
-import { handleMoveCombatant } from "./movementCommands.js";
+import { handleMoveCombatant, resumeMovement } from "./movementCommands.js";
 import { handleCreateRoom, handleJoinRoom, handleUpdateBoard } from "./roomCommands.js";
-import { handleChooseAidBonus, handleUseTacticalAction, handleDeclareAttackMode, handleCancelAttackMode, handleResolveSavingThrow, handleDeclareDodgeTarget, handleResumeCoupDeGrace } from "./tacticalCommands.js";
+import { handleChooseAidBonus, handleUseTacticalAction, completeCharge, handleDeclareAttackMode, handleCancelAttackMode, handleResolveSavingThrow, handleDeclareDodgeTarget, handleResumeCoupDeGrace } from "./tacticalCommands.js";
 import { handleResolveGrappleEscape, handleResolveSpecialManeuver, type ManeuverDiceSource } from "./specialManeuverCommands.js";
 import { handleEquipItem, handleUnequipItem } from "./equipmentCommands.js";
 import { ensureLegacyRoomShape } from "../room/roomState.js";
-import { rooms, send } from "../room/roomStore.js";
+import { broadcast, rooms, send } from "../room/roomStore.js";
 import { validateClientCommand } from "../validation/validateClientCommand.js";
 import { isDemoRoom } from "../demo/sessionStore.js";
 
@@ -45,6 +46,7 @@ function dispatchCommandCore(
     if (socket) send(socket, { type: "error", message: "Sala no encontrada." });
     return;
   }
+
   ensureLegacyRoomShape(room);
 
   if (room.phase === "finished" && !command.type.startsWith("gm-")) {
@@ -63,6 +65,22 @@ function dispatchCommandCore(
     }
   }
 
+  const pending = room.pendingStationaryAction;
+  const provokingActor = pending && room.combatants.find(actor => actor.id === room.currentTurn.combatantId);
+  const hpBefore = provokingActor?.hpCurrent;
+  executeCommand(room, command, context);
+  if (pending && provokingActor && hpBefore !== undefined && provokingActor.hpCurrent < hpBefore &&
+      (command.type === "resolve-opportunity-attack" || command.type === "resolve-attack-confirmation" || command.type === "cancel-attack-threat")) {
+    pending.damageTaken.push(hpBefore - provokingActor.hpCurrent);
+  }
+  resumeStationaryAction(room, context);
+  if (!room.activeAttackThreat && !room.pendingOpportunityAttacks.length) {
+    const charge = resumeMovement(room);
+    if (charge) completeCharge(room, charge);
+  }
+}
+
+function executeCommand(room: CombatRoom, command: Exclude<ClientCommand, { type: "create-room" | "join-room" }>, context?: InternalExecutionContext): void {
   switch (command.type) {
     case "add-demo-combatant": handleAddDemoCombatant(room, command); return;
     case "add-catalog-combatant": handleAddCatalogCombatant(room, command); return;
@@ -102,6 +120,59 @@ function dispatchCommandCore(
     case "update-board": handleUpdateBoard(room, command); return;
     case "end-turn": handleEndTurn(room, command); return;
   }
+}
+
+function resumeStationaryAction(room: CombatRoom, context?: InternalExecutionContext): void {
+  const pending = room.pendingStationaryAction;
+  if (!pending || room.activeAttackThreat || room.pendingOpportunityAttacks.length) return;
+  delete room.pendingStationaryAction;
+  const { command, damageTaken } = pending;
+  const combatantId = command.type === "cast-spell" ? command.casterId :
+    command.type === "resolve-attack" ? command.attackerId : command.combatantId;
+  const actor = room.combatants.find(combatant => combatant.id === combatantId);
+  const control = actor?.controlledBy ?? (actor ? { type: actor.controller } : undefined);
+  const canResume = control?.type === "gm" ? pending.actorRole === "gm" :
+    control?.type === "player" && "participantId" in control && control.participantId === command.actorId;
+  try {
+    if (!canResume) throw new Error("El control de la accion interrumpida cambio.");
+    if (!actor || !["active", "finished"].includes(room.phase) || room.currentTurn.combatantId !== actor.id) {
+      throw new Error("La accion interrumpida ya no puede continuar.");
+    }
+    const snapshot = createCombatRulesSnapshot(room);
+    const available = room.phase === "active" && Rules.evaluateActionAvailability(snapshot, actor).ok &&
+      ["active", "disabled"].includes(lifeStatus(actor));
+    if (command.type === "cast-spell") {
+      const slot = actor.preparedSpells.find(slot => slot.slotId === command.slotId);
+      if (!slot || slot.isExpended) throw new Error("El slot del lanzamiento interrumpido ya no esta disponible.");
+      const spell = SpellsCatalog.require(slot.spellId);
+      const modifier = getEffectiveAbilityModifier(snapshot, actor, "constitution") + (actor.skillRanks.concentration ?? 0);
+      const roller = context?.diceRoller ?? rollDice;
+      let lost = !available;
+      for (const damage of damageTaken) {
+        if (lost) break;
+        const dc = 10 + damage + spell.level;
+        const total = roller(20) + modifier;
+        lost = total < dc;
+        room.log.unshift(makeLog("skill", actor.name + " prueba Concentracion: " + total + " contra CD " + dc + "."));
+      }
+      if (lost) {
+        actor.preparedSpells = actor.preparedSpells.map(item => item.slotId === slot.slotId ? { ...item, isExpended: true } : item);
+        room.currentTurn.usedStandardAction = true;
+        room.log.unshift(makeLog("attack", actor.name + " pierde el conjuro interrumpido."));
+      } else {
+        handleCastSpell(room, command, { resumed: true, diceRoller: roller });
+      }
+    } else if (!available) {
+      throw new Error("El combatiente ya no puede completar la accion interrumpida.");
+    } else if (command.type === "resolve-attack") {
+      handleResolveAttack(room, command, { resumed: true, diceRoller: context?.diceRoller });
+    } else {
+      handleUseTacticalAction(room, command, true);
+    }
+  } catch (error) {
+    room.log.unshift(makeLog("system", error instanceof Error ? error.message : "Se cancela la accion interrumpida."));
+  }
+  broadcast(room);
 }
 
 export function dispatchCommand(socket: WebSocket, command: ClientCommand): void {

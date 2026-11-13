@@ -907,32 +907,13 @@ export const scriptedTacticalDemoV1: DemoScriptDefinition = {
           ruleExplanation: "El Guardia de Lanza falla su AdO (5 + 2 = 7 vs CA 12) y agota su única reacción de la Ronda 1 (opportunityAttacksThisRound = 1).",
           command: { kind: "resolve-opportunity-attack", d20Roll: 5, damage: 4 },
           expect: {
+            spellSlotExpended: { combatantId: "mago", slotId: "slot-1-shocking-grasp", isExpended: true },
             phase: "active",
             pendingOpportunityAttacksCount: 0,
             opportunityAttacksThisRound: { combatantId: "enemigo_guardia", count: 1 },
-            targetHp: { combatantId: "mago", hpCurrent: 14 }
+            targetHp: { combatantId: "enemigo_guardia", hpCurrent: 13 }
           },
           pauseAfterMs: 1200
-        },
-        {
-          id: "c-9-mago-shocking-grasp-resolves",
-          actorName: "Alaric el Mago",
-          actionSummary: "Alaric completa Shocking Grasp: toque melee (d20=15) e impacto eléctrico (daño=5)",
-          ruleExplanation: "Con el AdO del Guardia ya agotado en este asalto, el conjuro se resuelve contra la CA de Toque (15 + 1 = 16 vs Touch AC 11), inflige 5 puntos de daño eléctrico (HP 18 → 13) y consume el slot de nivel 1.",
-          command: {
-            kind: "cast-spell",
-            casterId: "mago",
-            targetId: "enemigo_guardia",
-            slotId: "slot-1-shocking-grasp",
-            d20Roll: 15,
-            amount: 5
-          },
-          expect: {
-            phase: "active",
-            targetHp: { combatantId: "enemigo_guardia", hpCurrent: 13 },
-            spellSlotExpended: { combatantId: "mago", slotId: "slot-1-shocking-grasp", isExpended: true }
-          },
-          pauseAfterMs: 1400
         },
         {
           id: "c-10-mago-end-turn-round-2",
@@ -952,25 +933,26 @@ export const scriptedTacticalDemoV1: DemoScriptDefinition = {
           id: "c-4-defensor-stand-up",
           actorName: "Duelista Orco",
           actionSummary: "Duelista Orco usa su acción de movimiento para levantarse (Stand Up)",
-          ruleExplanation: "Levantarse elimina el estado Derribado (srd_prone), consume la acción de movimiento (15 ft) y provoca un Ataque de Oportunidad de Cedrick.",
+          ruleExplanation: "Levantarse provoca un AdO de Cedrick. El Duelista permanece derribado hasta resolverlo.",
           command: { kind: "use-tactical-action", combatantId: "defensor", action: "stand-up" },
           expect: {
             phase: "opportunity-resolution",
             pendingOpportunityAttacksCount: 1,
-            hasEffect: { combatantId: "defensor", effectId: "srd_prone", present: false }
+            hasEffect: { combatantId: "defensor", effectId: "srd_prone", present: true }
           },
           pauseAfterMs: 1300
         },
         {
           id: "c-5-cedrick-standup-aoo",
           actorName: "Cedrick",
-          actionSummary: "Cedrick resuelve el AdO provocado al levantarse (d20=5, falla)",
-          ruleExplanation: "Cedrick ejecuta su Ataque de Oportunidad (5 + 6 = 11 vs CA 15, falla). La sala retorna a 'active' y el Duelista permanece de pie.",
-          command: { kind: "resolve-opportunity-attack", d20Roll: 5, damage: 4 },
+          actionSummary: "Cedrick resuelve el AdO provocado al levantarse (1 natural, falla)",
+          ruleExplanation: "Cedrick ejecuta su Ataque de Oportunidad (1 natural: falla incluso contra el Duelista derribado). La sala retorna a 'active' y el Duelista permanece de pie.",
+          command: { kind: "resolve-opportunity-attack", d20Roll: 1, damage: 4 },
           expect: {
             phase: "active",
             pendingOpportunityAttacksCount: 0,
-            targetHp: { combatantId: "defensor", hpCurrent: 20 }
+            targetHp: { combatantId: "defensor", hpCurrent: 20 },
+            hasEffect: { combatantId: "defensor", effectId: "srd_prone", present: false }
           },
           pauseAfterMs: 1200
         },
@@ -1027,33 +1009,15 @@ export const scriptedTacticalDemoV1: DemoScriptDefinition = {
           actionSummary: "Guardia de Lanza resuelve su AdO de Ronda 2 (d20=5, falla)",
           ruleExplanation: "El Guardia vuelve a fallar su AdO (5 + 2 = 7 vs CA 12), agotando su reacción de la Ronda 2.",
           command: { kind: "resolve-opportunity-attack", d20Roll: 5, damage: 4 },
+          diceRolls: [5],
           expect: {
+            hasEffect: { combatantId: "enemigo_guardia", effectId: "srd_paralyzed", present: true },
+            spellSlotExpended: { combatantId: "mago", slotId: "slot-2-hold-person", isExpended: true },
             phase: "active",
             pendingOpportunityAttacksCount: 0,
             opportunityAttacksThisRound: { combatantId: "enemigo_guardia", count: 1 }
           },
           pauseAfterMs: 1200
-        },
-        {
-          id: "c-16-mago-hold-person-resolves",
-          actorName: "Alaric el Mago",
-          actionSummary: "Alaric completa Hold Person: Guardia falla salvación de Voluntad (d20=5 + 1 = 6 vs CD 14)",
-          ruleExplanation: "El Guardia de Lanza realiza una tirada de salvación de Voluntad contra CD 14: tira 5 + Voluntad 1 = 6 (fallo). Queda Paralizado (srd_paralyzed: HELPLESS, DES 0) y se consume el slot de conjuro.",
-          command: {
-            kind: "cast-spell",
-            casterId: "mago",
-            targetId: "enemigo_guardia",
-            slotId: "slot-2-hold-person",
-            d20Roll: null,
-            amount: null
-          },
-          diceRolls: [5],
-          expect: {
-            phase: "active",
-            hasEffect: { combatantId: "enemigo_guardia", effectId: "srd_paralyzed", present: true },
-            spellSlotExpended: { combatantId: "mago", slotId: "slot-2-hold-person", isExpended: true }
-          },
-          pauseAfterMs: 1500
         },
         {
           id: "c-17-mago-end-demo",

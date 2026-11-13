@@ -112,6 +112,7 @@ test("Disabled a 0 HP: Reglas de Esfuerzo e Incapacitación", async (t) => {
 
   await t.test("Movimiento normal no causa pérdida de HP y bloquea acción estándar posterior", () => {
     const { room, hero, goblin } = setupRoom();
+    goblin.position = { x: 6, y: 6 };
     
     // Mover 5 pies
     handleMoveCombatant(room, { type: "move-combatant", actorId: "system", combatantId: hero.id, path: [{ x: 0, y: 1 }] });
@@ -159,7 +160,8 @@ test("Disabled a 0 HP: Reglas de Esfuerzo e Incapacitación", async (t) => {
     });
 
     await t.test("Movimiento normal bloquea el 5-foot step", () => {
-      const { room, hero } = setupRoom();
+      const { room, hero, goblin } = setupRoom();
+      goblin.position = { x: 6, y: 6 };
       handleMoveCombatant(room, { type: "move-combatant", actorId: "system", combatantId: hero.id, path: [{ x: 0, y: 1 }] });
       
       assert.throws(() => {

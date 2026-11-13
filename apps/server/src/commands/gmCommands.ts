@@ -71,9 +71,9 @@ export function handleGmAddLog(room: CombatRoom, command: Extract<ClientCommand,
 export function handleGmForceOutcome(room: CombatRoom, command: Extract<ClientCommand, { type: "gm-force-outcome" }>): void {
   requireGM(command.actorId);
   room.outcome = command.outcome;
-  room.phase = command.outcome === "ongoing" ? "active" : "finished";
   room.completedAt = command.outcome === "ongoing" ? null : new Date().toISOString();
   if (command.outcome !== "ongoing") room.pendingOpportunityAttacks = [];
+  syncEncounterPhase(room);
   room.log.unshift(makeLog("system", "GM fuerza resultado: " + command.outcome + "."));
   broadcast(room);
 }

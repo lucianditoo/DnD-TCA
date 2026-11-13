@@ -1,13 +1,16 @@
+import { applyDisabledExertion } from "../combat/lifeStatusEffects.js";
+import { canCharge } from "../combat/chargeResolver.js";
+import { enqueueMovementOpportunities, findStationaryOpportunityAttacks } from "../combat/opportunityAttackResolver.js";
 import { rollDice } from "../combat/diceRoller.js";
 import {
-  cryptoId, footprintCellKey, getCombatantOccupiedCells, getEffectiveAbilityModifier,
-  lifeStatus, Rules, canUseMoveAction, findTriggeredOpportunityAttacksForPath, makeLog,
+  footprintCellKey, getCombatantOccupiedCells, getEffectiveAbilityModifier,
+  lifeStatus, Rules, canUseMoveAction, canRun, runSpeedBudgetFeet, createMovementStateFingerprint, findTriggeredOpportunityAttacksForPath, makeLog,
   createCombatRulesSnapshot, resolveMovementPipeline, commitMovementResolution,
-  type ClientCommand, type Combatant, type CombatRoom, type CombatLogEntry, type OpportunityAttack
+  type MovementResolutionResult, type ClientCommand, type Combatant, type CombatRoom, type CombatLogEntry, type OpportunityAttack
 } from "@dnd-tactical/shared";
 import { requireCombatantControl } from "../auth/control.js";
 import { ensureActiveTurn } from "../combat/turnManager.js";
-import { findCombatant, formatCell, isCombatantInsideBoard, isCellOccupied, syncEncounterPhase } from "../room/roomState.js";
+import { checkCombatOutcome, logStatusChange, findCombatant, formatCell, isCombatantInsideBoard, isCellOccupied, syncEncounterPhase } from "../room/roomState.js";
 import { broadcast } from "../room/roomStore.js";
 import { commitSpatialTransition } from "../combat/spatialTransition.js";
 
@@ -87,7 +90,9 @@ export function handleMoveCombatant(room: CombatRoom, command: Extract<ClientCom
   const opportunities = findTriggeredOpportunityAttacksForPath(snapshot, combatant, confirmedPath,
     resolution.totalCostFeet, c => Rules.canMakeOpportunityAttack(snapshot, c, combatant.id), isAcrobatic,
     undefined, resolution.steps);
+  const evadedReactors: string[] = [];
   for (const opp of opportunities) {
+    if (pending.opportunities.length && opp.movementStepIndex !== pending.opportunities[0].movementStepIndex) break;
     if (opp.requiredCd === 15) {
       const dexMod = getEffectiveAbilityModifier(snapshot, combatant, "dexterity");
       const roll = rollDice(20);
@@ -95,6 +100,7 @@ export function handleMoveCombatant(room: CombatRoom, command: Extract<ClientCom
       const enemy = snapshot.combatants.find(c => c.id === opp.attackerId);
       pending.logs.unshift(makeLog("skill", `${combatant.name} tira Acrobacias (CD 15) para esquivar AdO de ${enemy?.name}: 1d20 (${roll}) + DES (${dexMod}) = ${result}`));
       if (result >= 15) {
+        evadedReactors.push(opp.attackerId);
         pending.logs.unshift(makeLog("movement", `${combatant.name} esquiva exitosamente el AdO.`));
         continue;
       }
@@ -102,14 +108,21 @@ export function handleMoveCombatant(room: CombatRoom, command: Extract<ClientCom
     }
     pending.opportunities.push(opp);
   }
-  if (interruptedByEnemyId) {
-    const enemy = snapshot.combatants.find(c => c.id === interruptedByEnemyId)!;
-    pending.opportunities.push({
-      id: cryptoId("aoo"), attackerId: enemy.id, targetId: combatant.id,
-      attackerPosition: { ...enemy.position }, origin: { ...preconditions.expectedOrigin },
-      destination: { ...resolution.finalPosition }, movementCostFeet: resolution.totalCostFeet,
-      reason: `${combatant.name} fallo al atravesar a ${enemy.name}.`, createdAt: new Date().toISOString()
-    });
+  if (interruptedByEnemyId && !pending.opportunities.some(item => item.attackerId === interruptedByEnemyId)) {
+    const stoppedActor = { ...resolutionActor, position: { ...resolution.finalPosition } };
+    const opportunity = findStationaryOpportunityAttacks(snapshot, stoppedActor, "fallo al atravesar a un enemigo")
+      .find(item => item.attackerId === interruptedByEnemyId);
+    const reactor = snapshot.combatants.find(item => item.id === interruptedByEnemyId);
+    if (opportunity && !reactor?.stats.movementOpportunityTargetsThisRound?.includes(combatant.id)) {
+      pending.opportunities.push(opportunity);
+    }
+  }
+
+  if (suspendMovement(room, snapshot, combatant, confirmedPath, availableBudgetFeet, isAcrobatic, pending.opportunities, preconditions, { kind: "move", evadedReactors }, resolution)) {
+    room.currentTurn.usedMoveAction = true;
+    room.log.unshift(...pending.logs);
+    broadcast(room);
+    return;
   }
 
   const result = commitMovementResolution({ room, combatant, resolution, preconditions });
@@ -120,10 +133,119 @@ export function handleMoveCombatant(room: CombatRoom, command: Extract<ClientCom
   const isSqueezingNow = result.finalSpatialMode === "squeezing";
   if (!wasSqueezing && isSqueezingNow) room.log.unshift(makeLog("movement", `${combatant.name} se ha metido en un espacio estrecho y esta Apretujandose.`));
   if (wasSqueezing && !isSqueezingNow) room.log.unshift(makeLog("movement", `${combatant.name} dejo el espacio estrecho.`));
-  room.pendingOpportunityAttacks.push(...pending.opportunities);
+  enqueueMovementOpportunities(room, pending.opportunities);
   for (const opportunity of pending.opportunities) {
     room.log.unshift(makeLog("opportunity", opportunity.reason + " Resolver ataque de oportunidad."));
   }
   syncEncounterPhase(room);
+  broadcast(room);
+}
+
+export function suspendMovement(room: CombatRoom, snapshot: ReturnType<typeof createCombatRulesSnapshot>, combatant: Combatant, path: NonNullable<CombatRoom["pendingMovement"]>["path"], availableBudgetFeet: number, isAcrobatic: boolean, opportunities: OpportunityAttack[], preconditions: Parameters<typeof commitMovementResolution>[0]["preconditions"], intent: Pick<NonNullable<CombatRoom["pendingMovement"]>, "kind" | "charge" | "exemptDepartureCells" | "startedDisabled" | "evadedReactors"> = { kind: "move" }, resolution?: Extract<MovementResolutionResult, { kind: "ready" }>): boolean {
+  const resolutionActor = snapshot.combatants.find(actor => actor.id === combatant.id)! as Combatant;
+  const initialContext = { normalDiagonalStepsThisTurn: snapshot.currentTurn.normalDiagonalStepsThisTurn };
+  const firstStep = opportunities[0]?.movementStepIndex;
+  if (firstStep !== undefined) {
+    const prefix = path.slice(0, firstStep);
+    if (prefix.length) {
+      const result = resolution ? movementPrefix(resolution, firstStep) : resolveMovementPipeline({ context: snapshot, combatant: resolutionActor, path: prefix,
+        initialContext, availableBudgetFeet, isAcrobatic });
+      if (result.kind !== "ready") throw new Error("El tramo previo al AdO no es legal.");
+      const commit = commitMovementResolution({ room, combatant, resolution: result, preconditions });
+      if (commit.kind === "rejected") throw new Error(commit.reason);
+    } else if (room.combatants.find(actor => actor.id === combatant.id) !== combatant ||
+        room.currentTurn.combatantId !== preconditions.expectedTurnCombatantId ||
+        room.round !== preconditions.expectedRound ||
+        (resolution && createMovementStateFingerprint(room, combatant) !== resolution.rulesStateFingerprint) ||
+        room.currentTurn.movementUsedFeet !== preconditions.expectedMovementUsedFeet ||
+        room.currentTurn.normalDiagonalStepsThisTurn !== initialContext.normalDiagonalStepsThisTurn ||
+        footprintCellKey(combatant.position) !== footprintCellKey(preconditions.expectedOrigin)) {
+      throw new Error("El movimiento cambio antes de la reaccion.");
+    }
+    room.pendingMovement = { ...intent, actorId: combatant.id, path: path.slice(firstStep),
+      remainingBudget: availableBudgetFeet - (room.currentTurn.movementUsedFeet - preconditions.expectedMovementUsedFeet),
+      isAcrobatic, origin: { ...combatant.position } };
+    enqueueMovementOpportunities(room, opportunities.filter(item => item.movementStepIndex === firstStep));
+    return true;
+  }
+
+  return false;
+}
+
+function movementPrefix(resolution: Extract<MovementResolutionResult, { kind: "ready" }>, count: number): Extract<MovementResolutionResult, { kind: "ready" }> {
+  const steps = resolution.steps.slice(0, count);
+  const last = steps[steps.length - 1];
+  return { ...resolution, steps, finalPosition: last.position, totalCostFeet: last.cumulativeCostFeet,
+    totalBaseRouteCostFeet: last.cumulativeBaseRouteCostFeet, projectedContext: last.resultingContext };
+}
+
+export function resumeMovement(room: CombatRoom): Extract<ClientCommand, { action: "charge" }> | undefined {
+  const pending = room.pendingMovement;
+  if (!pending) return;
+  delete room.pendingMovement;
+  const actor = room.combatants.find(item => item.id === pending.actorId);
+  if (!actor || room.phase !== "active" || room.currentTurn.combatantId !== actor.id ||
+      !["active", "disabled"].includes(lifeStatus(actor)) ||
+      footprintCellKey(actor.position) !== footprintCellKey(pending.origin)) return;
+  const snapshot = createCombatRulesSnapshot(room);
+  const initialContext = { normalDiagonalStepsThisTurn: room.currentTurn.normalDiagonalStepsThisTurn };
+  const speed = Rules.totalSpeedFeet(snapshot, actor);
+  const budget = pending.kind === "run" ? runSpeedBudgetFeet(snapshot, actor) :
+    pending.kind === "charge" || (pending.kind === "withdraw" && !pending.startedDisabled) ? speed * 2 : speed;
+  const availableBudgetFeet = Math.min(pending.remainingBudget, Math.max(0, budget - room.currentTurn.movementUsedFeet));
+  const movementCheck = { ...snapshot, currentTurn: { ...snapshot.currentTurn, usedMoveAction: false,
+    usedFullAttack: false, usedStandardAction: pending.kind === "move" ? snapshot.currentTurn.usedStandardAction : false,
+    movementUsedFeet: pending.kind === "move" ? snapshot.currentTurn.movementUsedFeet : 0 } };
+  const check = pending.kind === "run" ? canRun(movementCheck, actor) : pending.kind === "charge" ? canCharge(movementCheck, actor) : canUseMoveAction(movementCheck, actor);
+  if (!check.ok || !Rules.evaluateActionAvailability(snapshot, actor).ok) return;
+
+  const resolution = resolveMovementPipeline({ context: snapshot, combatant: actor, path: pending.path,
+    initialContext, availableBudgetFeet, isAcrobatic: pending.isAcrobatic });
+  if (resolution.kind !== "ready" || (pending.kind !== "move" && resolution.steps.some(step => {
+    if (pending.kind === "run" && step.isDifficultTerrain) return true;
+    if (pending.kind === "charge" && (step.isDifficultTerrain || step.spatialMode !== "natural")) return true;
+    const cells = new Set(step.occupiedCells.map(footprintCellKey));
+    return snapshot.combatants.some(other => other.id !== actor.id &&
+      (pending.kind === "charge" || (lifeStatus(other) !== "dead" && (other.type !== actor.type || step.stepIndex === resolution.steps.length - 1))) &&
+      getCombatantOccupiedCells(other, snapshot).some(cell => cells.has(footprintCellKey(cell))));
+  }))) {
+    room.log.unshift(makeLog("movement", actor.name + " no puede continuar por la ruta prevista."));
+    broadcast(room);
+    return;
+  }
+  const candidates = findTriggeredOpportunityAttacksForPath(snapshot, actor, pending.path,
+    resolution.totalCostFeet, reactor => Rules.canMakeOpportunityAttack(snapshot, reactor), pending.isAcrobatic,
+    new Set(pending.exemptDepartureCells), resolution.steps);
+  const opportunities: OpportunityAttack[] = [];
+  const evaded = new Set(pending.evadedReactors);
+  for (const candidate of candidates) {
+    if (evaded.has(candidate.attackerId)) continue;
+    if (opportunities.length && candidate.movementStepIndex !== opportunities[0].movementStepIndex) break;
+    if (candidate.requiredCd !== 15 || rollDice(20) + getEffectiveAbilityModifier(snapshot, actor, "dexterity") < 15) opportunities.push(candidate);
+    else evaded.add(candidate.attackerId);
+  }
+  const first = opportunities[0]?.movementStepIndex;
+  if (first !== 0) {
+    const prefix = first === undefined ? resolution : movementPrefix(resolution, first);
+    const committed = commitMovementResolution({ room, combatant: actor, resolution: prefix, preconditions: {
+      expectedTurnCombatantId: actor.id, expectedRound: room.round, expectedOrigin: pending.origin,
+      expectedMovementUsedFeet: room.currentTurn.movementUsedFeet, expectedDiagonalContext: initialContext
+    } });
+    if (committed.kind === "rejected") return;
+    pending.remainingBudget = availableBudgetFeet - prefix.totalCostFeet;
+  }
+  if (first !== undefined) {
+    room.pendingMovement = { ...pending, evadedReactors: [...evaded], origin: { ...actor.position }, path: pending.path.slice(first) };
+    enqueueMovementOpportunities(room, opportunities.filter(item => item.movementStepIndex === first));
+  }
+  if (first === undefined && pending.kind === "withdraw") {
+    const exertion = applyDisabledExertion(actor, { wasDisabledAtActionStart: pending.startedDisabled ?? false, actionKind: pending.startedDisabled ? "standard" : "full-round", actionWasExerting: true });
+    if (exertion.applied) {
+      room.log.unshift(makeLog("status", actor.name + " pierde 1 HP por esfuerzo al retirarse."));
+      logStatusChange(room, actor, exertion.statusBefore, exertion.statusAfter);
+      checkCombatOutcome(room);
+    }
+  }
+  if (first === undefined && pending.charge) return pending.charge;
   broadcast(room);
 }

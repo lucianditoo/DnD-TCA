@@ -140,7 +140,8 @@ function migrateLegacyProfile(value: unknown): StoredProfile {
     sizeCategory: z.enum(["fine", "diminutive", "tiny", "small", "medium", "large", "huge", "gargantuan", "colossal"]),
     creatureTypeId: z.enum(["aberration", "animal", "construct", "dragon", "elemental", "fey", "giant", "humanoid", "magical_beast", "monstrous_humanoid", "ooze", "outsider", "plant", "undead", "vermin"]).optional(),
     featureIds: z.array(z.custom<`srd_sneak_attack_${number}d6`>((entry) => typeof entry === "string" && /^srd_sneak_attack_\d+d6$/.test(entry))).optional(),
-    skillRanks: z.object({ escape_artist: z.number().int().nonnegative() }).strict().optional(),
+    skillRanks: z.object({ escape_artist: z.number().int().nonnegative(),
+  concentration: z.number().int().nonnegative().optional() }).strict().optional(),
     featIds: z.array(z.string()).optional(), intrinsicDefense: z.object({ naturalArmorBonus: z.number(), dodgeBonus: z.number(), deflectionBonus: z.number(), miscArmorClassBonus: z.number() }),
     naturalAttackId: z.string().optional(), abilities: z.array(z.string()).optional(), preparedSpellLoadout: z.array(z.object({ slotId: z.string(), spellId: z.string() })).optional(),
     buffs: z.array(z.unknown()).optional(), position: z.object({ x: z.number().int(), y: z.number().int(), zFeet: z.number().int().default(0) }).optional(), updatedAt: z.string().datetime().optional()

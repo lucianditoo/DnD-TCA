@@ -1,3 +1,4 @@
+import type { MovementResolutionStep } from "./movementResolution.js";
 import type { ArmorClassBonusType, ArmorClassBreakdown, AttackContextModifiers, AttackDeliveryContext, CombatLogEntry, CombatRoom, CombatRulesSnapshot, Combatant, CombatantSnapshot, ConcealmentAssessment, ConcealmentKind, CoverAssessment, CoverKind, LifeStatus, LineOfEffectAssessment, OpportunityAttack, OpportunityAttackLegality, Position, SavingThrowType, SizeCategory, SpecialManeuverId, VisionAssessment, VisionReason, VisionTrace, VisualPathAssessment } from "./types.js";
 import type { ConditionalModifier, EffectDefinition, ModifierCondition, Trait, TraitCondition, EffectStat } from "./effects/contracts.js";
 import type { CatalogEffectId } from "./effects/types.js";
@@ -581,7 +582,7 @@ export function createRuleEvaluator<TCatalog extends Record<string, EffectDefini
     canMakeOpportunityAttack(
       context: CombatRulesSnapshot<TEffectId>,
       combatant: Combatant,
-      targetId?: string
+      _legacyTargetId?: string
     ): boolean {
       if (combatant.buffs.some((buff) => buff.preventsOpportunityAttacks)) return false;
       const reduced = EffectReducer.reduceEffectsForTarget({
@@ -589,7 +590,15 @@ export function createRuleEvaluator<TCatalog extends Record<string, EffectDefini
         targetId: combatant.id,
         catalog
       });
-      if (hasEffectTrait(reduced, "CANNOT_MAKE_AOO")) return false;
+      if (hasEffectTrait(reduced, "CANNOT_MAKE_AOO")) {
+        if (!combatant.featIds.includes("srd_combat_reflexes")) return false;
+        const withoutFlatFooted = EffectReducer.reduceEffectsForTarget({
+          effectInstances: context.effectInstances.filter(effect => effect.effectId !== "srd_flat_footed"),
+          targetId: combatant.id,
+          catalog
+        });
+        if (hasEffectTrait(withoutFlatFooted, "CANNOT_MAKE_AOO")) return false;
+      }
 
       let maxAooAllowed = 1;
       if (combatant.featIds.includes("srd_combat_reflexes")) {
@@ -598,10 +607,6 @@ export function createRuleEvaluator<TCatalog extends Record<string, EffectDefini
       }
 
       if ((combatant.stats.opportunityAttacksThisRound ?? 0) >= maxAooAllowed) return false;
-
-      if (targetId && combatant.stats.targetsAttackedThisRoundViaAoO?.includes(targetId)) {
-        return false;
-      }
 
       return true;
     },
@@ -615,7 +620,7 @@ export function createRuleEvaluator<TCatalog extends Record<string, EffectDefini
       // Chequear si algun enemigo amenaza al combatiente
       for (const enemy of prodSnapshot.combatants) {
         if (enemy.id !== combatant.id && enemy.type !== combatant.type && lifeStatus(enemy) === "active") {
-          if (threatensTarget(prodSnapshot, enemy, combatant) && this.canMakeOpportunityAttack(snapshot, enemy, combatant.id)) {
+          if (threatensTarget(prodSnapshot, enemy, combatant) && this.canMakeOpportunityAttack(snapshot, enemy) && getOpportunityAttackLegality(prodSnapshot, enemy, combatant).allowed) {
             return true;
           }
         }
@@ -942,12 +947,12 @@ export function findTriggeredOpportunityAttacksForPath(
    */
   exemptDepartureCellKeys: ReadonlySet<string> = NO_EXEMPT_DEPARTURE_CELLS,
   /** Optional validated footprints; no route validation or axis inference here. */
-  confirmedSteps?: readonly Pick<MovementStepProjection, "occupiedCells" | "spatialMode" | "squeezingAxis">[]
+  confirmedSteps?: readonly (Pick<MovementStepProjection, "occupiedCells" | "spatialMode" | "squeezingAxis"> & Partial<Pick<MovementResolutionStep, "cumulativeCostFeet" | "cumulativeBaseRouteCostFeet" | "resultingContext">>)[]
 ): OpportunityAttack[] {
   if (confirmedSteps && confirmedSteps.length !== path.length) {
     throw new Error("La evidencia espacial confirmada no corresponde a la ruta de AdO.");
   }
-  if (distanceMovedFeet <= room.board.cellSizeFeet || path.length === 0) return [];
+  if (distanceMovedFeet <= 0 || path.length === 0) return [];
   if (lifeStatus(mover) === "dead" || lifeStatus(mover) === "dying" || lifeStatus(mover) === "stable") return [];
   const destination = path[path.length - 1];
   const opportunities: OpportunityAttack[] = [];
@@ -1000,7 +1005,7 @@ export function findTriggeredOpportunityAttacksForPath(
     } : room;
     for (const reactor of reactors) {
       const other = reactor.combatant;
-      if (triggeredAttackerIds.has(other.id)) continue;
+      if (triggeredAttackerIds.has(other.id) || other.stats?.movementOpportunityTargetsThisRound?.includes(mover.id)) continue;
       const provokingCells = abandonedCells.filter((cell) => {
         const distance = distanceBetweenFootprintGeometriesFeet(
           reactor.geometry,
@@ -1026,7 +1031,13 @@ export function findTriggeredOpportunityAttacksForPath(
         attackerPosition: { ...other.position },
         origin: { ...origin },
         destination: { ...destination },
-        movementCostFeet: Math.max(0, distanceMovedFeet - costBeforeOrigin),
+        movementCostFeet: Math.max(0, distanceMovedFeet - (stepIndex === 0 ? 0 : confirmedSteps?.[stepIndex - 1]?.cumulativeCostFeet ?? costBeforeOrigin)),
+        movementStepIndex: stepIndex,
+        movementPrefix: {
+          remainingBaseFeet: (confirmedSteps?.at(-1)?.cumulativeBaseRouteCostFeet ?? distanceMovedFeet) - (confirmedSteps?.[stepIndex - 1]?.cumulativeBaseRouteCostFeet ?? costBeforeOrigin),
+          diagonalSteps: confirmedSteps?.[stepIndex - 1]?.resultingContext?.normalDiagonalStepsThisTurn ?? room.currentTurn.normalDiagonalStepsThisTurn,
+          squeezingAxis: confirmedSteps?.[stepIndex - 1]?.squeezingAxis ?? (stepIndex === 0 ? room.effectInstances.find(effect => effect.effectId === "srd_squeezing" && effect.targets?.includes(mover.id))?.squeezingAxis : undefined)
+        },
         reason: mover.name + " abandona una casilla amenazada por " + other.name + " durante su ruta de movimiento.",
         createdAt: new Date().toISOString(),
         provokingCells: provokingCells.map((cell) => ({ ...cell })),
