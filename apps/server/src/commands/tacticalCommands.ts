@@ -1,14 +1,14 @@
 import { suspendMovement } from "./movementCommands.js";
 import { enqueueMovementOpportunities, findStationaryOpportunityAttacks } from "../combat/opportunityAttackResolver.js";
 import { distanceBetweenFootprintsFeet, getLineOfEffect, resolveEquippedWeaponProfile, resolveMovementPipeline, commitMovementResolution, applyDamage, canStandardAttack, canUseFiveFootStep, canUseMoveAction, canDisabledCombatantTakeAction, canRun, runSpeedBudgetFeet, buildStraightPath, isDifficultTerrain, findTriggeredOpportunityAttacksForPath, getAttackContextModifiers, getCombatantOccupiedCells, footprintCellKey, isAdjacent, lifeStatus, makeLog, Rules, threatensTarget, createCombatRulesSnapshot, validateMovePath, validateStandUp, getEffectiveAbilityModifier, hasEffectTrait, FeatCatalog, EffectManager, cryptoId, type ClientCommand, type CombatRoom, type CombatRulesSnapshot } from "@dnd-tactical/shared";
-import { requireCombatantControl, requireTurnControl } from "../auth/control.js";
+import { requireCombatantControl } from "../auth/control.js";
 import { resolveAttack, resolveWeaponAttackSource } from "../combat/attackResolver.js";
 import { applyStartOfNextTurnBuff } from "../combat/buffRules.js";
 import { canCharge, findChargePath } from "../combat/chargeResolver.js";
 import { ensureActiveTurn } from "../combat/turnManager.js";
 import { pruneInvalidOpportunityAttacks } from "../combat/opportunityAttackResolver.js";
 import { checkCombatOutcome, findCombatant, logStatusChange } from "../room/roomState.js";
-import { broadcast } from "../room/roomStore.js";
+import { broadcast, findParticipant } from "../room/roomStore.js";
 import { applyAttackMutations } from "./attackCommands.js";
 import { applyDisabledExertion } from "../combat/lifeStatusEffects.js";
 import { resolveSavingThrow } from "../combat/savingThrowResolver.js";
@@ -533,7 +533,10 @@ function handleStandUp(room: CombatRoom, snapshot: CombatRulesSnapshot<import("@
 export function handleResolveSavingThrow(room: CombatRoom, command: Extract<ClientCommand, { type: "resolve-saving-throw" }>): void {
   if (room.phase !== "active") throw new Error("Esta accion solo esta disponible con el combate en curso.");
   const target = findCombatant(room, command.targetId);
-  requireTurnControl(command.actorId, target);
+  const participant = findParticipant(command.actorId);
+  if (!participant) throw new Error("Participante no encontrado.");
+  if (participant.roomCode !== room.code) throw new Error("El participante no pertenece a esta sala.");
+  if (participant.role !== "gm") requireCombatantControl(command.actorId, target);
   const snapshot = createCombatRulesSnapshot(room);
 
   const result = resolveSavingThrow(snapshot, target, command.saveType, command.dc, command.d20Roll);

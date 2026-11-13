@@ -58,6 +58,13 @@ await send(ownerB, { type: 'end-turn', roomCode: ownershipCode, actorId: ownerB.
 record('jugador no puede terminar turno ajeno', ownerB.errors.some(e => /terminar el turno de sus propios heroes/i.test(e)), ownerB.errors.join(' | '));
 await send(ownerA, { type: 'end-turn', roomCode: ownershipCode, actorId: ownerA.participant.id });
 record('jugador puede terminar turno propio', ownerA.room.currentTurn.combatantId === ownedEnemy.id, ownerA.room.currentTurn.combatantId);
+const save = { type: 'resolve-saving-throw', roomCode: ownershipCode, actorId: ownerA.participant.id, targetId: ownedBane.id, saveType: 'fortitude', dc: 15, d20Roll: 12 };
+await send(ownerA, save);
+record('WebSocket permite una salvacion propia fuera de turno', ownershipGm.room.currentTurn.combatantId === ownedEnemy.id && ownershipGm.room.log[0]?.message.includes('intenta salvación de fortitude'));
+const beforeForeignSave = JSON.stringify(ownershipGm.room);
+const foreignSaveErrorCount = ownerB.errors.length;
+await send(ownerB, { ...save, actorId: ownerB.participant.id });
+record('WebSocket rechaza una salvacion ajena sin mutar', ownerB.errors.length === foreignSaveErrorCount + 1 && JSON.stringify(ownershipGm.room) === beforeForeignSave);
 await send(ownerA, { type: 'end-turn', roomCode: ownershipCode, actorId: ownerA.participant.id });
 record('jugador no puede terminar turno de enemigo', ownerA.errors.some(e => /terminar el turno de sus propios heroes/i.test(e)), ownerA.errors.join(' | '));
 await send(ownerA, { type: 'declare-attack-mode', roomCode: ownershipCode, actorId: ownerA.participant.id, combatantId: ownedEnemy.id, mode: 'standard', defensive: false });

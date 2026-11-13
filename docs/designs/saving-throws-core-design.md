@@ -69,3 +69,7 @@ Nuevo endpoint WebSocket estricto:
 1. **Hold Person**: Requiere que el objetivo haga tiradas de Will repetidas; el motor transaccional permite automatizar estas tiradas de forma robusta al final de cada turno.
 2. **Cure Light Wounds contra Muertos Vivientes**: Al curar a un no-muerto, actúa como daño pero requiere salvación de Voluntad. El flujo reutilizará este endpoint unificado.
 3. **Veneno (Poison)**: Daño por habilidad (ej. CON damage) al fallar salvaciones de Fortaleza periódicas, calculadas y resueltas por el mismo núcleo.
+
+## Autorización de la salvación manual
+
+En fase activa, el jugador puede resolver la salvación de un combatiente que controla y el GM de la sala puede intervenir sobre cualquier combatiente. La fase del encuentro determina si se admite el comando, con independencia del turno individual. WebSocket valida la identidad y la sala del socket, y el handler verifica la pertenencia a la sala y el control o autoridad administrativa antes de registrar la tirada. La herramienta manual registra el resultado del flujo existente.
