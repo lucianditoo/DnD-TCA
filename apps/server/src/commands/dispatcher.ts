@@ -14,6 +14,7 @@ import { handleEquipItem, handleUnequipItem } from "./equipmentCommands.js";
 import { broadcast, clients, rooms, send } from "../room/roomStore.js";
 import { validateClientCommand } from "../validation/validateClientCommand.js";
 import { getDemoSessionBySocket, isDemoRoom } from "../demo/sessionStore.js";
+import { authorizeRoomCommand } from "../auth/commandAuthorization.js";
 
 export interface InternalExecutionContext {
   readonly source: "demo-runner";
@@ -50,6 +51,8 @@ function dispatchCommandCore(
       throw new Error("Hay una amenaza de critico pendiente. Resolvela antes de continuar.");
     }
   }
+
+  authorizeRoomCommand(room, command);
 
   const pending = room.pendingStationaryAction;
   const provokingActor = pending && room.combatants.find(actor => actor.id === room.currentTurn.combatantId);
