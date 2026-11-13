@@ -1,6 +1,6 @@
 # Walkthrough — DT-008 autorización centralizada
 
-Estado: candidato local para revisión independiente de Nemotron, sin integrar.
+Estado: DT-008 integrado y resuelto en `03854a9` mediante el PR #1. La evidencia siguiente corresponde a la preparación del candidato.
 Fecha: 2026-11-13. Rama: `codex/dt-008-authorization`.
 Base y HEAD: `17eafec716a4e65cb34246c570f9bb85f041fa02` (origin/master actualizado).
 El walkthrough anterior queda preservado en Git.
@@ -28,8 +28,6 @@ de reanudación sin orden de iniciativa (un ciclo por causa). No hay causas de
 fallo de código pendientes. La primera suite global con esa fixture incompleta
 falló; la ejecución posterior pasó.
 
-No se hizo commit, push, PR ni merge. `master` permanece en el SHA original.
-`docs/planning/` era contenido ajeno sin seguimiento y no se modificó.
-DT-008 sigue pendiente de revisión/integración en el registro de deuda.
-Siguiente paso: revisión independiente de Nemotron sobre el diff completo,
-incluidos archivos nuevos; CI y dictamen arquitectónico aún no acreditados.
+Al terminar la preparación local quedaban pendientes la publicación y la revisión.
+`docs/planning/` era contenido ajeno sin seguimiento y se preservó.
+El PR #1 se integró posteriormente tras Architecture Review aprobada y Windows CI exitoso, según el propietario.
