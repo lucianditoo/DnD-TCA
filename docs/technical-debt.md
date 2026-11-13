@@ -107,19 +107,11 @@ Estas deudas generan riesgo de regresión o complican implementaciones futuras p
 ---
 
 <a id="dt-009"></a>
-### DT-009: E2E Tests son frágiles ante cambios en mecánicas de dados
+### ~~DT-009: E2E Tests son frágiles ante cambios en mecánicas de dados~~ ✅ RESUELTO EN CANDIDATO
 
-**Descripción**: El script E2E usa valores de d20 fijos. Cuando se agregó el sistema de críticos, los tests que usaban `d20Roll: 20` empezaron a fallar porque el servidor interceptaba el 20 como amenaza de crítico y bloqueaba la resolución del flujo. Los valores tuvieron que cambiarse a 15.
+El [E2E WebSocket](../scripts/e2e-websocket.mjs) verifica la fase de confirmación, el daño diferido y el fallo de confirmación con 1 natural antes de comprobar movimiento y ataques iterativos. Reproducción previa con 20 natural en el primer ataque del escenario de iterativos: 135/141, con seis fallos encadenados por la amenaza pendiente. Con la resolución explícita: 143/143, más 14/14 pruebas focalizadas de ataque y críticos.
 
-**Riesgo**: Fragilidad mantenedora. Cualquier mecánica nueva que intercepte valores específicos de dado puede romper el E2E.
-
-**Módulo afectado**: `scripts/e2e-websocket.mjs`
-
-**Recomendación**: Agregar un modo de test en el servidor que permita inyectar dados predeterminados o desactivar tiradas de confirmación de crítico, separando la prueba del flujo de la prueba del valor de dado.
-
-**Bloquea MVP**: No.
-
-**Mitigación parcial (Sprint 024, 2026-07-16)**: las pruebas unitarias del lanzamiento inyectan un roller interno determinista sin exponer tiradas en el contrato WebSocket. El E2E de salvación acepta ambos resultados legales y verifica invariantes de estado, por lo que esta nueva mecánica no amplía la fragilidad. La deuda permanece abierta para los escenarios históricos de ataque/crítico.
+Las tiradas manuales siguen siendo entradas explícitas de cada escenario. Los casos que prueban bonificadores, salvaciones o un AdO fallido conservan sus valores intencionales. El E2E de ocultación verifica la proyección pública para ambos resultados legales. El cambio se limita al test y conserva el RNG y el protocolo de producción.
 
 ---
 
