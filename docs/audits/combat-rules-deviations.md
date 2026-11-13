@@ -8,6 +8,8 @@
 
 ---
 
+> La auditoría describe el corpus OCR en su contexto original. Para las consultas actuales, el [SRD local](../../INDEX.md#srd-35-en-markdown) aporta referencias para G-01 ([Full Attack](../rules/srd-3.5/basic-rules-and-legal/combat-i-basics.md#full-attack) y [progresión de BAB](../rules/srd-3.5/basic-rules-and-legal/character-classes-ii.md#paladin)), G-02 ([Tumble](../rules/srd-3.5/basic-rules-and-legal/skills-ii.md#tumble-dex-trained-only-armor-check-penalty)), G-03 ([Aiming a Spell](../rules/srd-3.5/spells/magic-overview.md#aiming-a-spell)), G-04 ([Carrying Capacity](../rules/srd-3.5/basic-rules-and-legal/carrying-movement-and-exploration.md#carrying-capacity)) y G-05 ([Conditions](../rules/srd-3.5/basic-rules-and-legal/special-abilities-and-conditions.md#conditions)). El [Rule Registry](../rules/registry.md) conserva el estado del motor.
+
 ## 1. Resumen Ejecutivo de la Auditoría
 
 La carpeta `combat/` es, en esencia, una **transcripción casi literal (vía OCR) del Capítulo 8 en español**, no una reformulación local de reglas. Esto es una excelente noticia para la fidelidad: el contenido normativo coincide con el manual en la abrumadora mayoría de mecánicas — límite de 1 AdO por asalto salvo Reflejos de Combate, diagonales 1-2-1-2, corte de esquinas, terreno difícil ×2 (×3 en diagonal), CA de toque, críticos con confirmación, presa completa con sus 4 pasos, expulsión con Tabla 8-9, y la economía moribundo/estabilización -1 a -9 con 10% por asalto.

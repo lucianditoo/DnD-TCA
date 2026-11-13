@@ -12,6 +12,7 @@ Este archivo localiza responsabilidades; no replica su contenido.
 | Estado integrado y publicado | [`PROJECT_STATUS.md`](PROJECT_STATUS.md) |
 | Pendientes | [`TODO.md`](TODO.md) |
 | Orden futuro | [`ROADMAP.md`](ROADMAP.md) |
+| Texto normativo externo | [SRD 3.5 en Markdown](#srd-35-en-markdown) |
 | Rule IDs y estado oficial | [`docs/rules/registry.md`](docs/rules/registry.md) |
 | Evidencia de tests | [`docs/testing/master-coverage.md`](docs/testing/master-coverage.md) |
 | Deuda técnica | [`docs/technical-debt.md`](docs/technical-debt.md) |
@@ -39,7 +40,7 @@ tienen consumidores y granularidad diferentes y no redefinen Rule IDs.
 - [`docs/architecture/combat-engine.md`](docs/architecture/combat-engine.md):
   pipeline del motor.
 - [`docs/architecture/combat-documentation-integration.md`](docs/architecture/combat-documentation-integration.md):
-  integración del corpus `combat/`.
+  uso del SRD y del corpus histórico `combat/`.
 - [`docs/architecture/rule-engine-integration.md`](docs/architecture/rule-engine-integration.md):
   fronteras del Rule Engine.
 - [`docs/architecture/active-effects/`](docs/architecture/active-effects/):
@@ -95,6 +96,10 @@ co-ubican bajo `docs/designs/<feature>/`.
 - [`.ai/FILE_INDEX.md`](.ai/FILE_INDEX.md): mapa de código.
 - [`.ai/DESIGN_REVIEW_CHECKLIST.md`](.ai/DESIGN_REVIEW_CHECKLIST.md):
   preguntas de diseño.
+
+## SRD 3.5 en Markdown
+
+La [matriz del SRD 3.5](docs/rules/srd-3.5/README.md) enlaza los 86 documentos de la distribución archivada y registra su origen, licencia y verificación. El [Rule Registry](docs/rules/registry.md) enlaza las reglas usadas por el motor con su diseño, código y pruebas. Los NDD y ADR conservan las decisiones del proyecto. El [corpus histórico de combate](combat/00_indice.txt) permite rastrear las citas anteriores.
 
 ## Historia
 

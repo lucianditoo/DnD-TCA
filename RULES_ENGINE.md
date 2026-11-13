@@ -21,6 +21,8 @@ consulta en [combatSnapshot.ts](packages/shared/src/combatSnapshot.ts) y en el
 
 ## Autoridades que se deben consultar
 
+- Referencia externa de reglas: [SRD 3.5](INDEX.md#srd-35-en-markdown).
+
 - Reglas implementadas, parciales y limitaciones: [Rule Registry](docs/rules/registry.md).
 - Estado de la integración actual: [PROJECT_STATUS.md](PROJECT_STATUS.md).
 - Evidencia de pruebas: [master-coverage.md](docs/testing/master-coverage.md).
