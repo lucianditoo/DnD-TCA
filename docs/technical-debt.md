@@ -102,6 +102,12 @@ Estas deudas generan riesgo de regresión o complican implementaciones futuras p
 <a id="dt-008"></a>
 ### DT-008: Ownership acoplado imperativamente en cada handler
 
+**Candidato pendiente de revisión (2026-11-13)**: La rama independiente
+`codex/dt-008-authorization` añade políticas exhaustivas antes de ejecutar
+comandos, conservando las validaciones existentes. Ver [contraste de los ocho
+hallazgos, diseño y evidencia](audits/dt-008-authorization.md). No integrado;
+DT-008 no se marca resuelta hasta la revisión e integración autorizadas.
+
 **Descripción**: Las comprobaciones de `requireCombatantControl` y `requireTurnControl` están duplicadas en cada handler de comando individualmente. No existe middleware centralizado.
 
 **Riesgo**: Si se crea un handler nuevo y se olvida agregar la comprobación, se genera una vulnerabilidad de seguridad donde jugadores pueden controlar combatientes ajenos.

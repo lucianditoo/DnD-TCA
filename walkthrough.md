@@ -1,45 +1,35 @@
-# Walkthrough — D-1B-I11 Run Normative Preview Parity Design
+# Walkthrough — DT-008 autorización centralizada
 
-Canonical responsibility: Auditoría y propuesta de diseño para llevar el preview web de Run al pipeline normativo compartido.
-Supersedes: Walkthrough I10 Server Integration, preservado en Git.
-Complements: [NDD Capítulo 13](docs/designs/normative-movement-design.md#capítulo-13--i11-run-normative-preview-parity), [Run Design](docs/designs/run-design.md), [Registry](docs/rules/registry.md).
-Derived from: Baseline `98030357b857a66c1d1e0f860b46a97614c9b659` y auditoría directa del código productivo posterior a I10.
-Lifecycle: Histórico de diseño. Architecture Review aprobada y Proceed explícito del propietario. La evidencia de implementación se registra en [master-coverage.md](docs/testing/master-coverage.md#d-1b-i11--preview-normativo-de-run).
+Estado: candidato local para revisión independiente de Nemotron, sin integrar.
+Fecha: 2026-11-13. Rama: `codex/dt-008-authorization`.
+Base y HEAD: `17eafec716a4e65cb34246c570f9bb85f041fa02` (origin/master actualizado).
+El walkthrough anterior queda preservado en Git.
 
-## Resultado
+El [informe de DT-008](docs/audits/dt-008-authorization.md) contiene el contraste
+individual de los ocho hallazgos, diseño, riesgos residuales, archivos y pruebas.
+Se implementó una tabla exhaustiva de autorización para los 37 comandos de sala,
+con membresía y rechazo por defecto antes de ejecutar handlers. Permanecen todas
+las validaciones previas y las semánticas de GM, jugadores, bootstrap, reacciones
+y continuaciones. No se modificaron contratos ni mecánicas de combate.
 
-El Sprint D-1B-I11 quedó limitado a documentación arquitectónica. No modifica código, tests, contratos compartidos, schemas, Rule IDs ni comportamiento observable.
+Evidencia local: 48 pruebas nuevas; suite global 1073/1073, sin skips; typecheck
+shared/web/server y build correctos. Build advierte sobre tamaño del bundle web.
+UI 39/39 aprobada previamente. Repetición completa WebSocket: 141/141,
+cero fallos, salida 0. La expectativa corregida comprueba un error nuevo de
+autorización y ausencia de cambios en los snapshots de jugador y GM.
+Se reutilizaron suite global, UI, tipos y build sin repetirlos ni cambiar código.
+Diff final revisado y `git diff --check` correcto. Servidor residual de pruebas
+cerrado tras identificar su proceso; puerto 3333 libre. Detalles y limitaciones
+de evidencia: consultar el informe de DT-008.
 
-La auditoría confirmó una asimetría concreta: el servidor Run ya usa `buildStraightPath`, presupuesto efectivo, Movement Resolution y Authoritative Commit; el cliente todavía identifica el preview como `legacy-run`, permite construir una ruta arbitraria paso a paso y usa cálculos legacy para coste y resaltado.
+La regresión de comando desconocido se observó roja antes del cambio. Se corrigió
+una selección de campo anidado de maniobra detectada por TypeScript y una fixture
+de reanudación sin orden de iniciativa (un ciclo por causa). No hay causas de
+fallo de código pendientes. La primera suite global con esa fixture incompleta
+falló; la ejecución posterior pasó.
 
-El Capítulo 13 define la paridad futura sin duplicar autoridad:
-
-- Run se previsualiza por destino sobre los ocho rayos ortogonales/diagonales válidos desde el origen.
-- Cada candidato reconstruye exactamente la ruta recta canónica mediante `buildStraightPath`; no hay snapping, BFS, A* ni barrido exhaustivo del tablero.
-- El adapter web especializado `buildRunMovementPreview` consume Route Validation, Movement Cost, presupuesto Run efectivo, Difficult Terrain, V1 y contexto diagonal real.
-- La disponibilidad de la acción permanece separada de la legalidad de una ruta concreta.
-- El cliente mantiene solo el destino elegido; ruta, coste, contexto proyectado, huellas y trazabilidad se derivan nuevamente en cada render relevante.
-- El payload productivo continúa enviando únicamente `to`; el servidor sigue siendo la autoridad y reconstruye la ruta.
-- Squeezing, terreno difícil, contribuciones de dotes, AoO y errores conservan las autoridades existentes; no se introducen excepciones Run ni lógica paralela.
-
-## Auditoría trazable
-
-Se inspeccionaron completamente las autoridades documentales requeridas y los consumidores reales en shared, web, server y tests. Se verificaron especialmente `apps/web/src/movementPreview.ts`, `useBoardSelection.ts`, `viewModel.ts`, `App.tsx`, `ActionsPanel.tsx`, `MovementPreviewSummary.tsx`, `Board.tsx`, el handler productivo `handleRun`, los módulos normativos de movimiento y las suites de preview/Run existentes.
-
-Las 26 preguntas obligatorias del sprint quedaron respondidas explícitamente en el NDD. No se detectó un bloqueo arquitectónico ni fue necesario abrir una ODR.
-
-## Alcance futuro condicionado
-
-La sección 13.9 contiene un plan embebido de implementación futura, no autorizado por este sprint. Si recibe Proceed y permanece restringido a web, tests y documentación, corresponde Nivel B. Cualquier necesidad de modificar shared, server, schemas o protocolo obliga a detenerse y reclasificar antes de implementar.
-
-La futura remediación deberá retirar exclusivamente la rama `legacy-run` y sus consumidores cuando la paridad esté demostrada; los helpers legacy todavía utilizados por otras acciones permanecen fuera de alcance. D-1B-I6 y cualquier nueva semántica de movimiento continúan separados.
-
-## Validación documental
-
-- Diff limitado a Markdown aprobado del sprint.
-- Enlaces y referencias cruzadas comprobados.
-- `git diff --check` comprobado antes del commit.
-- No se ejecutaron suites de código ni CI: el sprint no contiene cambios ejecutables y no genera evidencia funcional nueva.
-- `test.txt` se preservó sin seguimiento y fuera del commit.
-
-Estado final: diseño listo para Architecture Review y Proceed explícito antes de cualquier implementación.
+No se hizo commit, push, PR ni merge. `master` permanece en el SHA original.
+`docs/planning/` era contenido ajeno sin seguimiento y no se modificó.
+DT-008 sigue pendiente de revisión/integración en el registro de deuda.
+Siguiente paso: revisión independiente de Nemotron sobre el diff completo,
+incluidos archivos nuevos; CI y dictamen arquitectónico aún no acreditados.

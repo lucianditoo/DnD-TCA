@@ -228,8 +228,13 @@ for (let i = 0; i < 5; i += 1) await send(gm, { type: 'end-turn', roomCode: code
 const elaenNextTurn = gm.room.combatants.find(c => c.id === elaen.id);
 record('Defensa total expira al iniciar el siguiente turno propio', gm.room.currentTurn.combatantId === elaen.id && !elaenNextTurn.buffs.some(b => b.name === 'Defensa total'), 'turno=' + gm.room.currentTurn.combatantId + ' buffs=' + JSON.stringify(elaenNextTurn.buffs));
 const player = await connectAndSend({ type: 'join-room', roomCode: code, name: 'Player Test', role: 'player' });
+const beforeDeniedEnemy = JSON.stringify(player.room);
+const beforeDeniedEnemyErrors = player.errors.length;
 await send(player, { type: 'add-demo-combatant', roomCode: code, actorId: player.participant.id, variant: 'enemy' });
-record('jugador no puede agregar enemigos en combate activo', player.errors.some(e => /preparacion/i.test(e)), player.errors.join(' | '));
+record('jugador no puede agregar enemigos en combate activo',
+  player.errors.length === beforeDeniedEnemyErrors + 1 && /Solo el GM/i.test(player.errors.at(-1)) &&
+  JSON.stringify(player.room) === beforeDeniedEnemy && JSON.stringify(gm.room) === beforeDeniedEnemy,
+  player.errors.join(' | '));
 await send(player, { type: 'move-combatant', roomCode: code, actorId: player.participant.id, combatantId: enemy.id, to: { x: enemy.position.x, y: enemy.position.y + 1, zFeet: 0 } });
 record('jugador no puede controlar enemigos', player.errors.some(e => /jugadores no pueden controlar enemigos/i.test(e)), player.errors.join(' | '));
 await send(gm, { type: 'gm-move-combatant', roomCode: code, actorId: gmId, combatantId: enemy.id, to: { x: 10, y: 6, zFeet: 0 } });
