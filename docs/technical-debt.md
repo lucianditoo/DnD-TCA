@@ -107,7 +107,9 @@ Estas deudas generan riesgo de regresión o complican implementaciones futuras p
 ---
 
 <a id="dt-009"></a>
-### ~~DT-009: E2E Tests son frágiles ante cambios en mecánicas de dados~~ ✅ RESUELTO EN CANDIDATO
+### ~~DT-009: E2E Tests son frágiles ante cambios en mecánicas de dados~~ ✅ RESUELTO
+
+Integrado mediante el [PR #3](https://github.com/lucianditoo/DnD-TCA/pull/3). El commit original `7a6937e7eb89656ed3971099a69622b678ea3d29` se conserva en el historial de `develop`.
 
 El [E2E WebSocket](../scripts/e2e-websocket.mjs) verifica la fase de confirmación, el daño diferido y el fallo de confirmación con 1 natural antes de comprobar movimiento y ataques iterativos. Reproducción previa con 20 natural en el primer ataque del escenario de iterativos: 135/141, con seis fallos encadenados por la amenaza pendiente. Con la resolución explícita: 143/143, más 14/14 pruebas focalizadas de ataque y críticos.
 

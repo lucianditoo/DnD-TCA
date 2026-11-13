@@ -50,7 +50,9 @@ La [guía de ejecución](CODEX_GUIDE.md#verificadores) ubica los comandos. Cuand
 
 ### 5.3 Publicación y revisión
 
-El cierre local puede quedar listo para revisión. Commit, push, apertura de PR e integración siguen el alcance autorizado y las protecciones de la rama. Si se autorizó publicar un candidato, preferí una rama de trabajo y un PR para que CI y la revisión ocurran antes de integrarlo. Un push a la rama de trabajo por sí solo no activa Windows CI. Observá CI cuando forme parte de la tarea. Un CI verde acredita sus verificadores. El dictamen arquitectónico acredita los invariantes y decisiones revisados sobre el diff o SHA correspondiente.
+`develop` es la rama permanente de trabajo. Partí de `origin/develop` actualizado y agrupá los cambios de cada tarea en un commit descriptivo. Publicá las tareas autorizadas directamente en `develop`, sin PR individual y mediante push normal. Conservá los cambios ajenos y resolvé cualquier divergencia antes de publicar. `master` es la rama estable y su actualización requiere autorización explícita del propietario y respeto de sus protecciones.
+
+Aplicá las pruebas y revisiones del nivel correspondiente. Si se requiere revisión independiente, obtené el dictamen sobre el diff o SHA del candidato antes de incorporarlo a `develop`. Registrá la evidencia y las aprobaciones en el registro de la tarea. Cuando corresponda Windows CI, usá el workflow existente sobre el SHA de `develop` y comprobá el resultado. El push a `develop` no activa por sí solo ese workflow. Un CI verde acredita sus verificadores. El dictamen arquitectónico acredita los invariantes y decisiones revisados.
 
 En C, el agente principal puede hacer la revisión focalizada si el diseño ya está aceptado y el cambio conserva contratos e invariantes. Una revisión independiente aporta valor cuando el impacto es transversal, hay incertidumbre normativa material o existe riesgo de que implementación y verificación compartan el mismo supuesto. En D, usá un revisor independiente habilitado por el host o un revisor humano. Una revisión independiente pendiente se informa como tal.
 

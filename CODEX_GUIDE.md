@@ -35,6 +35,6 @@ La configuración observada usa `gpt-6.1-sol` con esfuerzo `low`. Ese punto de p
 | Suite global, tipos y compilación | `npm test`, `npm run typecheck`, `npm run build` |
 | Protocolo real | `node scripts/e2e-websocket.mjs` con servidor del checkout en el puerto 3333 |
 | Interacción UI | `npm run test:ui`, con filtro de Playwright cuando el cambio sea focalizado |
-| Evidencia remota | [Windows CI](.github/workflows/windows-ci.yml), en un PR a `master`, un push autorizado a `master` o una ejecución manual habilitada |
+| Evidencia remota | [Windows CI](.github/workflows/windows-ci.yml), ejecución manual sobre `develop` cuando corresponda. Los disparadores de `master` siguen aplicando a la rama estable. |
 
 Para una prueba focal, consultá el runner del [package.json](package.json) y el test afectado. Para iniciar el entorno local con las dependencias disponibles, usá `npm run dev`. Identificá el servidor que usa el E2E y cerrá los procesos que levantaste al terminar. Windows CI registra su propia evidencia sobre el SHA probado.

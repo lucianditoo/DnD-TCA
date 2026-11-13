@@ -4,7 +4,7 @@ Estas son las instrucciones operativas del repositorio. Aplicá [GOVERNANCE.md](
 
 ## Inicio y alcance
 
-1. Para editar, comprobá rama, HEAD y `git status --short`. Preservá cambios ajenos. Si hay solapamiento, aislá el trabajo cuando el host lo permita o resolvé el conflicto con el usuario. Compará con la base remota cuando importe para integración, revisión o publicación.
+1. Para editar, comprobá rama, HEAD y `git status --short`. Usá `develop` actualizado para las tareas ordinarias según la política de publicación. Preservá cambios ajenos. Si hay solapamiento, aislá el trabajo cuando el host lo permita o resolvé el conflicto con el usuario. Compará con la base remota antes de publicar.
 2. Definí objetivo, alcance, criterios de aceptación, nivel A–D y comprobaciones. Para cambios chicos alcanza un plan breve en el chat. Para C/D seguí el diseño y la revisión que pide la gobernanza.
 3. Leé el código, los tests y las fuentes de la vertical afectada. Consultá [INDEX.md](INDEX.md) para ubicarlas. Para reglas SRD consultá el Registry, el NDD aplicable y la fuente normativa pertinente. Para contratos y arquitectura consultá el ADR/NDD afectado. Leé estado, backlog o último cierre cuando la tarea dependa de ellos. Ante una discrepancia, verificá la evidencia y corregí la vista derivada si entra en alcance. Si cambia el comportamiento esperado o quedan decisiones incompatibles, pedí una definición.
 

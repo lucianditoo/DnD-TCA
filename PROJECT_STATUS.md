@@ -11,7 +11,7 @@
 
 ## Estado actual
 
-- Rama de integración: `master`.
+- Rama permanente de trabajo: `develop`. Rama estable: `master`.
 - DT-008 resuelto e integrado en `03854a9` mediante el PR #1. La [deuda técnica](docs/technical-debt.md#dt-008) y el [informe](docs/audits/dt-008-authorization.md) registran el cierre y su evidencia.
 - Última vertical funcional implementada: D-5 Editor Táctico de Mapas (MVP), conforme a su [NDD canónico](docs/designs/map-builder-mvp/design.md) y [plan](docs/designs/map-builder-mvp/implementation-plan.md); **CERRADA y TÉCNICAMENTE APROBADA** (Architecture Review sobre commit `6fd385b42b4dc51b8dcbb195108d7051a600944f`).
 - Última decisión arquitectónica: Sprint D-1B Capítulo 7 (Integration & Implementation Contracts) y NDD de Demo Táctica Automática (`f8c0e9d`).
