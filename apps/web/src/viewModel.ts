@@ -7,6 +7,8 @@ import {
   EffectQueries,
   getCombatantOccupiedCells,
   isProductionEffectId,
+  isChargeStepOccupied,
+  resolveMovementPipeline,
   lifeStatus,
   Rules,
   runSpeedMultiplier,
@@ -149,14 +151,17 @@ export function getChargePreviewPath(room: CombatRoom | null, snapshot: import("
     for (let x = 0; x < room.board.width; x += 1) {
       const destination = { x, y, zFeet: charger.position.zFeet };
       if (sameCell(destination, charger.position)) continue;
-      if (!isFootprintPreviewLegal(room, snapshot, charger, destination)) continue;
+      if (isChargeStepOccupied(snapshot, charger, destination, true)) continue;
       const chargerAtDestination: Combatant = { ...charger, position: { ...destination } };
       if (distanceBetweenFootprintsFeet(snapshot, chargerAtDestination, target) > reachFeet) continue;
       const path = buildStraightPath(charger.position, destination);
       if (!path) continue;
       const distance = calculatePathCostFeet(charger.position, path, snapshot!);
       if (distance < 10 || distance > maxDistance) continue;
-      if (path.some((step) => !isFootprintPreviewLegal(room, snapshot, charger, step))) continue;
+      const resolution = resolveMovementPipeline({ context: snapshot, combatant: charger, path,
+        initialContext: { normalDiagonalStepsThisTurn: snapshot.currentTurn.normalDiagonalStepsThisTurn },
+        availableBudgetFeet: maxDistance, isCharge: true });
+      if (resolution.kind !== "ready" || resolution.steps.some(step => step.isDifficultTerrain || step.spatialMode !== "natural")) continue;
       candidates.push({ path, distance });
     }
   }

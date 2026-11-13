@@ -292,3 +292,70 @@ for (const [action, damage, stop] of [
     }
   });
 }
+for (const [name, blockerY, startsHelpless, interrupts, recovers, allowed, obstacle] of [
+  ["atraviesa un enemigo indefenso", 3, true, false, false, true],
+  ["rechaza un enemigo consciente", 3, false, false, false, false],
+  ["rechaza un aliado consciente", 3, false, false, false, false, "ally"],
+  ["rechaza terreno difícil aunque el ocupante esté indefenso", 3, true, false, false, false, "terrain"],
+  ["rechaza un destino ocupado por un indefenso", 5, true, false, false, false],
+  ["reanuda a través de un indefenso", 3, true, true, false, true],
+  ["detiene la reanudación si el ocupante recupera movilidad", 3, true, true, true, false],
+]) {
+  test("SP-02: " + name, async () => {
+    const { dispatchCommand } = await import("../apps/server/src/commands/dispatcher.ts");
+    const { rooms } = await import("../apps/server/src/room/roomStore.ts");
+    const { findChargePath } = await import("../apps/server/src/combat/chargeResolver.ts");
+    const { createCombatRulesSnapshot } = await import("@dnd-tactical/shared");
+    const { room, attacker, enemy } = createTestRoom();
+    Object.assign(attacker, inventoryEquipment("longsword"));
+    const origin = { ...attacker.position };
+    const end = { x: 1, y: 5, zFeet: 0 };
+    const blocker = { ...enemy, id: "blocker", position: { x: 1, y: blockerY, zFeet: 0 } };
+    const defender = { ...enemy, id: "defender", position: { x: 1, y: 6, zFeet: 0 } };
+    if (obstacle === "ally") blocker.type = attacker.type;
+    room.board = { ...room.board, difficultTerrainCells: obstacle === "terrain" ? ["1,3"] : [] };
+    room.combatants = [attacker, blocker, defender, ...(interrupts ? [enemy] : [])];
+    if (startsHelpless) room.effectInstances.push({
+      instanceId: "sp02-paralyzed", effectId: "srd_paralyzed", targets: [blocker.id],
+      source: { type: "system" }, appliedAtEvent: { type: "SystemInjected", round: room.round }
+    });
+    rooms.set(room.code, room);
+    try {
+      const command = { type: "use-tactical-action", roomCode: room.code, actorId: "player-actor",
+        combatantId: attacker.id, action: "charge", targetId: defender.id, d20Roll: 18, damage: 2 };
+      const selection = findChargePath(createCombatRulesSnapshot(room), attacker, defender);
+      assert.equal(selection.ok, startsHelpless && blockerY !== end.y);
+      if (!selection.ok) {
+        const before = structuredClone(room);
+        assert.throws(() => dispatchCommand(mockSocketPlayer, command), /ruta de carga/i);
+        assert.deepEqual(room, before);
+        return;
+      }
+      assert.deepEqual(selection.value.at(-1), end);
+      if (obstacle === "terrain") {
+        const before = structuredClone(room);
+        assert.throws(() => dispatchCommand(mockSocketPlayer, command), /ruta de Carga/);
+        assert.deepEqual(room, before);
+        return;
+      }
+      dispatchCommand(mockSocketPlayer, command);
+      if (interrupts) {
+        const [offer] = room.pendingOpportunityAttacks;
+        assert.ok(offer);
+        assert.deepEqual(attacker.position, offer.origin);
+        assert.equal(defender.hpCurrent, 15);
+        if (recovers) room.effectInstances = [];
+        dispatchCommand(mockSocketGM, { type: "resolve-opportunity-attack", roomCode: room.code,
+          actorId: "gm-actor", opportunityId: offer.id, decline: true });
+      }
+      assert.deepEqual(attacker.position, allowed ? end : origin);
+      assert.equal(room.currentTurn.movementUsedFeet, allowed ? 20 : 0);
+      assert.equal(room.currentTurn.usedFullAttack, true);
+      assert.equal(defender.hpCurrent, allowed ? 13 : 15);
+      assert.equal(room.pendingMovement, undefined);
+      assert.equal(blocker.hpCurrent, 15);
+    } finally {
+      rooms.delete(room.code);
+    }
+  });
+}

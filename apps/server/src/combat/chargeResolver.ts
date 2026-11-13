@@ -1,4 +1,4 @@
-import { canFullAttack, distanceBetweenFootprintsFeet, getCombatantOccupiedCells, resolveEquippedWeaponProfile, Rules, EffectReducer, effectsCatalog, buildStraightPath, type CombatRulesSnapshot, type Combatant, type Position } from "@dnd-tactical/shared";
+import { canFullAttack, distanceBetweenFootprintsFeet, getCombatantOccupiedCells, isChargeStepOccupied, resolveEquippedWeaponProfile, Rules, EffectReducer, effectsCatalog, buildStraightPath, type CombatRulesSnapshot, type Combatant, type Position } from "@dnd-tactical/shared";
 
 export function canCharge(
   room: CombatRulesSnapshot<import("@dnd-tactical/shared").ProductionEffectId>, combatant: Combatant): { ok: boolean; error?: string } {
@@ -28,14 +28,14 @@ export function findChargePath(
       const destination = { x, y, zFeet: charger.position.zFeet };
       if (sameCell(destination, charger.position)) continue;
       if (!isFootprintInsideBoard(context, charger, destination)) continue;
-      if (isFootprintOccupied(context, charger, destination)) continue;
+      if (isChargeStepOccupied(context, charger, destination, true)) continue;
       const chargerAtDestination: Combatant = { ...charger, position: { ...destination } };
       if (distanceBetweenFootprintsFeet(context, chargerAtDestination, target) > reachFeet) continue;
       const path = buildStraightPath(charger.position, destination);
       if (!path) continue;
       const distance = calculatePathDistanceFeet(charger.position, path, context.board.cellSizeFeet);
       if (distance < 10 || distance > maxDistance) continue;
-      if (path.some((step) => isFootprintOccupied(context, charger, step))) continue;
+      if (path.slice(0, -1).some(step => isChargeStepOccupied(context, charger, step, false))) continue;
       candidates.push({ path, distance });
     }
   }
@@ -70,17 +70,6 @@ function isFootprintInsideBoard(context: CombatRulesSnapshot<string>, combatant:
       cell.x >= 0 && cell.y >= 0 && cell.x < context.board.width && cell.y < context.board.height &&
       !context.board.impassableCells?.includes(`${cell.x},${cell.y}`)
     );
-}
-
-function isFootprintOccupied(context: CombatRulesSnapshot<string>, combatant: Combatant, position: Position): boolean {
-  const keys = new Set(getCombatantOccupiedCells({ ...combatant, position: { ...position } }, context).map(cellKey));
-  return context.combatants.some((other) =>
-    other.id !== combatant.id && getCombatantOccupiedCells(other, context).some((cell) => keys.has(cellKey(cell)))
-  );
-}
-
-function cellKey(position: Pick<Position, "x" | "y" | "zFeet">): string {
-  return `${position.x},${position.y},${position.zFeet ?? 0}`;
 }
 
 function sameCell(a: Pick<Position, "x" | "y">, b: Pick<Position, "x" | "y">): boolean {

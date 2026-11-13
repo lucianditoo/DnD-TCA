@@ -200,13 +200,13 @@ export function resumeMovement(room: CombatRoom): Extract<ClientCommand, { actio
   if (!check.ok || !Rules.evaluateActionAvailability(snapshot, actor).ok) return;
 
   const resolution = resolveMovementPipeline({ context: snapshot, combatant: actor, path: pending.path,
-    initialContext, availableBudgetFeet, isAcrobatic: pending.isAcrobatic });
+    initialContext, availableBudgetFeet, isAcrobatic: pending.isAcrobatic, isCharge: pending.kind === "charge" });
   if (resolution.kind !== "ready" || (pending.kind !== "move" && resolution.steps.some(step => {
     if (pending.kind === "run" && step.isDifficultTerrain) return true;
-    if (pending.kind === "charge" && (step.isDifficultTerrain || step.spatialMode !== "natural")) return true;
+    if (pending.kind === "charge") return step.isDifficultTerrain || step.spatialMode !== "natural";
     const cells = new Set(step.occupiedCells.map(footprintCellKey));
     return snapshot.combatants.some(other => other.id !== actor.id &&
-      (pending.kind === "charge" || (lifeStatus(other) !== "dead" && (other.type !== actor.type || step.stepIndex === resolution.steps.length - 1))) &&
+      lifeStatus(other) !== "dead" && (other.type !== actor.type || step.stepIndex === resolution.steps.length - 1) &&
       getCombatantOccupiedCells(other, snapshot).some(cell => cells.has(footprintCellKey(cell))));
   }))) {
     room.log.unshift(makeLog("movement", actor.name + " no puede continuar por la ruta prevista."));

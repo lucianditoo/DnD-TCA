@@ -7,7 +7,7 @@
 ## Cierre local de estabilización
 
 - **P1 — Ataques de oportunidad: cerrado localmente, Nivel D.** Nemotron emitió dictamen APROBADO. Incluye cupo y elegibilidad, reanudación de acciones estacionarias y movimiento por tramos. La evidencia del candidato aislado se registra en la [matriz de cobertura](docs/testing/master-coverage.md#regresiones-de-ataques-de-oportunidad).
-- La observación de Charge contra criaturas indefensas continúa [abierta](TODO.md#ataques-de-oportunidad-y-carga).
+- La excepción de Charge contra criaturas indefensas se verifica en [SP-02](docs/audits/combat-rules-deviations.md).
 
 ## Estado actual
 

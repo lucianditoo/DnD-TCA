@@ -306,7 +306,7 @@ test("Movimiento normal no atraviesa enemigo consciente pero sí enemigo helples
   assert.equal(res.ok, true);
 });
 
-test("Charge falla si hay aliado o enemigo helpless en la ruta", () => {
+test("Charge permite un moribundo en tránsito y conserva los bloqueos de aliado consciente y cadáver", () => {
   const room = {
     board: { width: 10, height: 10, cellSizeFeet: 5 },
     combatants: [
@@ -327,7 +327,7 @@ test("Charge falla si hay aliado o enemigo helpless en la ruta", () => {
   room.combatants[1].type = "enemy";
   room.combatants[1].hpCurrent = -5;
   res = findChargePath(room, charger, target);
-  assert.equal(res.ok, false); // Helpless enemy en el medio (x:2)
+  assert.equal(res.ok, true); // Moribundo en el medio (x:2)
   
   // Cambiamos a dead enemy (debe fallar la busqueda según simplificación de charge)
   room.combatants[1].hpCurrent = -10;

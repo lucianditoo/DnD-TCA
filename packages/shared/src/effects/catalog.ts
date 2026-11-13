@@ -178,7 +178,7 @@ export const effectsCatalog = {
   "srd_paralyzed": {
     name: "Paralizado",
     description: "El personaje queda indefenso (HELPLESS), con Destreza 0, y no puede moverse ni actuar.",
-    traits: ["CANNOT_ACT", "CANNOT_MOVE", "HELPLESS"],
+    traits: ["CANNOT_ACT", "CANNOT_MOVE", "HELPLESS", "NO_THREAT", "CANNOT_MAKE_AOO"],
     modifiers: [
       { type: "override", stat: "DEXTERITY", value: 0 }
     ],

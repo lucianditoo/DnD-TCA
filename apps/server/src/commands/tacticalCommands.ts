@@ -348,7 +348,7 @@ function handleCharge(room: CombatRoom, snapshot: CombatRulesSnapshot<import("@d
   const initialContext = { normalDiagonalStepsThisTurn: snapshot.currentTurn.normalDiagonalStepsThisTurn };
   const availableBudgetFeet = Rules.totalSpeedFeet(snapshot, combatant) * 2;
   const path = chargePath.value;
-  const resolution = resolveMovementPipeline({ context: snapshot, combatant, path, initialContext, availableBudgetFeet });
+  const resolution = resolveMovementPipeline({ context: snapshot, combatant, path, initialContext, availableBudgetFeet, isCharge: true });
   if (resolution.kind !== "ready" || resolution.steps.some(step => step.isDifficultTerrain || step.spatialMode !== "natural")) {
     throw new Error("La ruta de Carga debe estar despejada y dentro del presupuesto.");
   }

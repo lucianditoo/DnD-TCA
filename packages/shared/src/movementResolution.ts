@@ -112,6 +112,7 @@ export interface MovementResolutionInput {
   /** Capacidad de tránsito estrictamente necesaria por Route Validation (ver
    * `routeValidation.ts`: no es la lógica de ninguna acción concreta). */
   readonly isAcrobatic?: boolean;
+  readonly isCharge?: boolean;
 }
 
 export type MovementResolutionResult =
@@ -156,9 +157,9 @@ export type MovementResolutionResult =
  * de este sprint: Commit, Publication y cualquier mutación autoritativa.
  */
 export function resolveMovementPipeline(input: MovementResolutionInput): MovementResolutionResult {
-  const { context, combatant, path, availableBudgetFeet, initialContext, isAcrobatic = false } = input;
+  const { context, combatant, path, availableBudgetFeet, initialContext, isAcrobatic = false, isCharge = false } = input;
 
-  const legality = validateRouteLegality(context, combatant, path, isAcrobatic);
+  const legality = validateRouteLegality(context, combatant, path, isAcrobatic, isCharge);
   if (!legality.isLegal) {
     return {
       kind: "illegal-route",

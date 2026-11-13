@@ -11,9 +11,31 @@ import {
   getCombatantsIntersectingCells,
   isCornerAnchorBlockedByTerrain,
   getNaturalCombatantOccupiedCellsAt,
+  getCombatantOccupiedCellsAt,
+  footprintCellKey,
   isPositionInsideBoard,
 } from "./movementGeometry.js";
 import { lifeStatus } from "./lifeStatus.js";
+import { EffectReducer, effectsCatalog, type EffectDefinition } from "./effects/index.js";
+
+function blocksChargeOccupancy(context: CombatRulesSnapshot, occupant: Combatant, isDestination: boolean): boolean {
+  if (isDestination) return true;
+  const status = lifeStatus(occupant);
+  if (status === "dead") return true;
+  if (status === "dying" || status === "stable") return false;
+  return !EffectReducer.reduceEffectsForTarget<Record<string, EffectDefinition>>({
+    effectInstances: context.effectInstances,
+    targetId: occupant.id,
+    catalog: effectsCatalog
+  }).traits.includes("HELPLESS");
+}
+
+export function isChargeStepOccupied(context: CombatRulesSnapshot, actor: Combatant, position: Position, isDestination: boolean): boolean {
+  const cells = new Set(getCombatantOccupiedCellsAt(actor, context, position).map(footprintCellKey));
+  return context.combatants.some(occupant => occupant.id !== actor.id &&
+    getCombatantOccupiedCellsAt(occupant, context, occupant.position).some(cell => cells.has(footprintCellKey(cell))) &&
+    blocksChargeOccupancy(context, occupant, isDestination));
+}
 
 export interface ValidatedRouteStep {
   readonly stepIndex: number;
@@ -49,7 +71,8 @@ export function validateRouteLegality(
   context: CombatRulesSnapshot<any>,
   combatant: Combatant,
   path: Position[],
-  isAcrobatic: boolean = false
+  isAcrobatic: boolean = false,
+  isCharge = false
 ): RouteLegalityResult {
   if (path.length === 0) {
     return { isLegal: false, error: "La ruta debe contener al menos un destino.", failedStepIndex: 0 };
@@ -84,20 +107,19 @@ export function validateRouteLegality(
 
     const stepCells = projection.occupiedCells;
 
-    const occupiedCombatants = getCombatantsIntersectingCells(occupancyIndex, stepCells, combatant.id)
-      .filter((other) => lifeStatus(other) !== "dead");
-      
     const isLast = index === path.length - 1;
+    const occupiedCombatants = getCombatantsIntersectingCells(occupancyIndex, stepCells, combatant.id)
+      .filter(other => isCharge ? blocksChargeOccupancy(context, other, isLast) : lifeStatus(other) !== "dead");
     for (const occupied of occupiedCombatants) {
       const isAlly = occupied.type === combatant.type;
       const occupiedStatus = lifeStatus(occupied);
       const isHelpless = occupiedStatus === "dying" || occupiedStatus === "stable" || occupiedStatus === "dead";
       
-      if (isLast && !isHelpless) {
+      if (isLast && (isCharge || !isHelpless)) {
         return { isLegal: false, error: "La ruta no puede terminar en la casilla ocupada por " + occupied.name + ".", failedStepIndex: index };
       }
-      if (!isLast && !isAlly && !isHelpless && !isAcrobatic) {
-        return { isLegal: false, error: "La ruta no puede atravesar la casilla ocupada por el enemigo " + occupied.name + ".", failedStepIndex: index };
+      if (!isLast && (isCharge || (!isAlly && !isHelpless && !isAcrobatic))) {
+        return { isLegal: false, error: "La ruta no puede atravesar la casilla ocupada por " + (isCharge ? "" : "el enemigo ") + occupied.name + ".", failedStepIndex: index };
       }
     }
 
