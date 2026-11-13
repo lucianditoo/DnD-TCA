@@ -176,6 +176,7 @@ export function dispatchCommand(socket: WebSocket, command: ClientCommand, allow
   if (isDemoRoom(command.roomCode)) {
     throw new Error("Las salas de demostracion son de solo lectura y no admiten comandos manuales de combate.");
   }
+  // Only the server's socket registration establishes the caller's identity and room.
   const participant = clients.get(socket);
   if (!participant || participant.id !== command.actorId || participant.roomCode !== command.roomCode.toUpperCase()) {
     throw new Error("La conexion no esta autorizada para este participante y sala.");
