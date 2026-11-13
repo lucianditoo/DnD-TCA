@@ -1,13 +1,14 @@
-import type { MovementPreviewProjection, MovementPreviewKind, WithdrawPreviewAvailability } from "../../movementPreview";
+import type { MovementPreviewProjection, MovementPreviewKind, WithdrawPreviewAvailability, RunPreviewAvailability } from "../../movementPreview";
 import { MovementPreviewSummary } from "./MovementPreviewSummary";
 import { Footprints, HeartPulse, MousePointer2, Shield, SkipForward, Sparkles, Swords } from "lucide-react";
-import { averageWeaponDamageForCombatant, EquipmentCatalog, getAmmunitionState, getEquippedWeaponEntry, getGrappleAttackEligibility, getGrappleEscapePreview, lifeStatus, Rules, calculatePathCostFeet, getAttackContextModifiers, getEffectiveAttackRoutine, getWeaponAttackTypeForTarget, createCombatRulesSnapshot, canApplySneakAttack, canRun, canUseFiveFootStep, getEffectiveSneakAttackDice, validateSpecialManeuver, validateStandUp, SpellsCatalog, type Buff, type CombatOutcome, type CombatRoom, type Combatant, type GrappleEscapeType, type LifeStatus } from "@dnd-tactical/shared";
+import { averageWeaponDamageForCombatant, EquipmentCatalog, getAmmunitionState, getEquippedWeaponEntry, getGrappleAttackEligibility, getGrappleEscapePreview, lifeStatus, Rules, calculatePathCostFeet, getAttackContextModifiers, getEffectiveAttackRoutine, getWeaponAttackTypeForTarget, createCombatRulesSnapshot, canApplySneakAttack, canUseFiveFootStep, getEffectiveSneakAttackDice, validateSpecialManeuver, validateStandUp, SpellsCatalog, type Buff, type CombatOutcome, type CombatRoom, type Combatant, type GrappleEscapeType, type LifeStatus } from "@dnd-tactical/shared";
 import { type ActionMode, type ActiveEffectView, type ApplicableEffectOption, type TacticMode } from "../../viewModel";
 import { Collapsible, D20Control, RollControls } from "../common";
 import { GmPanel } from "../GmPanel/GmPanel";
 import { useMemo, useState } from "react";
 
 export function ActionsPanel(props: {
+  runAvailability?: RunPreviewAvailability;
   withdrawAvailability?: WithdrawPreviewAvailability;
   previewKind?: MovementPreviewKind;
   movementPreview?: MovementPreviewProjection | null;
@@ -159,7 +160,8 @@ export function ActionsPanel(props: {
   );
   const grappleAttackBlocked = grappleAttackEligibility?.ok === false;
   const movementProjection = selected ? Rules.getMovementSpeedProjection(snapshot, selected) : null;
-  const runAvailability = selected ? canRun(snapshot, selected) : null;
+  const run = props.runAvailability;
+  const moveBlockedReason = props.previewKind === "run" ? run?.blockedReason : props.previewKind === "withdraw" ? props.withdrawAvailability?.blockedReason : props.ordinaryMoveBlockedReason;
   const fiveFootStepAvailability = selected ? canUseFiveFootStep(snapshot, selected) : null;
   return <aside className="panel actions">
     <div className="panel-title"><Swords size={18} /> Acciones</div>
@@ -181,18 +183,18 @@ export function ActionsPanel(props: {
       {room.phase === "preparation" && <div className="rules-box">Preparacion: agrega combatientes, coloca las fichas con Mover y carga iniciativas antes de iniciar combate.</div>}
       {props.actionMode === "move" && <div className="action-panel move-panel">
         <div className="panel-title"><Footprints size={18} /> Movimiento</div>
-        <div className="rules-box">{room.phase === "preparation" ? "Click en una casilla verde para colocar al combatiente seleccionado." : "Click en casillas adyacentes para dibujar la ruta. El preview distingue legalidad y presupuesto; el servidor confirma el resultado."}</div>
+        <div className="rules-box">{room.phase === "preparation" ? "Click en una casilla verde para colocar al combatiente seleccionado." : props.runArmed ? "Correr requiere un destino horizontal, vertical o diagonal de 45°." : "Click en casillas adyacentes para dibujar la ruta. El preview distingue legalidad y presupuesto; el servidor confirma el resultado."}</div>
         {props.movementPreview ? <>
-          <MovementPreviewSummary preview={props.movementPreview} isWithdraw={props.previewKind === "withdraw"} blockedReason={props.previewKind === "withdraw" ? props.withdrawAvailability?.blockedReason ?? null : props.ordinaryMoveBlockedReason ?? null} />
-          {props.previewKind !== "withdraw" && <label className="inline-check"><input data-testid="movement-tumble" type="checkbox" checked={props.isAcrobatic ?? false} onChange={event => props.onAcrobaticChange?.(event.target.checked)} /> Tumble (Acrobacias)</label>}
+          <MovementPreviewSummary preview={props.movementPreview} isWithdraw={props.previewKind === "withdraw"} isRun={props.previewKind === "run"} blockedReason={moveBlockedReason ?? null} />
+          {props.previewKind === "ordinary-move" && <label className="inline-check"><input data-testid="movement-tumble" type="checkbox" checked={props.isAcrobatic ?? false} onChange={event => props.onAcrobaticChange?.(event.target.checked)} /> Tumble (Acrobacias)</label>}
         </> : room.phase !== "preparation" && <div className="rules-box">Movimiento usado: {room.currentTurn.movementUsedFeet} ft - Disponible: {Math.max(0, (movementProjection?.total ?? 0) - room.currentTurn.movementUsedFeet)} ft - Ruta: {props.movementPathCost} ft - Paso 5 ft: {room.currentTurn.usedFiveFootStep ? "si" : "no"}</div>}
         {movementProjection && movementProjection.rateTraces.length > 0 && <div className="rules-box" data-testid="movement-speed-preview">Velocidad efectiva: {movementProjection.total} ft ({movementProjection.parts.join(", ")})</div>}
         {props.isMoveDestinationOccupied && <div className="rules-box error-text">No puedes terminar tu movimiento en una casilla ocupada.</div>}
         {room.phase === "active" && <div className="button-row">
-          <button onClick={props.onUndoMovementStep} disabled={props.movementPathLength === 0}>Deshacer paso</button>
+          {!props.runArmed && <button onClick={props.onUndoMovementStep} disabled={props.movementPathLength === 0}>Deshacer paso</button>}
           <button onClick={props.onClearMovementPath} disabled={props.movementPathLength === 0}>Limpiar ruta</button>
         </div>}
-        {room.phase === "active" && <button className="primary move-confirm" onClick={props.onConfirmMovementPath} disabled={actionDisabled || props.movementPathLength === 0 || props.hasPendingOpportunities || props.isMoveDestinationOccupied || !!props.fiveFootStepArmed || (!!props.movementPreview && (props.movementPreview.status !== "legal" || !!(props.previewKind === "withdraw" ? props.withdrawAvailability?.blockedReason : props.ordinaryMoveBlockedReason)))}><Footprints size={18} /> {props.withdrawArmed ? "Confirmar Retirada" : props.runArmed ? "Confirmar Correr" : "Confirmar movimiento"}</button>}
+        {room.phase === "active" && <button className="primary move-confirm" onClick={props.onConfirmMovementPath} disabled={actionDisabled || props.movementPathLength === 0 || props.hasPendingOpportunities || props.isMoveDestinationOccupied || !!props.fiveFootStepArmed || (!!props.movementPreview && (props.movementPreview.status !== "legal" || !!moveBlockedReason))}><Footprints size={18} /> {props.withdrawArmed ? "Confirmar Retirada" : props.runArmed ? "Confirmar Correr" : "Confirmar movimiento"}</button>}
         {room.phase === "active" && (() => {
           const withdrawal = props.withdrawAvailability;
           return <>
@@ -205,21 +207,21 @@ export function ActionsPanel(props: {
             <button data-testid="withdraw-mode" className={props.withdrawArmed ? "primary move-confirm" : "move-confirm"} onClick={props.onToggleWithdraw} disabled={!props.withdrawArmed && (actionDisabled || !withdrawal || !!withdrawal.blockedReason)}>{props.withdrawArmed ? "Cancelar Retirada" : withdrawal?.status === "ready" && withdrawal.variant === "limited" ? "Retirada limitada (×1 velocidad)" : "Retirarse (×2 velocidad)"}</button>
           </>;
         })()}
-        {room.phase === "active" && (() => {
-          // MOVE-RUN: disponibilidad presentacional (el servidor decide la legalidad final:
-          // linea recta, terreno dificil absoluto, FORBID_RUN, economia). Correr no tiene
-          // variante limitada para Disabled — sin turno virgen o Incapacitado, sin via legal.
-          const turnVirgin = room.currentTurn.movementUsedFeet === 0 && !room.currentTurn.usedMoveAction && !room.currentTurn.usedStandardAction && !room.currentTurn.usedFullAttack && !room.currentTurn.usedFiveFootStep && !room.currentTurn.usedTotalDefense && room.currentTurn.attacksMade === 0 && room.currentTurn.attackMode === "none";
-          const isDisabled = lifeStatus(selected) === "disabled";
-          const runAvailable = turnVirgin && !isDisabled && runAvailability?.ok === true;
-          return <>
-            <div className="rules-box" style={{ marginTop: "0.75rem", borderTop: "1px solid var(--border)", paddingTop: "0.75rem" }}>
-              <strong>Correr (Run)</strong> — acción de asalto completo: movimiento en línea recta hasta ×4 velocidad (×3 con armadura pesada). No hay paso de 5' este turno; el terreno difícil lo bloquea por completo. Sin la dote de Correr, pierdes Destreza (y Esquiva) a la CA hasta tu próximo turno.<br />
-              {props.runArmed ? "✓ Armado: dibuja el destino en línea recta y confirma." : runAvailable ? "✓ Disponible con el turno sin usar." : `✗ No disponible: ${runAvailability?.error ?? "Correr exige el turno completo sin acciones previas."}`}
-            </div>
-            <button className={props.runArmed ? "primary move-confirm" : "move-confirm"} onClick={props.onToggleRun} disabled={actionDisabled || (!props.runArmed && !runAvailable) || props.hasPendingOpportunities}><Footprints size={18} /> {props.runArmed ? "Cancelar Correr" : "Correr (×4/×3 velocidad)"}</button>
-          </>;
-        })()}
+        {(room.phase === "active" || props.runArmed) && <>
+          <div className="rules-box" data-testid="run-availability">
+            <strong>Correr (Run)</strong> — acción de asalto completo.
+            {run?.status === "ready" && <p>Límite: {run.budgetFeet} ft (×{run.multiplier} velocidad).</p>}
+            {props.runArmed && <>
+              {run?.status === "ready" && <p>{run.keepsDex ? "Con la dote Correr conserva ese bono." : "Al correr perderá Destreza/Esquiva a la CA hasta el inicio de su próximo turno."}</p>}
+              <p>Correr puede provocar ataques de oportunidad incluso al abandonar la huella inicial. El servidor resolverá los AdO definitivos.</p>
+            </>}
+            {!props.runArmed && run?.blockedReason && <p className="error-text">Acción no disponible: {run.blockedReason}</p>}
+          </div>
+          <button data-testid="run-mode" className={props.runArmed ? "primary move-confirm" : "move-confirm"} onClick={props.onToggleRun}
+            disabled={!props.runArmed && (actionDisabled || !run || !!run.blockedReason || props.hasPendingOpportunities)}>
+            <Footprints size={18} /> {props.runArmed ? "Cancelar Correr" : "Correr (×4/×3 velocidad)"}
+          </button>
+        </>}
         {room.phase === "active" && (() => {
           const canStep = fiveFootStepAvailability?.ok === true;
           return <>

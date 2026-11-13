@@ -1,9 +1,9 @@
 import { useMemo } from "react";
-import { buildMovementPreview, buildMovementCandidates, buildWithdrawMovementPreview, buildWithdrawCandidates, getMovementPreviewKind, type MovementPreviewProjection } from "../movementPreview";
+import { buildMovementPreview, buildMovementCandidates, buildWithdrawMovementPreview, buildWithdrawCandidates, buildRunCandidates, buildRunMovementPreview, getMovementPreviewKind, type MovementPreviewProjection } from "../movementPreview";
 import { distanceBetweenFootprintsFeet, lifeStatus, calculatePathCostFeet, calculatePathStepCostsFeet, createCombatRulesSnapshot, validateSpecialManeuver, type CombatRoom, type Combatant, type Participant, type Position } from "@dnd-tactical/shared";
 import { getAbilityTargets, getActiveCombatant, getChargePreviewPath, getGmMoveHighlightedCells, getHighlightedCells, getRangePreview, type ActionMode, type TacticMode } from "../viewModel";
 
-export function useBoardSelection({ room, snapshot, selectedId, participant, actionMode, tacticMode, selectedAbilityId, movementPath, gmMoveMode, gmMoveTargetId, targetId, withdrawArmed = false, runArmed = false, isDemoActive = false, isAcrobatic = false, fiveFootStepArmed = false, isMapEditing = false }: { room: CombatRoom | null; snapshot: import("@dnd-tactical/shared").CombatRulesSnapshot<import("@dnd-tactical/shared").ProductionEffectId> | null; selectedId: string | null; participant: Participant | null; actionMode: ActionMode; tacticMode: TacticMode; selectedAbilityId: string; movementPath: Position[]; gmMoveMode: boolean; gmMoveTargetId: string; targetId: string; withdrawArmed?: boolean; runArmed?: boolean; isDemoActive?: boolean; isAcrobatic?: boolean; fiveFootStepArmed?: boolean; isMapEditing?: boolean }) {
+export function useBoardSelection({ room, snapshot, selectedId, participant, actionMode, tacticMode, selectedAbilityId, movementPath, gmMoveMode, gmMoveTargetId, targetId, withdrawArmed = false, runArmed = false, runDestination = null, isDemoActive = false, isAcrobatic = false, fiveFootStepArmed = false, isMapEditing = false }: { room: CombatRoom | null; snapshot: import("@dnd-tactical/shared").CombatRulesSnapshot<import("@dnd-tactical/shared").ProductionEffectId> | null; selectedId: string | null; participant: Participant | null; actionMode: ActionMode; tacticMode: TacticMode; selectedAbilityId: string; movementPath: Position[]; gmMoveMode: boolean; gmMoveTargetId: string; targetId: string; withdrawArmed?: boolean; runArmed?: boolean; runDestination?: Position | null; isDemoActive?: boolean; isAcrobatic?: boolean; fiveFootStepArmed?: boolean; isMapEditing?: boolean }) {
   const active = useMemo(() => getActiveCombatant(room), [room]);
   const effectiveSelectedId = isDemoActive ? (selectedId ?? active?.id) : (room?.phase === "active" ? active?.id ?? selectedId : selectedId);
   const selected = room?.combatants.find((combatant) => combatant.id === effectiveSelectedId) ?? active ?? room?.combatants[0] ?? null;
@@ -25,28 +25,28 @@ export function useBoardSelection({ room, snapshot, selectedId, participant, act
     const preview = validateSpecialManeuver(snapshot, selected, selectedTarget, "bull_rush");
     return preview.ok && preview.value?.maneuverId === "bull_rush" ? [...preview.value.projectedPath] : null;
   }, [snapshot, selected, selectedTarget, actionMode, tacticMode]);
-  const displayedPath = chargePreviewPath ?? bullRushPreviewPath ?? movementPath;
   const activeSnapshot = snapshot ?? (room ? createCombatRulesSnapshot(room) : null);
   const previewKind = getMovementPreviewKind({ phase: room?.phase, actionMode, tacticMode, gmMoveMode,
     withdrawArmed, runArmed, fiveFootStepArmed, isDemoActive, isMapEditing });
   const ordinaryAcrobatics = previewKind === "ordinary-move" && isAcrobatic;
   const movementPreview = useMemo(() => previewKind === "ordinary-move"
-    ? buildMovementPreview({ snapshot: activeSnapshot, actorId: selected?.id ?? null, path: movementPath, isAcrobatic: ordinaryAcrobatics }) : previewKind === "withdraw" ? buildWithdrawMovementPreview({ snapshot: activeSnapshot, actorId: selected?.id ?? null, path: movementPath }) : null,
-    [previewKind, activeSnapshot, selected?.id, movementPath, ordinaryAcrobatics]);
+    ? buildMovementPreview({ snapshot: activeSnapshot, actorId: selected?.id ?? null, path: movementPath, isAcrobatic: ordinaryAcrobatics }) : previewKind === "withdraw" ? buildWithdrawMovementPreview({ snapshot: activeSnapshot, actorId: selected?.id ?? null, path: movementPath }) : previewKind === "run" ? buildRunMovementPreview({ snapshot: activeSnapshot, actorId: selected?.id ?? null, destination: runDestination }) : null,
+    [previewKind, activeSnapshot, selected?.id, movementPath, ordinaryAcrobatics, runDestination]);
   const movementCandidates = useMemo(() => previewKind === "ordinary-move"
-    ? buildMovementCandidates({ snapshot: activeSnapshot, actorId: selected?.id ?? null, path: movementPath, isAcrobatic: ordinaryAcrobatics }) : previewKind === "withdraw" ? buildWithdrawCandidates({ snapshot: activeSnapshot, actorId: selected?.id ?? null, path: movementPath }) : new Map<string, MovementPreviewProjection>(),
+    ? buildMovementCandidates({ snapshot: activeSnapshot, actorId: selected?.id ?? null, path: movementPath, isAcrobatic: ordinaryAcrobatics }) : previewKind === "withdraw" ? buildWithdrawCandidates({ snapshot: activeSnapshot, actorId: selected?.id ?? null, path: movementPath }) : previewKind === "run" ? buildRunCandidates({ snapshot: activeSnapshot, actorId: selected?.id ?? null }) : new Map<string, MovementPreviewProjection>(),
     [previewKind, activeSnapshot, selected?.id, movementPath, ordinaryAcrobatics]);
+  const displayedPath = chargePreviewPath ?? bullRushPreviewPath ?? (previewKind === "run" ? [...(movementPreview?.path ?? [])] : movementPath);
   const evaluated = movementPreview?.status === "legal" || movementPreview?.status === "over-budget" ? movementPreview : null;
-  const movementPathCost = (previewKind === "ordinary-move" || previewKind === "withdraw") ? evaluated?.totalCostFeet ?? null
+  const movementPathCost = (previewKind === "ordinary-move" || previewKind === "withdraw" || previewKind === "run") ? evaluated?.totalCostFeet ?? null
     : activeSnapshot && selected ? calculatePathCostFeet(selected.position, movementPath, activeSnapshot) : 0;
-  const displayedPathCosts = (previewKind === "ordinary-move" || previewKind === "withdraw") ? evaluated?.steps.map(step => step.cumulativeCostFeet) ?? []
+  const displayedPathCosts = (previewKind === "ordinary-move" || previewKind === "withdraw" || previewKind === "run") ? evaluated?.steps.map(step => step.cumulativeCostFeet) ?? []
     : activeSnapshot && selected ? calculatePathStepCostsFeet(selected.position, displayedPath, activeSnapshot) : [];
   const highlightedCells = useMemo(() => {
-    if (previewKind === "ordinary-move" || previewKind === "withdraw") return new Map<string, string>(Array.from(movementCandidates, ([key, preview]) =>
+    if (previewKind === "ordinary-move" || previewKind === "withdraw" || previewKind === "run") return new Map<string, string>(Array.from(movementCandidates, ([key, preview]) =>
       [key, ` move-candidate preview-${preview.status}${preview.status === "legal" ? " move-highlight" : ""}`]));
     return gmMoveMode && participant?.role === "gm" ? getGmMoveHighlightedCells(room, snapshot, gmMoveTarget)
-      : getHighlightedCells(room, snapshot, selected, actionMode, selectedAbilityId, movementPath, runArmed);
-  }, [previewKind, movementCandidates, room, snapshot, selected, actionMode, selectedAbilityId, movementPath, withdrawArmed, runArmed, gmMoveMode, gmMoveTarget, participant?.role]);
+      : getHighlightedCells(room, snapshot, selected, actionMode, selectedAbilityId, movementPath);
+  }, [previewKind, movementCandidates, room, snapshot, selected, actionMode, selectedAbilityId, movementPath, gmMoveMode, gmMoveTarget, participant?.role]);
 
   return { active, selected, targets, enemyTargets, aidAllies, pendingAidBuffs, gmMoveTarget, selectedAbility, abilityTargets, targetDistanceFeet, rangePreview, pendingOpportunities, hasPendingOpportunities, chargePreviewPath, bullRushPreviewPath, displayedPath, movementPathCost, displayedPathCosts, highlightedCells, previewKind, movementPreview, movementCandidates };
 }

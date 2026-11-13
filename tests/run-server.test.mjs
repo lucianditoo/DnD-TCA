@@ -5,6 +5,7 @@ import { handleUseTacticalAction } from "../apps/server/src/commands/tacticalCom
 import { validateClientCommand } from "../apps/server/src/validation/validateClientCommand.ts";
 import { clients } from "../apps/server/src/room/roomStore.ts";
 import { createCombatRulesSnapshot, resolveMovementPipeline, buildStraightPath, runSpeedBudgetFeet, Rules, EffectManager, effectsTickListener, getCombatantOccupiedCells } from "../packages/shared/src/index.ts";
+import { buildRunMovementPreview, buildRunCandidates, getRunPreviewAvailability } from "../apps/web/src/movementPreview.ts";
 import { inventoryEquipment } from "./test-utils.mjs";
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -215,7 +216,13 @@ function squeezing(room, actor, axis) {
   room.effectInstances = [{instanceId:'squeeze',effectId:'srd_squeezing',squeezingAxis:axis,
     source:{type:'system'},targets:[actor.id],appliedAtEvent:{type:'SystemInjected',round:1}}];
 }
-function assertRejected(t, room, to, pattern) {
+function assertRejected(t, room, to, pattern, checkPreview = true) {
+  if (checkPreview) {
+    const input = { snapshot: createCombatRulesSnapshot(room), actorId: "mover", destination: to };
+    const preview = buildRunMovementPreview(input);
+    const availability = getRunPreviewAvailability(input.snapshot, input.actorId, room.combatants[0]?.controlledBy?.participantId === "player-1");
+    assert.ok(availability.blockedReason || ["illegal", "unavailable", "over-budget"].includes(preview.status));
+  }
   const before = structuredClone(room);
   const sent = t.mock.method(mockSocket,'send',()=>{});
   assert.throws(()=>handleUseTacticalAction(room,runCommand(room,to)),pattern);
@@ -228,6 +235,12 @@ function assertNormative(t, room, to, expectedCost) {
     availableBudgetFeet:runSpeedBudgetFeet(snapshot,snapshot.combatants[0]),
     initialContext:{normalDiagonalStepsThisTurn:snapshot.currentTurn.normalDiagonalStepsThisTurn},isAcrobatic:false});
   assert.equal(oracle.kind,'ready');
+  const preview = buildRunMovementPreview({ snapshot, actorId: actor.id, destination: to });
+  assert.equal(preview.status, 'legal');
+  assert.deepEqual(preview.path, path);
+  assert.deepEqual(preview.steps, oracle.steps);
+  assert.deepEqual(preview.projectedContext, oracle.projectedContext);
+  assert.equal(preview.totalCostFeet, oracle.totalCostFeet);
   const sent=t.mock.method(mockSocket,'send',raw=>{
     const published=JSON.parse(raw).room;
     if (published.pendingOpportunityAttacks.length) {
@@ -336,7 +349,7 @@ for(const [name,change] of [
   ['pending',r=>{r.pendingOpportunityAttacks=[{id:'pending'}];}],['mode',r=>{r.currentTurn.attackMode='standard';}],
   ['spent',r=>{r.currentTurn.movementUsedFeet=1;}],['move',r=>{r.currentTurn.usedMoveAction=true;}],
   ['standard',r=>{r.currentTurn.usedStandardAction=true;}],['full',r=>{r.currentTurn.usedFullAttack=true;}],
-  ['5ft',r=>{r.currentTurn.usedFiveFootStep=true;}],['critical',r=>{r.activeAttackThreat={attackerId:'mover'};}],
+  ['5ft',r=>{r.currentTurn.usedFiveFootStep=true;}],['critical',r=>{r.activeAttackThreat={attackerId:'mover',normalDamageBundle:{total:0,components:[]}};}],
   ['disabled',r=>{r.combatants[0].hpCurrent=0;}],['diehard',r=>{Object.assign(r.combatants[0],{hpCurrent:-1,isStable:true,featIds:['srd_diehard']});}],
   ['phase',r=>{r.phase='preparation';}],['turn',r=>{r.currentTurn.combatantId='other';}],
   ['control',r=>{r.combatants[0].controlledBy.participantId='other';}],['actor',r=>{r.combatants[0].id='other';}],
@@ -360,7 +373,7 @@ for(const [name,change] of [
 test('I10 effect preflight failure is before Movement writes',t=>{
   const room=makeRoom([makeCombatant()]),original=EffectManager.add;
   t.mock.method(EffectManager,'add',(state,instance)=>{if(instance.effectId==='srd_running_exposed')throw new Error('controlled preflight failure');return original(state,instance);});
-  assertRejected(t,room,point(4,2),/controlled preflight/);
+  assertRejected(t,room,point(4,2),/controlled preflight/,false);
 });
 test('I10 pure preflight discarded and second add sees committed state',t=>{
   const actor=makeCombatant({sizeCategory:'large'}),room=makeRoom([actor]);narrowBoard(room);
@@ -396,4 +409,23 @@ for(const axis of [null,'horizontal','vertical'])test(`I10 initial and later mul
   const oracle=assertNormative(t,room,point(8,2));
   assert.deepEqual(new Set(oracle.offers.map(a=>a.attackerId)),new Set(['initial','later']));
   assert.equal(oracle.offers.find(a=>a.attackerId==='initial').movementCostFeet,oracle.totalCostFeet);
+});
+
+test("I11 Run preview eight rays, pure canonical intent and budget precedence", t => {
+  const actor = makeCombatant({ baseSpeedFeet: 5, position: point(2,2,15) });
+  const room = makeRoom([actor]);
+  room.board.difficultTerrainCells = ["3,2"];
+  const snapshot = createCombatRulesSnapshot(room);
+  const before = structuredClone(snapshot);
+  const input = { snapshot, actorId: actor.id };
+  t.mock.method(Math, "random", () => { throw Error("Preview must not roll"); });
+  assert.equal(buildRunMovementPreview({ ...input, destination: null }).status, "empty");
+  const candidates = buildRunCandidates(input);
+  assert.equal(candidates.has("5,3"), false);
+  assert.equal(candidates.has("2,2"), false);
+  assert.equal(candidates.get("3,2").reasonSource, "run-policy");
+  assert.equal(candidates.get("6,2").status, "over-budget");
+  assert.equal(candidates.get("6,2").path.at(-1).zFeet, 15);
+  assert.equal(candidates.get("2,4").status, "legal");
+  assert.deepEqual(snapshot, before);
 });

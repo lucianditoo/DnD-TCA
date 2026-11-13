@@ -4,7 +4,7 @@ Canonical responsibility: Auditoría y propuesta de diseño para llevar el previ
 Supersedes: Walkthrough I10 Server Integration, preservado en Git.
 Complements: [NDD Capítulo 13](docs/designs/normative-movement-design.md#capítulo-13--i11-run-normative-preview-parity), [Run Design](docs/designs/run-design.md), [Registry](docs/rules/registry.md).
 Derived from: Baseline `98030357b857a66c1d1e0f860b46a97614c9b659` y auditoría directa del código productivo posterior a I10.
-Lifecycle: Rotativo; diseño terminado, Awaiting Architecture Review and Proceed.
+Lifecycle: Histórico de diseño. Architecture Review aprobada y Proceed explícito del propietario. La evidencia de implementación se registra en [master-coverage.md](docs/testing/master-coverage.md#d-1b-i11--preview-normativo-de-run).
 
 ## Resultado
 

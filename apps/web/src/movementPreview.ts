@@ -1,12 +1,12 @@
 import {
-  Rules, canUseMoveAction, canDisabledCombatantTakeAction, footprintCellKey, getCombatantOccupiedCells, lifeStatus,
+  Rules, FeatCatalog, buildStraightPath, canRun, runSpeedBudgetFeet, runSpeedMultiplier, canUseMoveAction, canDisabledCombatantTakeAction, footprintCellKey, getCombatantOccupiedCells, lifeStatus,
   resolveMovementPipeline, type ClientCommand, type Combatant, type CombatRoom,
   type CombatRulesSnapshot, type MovementContext, type MovementResolutionStep,
   type Position, type ProductionEffectId, type MovementResolutionResult
 } from "@dnd-tactical/shared";
 
 export type MovementPreviewKind = "ordinary-move" | "placement" | "gm-placement" |
-  "withdraw" | "legacy-run" | "legacy-five-foot-step" | "legacy-charge" | "legacy-forced" | "none";
+  "withdraw" | "run" | "legacy-five-foot-step" | "legacy-charge" | "legacy-forced" | "none";
 export interface AcrobaticsContingency { readonly stepIndex: number; readonly enemyId: string; readonly enemyName: string; }
 interface PreviewDraft { readonly path: readonly Position[]; readonly isAcrobatic: boolean; }
 interface EvaluatedPreview extends PreviewDraft {
@@ -21,7 +21,7 @@ export type MovementPreviewProjection =
   | (PreviewDraft & { readonly status: "empty"; readonly availableBudgetFeet: number })
   | (EvaluatedPreview & { readonly status: "legal" })
   | (EvaluatedPreview & { readonly status: "over-budget"; readonly excessFeet: number })
-  | (PreviewDraft & { readonly status: "illegal"; readonly reason: string; readonly failedStepIndex: number; readonly reasonSource: "movement" | "withdraw-policy" })
+  | (PreviewDraft & { readonly status: "illegal"; readonly reason: string; readonly failedStepIndex: number; readonly reasonSource: "movement" | "withdraw-policy" | "run-policy" })
   | (PreviewDraft & { readonly status: "unavailable"; readonly reason: string });
 export interface MovementPreviewInput {
   readonly snapshot: CombatRulesSnapshot<ProductionEffectId> | null;
@@ -178,6 +178,86 @@ export function getWithdrawPreviewAvailability(snapshot: MovementPreviewInput["s
   } catch (error) { const reason = previewError(error); return { status: "unavailable", reason, blockedReason: !canControl ? "No controla este actor." : reason }; }
 }
 
+
+export type RunPreviewInput = Pick<MovementPreviewInput, "snapshot" | "actorId"> & { destination: Position | null };
+export type RunPreviewAvailability =
+  | { status: "ready"; blockedReason: string | null; budgetFeet: number; multiplier: 3 | 4; keepsDex: boolean }
+  | { status: "unavailable"; blockedReason: string };
+
+function prepareRun({ snapshot, actorId }: Pick<RunPreviewInput, "snapshot" | "actorId">) {
+  const actor = snapshot?.combatants.find(c => c.id === actorId) as Combatant | undefined;
+  if (!snapshot || !actor || snapshot.currentTurn?.combatantId !== actor.id) {
+    throw new Error("Correr requiere el actor del turno activo.");
+  }
+  const { normalDiagonalStepsThisTurn, movementUsedFeet } = snapshot.currentTurn;
+  if (!Number.isFinite(normalDiagonalStepsThisTurn) || !Number.isFinite(movementUsedFeet)) {
+    throw new Error("El contexto de movimiento recibido está incompleto.");
+  }
+  for (const combatant of snapshot.combatants) getCombatantOccupiedCells(combatant, snapshot);
+  return { snapshot, actor, initialContext: { normalDiagonalStepsThisTurn }, budgetFeet: runSpeedBudgetFeet(snapshot, actor) };
+}
+
+function runProjection({ snapshot, actor, initialContext, budgetFeet }: ReturnType<typeof prepareRun>, destination: Position | null): MovementPreviewProjection {
+  if (!destination) return { path: [], isAcrobatic: false, status: "empty", availableBudgetFeet: budgetFeet };
+  const path = buildStraightPath(actor.position, destination);
+  const draft = { path: path ?? [], isAcrobatic: false };
+  const reject = (reason: string, failedStepIndex: number): MovementPreviewProjection =>
+    ({ ...draft, status: "illegal", reasonSource: "run-policy", reason, failedStepIndex });
+  if (!path) return reject("Correr requiere un destino horizontal, vertical o diagonal de 45°.", 0);
+  const resolution = resolveMovementPipeline({ context: snapshot, combatant: actor, path, initialContext,
+    availableBudgetFeet: budgetFeet, isAcrobatic: false });
+  if (resolution.kind === "ready") {
+    const difficult = resolution.steps.find(step => step.isDifficultTerrain);
+    if (difficult) return reject("No puede correr a través de terreno difícil.", difficult.stepIndex);
+    for (const step of resolution.steps) {
+      const final = step.stepIndex === resolution.steps.length - 1;
+      const cells = new Set(step.occupiedCells.map(footprintCellKey));
+      const blocker = snapshot.combatants.find(other => other.id !== actor.id &&
+        lifeStatus(other as Combatant) !== "dead" && (final || other.type !== actor.type) &&
+        getCombatantOccupiedCells(other, snapshot).some(cell => cells.has(footprintCellKey(cell))));
+      if (blocker) return reject(final ? "No puede terminar de correr sobre la casilla de " + blocker.name + "."
+        : "No puede correr a través de " + blocker.name + " (Correr V1 no admite Acrobacias).", step.stepIndex);
+    }
+  }
+  return projectResolution(draft, resolution, budgetFeet, []);
+}
+
+export function buildRunMovementPreview(input: RunPreviewInput): MovementPreviewProjection {
+  try { return runProjection(prepareRun(input), input.destination); }
+  catch (error) { return { path: [], isAcrobatic: false, status: "unavailable", reason: previewError(error) }; }
+}
+
+export function buildRunCandidates(input: Omit<RunPreviewInput, "destination">): ReadonlyMap<string, MovementPreviewProjection> {
+  const candidates = new Map<string, MovementPreviewProjection>();
+  try {
+    const prepared = prepareRun(input);
+    const { x, y, zFeet } = prepared.actor.position;
+    const { width, height } = prepared.snapshot.board;
+    for (let dy = -1; dy <= 1; dy++) for (let dx = -1; dx <= 1; dx++) {
+      if (dx === 0 && dy === 0) continue;
+      for (let px = x + dx, py = y + dy; px >= 0 && px < width && py >= 0 && py < height; px += dx, py += dy) {
+        candidates.set(px + "," + py, runProjection(prepared, { x: px, y: py, zFeet }));
+      }
+    }
+  } catch { candidates.clear(); }
+  return candidates;
+}
+
+export function getRunPreviewAvailability(snapshot: RunPreviewInput["snapshot"], actorId: string | null, canControl: boolean): RunPreviewAvailability {
+  if (snapshot?.pendingOpportunityAttacks.length) return { status: "unavailable", blockedReason: "Hay ataques de oportunidad pendientes." };
+  if (snapshot?.phase !== "active") return { status: "unavailable", blockedReason: "Correr requiere combate activo." };
+  if (!canControl) return { status: "unavailable", blockedReason: "No controla este actor." };
+  try {
+    const { actor, budgetFeet } = prepareRun({ snapshot, actorId });
+    const availability = Rules.evaluateActionAvailability(snapshot, actor);
+    const blockedReason = !availability.ok ? availability.error ?? "Acción no disponible."
+      : snapshot.currentTurn.attackMode !== "none" ? "Tiene un modo de ataque preparado."
+      : canRun(snapshot, actor).error ?? null;
+    return { status: "ready", blockedReason, budgetFeet, multiplier: runSpeedMultiplier(actor),
+      keepsDex: FeatCatalog.runContribution(actor.featIds ?? []).keepsDexBonusWhileRunning };
+  } catch (error) { return { status: "unavailable", blockedReason: previewError(error) }; }
+}
+
 export function getMovementPreviewKind(input: { phase?: CombatRoom["phase"]; actionMode: string; tacticMode: string;
   gmMoveMode: boolean; withdrawArmed: boolean; runArmed: boolean; fiveFootStepArmed: boolean; isDemoActive?: boolean; isMapEditing?: boolean }): MovementPreviewKind {
   if (input.isDemoActive || input.isMapEditing) return "none";
@@ -186,9 +266,9 @@ export function getMovementPreviewKind(input: { phase?: CombatRoom["phase"]; act
   if (input.actionMode === "tactics" && input.tacticMode === "bull-rush") return "legacy-forced";
   if (input.actionMode !== "move") return "none";
   if (input.phase === "preparation") return "placement";
+  if (input.runArmed && (input.phase === "active" || input.phase === "opportunity-resolution" || input.phase === "critical-confirmation")) return "run";
   if (input.phase !== "active") return "none";
   if (input.withdrawArmed) return "withdraw";
-  if (input.runArmed) return "legacy-run";
   if (input.fiveFootStepArmed) return "legacy-five-foot-step";
   return "ordinary-move";
 }

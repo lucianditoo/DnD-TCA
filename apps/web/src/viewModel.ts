@@ -11,7 +11,6 @@ import {
   resolveMovementPipeline,
   lifeStatus,
   Rules,
-  runSpeedMultiplier,
   validateMovePath,
   averageWeaponDamageForCombatant,
   resolveEquippedWeaponProfile,
@@ -76,22 +75,16 @@ function isFootprintPreviewLegal(
   return !isCombatantDestinationOccupied(room, snapshot, combatant, position);
 }
 
-export function getHighlightedCells(room: CombatRoom | null, snapshot: import("@dnd-tactical/shared").CombatRulesSnapshot<import("@dnd-tactical/shared").ProductionEffectId> | null, selected: Combatant | null, mode: ActionMode, abilityId: string, movementPath: Position[], runArmed: boolean = false): Map<string, string> {
+export function getHighlightedCells(room: CombatRoom | null, snapshot: import("@dnd-tactical/shared").CombatRulesSnapshot<import("@dnd-tactical/shared").ProductionEffectId> | null, selected: Combatant | null, mode: ActionMode, abilityId: string, movementPath: Position[]): Map<string, string> {
   const cells = new Map<string, string>();
   if (!room || !selected || mode === "inspect" || mode === "tactics") return cells;
   const activeSnapshot = snapshot ?? createCombatRulesSnapshot(room);
 
   const selectedAbility = selected.abilities.find((ability) => ability.id === abilityId) ?? selected.abilities[0] ?? null;
   const weapon = resolveEquippedWeaponProfile(selected).profile;
-  // MOVE-RUN: preview presentacional con presupuesto x4/x3 segun armadura (Correr no tiene
-  // variante limitada para Disabled: sin via legal, el factor colapsa a 1). La legalidad
-  // final (linea recta, terreno dificil absoluto, FORBID_RUN, economia) la decide siempre
-  // el servidor autoritativo — este factor es solo para dibujar el rango de la ruta.
-  const runFactor = runArmed && room.phase === "active" && lifeStatus(selected) !== "disabled" ? runSpeedMultiplier(selected) : 1;
-  const movementFactor = runArmed ? runFactor : 1;
   const maxDistance =
     mode === "move"
-      ? room.phase === "preparation" ? Number.POSITIVE_INFINITY : Math.max(0, Rules.totalSpeedFeet(snapshot!, selected) * movementFactor - room.currentTurn.movementUsedFeet)
+      ? room.phase === "preparation" ? Number.POSITIVE_INFINITY : Math.max(0, Rules.totalSpeedFeet(snapshot!, selected) - room.currentTurn.movementUsedFeet)
       : mode === "attack"
         ? weapon.maxRangeFeet || room.board.cellSizeFeet
         : selectedAbility?.rangeFeet ?? 0;

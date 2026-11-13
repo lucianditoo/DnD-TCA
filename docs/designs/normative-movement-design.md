@@ -2012,10 +2012,10 @@ Evidencia local: 981/981 globales, 168/168 Run + Resolution/Commit focalizadas, 
 
 ### 13.1 Estado, autoridad y alcance
 
-**DISEÑO SOLAMENTE; Awaiting Architecture Review and Proceed.** Baseline auditado:
+**Implementado localmente en Nivel B.** Architecture Review aprobada por Nemotron y Proceed explícito del propietario sobre el diseño. Baseline original auditado:
 `98030357b857a66c1d1e0f860b46a97614c9b659`, con I10 Run servidor aprobado
 y Windows CI verde según decisión del owner. Este capítulo diseña exclusivamente
-la futura migración del preview web de Run; no autoriza implementación.
+la migración del preview web de Run.
 
 Movement continúa gobernado por este NDD. Las reglas de Run, su presupuesto,
 elegibilidad, consecuencias y decisiones RAW permanecen en
@@ -2271,7 +2271,7 @@ implementación solo se ejecuta como regresión, salvo evidencia de transporte n
 cubierta. DoD futuro completo Nivel B: unit/integration, typecheck, build,
 WebSocket, Playwright, diff-check y CI Windows.
 
-### 13.9 Plan de implementación futuro (Nivel B, no autorizado)
+### 13.9 Plan de implementación aprobado (Nivel B)
 
 No se crea `implementation_plan.md` raíz: Governance permite plan embebido para
 Nivel B y este capítulo es la única autoridad activa de I11.

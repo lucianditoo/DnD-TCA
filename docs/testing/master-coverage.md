@@ -1,5 +1,11 @@
 # Master Testing Coverage
 
+## D-1B-I11 — Preview normativo de Run
+
+La [paridad con el handler I10](../../tests/run-server.test.mjs) coteja ruta canónica, pasos, coste, paridad diagonal y ocupación. Cubre presupuesto normal y pesado, buffs, guardas, precedencia de terreno, Squeezing y reanudación por tramos. Los [escenarios de Chromium](../../tests-ui/run-preview.spec.ts) cubren selección por destino, confirmación con solo `to`, exposición autoritativa, bloqueos, actualización del mismo turno, ronda nueva y evidencia 2D/2.5D.
+
+Verificación local: 138/138 focalizadas, 1.025/1.025 globales, typecheck y build correctos, 141/141 WebSocket y 39/39 Chromium. El resultado de Windows CI se consulta por commit.
+
 ## Regresiones de ataques de oportunidad
 
 Las pruebas de cupo distinguen provocaciones independientes del mismo objetivo.

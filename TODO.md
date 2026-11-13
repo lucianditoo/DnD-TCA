@@ -11,11 +11,6 @@ Consumidores: Agentes al retomar el proyecto y propietario al priorizar tareas.
 > vive en Git y en `walkthrough.md`; el estado oficial de Rule IDs vive en
 > [`docs/rules/registry.md`](docs/rules/registry.md).
 
-## Continuidad inmediata de D-1B
-
-- Obtener Architecture Review y Proceed explícito para D-1B-I11 Run Preview Parity, diseñado en el [Capítulo 13](docs/designs/normative-movement-design.md#capítulo-13--i11-run-normative-preview-parity). No implementar antes del gate.
-- En la futura implementación I11, migrar únicamente el preview web Run endpoint-driven; 5ft/Charge, metadata global AdO, predictor, servidor I10 y D-7 permanecen fuera.
-
 ## Diseños espaciales pendientes
 
 Los contratos normativos D-1R1, D-1A y D-1B ya existen: no volver a pedir su

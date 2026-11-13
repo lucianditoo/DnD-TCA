@@ -41,7 +41,7 @@ function readResume(roomCode: string): ResumeGmSessionCommand | null {
 
 export type JoinMode = "gm" | "player";
 
-export function useWebSocketRoom({ onHello, onActiveTurnChanged }: { onHello: () => void; onActiveTurnChanged: () => void }) {
+export function useWebSocketRoom({ onHello, onActiveTurnChanged }: { onHello: () => void; onActiveTurnChanged: (room: CombatRoom) => void }) {
   const socketRef = useRef<WebSocket | null>(null);
   const activeCombatantIdRef = useRef<string | null>(null);
   const [name, setName] = useState("Lucia");
@@ -131,7 +131,7 @@ export function useWebSocketRoom({ onHello, onActiveTurnChanged }: { onHello: ()
       }
       if (payload.type === "room-update") {
         const nextActiveId = payload.room.phase === "active" ? getActiveCombatant(payload.room)?.id ?? null : null;
-        if (nextActiveId !== activeCombatantIdRef.current) onActiveTurnChanged();
+        if (nextActiveId !== activeCombatantIdRef.current) onActiveTurnChanged(payload.room);
         activeCombatantIdRef.current = nextActiveId;
         setRoom(payload.room);
         setInterruption(payload.interruption ?? null);

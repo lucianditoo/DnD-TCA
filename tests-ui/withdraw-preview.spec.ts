@@ -10,7 +10,7 @@ async function fixture(page: Page, options: { parity?: number; speed?: number; l
   actor.position={x:2,y:2,zFeet:options.height??0}; actor.baseSpeedFeet=options.speed??30; actor.equipmentSlots.armorItemId=null;
   if(options.limited)actor.hpCurrent=0;
   if(options.large)actor.sizeCategory="large";
-  const room=createEmptyRoom("I9UI"); room.phase="active"; room.combatants=[actor];room.turnOrder=[actor.id];room.currentTurn=emptyTurn(actor.id);
+  const room=createEmptyRoom("I9UI"); room.board=structuredClone(room.board); room.phase="active"; room.combatants=[actor];room.turnOrder=[actor.id];room.currentTurn=emptyTurn(actor.id);
   room.currentTurn.normalDiagonalStepsThisTurn=options.parity??0;room.board.difficultTerrainCells=options.terrain??[];
   if(options.large)room.board.narrowCells=Array.from({length:room.board.width*room.board.height},(_,i)=>`${i%room.board.width},${Math.floor(i/room.board.width)}`);
   if(options.blocker){const other=createDemoCombatant("enemy",2,{type:"gm"});other.sizeCategory="medium";other.position={x:3,y:2,zFeet:actor.position.zFeet};
