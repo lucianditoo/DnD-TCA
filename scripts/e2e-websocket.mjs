@@ -476,7 +476,21 @@ await send(gmFa, { type: 'sort-initiative', roomCode: faCode, actorId: faGmId })
 
 // Caso 1: Ataque 1 -> Movimiento permitido, pero falla iterativo
 await send(gmFa, { type: 'declare-attack-mode', roomCode: faCode, actorId: faGmId, combatantId: faCedrick.id, mode: 'standard', defensive: false });
-await send(gmFa, { type: 'resolve-attack', roomCode: faCode, actorId: faGmId, attackerId: faCedrick.id, targetId: faEnemy.id, d20Roll: 10, damage: 1 });
+const faTargetHp = () => gmFa.room.combatants.find(c => c.id === faEnemy.id).hpCurrent;
+const faHpBefore = faTargetHp();
+const faErrorsBefore = gmFa.errors.length;
+await send(gmFa, { type: 'resolve-attack', roomCode: faCode, actorId: faGmId, attackerId: faCedrick.id, targetId: faEnemy.id, d20Roll: 20, damage: 1 });
+const faThreat = gmFa.room.activeAttackThreat;
+record('20 natural abre confirmación y difiere el daño', gmFa.room.phase === 'critical-confirmation' &&
+  faThreat?.attackerId === faCedrick.id && faThreat.targetId === faEnemy.id &&
+  faThreat.initialD20Roll === 20 && faTargetHp() === faHpBefore &&
+  gmFa.errors.length === faErrorsBefore, JSON.stringify(faThreat));
+// El 1 natural falla la confirmación. Se aplica el daño normal y se
+// completa el mismo ataque antes de comprobar la economía de acciones.
+await send(gmFa, { type: 'resolve-attack-confirmation', roomCode: faCode, actorId: faGmId, d20Roll: 1, damage: null });
+record('1 natural no confirma el crítico y aplica solo daño normal', gmFa.room.phase === 'active' &&
+  !gmFa.room.activeAttackThreat && faTargetHp() === faHpBefore - 1 &&
+  gmFa.room.currentTurn.attacksMade === 1 && gmFa.errors.length === faErrorsBefore, gmFa.errors.join(' | '));
 await send(gmFa, { type: 'move-combatant', roomCode: faCode, actorId: faGmId, combatantId: faCedrick.id, to: { x: 5, y: 6, zFeet: 0 }, path: [{ x: 5, y: 6, zFeet: 0 }] });
 record('Ataque 1 + movimiento normal es valido', gmFa.room.currentTurn.usedStandardAction && gmFa.room.currentTurn.usedMoveAction && !gmFa.errors.some(e => /ya uso su accion de movimiento/i.test(e)), 'turn=' + JSON.stringify(gmFa.room.currentTurn) + ' errors=' + gmFa.errors.join(' | '));
 await send(gmFa, { type: 'resolve-attack', roomCode: faCode, actorId: faGmId, attackerId: faCedrick.id, targetId: faEnemy.id, d20Roll: 10, damage: 1 });
