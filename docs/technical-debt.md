@@ -403,10 +403,14 @@ Correr y Retirada; no ramificar por `effectId`.
 - El MVP inicial se archiva como precursor, sin limitar la V1; INDEX, manifiesto, notas de Registry y evidencia de testing se sincronizan. Los cuatro inventarios PHB no se eliminan: su granularidad difiere del Registry y de master-coverage.
 - Las anotaciones históricas de los inventarios PHB requieren revalidación por vertical antes de usarse como estado de implementación. Este saneamiento corrige los desfasajes comprobados de RULES; no certifica una auditoría exhaustiva de todos los catálogos.
 
-**Riesgo**: documental; DT-023 permanece abierta por el punto 5 y el mantenimiento de anotaciones históricas no revalidadas. No se introduce deuda de código.
+**Seguimiento — modernización con Codex y ECC:** El punto 5 queda resuelto
+por el [flujo operativo](../AGENTS.md). Se actualiza el documento dueño del
+dato que cambió. La [guía de Codex y ECC](../CODEX_GUIDE.md) tiene una
+responsabilidad propia y el índice localiza las demás fuentes.
 
-**Módulo afectado**: solo documentación (`RULES_ENGINE.md`, `CODEX_GUIDE.md`, `README.md`, `.ai/README.md`, `.ai/WORKFLOW.md`, `INDEX.md`, `.agents/AGENTS.md` §3).
+**Riesgo pendiente:** DT-023 sigue abierta por las anotaciones históricas
+PHB que requieren revalidación por vertical. Contrastarlas con evidencia
+cuando la vertical entre en alcance.
 
-**Recomendación**: resolver en la próxima auditoría documental (`GOVERNANCE.md` §6.7) aplicando Migration First (§2.4) caso por caso: consolidar o reducir a puntero las derivadas con solapamiento, dejar un único orden de lectura (el Reader Pipeline) y una única tabla de fuentes canónicas (en `INDEX.md`). No resolver de forma incremental en sprints funcionales.
-
+**Módulo afectado:** documentación.
 **Bloquea MVP**: No.

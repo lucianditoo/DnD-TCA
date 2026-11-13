@@ -10,6 +10,23 @@ Move, Run, Withdraw y Charge confirman el tramo previo al AdO y vuelven a valida
 
 Candidato aislado de AdO (Nivel D): 992/992 pruebas, typecheck y build correctos, 134/134 comprobaciones WebSocket y 33/33 escenarios Chromium (incluidas las tres escenas de la demo). Chromium usó puertos alternativos en la copia de verificación. Dictamen independiente de Nemotron: APROBADO.
 
+## Referencia de rendimiento — aislamiento de snapshots
+
+Medición sintética en Windows y Node.js 24, `NODE_ENV=production`, con el código
+anterior y el de `structuredClone` intercalados en el mismo proceso. Cada
+variante tuvo 500 iteraciones de calentamiento y 120 lotes de 25 llamadas.
+Los percentiles corresponden al tiempo medio por llamada de cada lote.
+
+| Sala (combatientes / efectos / AdO pendientes / celdas bloqueadas) | Mediana anterior → nueva | p95 anterior → nuevo |
+|---|---:|---:|
+| Típica (8 / 12 / 2 / 40) | 14 → 108 µs | 20 → 122 µs |
+| Cargada (40 / 100 / 20 / 400) | 60 → 622 µs | 79 → 661 µs |
+
+El aumento de p95 fue de aproximadamente 0,10 ms y 0,58 ms por snapshot.
+Esta referencia mide la creación del snapshot, sin incluir render ni
+latencia de comandos. El coste quedó aceptado para el cambio de aislamiento.
+
+
 Responsabilidad: Evidencia global de pruebas por cierre de código.
 Autoridad: Registro
 Lifecycle: Snapshot vivo

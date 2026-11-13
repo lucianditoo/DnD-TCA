@@ -84,6 +84,11 @@ test.describe('Smoke Test Táctico Visual', () => {
     // Debería aparecer la alerta de AdO
     await expect(page.getByText('Hay ataques de oportunidad pendientes')).toBeVisible();
 
+    // Recargar como GM mientras el movimiento espera la reacción.
+    await page.reload();
+    await expect(page.getByRole('status')).toHaveText('Movimiento pendiente de resolución.');
+    await expect(page.getByRole('button', { name: 'Declinar AdO', exact: true })).toBeEnabled();
+
     // 5. Validar que no se puede terminar el turno porque no está en fase active
     const endTurnButton = page.getByRole('button', { name: 'Terminar turno' });
     await expect(endTurnButton).not.toBeVisible();
@@ -98,6 +103,7 @@ test.describe('Smoke Test Táctico Visual', () => {
 
     // Esperar que desaparezca el cartel
     await expect(page.getByText('Hay ataques de oportunidad pendientes')).not.toBeVisible();
+    await expect(page.getByRole('status')).toHaveCount(0);
     await expect(endTurnButton).toBeEnabled();
 
     // 7. Continuación
@@ -192,31 +198,10 @@ test.describe('Smoke Test Táctico Visual', () => {
     await page.getByRole('button', { name: 'Iniciar combate' }).click();
     await page.getByRole('button', { name: 'Terminar turno' }).click();
 
-    const roomLabel = await page.locator('.eyebrow').textContent();
-    const roomCode = /Sala\s+([A-Z0-9]+)/.exec(roomLabel ?? '')?.[1];
-    expect(roomCode).toBeTruthy();
-    await page.evaluate(async (code) => {
-      await new Promise<void>((resolve, reject) => {
-        const socket = new WebSocket(`ws://localhost:3333`);
-        const timer = window.setTimeout(() => reject(new Error('Timeout aplicando PRONE')), 5000);
-        let actorId = '';
-        let targetId = '';
-        socket.onopen = () => socket.send(JSON.stringify({ type: 'join-room', roomCode: code, name: 'RulesGM', role: 'gm' }));
-        socket.onerror = () => reject(new Error('Fallo WebSocket de prueba'));
-        socket.onmessage = (event) => {
-          const message = JSON.parse(String(event.data));
-          if (message.type === 'hello') {
-            actorId = message.participant.id;
-            targetId = message.room.combatants.find((combatant: { name: string; id: string }) => combatant.name === 'Agile Stand Tester')?.id ?? '';
-            socket.send(JSON.stringify({ type: 'gm-apply-effect', roomCode: code, actorId, targetId, effectId: 'srd_prone' }));
-          } else if (message.type === 'room-update' && message.room.effectInstances.some((effect: { effectId: string; targets?: string[] }) => effect.effectId === 'srd_prone' && effect.targets?.includes(targetId))) {
-            window.clearTimeout(timer);
-            socket.close();
-            resolve();
-          }
-        };
-      });
-    }, roomCode!);
+    await page.locator('[data-testid="cell-2-2"]').click();
+    await page.getByText('Panel GM', { exact: true }).click();
+    await page.locator('label').filter({ hasText: 'Aplicar efecto' }).locator('select').selectOption('srd_prone');
+    await page.getByRole('button', { name: 'Aplicar a Agile Stand Tester' }).click();
 
     await page.locator('[data-testid="cell-2-2"]').click();
     await page.getByRole('button', { name: 'Tacticas' }).click();
@@ -338,34 +323,13 @@ test.describe('Smoke Test Táctico Visual', () => {
     await page.locator('.initiative-list input').nth(1).press('Tab');
     await page.getByRole('button', { name: 'Iniciar combate' }).click();
 
-    const roomLabel = await page.locator('.eyebrow').textContent();
-    const roomCode = /Sala\s+([A-Z0-9]+)/.exec(roomLabel ?? '')?.[1];
-    expect(roomCode).toBeTruthy();
-    await page.evaluate(async (code) => {
-      await new Promise<void>((resolve, reject) => {
-        const socket = new WebSocket('ws://localhost:3333');
-        const timer = window.setTimeout(() => reject(new Error('Timeout aplicando Entangled')), 5000);
-        let actorId = '';
-        let targetId = '';
-        socket.onopen = () => socket.send(JSON.stringify({ type: 'join-room', roomCode: code, name: 'EntangledRulesGM', role: 'gm' }));
-        socket.onerror = () => reject(new Error('Fallo WebSocket de prueba'));
-        socket.onmessage = (event) => {
-          const message = JSON.parse(String(event.data));
-          if (message.type === 'hello') {
-            actorId = message.participant.id;
-            targetId = message.room.combatants.find((combatant: { name: string; id: string }) => combatant.name === 'Bane')?.id ?? '';
-            socket.send(JSON.stringify({ type: 'gm-apply-effect', roomCode: code, actorId, targetId, effectId: 'srd_entangled' }));
-          } else if (message.type === 'room-update' && message.room.effectInstances.some((activeEffect: { effectId: string; targets?: string[] }) => activeEffect.effectId === 'srd_entangled' && activeEffect.targets?.includes(targetId))) {
-            window.clearTimeout(timer);
-            socket.close();
-            resolve();
-          }
-        };
-      });
-    }, roomCode!);
+    await page.locator('[data-testid="cell-2-2"]').click();
+    await page.getByText('Panel GM', { exact: true }).click();
+    await page.locator('label').filter({ hasText: 'Aplicar efecto' }).locator('select').selectOption('srd_entangled');
+    await page.getByRole('button', { name: 'Aplicar a Bane' }).click();
 
     await page.locator('[data-testid="cell-2-2"]').click();
-    await page.getByRole('button', { name: 'Mover' }).click();
+    await page.getByRole('button', { name: 'Mover', exact: true }).click();
     await expect(page.getByTestId('movement-speed-preview')).toContainText('Velocidad efectiva: 15 ft');
     await expect(page.getByTestId('movement-speed-preview')).toContainText('Entangled ×1/2');
     await expect(page.getByRole('button', { name: 'Correr (×4/×3 velocidad)' })).toBeDisabled();

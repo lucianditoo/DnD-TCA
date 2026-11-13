@@ -26,6 +26,11 @@ export function App() {
 
 type MapEditorStatus = "idle" | "editing" | "saving";
 
+const interruptionLabels = {
+  move: "Movimiento", run: "Correr", withdraw: "Retirada", charge: "Carga",
+  "cast-spell": "Lanzamiento de conjuro", "resolve-attack": "Ataque a distancia", "stand-up": "Levantarse"
+} as const;
+
 function CombatApp() {
   const [targetId, setTargetId] = useState<string>("");
   const [aidAllyId, setAidAllyId] = useState<string>("");
@@ -65,7 +70,7 @@ function CombatApp() {
   const pendingSavedBoardRef = useRef<BoardType | null>(null);
   const roomAtSaveRef = useRef<CombatRoom | null>(null);
 
-  const { name, setName, roomCode, setRoomCode, mode, setMode, participant, room, catalog, selectedId, setSelectedId, selectedHeroTemplateId, setSelectedHeroTemplateId, selectedEnemyTemplateId, setSelectedEnemyTemplateId, demoSessionState, error, setError, createRoom, joinRoom, roomCommand, startDemo, pauseDemo, resumeDemo, stepDemo, setDemoSpeed, restartDemo, exitDemo } = useWebSocketRoom({
+  const { name, setName, roomCode, setRoomCode, mode, setMode, participant, room, catalog, interruption, selectedId, setSelectedId, selectedHeroTemplateId, setSelectedHeroTemplateId, selectedEnemyTemplateId, setSelectedEnemyTemplateId, demoSessionState, reconnecting, error, setError, createRoom, joinRoom, roomCommand, startDemo, pauseDemo, resumeDemo, stepDemo, setDemoSpeed, restartDemo, exitDemo } = useWebSocketRoom({
     onHello: () => setActionMode("inspect"),
     onActiveTurnChanged: () => {
       setActionMode("inspect");
@@ -82,9 +87,9 @@ function CombatApp() {
 
   useEffect(() => {
     if (mapEditorStatus === "saving") {
-      if (error) {
+      if (error || reconnecting) {
         setMapEditorStatus("editing");
-        setMapEditorError(error);
+        setMapEditorError(error ?? "Se interrumpio la confirmacion del guardado. Revisa el tablero al reconectar.");
         pendingSavedBoardRef.current = null;
         roomAtSaveRef.current = null;
       } else if (room?.board && pendingSavedBoardRef.current && roomAtSaveRef.current && room !== roomAtSaveRef.current) {
@@ -97,7 +102,7 @@ function CombatApp() {
         }
       }
     }
-  }, [room, error, mapEditorStatus]);
+  }, [room, error, reconnecting, mapEditorStatus]);
 
   const presentationRoom = useMemo(() => {
     if (isMapEditing && draftBoard && room) {
@@ -722,6 +727,7 @@ function CombatApp() {
 
 
 
+  if (reconnecting) return <main className="login-shell"><p role="status">Reconectando…</p></main>;
   if (!participant || !room) {
     return <ConnectionPanel name={name} roomCode={roomCode} mode={mode} error={error} onNameChange={setName} onRoomCodeChange={setRoomCode} onModeChange={setMode} onCreateRoom={createRoom} onJoinRoom={joinRoom} onStartDemo={startDemo} />;
   }
@@ -757,6 +763,8 @@ function CombatApp() {
           <div className="turn-pill">{room.phase === "active" ? "Turno: " + (active?.name ?? "sin iniciativa") : "Carga combatientes e iniciativas"}</div>
         </div>
       </header>
+
+      {interruption && !isDemoActive && <p role="status">{interruptionLabels[interruption.kind]} pendiente de resolución.</p>}
 
       {demoSessionState && (
         <DemoPanel

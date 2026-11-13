@@ -7,7 +7,7 @@ Este archivo localiza responsabilidades; no replica su contenido.
 | Responsabilidad | Fuente canónica |
 |---|---|
 | Gobernanza | [`GOVERNANCE.md`](GOVERNANCE.md) |
-| Operación y Definition of Done | [`.agents/AGENTS.md`](.agents/AGENTS.md) |
+| Operación y Definition of Done | [`AGENTS.md`](AGENTS.md) |
 | Índice documental | `INDEX.md` |
 | Estado integrado y publicado | [`PROJECT_STATUS.md`](PROJECT_STATUS.md) |
 | Pendientes | [`TODO.md`](TODO.md) |
@@ -24,42 +24,13 @@ Este archivo localiza responsabilidades; no replica su contenido.
 checklist exhaustiva de reglas PHB. Las matrices temáticas de `.ai/coverage/`
 tienen consumidores y granularidad diferentes y no redefinen Rule IDs.
 
-## Clasificación documental (Sprint 054C)
+## Guías y registros
 
-Todo documento del repositorio pertenece a exactamente una categoría
-(`GOVERNANCE.md` §6.2.2 define la política; esta sección es la asignación
-vigente):
-
-- **SSOT**: `GOVERNANCE.md`, `.agents/AGENTS.md`, `INDEX.md`,
-  `PROJECT_STATUS.md`, `TODO.md`, `ROADMAP.md`, `docs/rules/registry.md`,
-  `docs/testing/master-coverage.md`, `docs/technical-debt.md`,
-  `docs/audits/combat-rules-deviations.md`, `docs/adr/*`, cada NDD vigente de
-  `docs/designs/**` respecto de su vertical, y los cuatro inventarios PHB de
-  `.ai/coverage/` (`RULES`/`FEATS`/`SPELLS`/`EQUIPMENT` `_PHB_CHECKLIST.md`)
-  más `V1_LAUNCH_MANIFESTO.md`.
-- **Vista derivada** (pierde ante su canónico en todo conflicto):
-  `README.md`, `CODEX_GUIDE.md`, `ARCHITECTURE.md`, `RULES_ENGINE.md`,
-  `COMBAT_FLOW.md`, `docs/architecture/**` (vistas profundas por subsistema),
-  y toda la carpeta `.ai/` salvo `coverage/`.
-- **Histórico** (solo lectura, sin autoridad): todo `docs/archive/**` y las
-  auditorías puntuales cerradas que permanezcan en `docs/audits/`
-  (`core-engine-audit.md`).
-- **Temporal**: `implementation_plan.md` en la raíz mientras dura su sprint;
-  `walkthrough.md` es rotativo (se reescribe por completo en cada cierre).
-- **Plantilla**: `docs/sprints/TEMPLATE.md`, `docs/audits/TEMPLATE.md`.
-- **Obsoleto**: categoría vacía por definición — un documento obsoleto se
-  archiva o elimina en el mismo sprint que lo detecta (`GOVERNANCE.md` §2.3).
-
-En Sprint 054C se archivaron en `docs/archive/`: los tres cortes de coverage
-pre-PHB (`FEATS`/`SPELLS`/`EQUIPMENT` `_CHECKLIST.md`), las auditorías de
-sprint cerradas (`sprint-001-final-audit.md`, `Sprint-003-Audit.md`,
-`Sprint-004-Audit.md`, `migration-report-001.md`), los planes de
-implementación cerrados (`large-footprints-v1-implementation-plan.md`,
-`prone-eschewal-diehard-implementation-plan.md`), el diseño supersedido
-`flanking.md`, y los meta-diseños de proceso ya ejecutados
-(`architectural-cleanup-phase1.md`, `project-hygiene.md`,
-`ai-agent-onboarding.md`, `document-architecture-cleanup.md`).
-
+- [Codex y ECC](CODEX_GUIDE.md): habilidades, criterios de activación y comandos.
+- [Contexto para agentes](.ai/README.md): referencias técnicas bajo demanda.
+- [ADR](docs/adr/): decisiones estructurales. La [adopción de ECC](docs/adr/ADR-0009-ecc-governance.md) registra el origen del flujo operativo vigente.
+- [Plantilla de sprint](docs/sprints/TEMPLATE.md) y [plantilla de auditoría](docs/audits/TEMPLATE.md).
+- Los diseños ejecutados conservan su contexto histórico junto a la vertical. El ciclo de vida documental se define en [GOVERNANCE.md](GOVERNANCE.md#23-ciclo-de-vida).
 ## Arquitectura
 
 - [`ARCHITECTURE.md`](ARCHITECTURE.md): topología cliente-servidor.

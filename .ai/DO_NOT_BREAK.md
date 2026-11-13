@@ -33,7 +33,7 @@ DT-001 está resuelta: `attackResolver.ts` es puro. Toda transición de fase
 debe pasar por `syncEncounterPhase(room)`.
 
 ## 9. No cambiar WebSocket sin diseño
-Cualquier cambio a `ClientCommand` o `ServerMessage` afecta a clientes, servidor, E2E y validación Zod. Nunca cambiar este contrato sin pasar por Fase 2 (Diseño).
+Cualquier cambio a `ClientCommand` o `ServerMessage` afecta a clientes, servidor, E2E y validación Zod. Aplicá la [política de diseño para cambios de contrato](../GOVERNANCE.md#4-alcance-y-autonomía).
 
 ## 10. Validación temprana (Zod)
 Todo comando que llega por WebSocket debe pasar por `validateClientCommand.ts` antes de llegar al dispatcher.

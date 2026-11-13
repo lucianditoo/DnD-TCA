@@ -1,10 +1,11 @@
 import type { WebSocket } from "ws";
 import type { DemoClientCommand } from "@dnd-tactical/shared";
-import { send } from "../room/roomStore.js";
+import { clients, send } from "../room/roomStore.js";
 import {
   clearDemoSessionTimer,
   destroyDemoSession,
   getDemoSessionById,
+  getDemoSessionBySocket,
   type DemoSessionRecord
 } from "./sessionStore.js";
 import {
@@ -38,6 +39,9 @@ export function requireOwnedDemoSession(
 export function handleDemoCommand(socket: WebSocket, command: DemoClientCommand): void {
   switch (command.type) {
     case "start-demo": {
+      if (clients.has(socket) && !getDemoSessionBySocket(socket)) {
+        throw new Error("La conexion ya pertenece a una sala.");
+      }
       startNewDemoSession(socket, command.demoId, command.name);
       return;
     }

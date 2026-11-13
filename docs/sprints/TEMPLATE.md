@@ -1,41 +1,20 @@
-# Sprint Arquitectónico [NNN] — [Título del Sprint]
+# Sprint — [Título]
 
-## 1. Objetivo
-*Descripción concisa de la meta de este sprint.*
+Usá esta plantilla cuando el riesgo amerite un plan persistente. Guardá el
+plan junto al diseño de la vertical o en el Issue/PR existente. Aplicá la
+[matriz de gobernanza](../../GOVERNANCE.md#52-nivel-de-cambio-y-evidencia).
 
-## 2. Alcance
-*Qué áreas del código, arquitectura o documentación están contempladas.*
+## Objetivo y aceptación
 
-## 3. Exclusiones
-*Qué elementos quedan estrictamente fuera del alcance de este sprint.*
+Resultado esperado, criterios observables, alcance y límites.
 
-## 4. Rule IDs Afectados
-- `RULE-ID-1`
-- `RULE-ID-2`
+## Diseño y ejecución
 
-## 5. Riesgos y Dependencias
-*Describir posibles fallos, dependencias bloqueantes y cómo mitigarlas.*
+Nivel A–D, referencias a NDD/ADR y Rule IDs aplicables, dependencias,
+compatibilidad, recuperación y pasos verificables. Registrá las decisiones
+de diseño que requieran acuerdo.
 
-## 6. Documento de Diseño
-*Enlace al diseño arquitectónico o plan (ej. `docs/designs/feature.md`).*
+## Evidencia y cierre
 
-## 7. Plan de Implementación
-*Descripción paso a paso o enlace al `implementation_plan.md` temporal.*
-
-## 8. Testing
-*Estrategia de prueba para este sprint (Unit, E2E).*
-
-## 9. Definition of Ready (DoR)
-*Criterios que deben cumplirse antes de comenzar la implementación (diseño aprobado, plan detallado).*
-
-## 10. Definition of Done (DoD)
-- [ ] Compilación exitosa (`npm run build`).
-- [ ] Chequeo de tipos exitoso (`npm run typecheck`).
-- [ ] Tests unitarios pasando (`npm test`).
-- [ ] Tests E2E pasando (`node scripts/e2e-websocket.mjs`).
-- [ ] Documentación, Rule Registry y ADRs sincronizados.
-- [ ] No existen referencias documentales rotas ni enlaces internos inválidos.
-- [ ] Toda migración ha sido validada.
-
-## 11. Resultado y Auditoría
-*Enlace a la auditoría final y walkthrough o resumen del cierre.*
+Comprobaciones aplicables, resultado observado, referencia al diff/SHA y
+revisión pendiente o realizada. Enlazá la documentación canónica afectada.

@@ -569,8 +569,12 @@ export type DemoServerEvent =
   | { type: "demo-session-state"; state: DemoSessionState }
   | { type: "demo-exited"; sessionId: string };
 
+export type RoomInterruption = { kind: "move" | "run" | "withdraw" | "charge" | "cast-spell" | "resolve-attack" | "stand-up" };
+
 export type ServerEvent =
-  | { type: "hello"; participant: Participant; room: CombatRoom; catalog: GameCatalog }
-  | { type: "room-update"; room: CombatRoom }
+  | { type: "hello"; participant: Participant; room: CombatRoom; catalog: GameCatalog; gmResumeToken?: string; interruption?: RoomInterruption }
+  | { type: "gm-resume-rejected"; reason: "active" | "unavailable" }
+  | { type: "gm-session-heartbeat" }
+  | { type: "room-update"; room: CombatRoom; interruption?: RoomInterruption }
   | { type: "error"; message: string }
   | DemoServerEvent;

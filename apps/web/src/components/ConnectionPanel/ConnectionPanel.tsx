@@ -34,8 +34,8 @@ export function ConnectionPanel({
       <form onSubmit={mode === "gm" ? onCreateRoom : onJoinRoom} className="join-form">
         <label>Nombre<input value={name} onChange={(event) => onNameChange(event.target.value)} /></label>
         <div className="segmented">
-          <button type="button" className={mode === "gm" ? "active" : ""} onClick={() => onModeChange("gm")}><Users size={16} /> GM</button>
-          <button type="button" className={mode === "player" ? "active" : ""} onClick={() => onModeChange("player")}><LogIn size={16} /> Jugador</button>
+          <button type="button" className={mode === "gm" ? "active" : ""} onClick={() => onModeChange("gm")}><Users size={16} /> Crear como GM</button>
+          <button type="button" className={mode === "player" ? "active" : ""} onClick={() => onModeChange("player")}><LogIn size={16} /> Unirse como jugador</button>
         </div>
         {mode === "player" && <label>Codigo de sala<input value={roomCode} onChange={(event) => onRoomCodeChange(event.target.value)} /></label>}
         <button className="primary" type="submit"><LogIn size={18} /> {mode === "gm" ? "Crear sala" : "Unirse"}</button>

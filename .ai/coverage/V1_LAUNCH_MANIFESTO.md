@@ -38,7 +38,7 @@ Ambas quedan **documentadas como deuda aceptada**, no como bloqueo del lanzamien
 ## 4. Qué NO resuelve este manifiesto
 
 - No decide el orden de sprints para cerrar la brecha de cobertura (el orden corresponde a [ROADMAP.md](../../ROADMAP.md) y las acciones pendientes a [TODO.md](../../TODO.md)).
-- No aprueba ninguna implementación concreta — cada dota/conjuro/objeto que pase de `[ ]` a `[x]` en los checklists de `.ai/coverage/` requiere su propia NDD, Design Review Checklist y `Proceed` explícito, exactamente igual que cualquier otro cambio de código en este proyecto.
+- El manifiesto fija el alcance de V1. Para implementar una dote, conjuro u objeto, aplicá la [política de alcance y diseño](../../GOVERNANCE.md#4-alcance-y-autonomía) y actualizá el checklist según evidencia.
 - No introduce un cuarto tipo de `EquipmentCatalogItem` (`"consumable"`) ni ningún otro cambio de esquema — la brecha de objetos consumibles señalada en `EQUIPMENT_PHB_CHECKLIST.md` queda registrada como candidata a una NDD futura, no resuelta aquí.
 
 ## 5. Vínculo con los checklists de control
@@ -54,6 +54,6 @@ Definen el alcance a cubrir, no una autorización de código. Las anotaciones
 de implementación se contrastan con código/tests y el
 [Registry](../../docs/rules/registry.md); una anotación histórica desactualizada
 no convierte una capacidad existente en trabajo por implementar. Los pendientes
-reales siguen el flujo de [.agents/AGENTS.md](../../.agents/AGENTS.md), con
-diseño y Proceed cuando corresponda. El precursor del MVP inicial no limita
+reales siguen el flujo de [AGENTS.md](../../AGENTS.md), con
+el diseño y la autorización que correspondan al riesgo. El precursor del MVP inicial no limita
 este alcance de V1.

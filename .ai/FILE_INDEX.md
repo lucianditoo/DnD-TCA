@@ -27,7 +27,7 @@ Para cada archivo: responsabilidad · qué modificar · qué NO hacer.
 ### `apps/server/src/commands/attackCommands.ts`
 **Responsabilidad**: Handlers de ataques: `resolve-attack`, `resolve-attack-confirmation`, `cancel-attack-threat`, `resolve-opportunity-attack`.
 
-**Podés modificar**: Lógica de handlers existentes tras pasar por FASE 2–4 del workflow. Agregar nuevas mecánicas de ataque (ataques iterativos, etc.).
+**Podés modificar**: Lógica de handlers existentes según el alcance autorizado y el riesgo del cambio. Agregar nuevas mecánicas de ataque (ataques iterativos, etc.).
 
 **No hagas**: Mover lógica de reglas puras aquí. Las reglas viven en `packages/shared/src/rules.ts`. No duplicar la lógica de `resolveThreatOutcome`.
 

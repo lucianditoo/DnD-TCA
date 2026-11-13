@@ -9,7 +9,7 @@ function connectAndSend(command) {
     ws.on('open', () => ws.send(JSON.stringify(command)));
     ws.on('message', (raw) => {
       const msg = JSON.parse(raw.toString());
-      if (msg.type === 'hello') { state.participant = msg.participant; state.room = msg.room; state.catalog = msg.catalog; clearTimeout(timer); resolve(state); }
+      if (msg.type === 'hello') { state.participant = msg.participant; state.room = msg.room; state.catalog = msg.catalog; state.gmResumeToken = msg.gmResumeToken; clearTimeout(timer); resolve(state); }
       if (msg.type === 'room-update') state.room = msg.room;
       if (msg.type === 'demo-session-state') state.demoSession = msg.state;
       if (msg.type === 'demo-exited') state.demoExited = true;
@@ -29,6 +29,11 @@ const ownershipGm = await connectAndSend({ type: 'create-room', name: 'Ownership
 const ownershipCode = ownershipGm.room.code; const ownershipGmId = ownershipGm.participant.id;
 const ownerA = await connectAndSend({ type: 'join-room', roomCode: ownershipCode, name: 'Player A', role: 'player' });
 const ownerB = await connectAndSend({ type: 'join-room', roomCode: ownershipCode, name: 'Player B', role: 'player' });
+const beforeDenied = JSON.stringify(ownerB.room);
+const beforeOtherRoom = JSON.stringify(gm.room);
+await send(ownerB, { type: 'gm-add-log', roomCode: ownershipCode, actorId: ownershipGmId, message: 'Rechazar identidad incompatible' });
+await send(ownerB, { type: 'gm-add-log', roomCode: code, actorId: ownerB.participant.id, message: 'Rechazar sala incompatible' });
+record('identidad y sala de WebSocket se verifican antes de mutar', ownerB.errors.filter(e => /no esta autorizada/i.test(e)).length === 2 && JSON.stringify(ownerB.room) === beforeDenied && JSON.stringify(gm.room) === beforeOtherRoom, ownerB.errors.join(' | '));
 await send(ownerA, { type: 'add-catalog-combatant', roomCode: ownershipCode, actorId: ownerA.participant.id, category: 'heroes', templateId: 'bane' });
 await send(ownershipGm, { type: 'add-catalog-combatant', roomCode: ownershipCode, actorId: ownershipGmId, category: 'enemies', templateId: 'canocrock' });
 const ownedBane = ownershipGm.room.combatants.find(c => c.name === 'Bane');
@@ -58,6 +63,22 @@ record('jugador no puede terminar turno de enemigo', ownerA.errors.some(e => /te
 await send(ownerA, { type: 'declare-attack-mode', roomCode: ownershipCode, actorId: ownerA.participant.id, combatantId: ownedEnemy.id, mode: 'standard', defensive: false });
 await send(ownerA, { type: 'resolve-attack', roomCode: ownershipCode, actorId: ownerA.participant.id, attackerId: ownedEnemy.id, targetId: ownedBane.id, d20Roll: 20, damage: 1 });
 record('jugador no puede atacar con enemigos', ownerA.errors.some(e => /jugadores no pueden controlar enemigos/i.test(e)), ownerA.errors.join(' | '));
+
+const resumeOwner = await connectAndSend({ type: 'create-room', name: 'GM reanudable' });
+const resumeCode = resumeOwner.room.code;
+const resumePlayer = await connectAndSend({ type: 'join-room', roomCode: resumeCode, name: 'Jugador', role: 'player' });
+await send(resumeOwner, { type: 'add-catalog-combatant', roomCode: resumeCode, actorId: resumeOwner.participant.id, category: 'heroes', templateId: 'bane' });
+const savedRoom = JSON.stringify(resumeOwner.room);
+const oldId = resumeOwner.participant.id;
+const resumeRequest = { type: 'resume-gm-session', roomCode: resumeCode, token: resumeOwner.gmResumeToken };
+record('credencial privada del creador', typeof resumeRequest.token === 'string' && !resumePlayer.gmResumeToken && !JSON.stringify(resumePlayer.room).includes(resumeRequest.token));
+await new Promise(resolve => { resumeOwner.ws.once('close', resolve); resumeOwner.ws.close(); });
+const resumedGm = await connectAndSend(resumeRequest);
+record('reconexion mantiene identidad, rol y estado', resumedGm.participant.id === oldId && resumedGm.participant.role === 'gm' && JSON.stringify(resumedGm.room) === savedRoom);
+await send(resumedGm, { type: 'gm-add-log', roomCode: resumeCode, actorId: oldId, message: 'GM reanudado' });
+record('GM recuperado puede operar', resumePlayer.room.log.some(entry => entry.message.includes('GM reanudado')));
+resumedGm.ws.close();
+resumePlayer.ws.close();
 
 const stabilizationGm = await connectAndSend({ type: 'create-room', name: 'Stabilization Limit Test' });
 const stabilizationCode = stabilizationGm.room.code; const stabilizationGmId = stabilizationGm.participant.id;
@@ -895,5 +916,30 @@ for (const scenario of ['x4','heavy','diagonal','dt','aoo','feat','invalid']) {
     }
   } finally {state.ws.close();}
 }
+
+const lanGm = new WebSocket('ws://localhost:3333', {
+  headers: { Host: '192.0.2.10:3333', Origin: 'http://192.0.2.10:5173' },
+});
+try {
+  const lanResult = await new Promise((resolve, reject) => {
+    let hello;
+    const timeout = setTimeout(() => resolve({ hello, heartbeat: false }), 18_000);
+    lanGm.once('error', (error) => { clearTimeout(timeout); reject(error); });
+    lanGm.once('open', () => lanGm.send(JSON.stringify({ type: 'create-room', name: 'GM LAN' })));
+    lanGm.on('message', (raw) => {
+      const event = JSON.parse(raw.toString());
+      if (event.type === 'hello') hello = event;
+      if (event.type === 'gm-session-heartbeat' && hello) {
+        clearTimeout(timeout);
+        resolve({ hello, heartbeat: true });
+      }
+    });
+  });
+  record('GM LAN HTTP recibe heartbeat sin credencial de recuperacion',
+    lanResult.hello?.participant.role === 'gm' && !lanResult.hello.gmResumeToken && lanResult.heartbeat);
+} finally {
+  lanGm.close();
+}
+
 console.log(JSON.stringify(results, null, 2));
 if (results.some(r => !r.ok)) process.exitCode = 1;

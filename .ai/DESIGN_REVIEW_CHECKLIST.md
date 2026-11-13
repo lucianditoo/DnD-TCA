@@ -1,6 +1,6 @@
 # Design Review Checklist (ADR & Architectural Decision Review)
 
-Este documento es el filtro analítico previo a la creación de cualquier documento de diseño en `docs/designs/` o la escritura de código. Su objetivo es evitar que se resuelvan problemas mediante lógica prescriptiva ("cómo codificarlo") y forzar soluciones declarativas ("cómo modelar los datos").
+Consultá estas preguntas para un diseño C/D cuando ayuden a verificar el impacto. La [gobernanza](../GOVERNANCE.md#52-nivel-de-cambio-y-evidencia) define el rigor aplicable.
 
 ---
 
@@ -28,10 +28,9 @@ No crees helpers ad-hoc. Comprueba si puedes apalancarte en las tres capas del m
 
 ---
 
-## 4. Futuras Extensiones (La Regla de Tres)
-Para validar que el diseño es verdaderamente genérico y extensible:
-* **Nombra tres mecánicas futuras de D&D 3.5 que deberían poder implementarse inmediatamente reutilizando esta infraestructura.**
-* *Si estás diseñando "Stunned", la infraestructura de Traits lógicos debe soportar también "Paralysis", "Sleep" y "Daze". Si no puedes nombrar tres, tu diseño está demasiado acoplado a la mecánica específica.*
+## 4. Extensibilidad
+
+Compará casos reales que compartan el mismo contrato si la propuesta introduce infraestructura reutilizable. Identificá qué generalización hace falta para el alcance actual y qué decisiones pueden diferirse.
 
 ---
 

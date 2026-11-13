@@ -11,10 +11,9 @@ import { handleCreateRoom, handleJoinRoom, handleUpdateBoard } from "./roomComma
 import { handleChooseAidBonus, handleUseTacticalAction, completeCharge, handleDeclareAttackMode, handleCancelAttackMode, handleResolveSavingThrow, handleDeclareDodgeTarget, handleResumeCoupDeGrace } from "./tacticalCommands.js";
 import { handleResolveGrappleEscape, handleResolveSpecialManeuver, type ManeuverDiceSource } from "./specialManeuverCommands.js";
 import { handleEquipItem, handleUnequipItem } from "./equipmentCommands.js";
-import { ensureLegacyRoomShape } from "../room/roomState.js";
-import { broadcast, rooms, send } from "../room/roomStore.js";
+import { broadcast, clients, rooms, send } from "../room/roomStore.js";
 import { validateClientCommand } from "../validation/validateClientCommand.js";
-import { isDemoRoom } from "../demo/sessionStore.js";
+import { getDemoSessionBySocket, isDemoRoom } from "../demo/sessionStore.js";
 
 export interface InternalExecutionContext {
   readonly source: "demo-runner";
@@ -24,20 +23,9 @@ export interface InternalExecutionContext {
 
 function dispatchCommandCore(
   socket: WebSocket | null,
-  command: ClientCommand,
+  command: Exclude<ClientCommand, { type: "create-room" | "join-room" }>,
   context?: InternalExecutionContext
 ): void {
-  if (command.type === "create-room") {
-    if (!socket) throw new Error("create-room requiere socket activo.");
-    handleCreateRoom(socket, command);
-    return;
-  }
-  if (command.type === "join-room") {
-    if (!socket) throw new Error("join-room requiere socket activo.");
-    handleJoinRoom(socket, command);
-    return;
-  }
-
   const room = rooms.get(command.roomCode.toUpperCase());
   if (!room) {
     if (context?.source === "demo-runner") {
@@ -46,8 +34,6 @@ function dispatchCommandCore(
     if (socket) send(socket, { type: "error", message: "Sala no encontrada." });
     return;
   }
-
-  ensureLegacyRoomShape(room);
 
   if (room.phase === "finished" && !command.type.startsWith("gm-")) {
     throw new Error("El combate ya termino. Revisa la pantalla de resultados.");
@@ -175,22 +161,26 @@ function resumeStationaryAction(room: CombatRoom, context?: InternalExecutionCon
   broadcast(room);
 }
 
-export function dispatchCommand(socket: WebSocket, command: ClientCommand): void {
+export function dispatchCommand(socket: WebSocket, command: ClientCommand, allowGmResume = false): void {
   if (command.type === "create-room") {
-    dispatchCommandCore(socket, command);
+    handleCreateRoom(socket, command, allowGmResume);
     return;
   }
   if (command.type === "join-room") {
     if (isDemoRoom(command.roomCode)) {
       throw new Error("No se permite unirse manualmente a una sala de demostracion.");
     }
-    dispatchCommandCore(socket, command);
+    handleJoinRoom(socket, command);
     return;
   }
   if (isDemoRoom(command.roomCode)) {
     throw new Error("Las salas de demostracion son de solo lectura y no admiten comandos manuales de combate.");
   }
-  dispatchCommandCore(socket, command);
+  const participant = clients.get(socket);
+  if (!participant || participant.id !== command.actorId || participant.roomCode !== command.roomCode.toUpperCase()) {
+    throw new Error("La conexion no esta autorizada para este participante y sala.");
+  }
+  dispatchCommandCore(socket, { ...command, actorId: participant.id, roomCode: participant.roomCode });
 }
 
 export function dispatchInternalDemoCommand(
@@ -202,5 +192,13 @@ export function dispatchInternalDemoCommand(
   if (!validation.success) {
     throw new Error(`Error de contrato en guion de demo: ${validation.error}`);
   }
-  dispatchCommandCore(socket, validation.data, context);
+  const command = validation.data;
+  const session = socket && getDemoSessionBySocket(socket);
+  if (
+    !session || command.type === "create-room" || command.type === "join-room" ||
+    command.roomCode !== session.roomCode || command.actorId !== session.participant.id
+  ) {
+    throw new Error("El comando interno no pertenece a la sesion de demostracion.");
+  }
+  dispatchCommandCore(socket, command, context);
 }

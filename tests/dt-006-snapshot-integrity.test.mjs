@@ -1,6 +1,8 @@
 import { test, describe } from "node:test";
 import * as assert from "node:assert";
-import { createCombatRulesSnapshot, createCombatantSnapshotFromProfile } from "../packages/shared/dist/combatSnapshot.js";
+import { createCombatRulesSnapshot, createCombatantSnapshotFromProfile } from "@dnd-tactical/shared";
+
+import { makeTestCombatant, makeTestRoom } from "./test-utils.mjs";
 
 describe("DT-006: Integrity and mapping validation for CombatRulesSnapshot", () => {
   test("createCombatRulesSnapshot guarantees exactly matching properties for non-ephemeral keys and no undefined", () => {
@@ -174,3 +176,61 @@ describe("DT-006: Integrity and mapping validation for CombatRulesSnapshot", () 
     );
   });
 });
+
+for (const mode of ["development", "production"]) {
+  test(`snapshot isolates the full room graph in ${mode}`, () => {
+    const previousMode = process.env.NODE_ENV;
+    process.env.NODE_ENV = mode;
+    try {
+      const actor = makeTestCombatant();
+      actor.stats.targetsAttackedThisRoundViaAoO = ["target"];
+      actor.abilities.push({
+        id: "area", name: "Area", description: "", actionType: "standard", rangeFeet: 10, target: "area",
+        aoe: { type: "cone", lengthFeet: 10 },
+        resolution: { kind: "automatic-damage", damageExpression: "1d4" }
+      });
+      const opportunity = {
+        id: "opp", attackerId: actor.id, targetId: "target", reason: "move", createdAt: "",
+        attackerPosition: { x: 1, y: 0 }, origin: { x: 0, y: 0 }, destination: { x: 0, y: 1 },
+        provokingCells: [{ x: 0, y: 0 }], positionAtTrigger: { x: 0, y: 0 }
+      };
+      const room = makeTestRoom({ combatants: [actor], pendingOpportunityAttacks: [opportunity] });
+      function collect(value, seen = new Set()) {
+        if (value === null || typeof value !== "object" || seen.has(value)) return seen;
+        seen.add(value);
+        for (const child of Object.values(value)) collect(child, seen);
+        return seen;
+      }
+
+      const originals = [...collect(room)].map(value => [value, Object.isFrozen(value)]);
+      const snapshot = createCombatRulesSnapshot(room);
+      const copies = collect(snapshot);
+      for (const [original, wasFrozen] of originals) {
+        assert.equal(copies.has(original), false, "snapshot shares an object with the room");
+        assert.equal(Object.isFrozen(original), wasFrozen, "snapshot changed the original freeze state");
+      }
+      assert.deepEqual(snapshot.combatants[0].preparedSpells, []);
+      assert.equal(Object.hasOwn(snapshot.board, "narrowCells"), true);
+      assert.equal(snapshot.board.narrowCells, undefined);
+      actor.abilities[0].aoe.lengthFeet = 20;
+      actor.stats.targetsAttackedThisRoundViaAoO.push("another");
+      assert.equal(snapshot.combatants[0].abilities[0].aoe.lengthFeet, 10);
+      assert.deepEqual(snapshot.combatants[0].stats.targetsAttackedThisRoundViaAoO, ["target"]);
+      const copy = snapshot.pendingOpportunityAttacks[0];
+      const write = () => { copy.provokingCells[0].x = 7; copy.positionAtTrigger.x = 8; };
+      if (mode === "development") {
+        assert.ok([...copies].every(Object.isFrozen));
+        assert.throws(write, TypeError);
+      } else {
+        write();
+        assert.equal(copy.provokingCells[0].x, 7);
+        assert.equal(copy.positionAtTrigger.x, 8);
+      }
+      assert.equal(opportunity.provokingCells[0].x, 0);
+      assert.equal(opportunity.positionAtTrigger.x, 0);
+    } finally {
+      if (previousMode === undefined) delete process.env.NODE_ENV;
+      else process.env.NODE_ENV = previousMode;
+    }
+  });
+}

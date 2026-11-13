@@ -53,7 +53,7 @@ No crear modificadores universales, variantes `-V2` de Rule IDs ni ramas por
 La evidencia del último baseline vive únicamente en
 [`docs/testing/master-coverage.md`](../docs/testing/master-coverage.md).
 Los gates operativos están definidos en
-[`.agents/AGENTS.md`](../.agents/AGENTS.md) y resumidos en
+[`AGENTS.md`](../AGENTS.md) y resumidos en
 [`WORKFLOW.md`](WORKFLOW.md). GitHub Actions es el gate canónico cuando el
 sandbox local no puede ejecutar procesos de navegador o servicios.
 

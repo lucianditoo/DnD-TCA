@@ -108,7 +108,7 @@ en una transacción, sincroniza la fase y publica la sala.
 ## Cómo agregar una regla
 
 Seguir [`../../GOVERNANCE.md`](../../GOVERNANCE.md) y
-[`../../.agents/AGENTS.md`](../../.agents/AGENTS.md). Antes de diseñar:
+[`AGENTS.md`](../../AGENTS.md). Antes de diseñar:
 
 1. localizar la regla normativa en `combat/`;
 2. buscar su Rule ID en el Registry;

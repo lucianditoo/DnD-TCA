@@ -10,20 +10,23 @@ import {
   type CombatRoom
 } from "@dnd-tactical/shared";
 import { requireGM } from "../auth/control.js";
-import { broadcast, createRoomCode, findParticipant, register, rooms, send } from "../room/roomStore.js";
+import { broadcast, createRoomCode, findParticipant, issueGmResumeToken, register, rooms, send } from "../room/roomStore.js";
 
-export function handleCreateRoom(socket: WebSocket, command: Extract<ClientCommand, { type: "create-room" }>): void {
+export function handleCreateRoom(socket: WebSocket, command: Extract<ClientCommand, { type: "create-room" }>, allowResume = false): void {
   const code = createRoomCode();
   const room = createEmptyRoom(code);
-  rooms.set(code, room);
   const participant = register(socket, code, command.name || "GM", "gm");
-  send(socket, { type: "hello", participant, room, catalog: gameCatalog });
+  rooms.set(code, room);
+  const gmResumeToken = allowResume ? issueGmResumeToken(participant) : undefined;
+  send(socket, { type: "hello", participant, room, catalog: gameCatalog, gmResumeToken });
+
 }
 
 export function handleJoinRoom(socket: WebSocket, command: Extract<ClientCommand, { type: "join-room" }>): void {
   const room = rooms.get(command.roomCode.toUpperCase());
   if (!room) { send(socket, { type: "error", message: "No existe una sala con ese codigo." }); return; }
-  const participant = register(socket, room.code, command.name || "Jugador", command.role);
+  if (command.role !== "player") throw new Error("Solo quien crea la sala recibe el rol de GM.");
+  const participant = register(socket, room.code, command.name || "Jugador", "player");
   send(socket, { type: "hello", participant, room, catalog: gameCatalog });
   broadcast(room);
 }

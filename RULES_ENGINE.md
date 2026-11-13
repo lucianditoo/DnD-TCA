@@ -43,5 +43,5 @@ citado allí.
 ## Testing y trabajo
 
 El Reader Pipeline y el Definition of Done viven en
-[.agents/AGENTS.md](.agents/AGENTS.md). Los estados oficiales no se deducen
+[AGENTS.md](AGENTS.md). Los estados oficiales no se deducen
 de ejemplos, del nombre de un sprint ni de la mera existencia de un NDD.

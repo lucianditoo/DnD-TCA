@@ -1,30 +1,6 @@
-# WORKFLOW — Navegación del flujo oficial
+# Flujo de trabajo
 
-Responsabilidad: Localizar el proceso obligatorio sin mantener una copia.
-Autoridad: Derivada
-Lifecycle: Permanente
-Reemplaza: —
-Complementa: [Índice documental](../INDEX.md)
-Consumidores: Agentes que buscan el Reader Pipeline y el gate de cierre.
-
-## Fuentes del proceso
-
-- [GOVERNANCE.md](../GOVERNANCE.md): principios, niveles de cambio y política documental.
-- [.agents/AGENTS.md](../.agents/AGENTS.md): Reader Pipeline, fases, aprobación y Definition of Done.
-- [INDEX.md](../INDEX.md): ubicación única de las responsabilidades documentales.
-
-No se mantienen aquí otras fases, listas de archivos obligatorios o
-excepciones de validación. El rigor aplicable se determina por el nivel del
-cambio en GOVERNANCE y por el flujo operativo de AGENTS.
-
-## Validación publicada
-
-[Windows CI](../.github/workflows/windows-ci.yml) es el gate canónico para
-las validaciones que los sandboxes locales no pueden ejecutar. Los comandos,
-el arranque y cierre del servidor y los artefactos se consultan en el
-workflow; la evidencia de ejecuciones vive en
-[master-coverage.md](../docs/testing/master-coverage.md).
-
-La existencia del workflow no acredita un resultado: hay que observar su
-ejecución sobre el commit publicado. Un CI verde tampoco sustituye el
-veredicto arquitectónico exigido por el flujo.
+- [AGENTS.md](../AGENTS.md) contiene el proceso operativo y la reanudación.
+- [GOVERNANCE.md](../GOVERNANCE.md) define el alcance de la autonomía y la evidencia por riesgo.
+- [CODEX_GUIDE.md](../CODEX_GUIDE.md) localiza habilidades ECC y verificadores.
+- [INDEX.md](../INDEX.md) localiza las fuentes canónicas del proyecto.

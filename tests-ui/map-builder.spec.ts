@@ -176,7 +176,7 @@ test.describe("Editor Táctico de Mapa (D-5 MVP)", () => {
     await playerPage.getByRole("button", { name: /Jugador/i }).click();
     await playerPage.getByLabel("Codigo de sala").fill(roomCode);
     await playerPage.getByLabel("Nombre").fill("Player Intruder");
-    await playerPage.getByRole("button", { name: /Unirse/i }).click();
+    await playerPage.getByRole("button", { name: "Unirse", exact: true }).click();
     await expect(playerPage.getByRole("heading", { name: "Preparacion" })).toBeVisible();
 
     // En el GM, verificar que el toolbar sigue visible y el borrador intacto (14x12 y 1 muro)

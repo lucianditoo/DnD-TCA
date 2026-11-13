@@ -7,6 +7,14 @@ export const createRoomSchema = z.object({
   name: z.string().min(1)
 });
 
+export const resumeGmSessionSchema = z.object({
+  type: z.literal("resume-gm-session"),
+  roomCode: z.string().regex(/^[A-Z0-9]{5}$/i),
+  token: z.string().regex(/^[A-Za-z0-9_-]{43}$/)
+}).strict();
+
+export type ResumeGmSessionCommand = z.infer<typeof resumeGmSessionSchema>;
+
 export const joinRoomSchema = z.object({
   type: z.literal("join-room"),
   roomCode: z.string().min(1),

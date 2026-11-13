@@ -175,58 +175,43 @@ export function cloneEffectInstances<TId extends string>(
   }));
 }
 
-  export function createCombatRulesSnapshot(room: CombatRoom): CombatRulesSnapshot<ProductionEffectId> {
-    const snapshot: CombatRulesSnapshot<ProductionEffectId> = {
-      board: {
-        width: room.board.width,
-        height: room.board.height,
-        cellSizeFeet: room.board.cellSizeFeet,
-        difficultTerrainCells: room.board.difficultTerrainCells ? [...room.board.difficultTerrainCells] : undefined,
-        impassableCells: room.board.impassableCells ? [...room.board.impassableCells] : undefined,
-        narrowCells: room.board.narrowCells ? [...room.board.narrowCells] : undefined,
-        lineOfEffectBlockingCells: room.board.lineOfEffectBlockingCells ? [...room.board.lineOfEffectBlockingCells] : undefined,
-        dimLightCells: room.board.dimLightCells ? [...room.board.dimLightCells] : undefined,
-        darknessCells: room.board.darknessCells ? [...room.board.darknessCells] : undefined
-      },
-    combatants: room.combatants.map((c) => {
-      assertDerivedSnapshotIntegrity(c);
+export function createCombatRulesSnapshot(room: CombatRoom): CombatRulesSnapshot<ProductionEffectId> {
+  const projection: CombatRulesSnapshot<ProductionEffectId> = {
+    board: {
+      width: room.board.width,
+      height: room.board.height,
+      cellSizeFeet: room.board.cellSizeFeet,
+      difficultTerrainCells: room.board.difficultTerrainCells,
+      impassableCells: room.board.impassableCells,
+      narrowCells: room.board.narrowCells,
+      lineOfEffectBlockingCells: room.board.lineOfEffectBlockingCells,
+      dimLightCells: room.board.dimLightCells,
+      darknessCells: room.board.darknessCells
+    },
+    combatants: room.combatants.map((combatant) => {
+      assertDerivedSnapshotIntegrity(combatant);
       return {
-        ...c,
-        abilityScores: { ...c.abilityScores },
-        featureIds: [...c.featureIds],
-        skillRanks: { ...c.skillRanks },
-        ruleTraits: [...c.ruleTraits],
-        inventory: c.inventory.map((item) => ({ ...item })),
-        equipmentSlots: { ...c.equipmentSlots },
-        intrinsicDefense: { ...c.intrinsicDefense },
-        intrinsicPerception: c.intrinsicPerception ? { ...c.intrinsicPerception } : undefined,
-        featIds: [...c.featIds],
-        position: { ...c.position },
-        buffs: c.buffs.map((b) => ({ ...b })),
-        abilities: c.abilities.map((a) => ({ ...a, resolution: { ...a.resolution } })),
-        preparedSpells: c.preparedSpells ? c.preparedSpells.map(s => ({ ...s })) : [],
-        stats: { ...c.stats }
+        ...combatant,
+        intrinsicPerception: combatant.intrinsicPerception,
+        preparedSpells: combatant.preparedSpells ?? []
       };
     }),
-    currentTurn: { ...room.currentTurn },
+    currentTurn: room.currentTurn,
     phase: room.phase,
-    pendingOpportunityAttacks: room.pendingOpportunityAttacks.map((o) => ({
-      ...o,
-      attackerPosition: { ...o.attackerPosition },
-      origin: { ...o.origin },
-      destination: { ...o.destination }
-    })),
-    pendingCoupDeGrace: room.pendingCoupDeGrace ? { ...room.pendingCoupDeGrace } : null,
+    pendingOpportunityAttacks: room.pendingOpportunityAttacks,
+    pendingCoupDeGrace: room.pendingCoupDeGrace ?? null,
     activeAttackThreat: room.activeAttackThreat ? {
       ...room.activeAttackThreat,
       normalDamageBundle: {
         total: room.activeAttackThreat.normalDamageBundle.total,
-        components: room.activeAttackThreat.normalDamageBundle.components.map((component) => ({ ...component }))
+        components: room.activeAttackThreat.normalDamageBundle.components
       }
     } : null,
     effectInstances: cloneEffectInstances(room.effectInstances)
   };
 
+  // Clone the projection before freezing so no reachable object belongs to the room.
+  const snapshot = structuredClone(projection);
   if (typeof (globalThis as any).process !== "undefined" && (globalThis as any).process.env?.NODE_ENV !== "production") {
     deepFreeze(snapshot);
   }
