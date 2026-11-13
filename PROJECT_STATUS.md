@@ -12,6 +12,7 @@
 ## Estado actual
 
 - Rama de integración: `master`.
+- DT-008 resuelto e integrado en `03854a9` mediante el PR #1. La [deuda técnica](docs/technical-debt.md#dt-008) y el [informe](docs/audits/dt-008-authorization.md) registran el cierre y su evidencia.
 - Última vertical funcional implementada: D-5 Editor Táctico de Mapas (MVP), conforme a su [NDD canónico](docs/designs/map-builder-mvp/design.md) y [plan](docs/designs/map-builder-mvp/implementation-plan.md); **CERRADA y TÉCNICAMENTE APROBADA** (Architecture Review sobre commit `6fd385b42b4dc51b8dcbb195108d7051a600944f`).
 - Última decisión arquitectónica: Sprint D-1B Capítulo 7 (Integration & Implementation Contracts) y NDD de Demo Táctica Automática (`f8c0e9d`).
 - Implementación integrada: D-5 (remediado en D-5R1/R2/R3) cierra exhaustivamente todos los requisitos de arquitectura: Candidate Board validation pura sin mutación previa al commit, invariante estricta de compresión `srd_squeezing` (comparación canónica de coordenadas `x, y, zFeet` sin permitir rotación o desplazamiento de la huella comprimida); máquina de estados Save/Error/ACK con limpieza de errores viejos y verificación de `room-update` posterior a la petición; gating del modal de confirmación crítica durante la edición del mapa; métricas y logs de pilares corregidos a `loe-only` (excluyendo muros); y suite E2E WebSocket con cobertura de `update-board`.

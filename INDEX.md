@@ -70,7 +70,7 @@ tienen consumidores y granularidad diferentes y no redefinen Rule IDs.
   - [`docs/designs/map-builder-mvp/design.md`](docs/designs/map-builder-mvp/design.md): NDD D-5 del Editor Táctico de Mapas (MVP), dimensiones, obstáculos y exclusividad de capas.
   - [`docs/designs/map-builder-mvp/implementation-plan.md`](docs/designs/map-builder-mvp/implementation-plan.md): plan de implementación del Editor Táctico de Mapas (MVP).
 - [`docs/audits/`](docs/audits/): auditorías y divergencias.
-  - [`docs/audits/dt-008-authorization.md`](docs/audits/dt-008-authorization.md): contraste de auditoría, diseño y evidencia del candidato de autorización centralizada; pendiente de revisión independiente e integración.
+  - [`docs/audits/dt-008-authorization.md`](docs/audits/dt-008-authorization.md): contraste de auditoría, diseño y evidencia de la autorización centralizada integrada.
   - [`docs/audits/combat-rules-deviations.md`](docs/audits/combat-rules-deviations.md): Desviaciones documentadas de las reglas oficiales.
   - [`docs/audits/movement-rules-audit.md`](docs/audits/movement-rules-audit.md): Auditoría oficial de reglas de movimiento (D-1B-Research).
 - [`docs/sprints/TEMPLATE.md`](docs/sprints/TEMPLATE.md): plantilla de sprint.

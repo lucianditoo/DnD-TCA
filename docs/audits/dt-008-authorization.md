@@ -1,6 +1,6 @@
 # DT-008: autorización centralizada y contraste de auditoría
 
-Estado: candidato local para revisión independiente de Nemotron; no integrado.
+Estado: integrado en `master` mediante [PR #1](https://github.com/lucianditoo/DnD-TCA/pull/1), squash `03854a9bef0ed0ed28f0f7ad1e41c4f20a3bc24b`. Architecture Review de Nemotron aprobada y Windows CI exitoso según el propietario. La evidencia siguiente conserva su contexto histórico.
 Fecha de verificación: 2026-11-13 (America/Buenos_Aires).
 Base: `origin/master`, actualizado mediante fetch, `17eafec716a4e65cb34246c570f9bb85f041fa02`.
 Rama: `codex/dt-008-authorization`.
@@ -136,7 +136,7 @@ se inició con esa fixture incompleta y falló; la ejecución global posterior
 pasó. Un ciclo de corrección por cada causa, sin modificar mecánicas ni tests
 existentes.
 
-## Riesgos residuales y revisión requerida
+## Riesgos residuales
 
 - La exhaustividad obliga a tener una política, pero no demuestra que una
   política nueva sea correcta: exige revisión y pruebas negativas por comando.
@@ -148,12 +148,10 @@ existentes.
 - El acceso directo a handlers desde código servidor presupone caller de
   confianza. No se convierten todos los handlers en APIs independientes seguras
   ante código interno malicioso.
-- CI y dictamen independiente no se sustituyen por pruebas locales. Nemotron
-  debe revisar selección de actores, overrides GM, separación entre nuevas
-  intenciones y continuaciones, exhaustividad y efectos antes de denegación.
+- La revisión independiente fue aprobada por Nemotron según el propietario.
 
 Archivos del candidato: `apps/server/src/auth/commandAuthorization.ts`,
 `apps/server/src/commands/dispatcher.ts`, `tests/authorization-policy.test.mjs`,
 `scripts/e2e-websocket.mjs`, este informe, `docs/technical-debt.md`, `INDEX.md` y `walkthrough.md`.
 `docs/planning/` era trabajo ajeno sin seguimiento y se preservó.
-Sin merge, push ni publicación de PR; revisión independiente pendiente.
+Al finalizar la verificación local aún estaban pendientes la publicación y la revisión independiente.

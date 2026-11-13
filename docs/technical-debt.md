@@ -100,23 +100,9 @@ Estas deudas generan riesgo de regresión o complican implementaciones futuras p
 ---
 
 <a id="dt-008"></a>
-### DT-008: Ownership acoplado imperativamente en cada handler
+### ~~DT-008: Ownership acoplado imperativamente en cada handler~~ ✅ RESUELTO
 
-**Candidato pendiente de revisión (2026-11-13)**: La rama independiente
-`codex/dt-008-authorization` añade políticas exhaustivas antes de ejecutar
-comandos, conservando las validaciones existentes. Ver [contraste de los ocho
-hallazgos, diseño y evidencia](audits/dt-008-authorization.md). No integrado;
-DT-008 no se marca resuelta hasta la revisión e integración autorizadas.
-
-**Descripción**: Las comprobaciones de `requireCombatantControl` y `requireTurnControl` están duplicadas en cada handler de comando individualmente. No existe middleware centralizado.
-
-**Riesgo**: Si se crea un handler nuevo y se olvida agregar la comprobación, se genera una vulnerabilidad de seguridad donde jugadores pueden controlar combatientes ajenos.
-
-**Módulo afectado**: Todos los handlers en `apps/server/src/commands/`
-
-**Recomendación**: Definir metadata de ownership por tipo de comando en el schema Zod y procesar la verificación en el dispatcher antes de llamar al handler.
-
-**Bloquea MVP**: No, pero es un riesgo de seguridad que crece con cada nuevo comando.
+**Resolución (2026-11-13)**: El PR [#1](https://github.com/lucianditoo/DnD-TCA/pull/1), integrado en `03854a9bef0ed0ed28f0f7ad1e41c4f20a3bc24b`, centralizó políticas explícitas para los 37 comandos de sala antes de ejecutar handlers. Se conservaron los controles existentes como defensa. El [informe de auditoría](audits/dt-008-authorization.md) registra diseño, pruebas y riesgos residuales.
 
 ---
 
