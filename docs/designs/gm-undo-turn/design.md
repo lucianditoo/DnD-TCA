@@ -42,7 +42,7 @@ export interface CombatRoom {
   pendingCoupDeGrace: PendingCoupDeGrace | null;
   effectInstances: EffectInstance<ProductionEffectId>[];  // Efectos activos
   eventSequence: number;                  // Monotónico, para sincronización
-  stateVersion: number;                   // Versión de estado: incrementa en cada restauración
+  stateVersion: number;                   // Versión de estado: incrementa en CADA cambio de estado autoritativo
   // ... campos efímeros (pendingStationaryAction, pendingMovement, etc.)
 }
 ```
@@ -84,7 +84,7 @@ export interface TurnState extends MovementContext {
 - `dispatchCombatEvent(room, event, listeners)` → compose funcional de reducers puros
 - `createCombatRulesSnapshot(room)` → `CombatRulesSnapshot` (deepFreeze, copia defensiva de `effectInstances`)
 - `eventSequence`: Monotónico, para sincronización cliente-servidor
-- `stateVersion`: Incrementa en cada restauración (ver §4.3)
+- `stateVersion`: Incrementa en CADA cambio de estado autoritativo (ver §4.3)
 
 ### 2.7 Autorización y Comandos
 - `dispatchCommand` → `authorizeRoomCommand` → `executeCommand`
@@ -157,8 +157,8 @@ export interface TurnCheckpoint {
   readonly turnNumber: number;            // Número de turno absoluto (incrementa en cada advanceTurn)
   readonly round: number;                 // Ronda del checkpoint
   readonly activeTurnIndex: number;       // Índice en turnOrder
-  readonly stateHash: string;             // SHA-256 del checkpoint anterior (cadena de integridad)
-  readonly checkpointHash: string;        // SHA-256 de JSON.stringify(room) para verificación de integridad
+  readonly prevCheckpointHash: string;    // SHA-256 del checkpoint anterior (cadena de integridad, "genesis" para el primero)
+  readonly checkpointHash: string;        // SHA-256 de la serialización canónica del room (ver hashRoom)
   readonly timestamp: number;             // Date.now()
   readonly stateVersion: number;          // stateVersion del room al momento del checkpoint
 }
@@ -169,9 +169,13 @@ export class RoomHistory {
   // Push SOLO al final de cada turno (en advanceTurn, tras emitir TurnStarted)
   pushTurnCheckpoint(roomCode: string, room: CombatRoom): void
   
-  // Pop N checkpoints (retroceder N turnos)
-  popTurnCheckpoints(roomCode: string, steps: number): TurnCheckpoint | null
+  // Rewind N checkpoints (retroceder N turnos) — NO elimina checkpoints, solo marca punto de restauración
+  rewindTurnCheckpoints(roomCode: string, steps: number): TurnCheckpoint | null
   
+  // Obtiene el checkpoint actual (último válido) para lectura
+  getCurrentCheckpoint(roomCode: string): TurnCheckpoint | undefined
+  
+  // Verifica si hay checkpoints suficientes para retroceder
   canUndo(roomCode: string, steps: number): boolean
   
   prune(roomCode: string): void                    // Limpia por depth/TTL
@@ -179,13 +183,17 @@ export class RoomHistory {
   
   // Obtiene el último checkpoint para verificación
   getLatestCheckpoint(roomCode: string): TurnCheckpoint | undefined
+  
+  // Obtiene checkpoint por turnNumber
+  getCheckpoint(roomCode: string, turnNumber: number): TurnCheckpoint | undefined
 }
 ```
 
 **Políticas**:
 - **Push SOLO en `advanceTurn()`**, tras `emitCombatEvent(TurnStarted)` y antes de `broadcast()`. Un checkpoint = un turno completado.
 - **No** push en comandos individuales (move, attack, cast, etc.)
-- Profundidad: `MAX_HISTORY_DEPTH` (FIFO eviction)
+- **Rewind NO elimina checkpoints** — solo mueve un puntero lógico; los checkpoints permanecen para integridad y posible redo futuro
+- Profundidad: `MAX_HISTORY_DEPTH` (FIFO eviction por tiempo/turnos)
 - TTL: `HISTORY_TTL_MS` (limpieza pasiva en `push` o job periódico)
 
 ### 4.2 Integración en `turnManager.ts` (advanceTurn)
@@ -193,16 +201,27 @@ export class RoomHistory {
 ```typescript
 // En advanceTurn, tras emitir TurnStarted y antes de broadcast:
 import { roomHistory } from "../room/roomHistory.js";
+import { incrementStateVersion } from "../room/roomHistory.js"; // helper compartido
 
 // ... código existente de advanceTurn ...
-
 // Tras emitir TurnStarted y antes de broadcast:
 if (room.phase === "active") {
+  // Incrementar stateVersion ANTES de crear checkpoint (cambio de estado autoritativo)
+  incrementStateVersion(room);
   roomHistory.pushTurnCheckpoint(room.code, structuredClone(room));
 }
 ```
 
-### 4.3 Handler `handleGmUndoTurn`
+### 4.3 Helper `incrementStateVersion`
+
+```typescript
+// En roomHistory.ts o utilidad compartida
+export function incrementStateVersion(room: CombatRoom): void {
+  room.stateVersion = (room.stateVersion ?? 0) + 1;
+}
+```
+
+### 4.4 Handler `handleGmUndoTurn`
 
 ```typescript
 // apps/server/src/commands/gmCommands.ts
@@ -218,29 +237,35 @@ export function handleGmUndoTurn(
   const steps = Math.min(command.steps ?? 1, maxSteps);
   if (steps < 1) throw new Error("steps debe ser >= 1");
   
-  const previous = roomHistory.popTurnCheckpoints(room.code, steps);
-  if (!previous) throw new Error("No hay historial suficiente para retroceder.");
+  // Obtener checkpoint objetivo SIN eliminarlo del historial (rewind, no pop)
+  const targetCheckpoint = roomHistory.rewindTurnCheckpoints(room.code, steps);
+  if (!targetCheckpoint) throw new Error("No hay historial suficiente para retroceder.");
   
   // Verificación de integridad: hash del checkpoint almacenado
-  const storedHash = previous.checkpointHash;
-  const currentRoomHash = hashRoom(previous.room);
+  const storedHash = targetCheckpoint.checkpointHash;
+  const currentRoomHash = hashRoom(targetCheckpoint.room);
   if (storedHash !== currentRoomHash) {
     throw new Error("Checkpoint corrupto: hash no coincide.");
   }
   
   // Verificación de cadena: hash del checkpoint anterior coincide
-  if (previous.turnNumber > 1) {
-    const prevCheckpoint = roomHistory.getCheckpoint(room.code, previous.turnNumber - 1);
-    if (prevCheckpoint && prevCheckpoint.checkpointHash !== previous.stateHash) {
+  if (targetCheckpoint.turnNumber > 1) {
+    const prevCheckpoint = roomHistory.getCheckpoint(room.code, targetCheckpoint.turnNumber - 1);
+    if (prevCheckpoint && prevCheckpoint.checkpointHash !== targetCheckpoint.prevCheckpointHash) {
       throw new Error("Cadena de checkpoints rota: hash previo no coincide.");
     }
   }
   
+  // Verificar genesis para el primer checkpoint
+  if (targetCheckpoint.turnNumber === 1 && targetCheckpoint.prevCheckpointHash !== "genesis") {
+    throw new Error("Checkpoint inicial corrupto: prevCheckpointHash inválido.");
+  }
+  
   // Restaurar estado completo (crear nuevo room limpio desde checkpoint)
-  const restoredRoom = structuredClone(previous.room);
+  const restoredRoom = structuredClone(targetCheckpoint.room);
   
   // Incrementar stateVersion para invalidar comandos en vuelo
-  restoredRoom.stateVersion = (restoredRoom.stateVersion ?? 0) + 1;
+  incrementStateVersion(restoredRoom);
   
   // Limpiar campos residuales que no deben persistir tras undo
   restoredRoom.completedAt = null;
@@ -248,7 +273,7 @@ export function handleGmUndoTurn(
   restoredRoom.pendingMovement = undefined;
   
   // Invalidar tokens GM de la sesión anterior
-  // (gmSessions se maneja en roomStore, se limpia aparte)
+  invalidateGmSessions(restoredRoom.code);
   
   // Reparar anchorCombatantId en efectos until_turn contra turnOrder restaurado
   repairUntilTurnAnchors(restoredRoom);
@@ -266,7 +291,22 @@ export function handleGmUndoTurn(
 }
 ```
 
-### 4.4 Reparación de Anchors `until_turn`
+### 4.4 Helper `invalidateGmSessions`
+
+```typescript
+// En roomStore.ts o gmCommands.ts
+import { gmSessions } from "./roomStore.js";
+
+export function invalidateGmSessions(roomCode: string): void {
+  const session = gmSessions.get(roomCode);
+  if (session) {
+    gmSessions.delete(roomCode);
+    // Notificar a sockets GM si están conectados (opcional)
+  }
+}
+```
+
+### 4.5 Reparación de Anchors `until_turn`
 
 ```typescript
 // En gmCommands.ts o utilidad compartida
@@ -304,7 +344,7 @@ import { createHash } from "node:crypto";
 import type { CombatRoom, TurnCheckpoint } from "@dnd-tactical/shared";
 
 export function hashRoom(room: CombatRoom): string {
-  // Serializar solo campos de estado, excluyendo campos que cambian por referencia
+  // Serialización canónica completa — TODOS los campos de estado
   const serializable = {
     code: room.code,
     board: room.board,
@@ -315,7 +355,9 @@ export function hashRoom(room: CombatRoom): string {
       hpMax: c.hpMax,
       position: c.position,
       initiative: c.initiative,
-      // ... todos los campos de estado relevantes
+      type: c.type,
+      controlledBy: c.controlledBy,
+      // TODOS los campos de CombatantSnapshot
     })),
     turnOrder: room.turnOrder,
     activeTurnIndex: room.activeTurnIndex,
@@ -327,9 +369,21 @@ export function hashRoom(room: CombatRoom): string {
     log: room.log,
     activeAttackThreat: room.activeAttackThreat,
     pendingCoupDeGrace: room.pendingCoupDeGrace,
-    effectInstances: room.effectInstances,
+    effectInstances: room.effectInstances.map(e => ({
+      instanceId: e.instanceId,
+      effectId: e.effectId,
+      source: e.source,
+      appliedAtEvent: e.appliedAtEvent,
+      targets: e.targets,
+      targetItem: e.targetItem,
+      targetCells: e.targetCells,
+      duration: e.duration,
+      stacks: e.stacks,
+      squeezingAxis: e.squeezingAxis,
+    })),
     eventSequence: room.eventSequence,
     stateVersion: room.stateVersion,
+    // NOTA: completedAt, pendingStationaryAction, pendingMovement, pendingMovement NO se hashean (se limpian en undo)
   };
   
   const serializableStr = JSON.stringify(serializable, (_key, value) => {
@@ -347,7 +401,7 @@ export function pushTurnCheckpoint(roomCode: string, room: CombatRoom): void {
   const checkpointHash = hashRoom(room);
   
   // Calcular hash del checkpoint anterior (para cadena de integridad)
-  const stateHash = history.length > 0 ? history[history.length - 1].checkpointHash : "genesis";
+  const prevCheckpointHash = history.length > 0 ? history[history.length - 1].checkpointHash : "genesis";
   
   const turnNumber = history.length + 1;
   
@@ -356,7 +410,7 @@ export function pushTurnCheckpoint(roomCode: string, room: CombatRoom): void {
     turnNumber,
     round: room.round,
     activeTurnIndex: room.activeTurnIndex,
-    stateHash,
+    prevCheckpointHash,
     checkpointHash,
     timestamp: Date.now(),
     stateVersion: room.stateVersion,
@@ -372,15 +426,17 @@ export function pushTurnCheckpoint(roomCode: string, room: CombatRoom): void {
   roomHistory.set(roomCode, history);
 }
 
-export function popTurnCheckpoints(roomCode: string, steps: number): TurnCheckpoint | null {
+export function rewindTurnCheckpoints(roomCode: string, steps: number): TurnCheckpoint | null {
   const history = roomHistory.get(roomCode) ?? [];
   if (history.length < steps) return null;
   
-  const target = history[history.length - steps];
+  // NO eliminamos checkpoints — solo retrocedemos el puntero lógico
+  // El checkpoint objetivo es el que está 'steps' posiciones desde el final
+  const targetIndex = history.length - steps;
+  const target = history[targetIndex];
   
-  // Eliminar checkpoints poppeados
-  history.splice(history.length - steps, steps);
-  roomHistory.set(roomCode, history);
+  // Marcar que este es ahora el "checkpoint actual" (opcional: podríamos mantener un puntero separado)
+  // Por simplicidad, los checkpoints permanecen; la lógica de canUndo usa history.length
   
   return target;
 }
@@ -394,18 +450,47 @@ export function getLatestCheckpoint(roomCode: string): TurnCheckpoint | undefine
   const history = roomHistory.get(roomCode) ?? [];
   return history[history.length - 1];
 }
+
+export function getCurrentCheckpoint(roomCode: string): TurnCheckpoint | undefined {
+  const history = roomHistory.get(roomCode) ?? [];
+  return history[history.length - 1];
+}
+
+export function canUndo(roomCode: string, steps: number): boolean {
+  const history = roomHistory.get(roomCode) ?? [];
+  return history.length >= steps;
+}
+
+export function prune(roomCode: string): void {
+  const history = roomHistory.get(roomCode) ?? [];
+  const now = Date.now();
+  const filtered = history.filter(cp => now - cp.timestamp <= HISTORY_TTL_MS);
+  roomHistory.set(roomCode, filtered);
+}
+
+export function clear(roomCode: string): void {
+  roomHistory.delete(roomCode);
+}
 ```
 
 ### 4.6 Integración en `dispatchCommandCore` (Invalidación de Comandos Obsoletos)
 
 ```typescript
 // En dispatchCommandCore, ANTES de authorizeRoomCommand:
-if (command.stateVersion !== undefined && command.stateVersion < room.stateVersion) {
-  if (socket) send(socket, { type: "error", message: "Estado desactualizado (posible undo previo). Refresca estado." });
-  return;
+if (command.type !== "gm-undo-turn") {
+  // Todos los comandos en fase active DEBEN incluir stateVersion
+  if (room.phase === "active" && command.stateVersion === undefined) {
+    if (socket) send(socket, { type: "error", message: "Comando requiere stateVersion en fase active." });
+    return;
+  }
+  // Rechazar comandos con stateVersion obsoleto
+  if (command.stateVersion !== undefined && command.stateVersion < room.stateVersion) {
+    if (socket) send(socket, { type: "error", message: "Estado desactualizado (posible undo previo). Refresca estado." });
+    return;
+  }
 }
 
-// El comando gm-undo-turn NO incluye stateVersion (siempre se procesa)
+// El comando gm-undo-turn NO incluye stateVersion (siempre se procesa como autoritativo)
 ```
 
 ### 4.7 Comando `gm-undo-turn` (ClientCommand)
@@ -494,13 +579,14 @@ if (command.stateVersion !== undefined && command.stateVersion < room.stateVersi
 ```
 
 ### 8.3 Invalidación de Comandos en Vuelo
-- `stateVersion` en `CombatRoom` (incrementa en cada undo)
-- `ClientCommand` opcional `stateVersion: number`
+- `stateVersion` en `CombatRoom` (incrementa en CADA cambio autoritativo: advanceTurn, undo, comandos que mutan estado)
+- `ClientCommand` opcional `stateVersion: number` — **OBLIGATORIO en fase active**
 - Servidor rechaza comandos con `stateVersion < room.stateVersion` (error: "Estado desactualizado")
+- `gm-undo-turn` no incluye `stateVersion` (siempre se procesa como autoritativo)
 
 ---
 
-## 9. Tests de Integridad (10+)
+## 9. Tests de Integridad (14+)
 
 | Test | Descripción |
 |---|---|
@@ -525,14 +611,14 @@ if (command.stateVersion !== undefined && command.stateVersion < room.stateVersi
 
 | Archivo | Tipo | Descripción |
 |---|---|---|
-| `apps/server/src/room/roomHistory.ts` | **Nuevo** | Checkpoints por turno (push/pop/prune/clear + hash + cadena) |
-| `apps/server/src/commands/gmCommands.ts` | **Modificar** | `handleGmUndoTurn` + `repairUntilTurnAnchors` |
-| `apps/server/src/combat/turnManager.ts` | **Modificar** | Push checkpoint en `advanceTurn` |
-| `apps/server/src/commands/dispatcher.ts` | **Modificar** | Validar `stateVersion` en `dispatchCommandCore` |
+| `apps/server/src/room/roomHistory.ts` | **Nuevo** | Checkpoints por turno (push/rewind/prune/clear + hash + cadena) |
+| `apps/server/src/commands/gmCommands.ts` | **Modificar** | `handleGmUndoTurn` + `repairUntilTurnAnchors` + `invalidateGmSessions` |
+| `apps/server/src/combat/turnManager.ts` | **Modificar** | Push checkpoint en `advanceTurn` + incrementStateVersion |
+| `apps/server/src/commands/dispatcher.ts` | **Modificar** | Validar `stateVersion` obligatorio en `dispatchCommandCore` |
 | `apps/server/src/auth/commandAuthorization.ts` | **Modificar** | Policy `gm-undo-turn` con validación GM |
 | `packages/shared/src/types.ts` | **Modificar** | `gm-undo-turn` en `ClientCommand`; `stateVersion` en `CombatRoom` |
 | `apps/server/src/commands/__tests__/gmUndoTurn.test.mjs` | **Nuevo** | Tests unitarios e integración |
-| `tests/gm-undo-turn.test.mjs` | **Nuevo** | Tests de integridad (13+) |
+| `tests/gm-undo-turn.test.mjs` | **Nuevo** | Tests de integridad (14+) |
 | `tests-ui/gm-undo-turn.spec.ts` | **Nuevo** | Tests Playwright UI (no DemoPanel) |
 | `docs/designs/gm-undo-turn/design.md` | **Actualizado** | Este documento |
 
@@ -555,13 +641,27 @@ if (command.stateVersion !== undefined && command.stateVersion < room.stateVersi
 
 ---
 
-## 13. Resumen de Cambios vs Versión Anterior (Corrección de Bloqueantes)
+## 13. Resumen de Correcciones vs Versión Anterior
 
-| Bloqueante | Corrección Aplicada |
+| Problema | Corrección Aplicada |
 |---|---|
-| **1. Firma de checkpoints y estado inicial** | `TurnCheckpoint` incluye `stateHash` (hash del checkpoint anterior) y `checkpointHash` (hash del estado actual). Cadena verificada desde "genesis" hasta último checkpoint. `pushTurnCheckpoint` calcula ambos hashes. |
-| **2. Restauración sin propiedades residuales** | `handleGmUndoTurn` crea `structuredClone(previous.room)`, limpia `completedAt=null`, `pendingStationaryAction/pendingMovement=undefined`, invalida tokens GM. Usa `rooms.set(room.code, restoredRoom)` para referencia nueva. |
-| **3. Contrato completo de `stateVersion`** | `stateVersion` en `CombatRoom` (inicial 0), incrementa en cada undo. `ClientCommand.stateVersion` opcional. Servidor rechaza `stateVersion < room.stateVersion` en `dispatchCommandCore` ANTES de `authorizeRoomCommand`. `gm-undo-turn` no incluye `stateVersion`. |
-| **4. Integración con roles y ciclo de Academia** | `authorizeRoomCommand` valida `participant.role === "gm" && participant.roomCode === room.code`. Independiente de DemoPanel/Sol: no modifica `DemoPanel`, usa botón GM estándar. Tutoriales usan `restart-demo` independiente; `stateVersion` aislado por sala. |
-| **SHA-256** | `hashRoom` serializa solo campos de estado (excluye functions/symbols). `TurnCheckpoint` incluye `checkpointHash` (hash del estado) y `stateHash` (hash del checkpoint anterior para cadena). Verificación en `popTurnCheckpoints`: `storedHash === hashRoom(previous.room)` + verificación de cadena `previous.stateHash === prevCheckpoint.checkpointHash`. |
-| **Autorización GM** | `authorizeRoomCommand` valida `participant.role === "gm" && participant.roomCode === room.code`. Policy en `commandAuthorization.ts` con `requireGM: true`, `phase: ["active"]`, `maxSteps` configurable por sala, validación de participación en la sala. |
+| **1. Checkpoint inicial** | `TurnCheckpoint` incluye `prevCheckpointHash` ("genesis" para el primero). `pushTurnCheckpoint` calcula `prevCheckpointHash = history.length > 0 ? history[history.length-1].checkpointHash : "genesis"`. Verificación en `rewindTurnCheckpoints`: checkpoint 1 debe tener `prevCheckpointHash === "genesis"`. |
+| **2. Semántica de pop/undo** | `rewindTurnCheckpoints` **NO elimina** checkpoints (solo lectura). Los checkpoints permanecen para integridad y posible redo futuro. `canUndo` usa `history.length >= steps`. |
+| **3. Monotonicidad de `stateVersion`** | `stateVersion` incrementa en **CADA** cambio autoritativo: `advanceTurn` (via `incrementStateVersion`), `handleGmUndoTurn` (via `incrementStateVersion`), y comandos que mutan estado. `pushTurnCheckpoint` guarda `stateVersion` actual. |
+| **4. Rechazo de comandos sin versión** | `dispatchCommandCore` rechaza comandos en fase `active` SIN `stateVersion` (`undefined`). Solo `gm-undo-turn` se procesa sin `stateVersion`. |
+| **5. Limpieza real de sesiones de Academia** | `invalidateGmSessions(roomCode)` elimina entrada de `gmSessions` en `roomStore.ts`. Llamado en `handleGmUndoTurn` tras restauración. |
+| **6. Cobertura íntegra del hash** | `hashRoom` serializa **TODOS** los campos de estado (combatants completos, effectInstances completos, etc.). Excluye solo campos que se limpian en undo (`completedAt`, `pending*`). |
+
+---
+
+## 13. Cambios Clave vs Versión Anterior
+
+| Sección | Cambio |
+|---|---|
+| `TurnCheckpoint` | Añadido `prevCheckpointHash` (cadena hacia atrás), renombrado `stateHash`→`prevCheckpointHash`, `checkpointHash` se mantiene. |
+| `RoomHistory` | `popTurnCheckpoints` → `rewindTurnCheckpoints` (NO elimina). Añadido `getCurrentCheckpoint`, `getCheckpoint`. |
+| `handleGmUndoTurn` | Usa `rewindTurnCheckpoints`, valida genesis, llama `invalidateGmSessions`, usa `incrementStateVersion`, `rooms.set()` para referencia nueva. |
+| `stateVersion` | Incrementa en `advanceTurn` Y en undo. Obligatorio en comandos fase active. |
+| `hashRoom` | Serialización completa canónica (todos los campos de estado). |
+| `invalidateGmSessions` | Nuevo helper para limpiar `gmSessions` en undo. |
+| Tests | 14 tests incluyendo genesis, chain, no-residual, gm-auth, academia-lifecycle. |
