@@ -1,5 +1,16 @@
 # Master Testing Coverage
 
+## Line of Effect de conjuros de área
+
+La [proyección compartida](../../tests/spell-area-projection.test.mjs) cubre
+cono, línea ortogonal y diagonal, estallido, impactos fraccionarios, huellas
+y paridad del tablero. Las [regresiones transaccionales](../../tests/spellcasting-transactional.test.mjs)
+verifican origen direccional, rechazo sin gasto y detonación adelantada.
+
+Nivel C con revisión independiente aprobada. Validación local: 44/44
+focalizadas en la revisión, 1096/1096 globales, 146/146 WebSocket, 2/2
+Chromium focalizadas, typecheck, build y diff check.
+
 ## Line of Effect de conjuros directos
 
 Las [regresiones del lanzamiento](../../tests/spellcasting-transactional.test.mjs)

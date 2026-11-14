@@ -140,3 +140,21 @@ El pipeline de áreas **no determina semántica defensiva automática**.
 | Volumetric Coord | Identidad | - | Celdas puras en el vacío | D-1R1 / Resuelto |
 | UI Previews | Presentación | - | El cliente calcula pero sin autoridad | D-1A-R1 / Resuelto |
 | Distancia XYZ | Métrica 3D | - | Fórmula 3D para radios y far-edges | **ODR Bloqueante (D-1R1)** |
+
+
+## Integración 2D de conjuros preparados
+
+`projectSpellArea` proyecta desde el snapshot para servidor y preview.
+El clic de Fireball designa la intersección noroeste de la casilla. El
+lanzador origina el proyectil en su esquina de huella más próxima, con
+desempate norte y luego oeste. Una barrera puede adelantar la detonación
+hasta su cara. En un impacto entre intersecciones se prorratea el siguiente
+paso diagonal de la métrica 5-10-5. El estallido usa ese origen efectivo.
+
+Cono y línea eligen la esquina de la huella más avanzada en la dirección
+indicada, con el mismo desempate. La línea cardinal usa la fila o columna
+adyacente a esa esquina y la diagonal conserva el supercover existente.
+El cono y el estallido comprueban alcance al borde lejano y trazan hacia el
+centro de cada celda candidata. La prueba de LoE usa la misma celda que
+intersecta la huella. El servidor repite la proyección tras una interrupción.
+Cuerpos, pasos estrechos y barreras destructibles quedan pendientes.

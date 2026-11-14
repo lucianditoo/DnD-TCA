@@ -3,12 +3,11 @@ import {
   EffectQueries,
   SpellsCatalog,
   getAttackContextModifiers,
-  getCellsIntersectedByAoE,
+  projectSpellArea,
   getCombatantOccupiedCells,
   getWeaponAttackTypeForTarget,
   lifeStatus,
   parseCellKey,
-  type Ability,
   type CombatRoom,
   type CombatRulesSnapshot,
   type Combatant,
@@ -410,7 +409,7 @@ export function buildBoardPresentationModel(params: {
   readonly chargePreviewPath: readonly Position[] | null;
   readonly routeFootprintCombatant?: Combatant | null;
   readonly actionMode?: ActionMode;
-  readonly selectedAbility?: Ability | null;
+  readonly preparedSpellId?: string;
   readonly targetPosition?: Position | null;
   readonly hoveredCell?: Position | null;
   readonly camera?: CameraState;
@@ -428,7 +427,7 @@ export function buildBoardPresentationModel(params: {
     chargePreviewPath,
     routeFootprintCombatant,
     actionMode,
-    selectedAbility,
+    preparedSpellId,
     targetPosition,
     hoveredCell = null,
     camera = DEFAULT_CAMERA_STATE,
@@ -459,24 +458,19 @@ export function buildBoardPresentationModel(params: {
   for (const step of evaluatedPreview?.steps ?? []) for (const cell of step.occupiedCells) projectedStepsByCell.set(cellKey(cell), step);
 
   const aoePreviewKeys = new Set<string>();
-  if (actionMode === "ability" && selected && selectedAbility) {
-    const spell = SpellsCatalog.get(selectedAbility.id);
-    const targetCell = hoveredCell ?? targetPosition ?? null;
-    if (spell && spell.target === "area" && spell.aoe && targetCell) {
-      const direction = getCardinalDirection(selected.position, targetCell);
-      const origin = spell.aoe.type === "burst" ? targetCell : selected.position;
-      const cells = getCellsIntersectedByAoE(origin, direction, spell.aoe, room.board.cellSizeFeet);
-      for (const cell of cells) aoePreviewKeys.add(cellKey(cell));
-    }
-  }
-
   const aoeAffectedKeys = new Set<string>();
-  if (aoePreviewKeys.size > 0) {
-    for (const combatant of room.combatants) {
-      if (lifeStatus(combatant) === "dead") continue;
-      const footprint = occupiedCellsByCombatant.get(combatant.id) ?? [];
-      if (footprint.some((cell) => aoePreviewKeys.has(cellKey(cell)))) {
-        for (const cell of footprint) aoeAffectedKeys.add(cellKey(cell));
+  if (actionMode === "ability" && selected && preparedSpellId) {
+    const spell = SpellsCatalog.get(preparedSpellId);
+    const targetCell = hoveredCell ?? targetPosition;
+    if (spell?.target === "area" && targetCell) {
+      const projection = projectSpellArea(snapshot, selected, spell, {
+        direction: getCardinalDirection(selected.position, targetCell), targetPosition: targetCell
+      });
+      if (projection.ok) {
+        for (const cell of projection.cells) aoePreviewKeys.add(cellKey(cell));
+        for (const id of projection.affectedIds) {
+          for (const cell of occupiedCellsByCombatant.get(id) ?? []) aoeAffectedKeys.add(cellKey(cell));
+        }
       }
     }
   }

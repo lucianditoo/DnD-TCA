@@ -21,6 +21,7 @@ export * from "./spells/contracts.js";
 export * from "./schemas/commands/index.js";
 export * from "./combat/tickLayer.js";
 export * from "./geometry/aoe.js";
+export * from "./geometry/spellArea.js";
 export * from "./demo/types.js";
 export * from "./demo/catalog.js";
 export type { ConfirmedSpatialTransition } from "./movementContracts.js";

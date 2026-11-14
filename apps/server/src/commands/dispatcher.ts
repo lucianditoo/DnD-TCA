@@ -2,7 +2,7 @@ import { rollDice } from "../combat/diceRoller.js";
 import type { WebSocket } from "ws";
 import { createCombatRulesSnapshot, getEffectiveAbilityModifier, lifeStatus, makeLog, Rules, SpellsCatalog, type CombatRoom, type ClientCommand } from "@dnd-tactical/shared";
 import { handleResolveAttack, handleResolveOpportunityAttack, handleResolveAttackConfirmation, handleCancelAttackThreat } from "./attackCommands.js";
-import { handleResolveAbilityAttack, handleRollStabilization, handleUseAbility, handleCastSpell, requireDirectSpellLineOfEffect } from "./abilityCommands.js";
+import { handleResolveAbilityAttack, handleRollStabilization, handleUseAbility, handleCastSpell, validateSpellGeometry } from "./abilityCommands.js";
 import { handleAddCatalogCombatant, handleAddDemoCombatant, handleAddProfileCombatant } from "./combatantCommands.js";
 import { handleGmAddLog, handleGmApplyEffect, handleGmApplyEnvironmentalHazard, handleGmRemoveEffect, handleGmClearOpportunities, handleGmForceOutcome, handleGmMoveCombatant, handleGmSetHp, handleGmSetStatus, handleHealCombatant } from "./gmCommands.js";
 import { handleEndTurn, handleSetInitiative, handleSortInitiative } from "./initiativeCommands.js";
@@ -134,7 +134,7 @@ function resumeStationaryAction(room: CombatRoom, context?: InternalExecutionCon
       const slot = actor.preparedSpells.find(slot => slot.slotId === command.slotId);
       if (!slot || slot.isExpended) throw new Error("El slot del lanzamiento interrumpido ya no esta disponible.");
       const spell = SpellsCatalog.require(slot.spellId);
-      if (available) requireDirectSpellLineOfEffect(snapshot, actor, spell, command.targetId);
+      if (available) validateSpellGeometry(snapshot, actor, spell, command);
       const modifier = getEffectiveAbilityModifier(snapshot, actor, "constitution") + (actor.skillRanks.concentration ?? 0);
       const roller = context?.diceRoller ?? rollDice;
       let lost = !available;

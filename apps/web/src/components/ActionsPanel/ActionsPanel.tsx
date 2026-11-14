@@ -94,6 +94,8 @@ export function ActionsPanel(props: {
   onSelectedAbilityChange: (id: string) => void;
   onHealAmountChange: (value: string) => void;
   onUseAbility: (abilityId?: string) => void;
+  selectedSpellSlotId?: string | null;
+  onSelectSpellSlot?: (slotId: string) => void;
   onCastSpell?: (slotId: string) => void;
   onEndTurn: () => void;
   onGmMoveTargetChange: (id: string) => void;
@@ -118,7 +120,7 @@ export function ActionsPanel(props: {
   onRemoveEffect: (instanceId: string) => void;
 }) {
   const { room, selected, snapshot } = props;
-  const [selectedSpellSlotId, setSelectedSpellSlotId] = useState<string | null>(null);
+  const selectedSpellSlotId = props.selectedSpellSlotId;
   const [grappleEscapeType, setGrappleEscapeType] = useState<GrappleEscapeType>("grapple_check");
   const actionDisabled = !props.canControlSelected || !!props.isInteractionLocked;
   const selectedTarget = room.combatants.find((combatant) => combatant.id === props.targetId) ?? null;
@@ -466,7 +468,7 @@ export function ActionsPanel(props: {
                   key={slot.slotId}
                   className={`spell-btn ${isSelected ? "selected" : ""}`}
                   style={{ opacity: slot.isExpended ? 0.5 : 1, filter: slot.isExpended ? "grayscale(100%)" : "none", padding: "0.5rem", border: isSelected ? "2px solid var(--primary)" : "1px solid var(--border)" }}
-                  onClick={() => setSelectedSpellSlotId(slot.slotId)}
+                  onClick={() => props.onSelectSpellSlot?.(slot.slotId)}
                   disabled={slot.isExpended}
                 >
                   {spell.name}

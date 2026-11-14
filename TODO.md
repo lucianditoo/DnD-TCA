@@ -30,7 +30,7 @@ creación como si fueran documentos ausentes.
 
 ## Vision, Line of Effect y Concealment
 
-- Integrar Line of Effect en áreas de efecto. El objetivo directo ya usa la validación autoritativa.
+- Completar las excepciones SRD de Fireball para cuerpos, pasos estrechos y destrucción de barreras, y la destrucción de barreras por Lightning Bolt cuando exista esa mecánica.
 - Diseñar Low-Light Vision, Blindsight, Blindsense y Tremorsense.
 - Modelar niebla, humo, invisibilidad y fuentes dinámicas de luz.
 - Completar las consecuencias defensivas y de movimiento de la oscuridad.

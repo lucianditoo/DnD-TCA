@@ -35,7 +35,7 @@ export function Board({
   chargePreviewPath,
   routeFootprintCombatant,
   actionMode,
-  selectedAbility,
+  preparedSpellId,
   targetPosition,
   onCellClick
 }: {
@@ -50,7 +50,7 @@ export function Board({
   chargePreviewPath: Position[] | null;
   routeFootprintCombatant?: Combatant | null;
   actionMode?: ActionMode;
-  selectedAbility?: Ability | null;
+  preparedSpellId?: string;
   targetPosition?: Position | null;
   onCellClick: (position: Position, token: Combatant | undefined) => void;
 }) {
@@ -80,7 +80,7 @@ export function Board({
         chargePreviewPath,
         routeFootprintCombatant,
         actionMode,
-        selectedAbility,
+        preparedSpellId,
         targetPosition,
         hoveredCell,
         camera: {
@@ -101,7 +101,7 @@ export function Board({
       chargePreviewPath,
       routeFootprintCombatant,
       actionMode,
-      selectedAbility,
+      preparedSpellId,
       targetPosition,
       hoveredCell,
       viewMode,

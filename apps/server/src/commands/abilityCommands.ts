@@ -1,5 +1,5 @@
 import { findStationaryOpportunityAttacks } from "../combat/opportunityAttackResolver.js";
-import { applyDamage, averageDiceDamage, canStandardAttack, getAttackContextModifiers, getLineOfEffect, lifeStatus, makeLog, Rules, createCombatRulesSnapshot, type ClientCommand, type CombatRoom, SpellsCatalog, type Ability, threatensTarget, getCellsIntersectedByAoE, getCombatantOccupiedCells, footprintCellKey, type Combatant, type SpellDefinition } from "@dnd-tactical/shared";
+import { applyDamage, averageDiceDamage, canStandardAttack, getAttackContextModifiers, getLineOfEffect, lifeStatus, makeLog, Rules, createCombatRulesSnapshot, type ClientCommand, type CombatRoom, SpellsCatalog, type Ability, threatensTarget, projectSpellArea, type Combatant, type SpellDefinition } from "@dnd-tactical/shared";
 import { requireCombatantControl } from "../auth/control.js";
 import { attackRangeFeet, makeDamageBundle, resolveAttack, type ResolvedAttackSource } from "../combat/attackResolver.js";
 import { resolveAbility, validateAbilityRange, validateAbilityTarget } from "../combat/abilityResolver.js";
@@ -148,6 +148,21 @@ export function requireDirectSpellLineOfEffect(
   }
 }
 
+export function validateSpellGeometry(
+  snapshot: ReturnType<typeof createCombatRulesSnapshot>,
+  caster: Combatant,
+  spell: SpellDefinition,
+  command: Extract<ClientCommand, { type: "cast-spell" }>
+) {
+  if (spell.target !== "area") {
+    requireDirectSpellLineOfEffect(snapshot, caster, spell, command.targetId);
+    return undefined;
+  }
+  const area = projectSpellArea(snapshot, caster, spell, command);
+  if (!area.ok) throw new Error(area.error);
+  return area;
+}
+
 export function handleCastSpell(
   room: CombatRoom,
   command: Extract<ClientCommand, { type: "cast-spell" }>,
@@ -180,7 +195,7 @@ export function handleCastSpell(
     validateAbilityRange(room, caster, target, spell.rangeFeet);
   }
 
-  requireDirectSpellLineOfEffect(snapshot, caster, spell, command.targetId);
+  const area = validateSpellGeometry(snapshot, caster, spell, command);
 
   if (resolution.kind === "attack-roll" && command.d20Roll === null) {
     throw new Error("El conjuro " + spell.name + " requiere una tirada de ataque (d20Roll).");
@@ -215,21 +230,12 @@ export function handleCastSpell(
 
   const dcBreakdown = Rules.calculateSpellSaveDCBreakdown(snapshot, caster, spell.id);
   
-  if (spell.target === "area" && spell.aoe) {
-    if (!command.direction && !command.targetPosition) throw new Error("Se requiere direccion o posicion objetivo para area de efecto.");
-    
-    // Obtenemos las celdas del area
-    const origin = command.targetPosition ?? draftCaster.position;
-    const aoeCells = getCellsIntersectedByAoE(origin, command.direction ?? "N", spell.aoe, room.board.cellSizeFeet);
-    
-    // Identificamos afectados
-    const aoeCellKeys = new Set(aoeCells.map(footprintCellKey));
-
-    const affectedCombatants: Combatant[] = draft.combatants.filter((c) => {
-      if (lifeStatus(c) === "dead") return false;
-      const occupied = getCombatantOccupiedCells(c, snapshot);
-      return occupied.some(occ => aoeCellKeys.has(footprintCellKey(occ)));
-    });
+  if (area) {
+    const affectedIds = new Set(area.affectedIds);
+    const affectedCombatants = draft.combatants.filter(combatant => affectedIds.has(combatant.id));
+    if (area.earlyDetonation) {
+      draft.log.unshift(makeLog("status", spell.name + " detona antes de llegar al origen elegido."));
+    }
 
     draft.log.unshift(makeLog("status", draftCaster.name + " lanza " + spell.name + " (DC " + dcBreakdown.total + ") atrapando a " + affectedCombatants.length + " objetivo(s)."));
 

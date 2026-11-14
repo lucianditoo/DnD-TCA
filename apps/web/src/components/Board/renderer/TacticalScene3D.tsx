@@ -67,6 +67,8 @@ function makeCellMaterial(className: string): THREE.MeshBasicMaterial {
   else if (className.includes("route-over-budget") || className.includes("preview-over-budget")) { color = 0xffa726; opacity = 0.48; }
   else if (className.includes("route-ghost")) { color = 0x64ffda; opacity = 0.55; }
   else if (className.includes("route-cell")) { color = 0xffd54f; opacity = 0.42; }
+  else if (className.includes("aoe-affected")) { color = 0xff6148; opacity = 0.48; }
+  else if (className.includes("aoe-preview")) { color = 0xffb74d; opacity = 0.38; }
   else if (className.includes("move-highlight")) { color = 0x39d9c4; opacity = 0.38; }
   else if (className.includes("attack-highlight")) { color = 0xff6148; opacity = 0.4; }
   else if (className.includes("ranged-highlight")) { color = 0xffb74d; opacity = 0.38; }

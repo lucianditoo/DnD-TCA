@@ -109,13 +109,13 @@ function getConeCells(origin: Position, direction: CardinalDirection, lengthFeet
   return cells;
 }
 
-function getDistance5105(dx: number, dy: number): number {
+export function getDistance5105(dx: number, dy: number): number {
   const max = Math.max(dx, dy);
   const min = Math.min(dx, dy);
   return max + Math.floor(min / 2);
 }
 
-function getDirectionDelta(dir: CardinalDirection): { dx: number, dy: number } {
+export function getDirectionDelta(dir: CardinalDirection): { dx: number, dy: number } {
   switch (dir) {
     case "N": return { dx: 0, dy: -1 };
     case "S": return { dx: 0, dy: 1 };

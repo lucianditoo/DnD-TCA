@@ -138,3 +138,36 @@ test("Oscuridad y terreno difícil no bloquean LoE de Magic Missile", () => {
   assert.equal(caster.preparedSpells[0].isExpended, true);
   assert.equal(room.currentTurn.usedStandardAction, true);
 });
+test("Burning Hands nace del lanzador aunque el clic direccional sea lejano", () => {
+  const caster = makeTestCombatant({ id: "caster", controlledBy: { type: "player", participantId: actorId },
+    preparedSpells: [{ slotId: "area", spellId: "srd_burning_hands", isExpended: false }] });
+  const target = makeTestCombatant({ id: "target", type: "enemy", position: { x: 2, y: 0, zFeet: 0 } });
+  const room = makeTestRoom({ combatants: [caster, target], currentTurn: { ...makeTestRoom().currentTurn, combatantId: caster.id } });
+  handleCastSpell(room, { type: "cast-spell", roomCode: room.code, actorId, casterId: caster.id, slotId: "area",
+    direction: "E", targetPosition: { x: 8, y: 0, zFeet: 0 }, d20Roll: null, amount: 6 }, { diceRoller: () => 1 });
+  assert.equal(target.hpCurrent, 14);
+});
+
+test("Fireball inválida no consume recursos; una intercepción válida detona y consume una sola vez", () => {
+  const caster = makeTestCombatant({ id: "caster", position: { x: 1, y: 2, zFeet: 0 },
+    controlledBy: { type: "player", participantId: actorId },
+    preparedSpells: [{ slotId: "area", spellId: "srd_fireball", isExpended: false }] });
+  const near = makeTestCombatant({ id: "near", type: "enemy", position: { x: 4, y: 2, zFeet: 0 } });
+  const behind = makeTestCombatant({ id: "behind", type: "enemy", position: { x: 6, y: 2, zFeet: 0 } });
+  const room = makeTestRoom({ combatants: [caster, near, behind],
+    board: { ...makeTestRoom().board, lineOfEffectBlockingCells: Array.from({ length: 10 }, (_, y) => "5," + y) },
+    currentTurn: { ...makeTestRoom().currentTurn, combatantId: caster.id } });
+  const command = { type: "cast-spell", roomCode: room.code, actorId, casterId: caster.id, slotId: "area", d20Roll: null, amount: 6 };
+  const before = structuredClone(room);
+  assert.throws(() => handleCastSpell(room, { ...command, targetPosition: { x: 9.5, y: 2, zFeet: 0 } }), /posición objetivo/);
+  assert.deepEqual(room, before);
+  let rolls = 0;
+  handleCastSpell(room, { ...command, targetPosition: { x: 9, y: 2, zFeet: 0 } }, { diceRoller: () => { rolls++; return 1; } });
+  assert.equal(near.hpCurrent, 14);
+  assert.equal(behind.hpCurrent, 20);
+  assert.equal(caster.hpCurrent, 14, "El estallido también alcanza al lanzador");
+  assert.equal(rolls, 2, "Una salvación por criatura alcanzada");
+  assert.equal(caster.preparedSpells[0].isExpended, true);
+  assert.equal(room.currentTurn.usedStandardAction, true);
+  assert.ok(room.log.some(entry => /detona antes/.test(entry.message)));
+});
