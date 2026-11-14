@@ -5,8 +5,7 @@ import {
   isCriticalThreat,
   isCriticalConfirmed,
   canApplySneakAttack,
-  averageWeaponDamageForCombatant,
-  getAbilityModifier,
+  projectWeaponDamage,
   type Buff,
   type CombatRoom,
   type CombatRulesSnapshot,
@@ -93,7 +92,7 @@ export function resolveAttack(
   if (!options?.concealment) throw new Error("Invariante de ataque violada: falta ConcealmentAssessment autoritativo.");
   if (lifeStatus(attacker) === "dead" || lifeStatus(attacker) === "dying" || lifeStatus(attacker) === "stable") throw new Error(attacker.name + " no puede atacar en su estado actual.");
   if (lifeStatus(target) === "dead") throw new Error(target.name + " ya esta muerto.");
-  const source = options.source ?? resolveWeaponAttackSource(attacker);
+  const source = options.source ?? resolveWeaponAttackSource(attacker, undefined, context);
   const range = attackRangeFeet(context, attacker, target);
   validateAttackRange(attacker, target, range, source);
   const rangePenalty = calculateRangePenalty(source, range);
@@ -244,8 +243,9 @@ function calculateRangePenalty(source: ResolvedAttackSource, rangeFeet: number):
   return { penalty, label: "alcance " + penalty + " (incremento " + incrementNumber + " de " + (source.maxRangeIncrements ?? Math.ceil(source.maxRangeFeet / increment)) + ")" };
 }
 
-export function resolveWeaponAttackSource(attacker: Combatant, attackType?: "melee" | "ranged"): ResolvedAttackSource {
+export function resolveWeaponAttackSource(attacker: Combatant, attackType?: "melee" | "ranged", snapshot: CombatRulesSnapshot<import("@dnd-tactical/shared").ProductionEffectId> | null = null): ResolvedAttackSource {
   const weapon = resolveEquippedWeaponProfile(attacker).profile;
+  const damage = projectWeaponDamage(snapshot, attacker, weapon);
   const ranged = attackType ? attackType === "ranged" : weapon.handedness === "ranged" || weapon.handedness === "thrown";
   return {
     name: weapon.name,
@@ -257,11 +257,9 @@ export function resolveWeaponAttackSource(attacker: Combatant, attackType?: "mel
     ...(ranged && weapon.maxRangeIncrements ? { maxRangeIncrements: weapon.maxRangeIncrements } : {}),
     criticalThreatFrom: weapon.criticalThreatFrom ?? 20,
     criticalMultiplier: weapon.criticalMultiplier ?? 2,
-    defaultDamage: averageWeaponDamageForCombatant(attacker),
-    damageDice: weapon.damageDice,
-    damageModifier: weapon.abilityForDamage === "none"
-      ? 0
-      : Math.floor(getAbilityModifier(attacker.abilityScores[weapon.abilityForDamage]) * weapon.damageAbilityMultiplier)
+    defaultDamage: damage.average,
+    damageDice: damage.dice,
+    damageModifier: damage.modifier
   };
 }
 

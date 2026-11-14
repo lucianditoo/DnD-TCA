@@ -180,7 +180,7 @@ function handleResolveAttackDraft(room: CombatRoom, command: Extract<ClientComma
   const attackType = square !== null
     ? getWeaponAttackTypeForPosition(attacker, attackDistance)
     : getWeaponAttackTypeForTarget(snapshot, attacker, target);
-  const source = resolveWeaponAttackSource(attacker, attackType);
+  const source = resolveWeaponAttackSource(attacker, attackType, snapshot);
   if (square !== null && attackDistance > source.maxRangeFeet) {
     // Mismo mensaje exacto que el camino de casilla vacía — el rechazo por alcance nunca revela
     // ocupación (jamás menciona al ocupante ni usa el mensaje con nombre del camino directo).
@@ -409,7 +409,7 @@ export function handleResolveOpportunityAttack(room: CombatRoom, command: Extrac
   if (lifeStatus(attacker) !== "active" || !Rules.canMakeOpportunityAttack(createCombatRulesSnapshot(room), attacker)) throw new Error(attacker.name + " no puede hacer ataque de oportunidad en su estado actual.");
   const attackerCurrentPosition = attacker.position;
   const targetCurrentPosition = target.position;
-  const source = resolveWeaponAttackSource(attacker, "melee");
+  const source = resolveWeaponAttackSource(attacker, "melee", createCombatRulesSnapshot(room));
   const roller = options.diceRoller ?? rollDice;
   const rolls = resolveCommandRolls(command, source, roller);
   let result: ReturnType<typeof resolveAttack>;
@@ -584,7 +584,7 @@ function resolveBlindSquareMiss(
 ): void {
   const rangeFeet = distanceFeet(attacker.position, square, room.board.cellSizeFeet);
   const attackType = getWeaponAttackTypeForPosition(attacker, rangeFeet);
-  const source = resolveWeaponAttackSource(attacker, attackType);
+  const source = resolveWeaponAttackSource(attacker, attackType, snapshot);
   if (rangeFeet > source.maxRangeFeet) {
     throw new Error("La casilla elegida esta fuera del alcance de " + attacker.name + " (maximo " + source.maxRangeFeet + " ft).");
   }

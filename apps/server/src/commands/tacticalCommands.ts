@@ -388,7 +388,7 @@ export function completeCharge(room: CombatRoom, command: Extract<ClientCommand,
   }
   room.log.unshift(makeLog("movement", combatant.name + " completa su Carga."));
   const tactical = getAttackContextModifiers(snapshot, combatant, target).byAttackType.melee;
-  const result = resolveAttack(snapshot, combatant, target, command.d20Roll, command.damage, "carga", 2 + tactical.attackBonus, { source: resolveWeaponAttackSource(combatant, "melee"), diceRoller: rollDice, cover: tactical.cover, concealment: tactical.concealment });
+  const result = resolveAttack(snapshot, combatant, target, command.d20Roll, command.damage, "carga", 2 + tactical.attackBonus, { source: resolveWeaponAttackSource(combatant, "melee", snapshot), diceRoller: rollDice, cover: tactical.cover, concealment: tactical.concealment });
   result.attackParts.push("carga +2");
   result.attackParts.push(...tactical.labelParts);
 
@@ -603,7 +603,7 @@ function handleCoupDeGrace(room: CombatRoom, snapshot: CombatRulesSnapshot<impor
     throw new Error("No puedes realizar un Golpe de gracia a un objetivo inmune a golpes criticos.");
   }
 
-  const source = resolveWeaponAttackSource(combatant);
+  const source = resolveWeaponAttackSource(combatant, undefined, snapshot);
   if (source.attackType === "ranged" && !isAdjacent(combatant.position, target.position)) {
     throw new Error("Para usar un arma a distancia en un Golpe de gracia, debes estar adyacente al objetivo.");
   }
@@ -669,7 +669,7 @@ export function handleResumeCoupDeGrace(room: CombatRoom, command: Extract<Clien
     return;
   }
 
-  const source = resolveWeaponAttackSource(combatant);
+  const source = resolveWeaponAttackSource(combatant, undefined, snapshot);
   if (source.name !== pending.weaponId) {
     room.log.unshift(makeLog("system", `El Golpe de gracia de ${combatant.name} fue cancelado porque cambio de arma.`));
     broadcast(room);

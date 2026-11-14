@@ -12,7 +12,7 @@ import {
   lifeStatus,
   Rules,
   validateMovePath,
-  averageWeaponDamageForCombatant,
+  projectWeaponDamage,
   resolveEquippedWeaponProfile,
   type Buff,
   type CombatRoom,
@@ -337,25 +337,17 @@ export function getRangePreview(combatant: Combatant, rangeFeet: number): string
  * IMPORTANTE: Es una ayuda visual (pre-roll) para facilitar la vida del jugador físico que usa el UI.
  * Nunca debe considerarse autoritativa, ya que el servidor solo confía en el valor final enviado (y de forma futura validará).
  */
-export function rollWeaponDamage(combatant: Combatant): number {
-  const dice = resolveEquippedWeaponProfile(combatant).profile.damageDice;
-  if (!dice) return averageWeaponDamageForCombatant(combatant);
+export function rollWeaponDamage(projection: ReturnType<typeof projectWeaponDamage>): number {
+  const { dice, average, modifier } = projection;
+  if (!dice) return average;
   const match = /^(\d+)d(\d+)$/i.exec(dice.trim());
-  if (!match) return averageWeaponDamageForCombatant(combatant);
+  if (!match) return average;
   const count = Number(match[1]);
   const sides = Number(match[2]);
-  if (!Number.isFinite(count) || !Number.isFinite(sides) || count <= 0 || sides <= 0) return averageWeaponDamageForCombatant(combatant);
+  if (!Number.isFinite(count) || !Number.isFinite(sides) || count <= 0 || sides <= 0) return average;
   let total = 0;
   for (let index = 0; index < count; index += 1) total += Math.floor(Math.random() * sides) + 1;
-  return Math.max(0, total + weaponDamageModifier(combatant));
-}
-
-export function weaponDamageModifier(combatant: Combatant): number {
-  const weapon = resolveEquippedWeaponProfile(combatant).profile;
-  if (weapon.abilityForDamage === "none") return 0;
-  const score = combatant.abilityScores?.[weapon.abilityForDamage];
-  if (score === undefined) throw new Error(`${combatant.name} no posee la característica requerida por ${weapon.name}.`);
-  return Math.trunc(abilityModifier(score) * weapon.damageAbilityMultiplier);
+  return Math.max(1, total + modifier);
 }
 
 export function abilityModifier(score: number): number {

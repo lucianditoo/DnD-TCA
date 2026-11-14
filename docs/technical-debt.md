@@ -154,6 +154,12 @@ versión. El estado oficial de `ATTACK-FULL` vive en el Registry.
 <a id="dt-012"></a>
 ### DT-012: EquipmentCatalog es estático y no soporta buffs dinámicos
 
+**Avance parcial (Nivel C).** El daño físico automático y su previsualización
+usan una proyección compartida de la característica efectiva desde el snapshot.
+La confirmación conserva el daño capturado al abrir la amenaza. El catálogo base
+y los formatos persistidos conservan su responsabilidad. Queda pendiente el
+modelado de propiedades dinámicas ligadas a objetos concretos.
+
 **Descripción**: `toWeaponProfile` y `deriveEquipmentStats` calculan derivados una vez, asumiendo condiciones estáticas. No pueden representar armas mágicas o efectos que modifiquen el equipo en tiempo real.
 
 **Riesgo**: Implementar *Arma mágica*, *Afilar*, *Improved Critical* o *Keen* requerirá una refactorización del catálogo.

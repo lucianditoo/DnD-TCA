@@ -1,7 +1,7 @@
 import type { MovementPreviewProjection, MovementPreviewKind, WithdrawPreviewAvailability, RunPreviewAvailability } from "../../movementPreview";
 import { MovementPreviewSummary } from "./MovementPreviewSummary";
 import { Footprints, HeartPulse, MousePointer2, Shield, SkipForward, Sparkles, Swords } from "lucide-react";
-import { averageWeaponDamageForCombatant, EquipmentCatalog, getAmmunitionState, getEquippedWeaponEntry, getGrappleAttackEligibility, getGrappleEscapePreview, lifeStatus, Rules, calculatePathCostFeet, getAttackContextModifiers, getEffectiveAttackRoutine, getWeaponAttackTypeForTarget, createCombatRulesSnapshot, canApplySneakAttack, canUseFiveFootStep, getEffectiveSneakAttackDice, validateSpecialManeuver, validateStandUp, SpellsCatalog, type Buff, type CombatOutcome, type CombatRoom, type Combatant, type GrappleEscapeType, type LifeStatus } from "@dnd-tactical/shared";
+import { projectWeaponDamage, EquipmentCatalog, getAmmunitionState, getEquippedWeaponEntry, getGrappleAttackEligibility, getGrappleEscapePreview, lifeStatus, Rules, calculatePathCostFeet, getAttackContextModifiers, getEffectiveAttackRoutine, getWeaponAttackTypeForTarget, createCombatRulesSnapshot, canApplySneakAttack, canUseFiveFootStep, getEffectiveSneakAttackDice, validateSpecialManeuver, validateStandUp, SpellsCatalog, type Buff, type CombatOutcome, type CombatRoom, type Combatant, type GrappleEscapeType, type LifeStatus } from "@dnd-tactical/shared";
 import { type ActionMode, type ActiveEffectView, type ApplicableEffectOption, type TacticMode } from "../../viewModel";
 import { Collapsible, D20Control, RollControls } from "../common";
 import { GmPanel } from "../GmPanel/GmPanel";
@@ -310,7 +310,7 @@ export function ActionsPanel(props: {
                   </div>
                 ) : null;
               })()}
-              <RollControls d20={props.d20Roll} autoD20={props.autoD20} damage={props.damage} autoDamage={props.autoDamage} defaultDamage={averageWeaponDamageForCombatant(selected)} onD20Change={props.onD20Change} onAutoD20Change={props.onAutoD20Change} onDamageChange={props.onDamageChange} onAutoDamageChange={props.onAutoDamageChange} />
+              <RollControls d20={props.d20Roll} autoD20={props.autoD20} damage={props.damage} autoDamage={props.autoDamage} defaultDamage={projectWeaponDamage(snapshot, selected).average} onD20Change={props.onD20Change} onAutoD20Change={props.onAutoD20Change} onDamageChange={props.onDamageChange} onAutoDamageChange={props.onAutoDamageChange} />
               
               {routine.length > 1 && room.currentTurn.attackMode === "full" && <div className="rules-box" style={{ marginTop: "0.5rem" }}>
                 <strong>Rutina iterativa por BAB</strong><br />
@@ -349,7 +349,7 @@ export function ActionsPanel(props: {
           <button className="primary tactics-confirm" onClick={() => props.onUseTacticalAction("total-defense")} disabled={actionDisabled || room.phase !== "active" || props.hasPendingOpportunities}><Shield size={18} /> Defensa total</button>
         </div>}
         {props.tacticMode === "charge" && <div className="tactic-card">
-          <RollControls d20={props.d20Roll} autoD20={props.autoD20} damage={props.damage} autoDamage={props.autoDamage} defaultDamage={averageWeaponDamageForCombatant(selected)} onD20Change={props.onD20Change} onAutoD20Change={props.onAutoD20Change} onDamageChange={props.onDamageChange} onAutoDamageChange={props.onAutoDamageChange} />
+          <RollControls d20={props.d20Roll} autoD20={props.autoD20} damage={props.damage} autoDamage={props.autoDamage} defaultDamage={projectWeaponDamage(snapshot, selected).average} onD20Change={props.onD20Change} onAutoD20Change={props.onAutoD20Change} onDamageChange={props.onDamageChange} onAutoDamageChange={props.onAutoDamageChange} />
           <label>Objetivo enemigo<select value={props.targetId} onChange={(event) => props.onTargetChange(event.target.value)}><option value="">Elegir</option>{props.enemyTargets.map((target) => <option key={target.id} value={target.id}>{target.name}</option>)}</select></label>
           {props.targetId && <div className="rules-box">{props.chargePreviewPath ? "Ruta de carga prevista: " + calculatePathCostFeet(selected.position, props.chargePreviewPath, createCombatRulesSnapshot(room)) + " ft. La casilla final queda marcada en el tablero." : "No hay una ruta de carga recta y libre hacia ese objetivo."}</div>}
           <div className="rules-box">Carga: ruta recta y libre de al menos 10 ft hasta una casilla desde la que puedas atacar. Usa accion de asalto completo, +2 al ataque y -2 a la CA hasta tu proximo turno.</div>

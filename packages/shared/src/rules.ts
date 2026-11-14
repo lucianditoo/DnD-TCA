@@ -5,7 +5,7 @@ import type { CatalogEffectId } from "./effects/types.js";
 import { EffectReducer, type MovementRateTrace, type ReducedConcealment, type ReducedEffects } from "./effects/reducer.js";
 import { effectsCatalog, type ProductionEffectId } from "./effects/catalog.js";
 import { EquipmentCatalog } from "./equipmentCatalog.js";
-import { deriveArmorClassBreakdown, deriveMeleeThreatSources, getArmorAdjustedSpeedFeet, getEquippedArmorEntry, getEquippedWeaponEntry, resolveEquippedWeaponProfile } from "./equipmentStats.js";
+import { averageDiceDamage, deriveArmorClassBreakdown, deriveMeleeThreatSources, getArmorAdjustedSpeedFeet, getEquippedArmorEntry, getEquippedWeaponEntry, resolveEquippedWeaponProfile } from "./equipmentStats.js";
 import { FeatCatalog } from "./featCatalog.js";
 import { getSizeRule } from "./sizeRules.js";
 import { SpellsCatalog } from "./spells/catalog.js";
@@ -726,6 +726,20 @@ export function getEffectiveAbilityModifier(
     catalog: effectsCatalog
   });
   return getAbilityModifier(_getEffectiveAbilityScoreFromReduced(combatant, ability, reduced));
+}
+
+/** Project weapon damage from current effects without altering the weapon or actor. */
+export function projectWeaponDamage(context: CombatRulesSnapshot<ProductionEffectId> | null, combatant: Combatant, weapon = resolveEquippedWeaponProfile(combatant).profile) {
+  const ability = weapon.abilityForDamage;
+  const modifier = ability === "none" ? 0 : context
+    ? getEffectiveAbilityModifier(context, combatant, ability)
+    : getAbilityModifier(combatant.abilityScores[ability]);
+  const scaledModifier = modifier * weapon.damageAbilityMultiplier;
+  return {
+    dice: weapon.damageDice,
+    modifier: Math.floor(scaledModifier),
+    average: Math.max(1, Math.floor(averageDiceDamage(weapon.damageDice) + scaledModifier))
+  };
 }
 
 export function getSpecialManeuverSizeModifier(sizeCategory: SizeCategory): number {

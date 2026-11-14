@@ -73,7 +73,7 @@ function resolveInterruptingOpportunityAttack(
 ): { d20Roll: number; result: AttackResult } {
   const d20Roll = checkedD20(diceSource, "opportunity-attack");
   const tactical = getAttackContextModifiers(snapshot, defender, tripper).byAttackType.melee;
-  const source = resolveWeaponAttackSource(defender, "melee");
+  const source = resolveWeaponAttackSource(defender, "melee", snapshot);
   let result = resolveAttack(snapshot, defender, tripper, d20Roll, null, "ataque de oportunidad", tactical.attackBonus, {
     source,
     diceRoller: (sides) => sides === 100 ? checkedD100(diceSource) : (diceSource.rollDie ? diceSource.rollDie(sides) : rollDice(sides)),

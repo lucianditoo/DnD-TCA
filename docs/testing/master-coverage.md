@@ -1,5 +1,18 @@
 # Master Testing Coverage
 
+## DT-012 — Daño efectivo de arma
+
+La regresión de daño automático con fatiga reprodujo 7 puntos en lugar de 5
+antes de la corrección. Las pruebas verifican daño manual, daño de AdO
+capturado al abrir una amenaza y confirmación tras retirar el efecto. La
+prueba de componentes comprueba el daño sugerido desde el snapshot.
+
+Evidencia local (Nivel C): 1075/1075 pruebas globales, 10/10 focalizadas,
+17/17 de componentes, 143/143 WebSocket, typecheck y build correctos.
+Revisión arquitectónica focalizada aprobada. Chromium pasó 37/39 en la
+corrida completa y 3/3 al repetir la demo de forma aislada. La misma
+ejecución aislada sobre la base limpia `d565ecc` pasó 3/3.
+
 ## DT-010 — Actions Panel
 
 Las [12 pruebas de componente](../../apps/web/tests/ActionsPanel.test.jsx)

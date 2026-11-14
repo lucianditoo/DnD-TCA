@@ -6,13 +6,33 @@ import {
   getAmmunitionState,
   validateAttackAmmunition
 } from "../packages/shared/src/index.ts";
-import { handleResolveAttack, handleResolveAttackConfirmation } from "../apps/server/src/commands/attackCommands.ts";
+import { handleResolveAttack, handleResolveAttackConfirmation, handleResolveOpportunityAttack } from "../apps/server/src/commands/attackCommands.ts";
 import { clients } from "../apps/server/src/room/roomStore.ts";
 import { inventoryEquipment, makeTestCombatant, makeTestRoom } from "./test-utils.mjs";
 
 const actorId = "inventory-player";
 const socket = { readyState: 1, OPEN: 1, send: () => {} };
 clients.set(socket, { id: actorId, role: "player", name: "Inventory tester", roomCode: "INV26" });
+
+test("fatiga modifica el daño automático con arma a dos manos, sin tocar el daño manual", () => {
+  for (const [fatigued, manualDamage, expected] of [[true, null, 5], [false, null, 7], [true, 9, 9]]) {
+    const { room, attacker, target } = setupBowRoom();
+    Object.assign(attacker, inventoryEquipment("greatsword"));
+    attacker.abilityScores.strength = 14;
+    target.position.x = 1;
+    if (fatigued) room.effectInstances.push({
+      instanceId: "fatigue", effectId: "srd_fatigued", source: { type: "system" },
+      targets: [attacker.id], appliedAtEvent: { type: "SystemInjected", round: 1 }
+    });
+    const hpBefore = target.hpCurrent;
+    handleResolveAttack(room, {
+      type: "resolve-attack", roomCode: room.code, actorId, attackerId: attacker.id, targetId: target.id,
+      d20Roll: manualDamage === null ? null : 15, damage: manualDamage, isAutoRoll: manualDamage === null
+    }, { diceRoller: (sides) => sides === 20 ? 15 : 2 });
+    assert.equal(hpBefore - target.hpCurrent, expected);
+    assert.equal(attacker.abilityScores.strength, 14);
+  }
+});
 
 function setupBowRoom(quantity = 1) {
   const attacker = makeTestCombatant({
@@ -33,6 +53,37 @@ function setupBowRoom(quantity = 1) {
   });
   return { room, attacker, target };
 }
+
+test("un crítico de AdO conserva el daño efectivo capturado antes de expirar el efecto", () => {
+  const { room, attacker, target } = setupBowRoom();
+  Object.assign(attacker, inventoryEquipment("greatsword"));
+  attacker.abilityScores.strength = 14;
+  target.position.x = 1;
+  room.effectInstances.push({
+    instanceId: "fatigue", effectId: "srd_fatigued", source: { type: "system" },
+    targets: [attacker.id], appliedAtEvent: { type: "SystemInjected", round: 1 }
+  });
+  room.pendingOpportunityAttacks.push({
+    id: "reaction", attackerId: attacker.id, targetId: target.id,
+    origin: { ...target.position }, destination: { x: 2, y: 0, zFeet: 0 },
+    reason: "reacción de prueba", createdAt: "2026-01-01T00:00:00Z"
+  });
+  room.phase = "opportunity-resolution";
+  const hpBefore = target.hpCurrent;
+  handleResolveOpportunityAttack(room, {
+    type: "resolve-opportunity-attack", roomCode: room.code, actorId,
+    opportunityId: "reaction", d20Roll: null, damage: null, isAutoRoll: true
+  }, { diceRoller: (sides) => sides === 20 ? 20 : 2 });
+  assert.equal(room.activeAttackThreat.normalDamageBundle.total, 5);
+  assert.equal(target.hpCurrent, hpBefore);
+  room.effectInstances = [];
+  handleResolveAttackConfirmation(room, {
+    type: "resolve-attack-confirmation", roomCode: room.code, actorId, d20Roll: 20, damage: null
+  });
+  assert.equal(hpBefore - target.hpCurrent, 10);
+  assert.equal(room.activeAttackThreat, null);
+  assert.equal(room.pendingOpportunityAttacks.length, 0);
+});
 
 test("un disparo AUTO consume exactamente una flecha y el stock cero bloquea el siguiente", () => {
   const { room, attacker } = setupBowRoom(1);

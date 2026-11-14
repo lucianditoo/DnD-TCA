@@ -1,5 +1,5 @@
 import { AlertTriangle, Crosshair, Footprints, HeartPulse, Shield, Swords } from "lucide-react";
-import { averageWeaponDamageForCombatant, lifeStatus, lifeStatusLabel, resolveEquippedWeaponProfile, Rules, type CombatRoom, type Combatant } from "@dnd-tactical/shared";
+import { projectWeaponDamage, lifeStatus, lifeStatusLabel, resolveEquippedWeaponProfile, Rules, type CombatRoom, type Combatant } from "@dnd-tactical/shared";
 import { Collapsible, Stat } from "../common";
 import { formatBuff } from "../../viewModel";
 import { SpellsCatalog } from "@dnd-tactical/shared";
@@ -58,7 +58,7 @@ export function SelectedInfo({ combatant, room, snapshot: context, attackerId, c
         </select>
       </label>
     </div>}</Collapsible>
-    <Collapsible title="Arma y reglas"><div className="rules-box">{weapon.notes} Alcance maximo: {weapon.maxRangeFeet} ft. Daño promedio derivado: {averageWeaponDamageForCombatant(combatant)}.</div></Collapsible>
+    <Collapsible title="Arma y reglas"><div className="rules-box">{weapon.notes} Alcance maximo: {weapon.maxRangeFeet} ft. Daño promedio derivado: {projectWeaponDamage(context, combatant).average}.</div></Collapsible>
     <Collapsible title="Caracteristicas">{combatant.abilityScores ? <div className="score-grid"><span>Fue <strong>{combatant.abilityScores.strength}</strong></span><span>Des <strong>{combatant.abilityScores.dexterity}</strong></span><span>Con <strong>{combatant.abilityScores.constitution}</strong></span><span>Int <strong>{combatant.abilityScores.intelligence}</strong></span><span>Sab <strong>{combatant.abilityScores.wisdom}</strong></span><span>Car <strong>{combatant.abilityScores.charisma}</strong></span></div> : <div className="rules-box">Sin caracteristicas detalladas cargadas para este combatiente.</div>}</Collapsible>
     <Collapsible key={"habilidades-" + combatant.id} title="Habilidades">{combatant.abilities.length > 0 ? <div className="ability-list">{combatant.abilities.map((ability) => <div key={ability.id} className="ability-row"><div><strong>{ability.name}</strong><small>{ability.description}</small></div><small>{ability.rangeFeet} ft</small></div>)}</div> : <div className="rules-box">Sin habilidades preparadas.</div>}</Collapsible>
     <Collapsible key={"conjuros-" + combatant.id} title="Conjuros Preparados">

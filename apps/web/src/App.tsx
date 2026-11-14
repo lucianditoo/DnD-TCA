@@ -118,7 +118,7 @@ function CombatApp() {
   const rulesSnapshot = useMemo(() => room ? createCombatRulesSnapshot(room) : null, [room]);
   const activeEffects = useMemo(() => (room && selectedId) ? getActiveEffectViews(room, selectedId) : [], [room, selectedId]);
   const { active, selected, targets, enemyTargets, aidAllies, pendingAidBuffs, gmMoveTarget, selectedAbility, abilityTargets, targetDistanceFeet, rangePreview, pendingOpportunities, hasPendingOpportunities, chargePreviewPath, bullRushPreviewPath, displayedPath, movementPathCost, displayedPathCosts, highlightedCells, previewKind, movementPreview, movementCandidates } = useBoardSelection({ room, snapshot: rulesSnapshot, selectedId, participant, actionMode, tacticMode, selectedAbilityId, movementPath, gmMoveMode, gmMoveTargetId, targetId, withdrawArmed, runArmed, runDestination, isDemoActive, isAcrobatic, fiveFootStepArmed, isMapEditing });
-  const { getD20Roll, getDamageRoll } = useCombatActions({ autoD20, d20Roll, setD20Roll, autoDamage, damage, setDamage });
+  const { getD20Roll, getDamageRoll } = useCombatActions({ snapshot: rulesSnapshot, autoD20, d20Roll, setD20Roll, autoDamage, damage, setDamage });
   const { heroes: savedHeroProfiles, enemies: savedEnemyProfiles, toCombatTemplate } = useStoredProfiles();
   const [selectedProfileId, setSelectedProfileId] = useState("");
   const canControlSelected = !isDemoActive && !isMapEditing && canParticipantControlCombatant(participant, selected);

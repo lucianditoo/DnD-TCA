@@ -1,8 +1,8 @@
 import type { Dispatch, SetStateAction } from "react";
-import { averageWeaponDamageForCombatant, type Combatant } from "@dnd-tactical/shared";
+import { projectWeaponDamage, type CombatRulesSnapshot, type ProductionEffectId, type Combatant } from "@dnd-tactical/shared";
 import { rollWeaponDamage } from "../viewModel";
 
-export function useCombatActions({ autoD20, d20Roll, setD20Roll, autoDamage, damage, setDamage }: { autoD20: boolean; d20Roll: string; setD20Roll: Dispatch<SetStateAction<string>>; autoDamage: boolean; damage: string; setDamage: Dispatch<SetStateAction<string>> }) {
+export function useCombatActions({ snapshot, autoD20, d20Roll, setD20Roll, autoDamage, damage, setDamage }: { snapshot: CombatRulesSnapshot<ProductionEffectId> | null; autoD20: boolean; d20Roll: string; setD20Roll: Dispatch<SetStateAction<string>>; autoDamage: boolean; damage: string; setDamage: Dispatch<SetStateAction<string>> }) {
   function getD20Roll(): number {
     if (!autoD20) return Number(d20Roll);
     const roll = Math.floor(Math.random() * 20) + 1;
@@ -11,8 +11,10 @@ export function useCombatActions({ autoD20, d20Roll, setD20Roll, autoDamage, dam
   }
 
   function getDamageRoll(combatant: Combatant): number {
-    if (!autoDamage) return Number(damage || averageWeaponDamageForCombatant(combatant));
-    const roll = rollWeaponDamage(combatant);
+    if (!autoDamage && damage) return Number(damage);
+    const projection = projectWeaponDamage(snapshot, combatant);
+    if (!autoDamage) return projection.average;
+    const roll = rollWeaponDamage(projection);
     setDamage(String(roll));
     return roll;
   }

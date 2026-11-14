@@ -39,6 +39,16 @@ function renderPanel(overrides = {}, roomOverrides = {}) {
 }
 
 describe("ActionsPanel", () => {
+  it("muestra el daño de arma con la Fuerza efectiva del snapshot", () => {
+    renderPanel({ actionMode: "attack", damage: "" }, {
+      currentTurn: { attackMode: "standard" },
+      effectInstances: [{
+        instanceId: "exhaustion", effectId: "srd_exhausted", source: { type: "system" },
+        targets: ["hero-test"], appliedAtEvent: { type: "SystemInjected", round: 1 },
+      }],
+    });
+    expect(screen.getByPlaceholderText("1").value).toBe("");
+  });
   it("envía la intención de terminar un turno autorizado", async () => {
     const { props, user } = renderPanel();
     await user.click(button("Terminar turno"));
