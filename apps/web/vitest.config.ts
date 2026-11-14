@@ -6,7 +6,7 @@ export default defineConfig({
     environment: "jsdom",
     include: ["tests/**/*.test.jsx"],
     coverage: {
-      include: ["src/components/ActionsPanel/ActionsPanel.tsx"],
+      include: ["src/components/ActionsPanel/ActionsPanel.tsx", "src/pages/ProfilesPage.tsx"],
       reportsDirectory: "../../coverage/web",
     },
   },

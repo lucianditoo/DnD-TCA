@@ -12,6 +12,15 @@ Verificación local con `npm test -w @dnd-tactical/web -- --coverage`: 12/12.
 V8 midió 45,86 % de líneas y sentencias, 35,21 % de ramas y 13,33 % de
 funciones de `ActionsPanel.tsx`. Estas cifras corresponden solo a ese archivo.
 
+## DT-010 — Profiles Page
+
+Las [cuatro pruebas de componente](../../apps/web/tests/ProfilesPage.test.jsx)
+ejercitan creación y recarga desde almacenamiento local, edición sin duplicar
+ni alterar otro perfil, normalización de HP al guardar y aviso ante un registro
+incompatible. La suite web completa pasó 16/16.
+V8 midió 89,58 % de líneas y sentencias, 72,72 % de ramas y 54,54 % de funciones
+en `ProfilesPage.tsx`. La medición no incluye la cobertura interna de sus hijos.
+
 ## D-1B-I11 — Preview normativo de Run
 
 La [paridad con el handler I10](../../tests/run-server.test.mjs) coteja ruta canónica, pasos, coste, paridad diagonal y ocupación. Cubre presupuesto normal y pesado, buffs, guardas, precedencia de terreno, Squeezing y reanudación por tramos. Los [escenarios de Chromium](../../tests-ui/run-preview.spec.ts) cubren selección por destino, confirmación con solo `to`, exposición autoritativa, bloqueos, actualización del mismo turno, ronda nueva y evidencia 2D/2.5D.
