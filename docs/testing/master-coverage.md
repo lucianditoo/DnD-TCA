@@ -13,6 +13,14 @@ Revisión arquitectónica focalizada aprobada. Chromium pasó 37/39 en la
 corrida completa y 3/3 al repetir la demo de forma aislada. La misma
 ejecución aislada sobre la base limpia `d565ecc` pasó 3/3.
 
+Segunda entrega (Nivel D): el [E2E WebSocket](../../scripts/e2e-websocket.mjs)
+comprueba autorización GM, publicación de portador e ítem y reconexión.
+Las [regresiones de combate](../../tests/inventory-and-ammunition.test.mjs)
+cubren identidad, solapamiento, expiración y crítico de AdO. Pasaron 1076/1076
+globales, 6/6 focalizadas, 17/17 de componentes, 145/145 WebSocket y 7/7
+escenarios Chromium de combate. Typecheck y build correctos. Revisión
+arquitectónica independiente aprobada para infraestructura y comando GM.
+
 ## DT-010 — Actions Panel
 
 Las [12 pruebas de componente](../../apps/web/tests/ActionsPanel.test.jsx)

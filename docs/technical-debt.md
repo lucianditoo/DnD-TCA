@@ -158,7 +158,15 @@ versión. El estado oficial de `ATTACK-FULL` vive en el Registry.
 usan una proyección compartida de la característica efectiva desde el snapshot.
 La confirmación conserva el daño capturado al abrir la amenaza. El catálogo base
 y los formatos persistidos conservan su responsabilidad. Queda pendiente el
-modelado de propiedades dinámicas ligadas a objetos concretos.
+modelado de propiedades dinámicas más allá de la mejora temporal de arma.
+
+**Segunda entrega (Nivel D).** Un efecto puede identificar un arma individual
+por portador e ítem. El comando GM existente admite un destino de arma y la
+duración hasta el fin del turno del portador. La mejora +1 de prueba no se
+acumula consigo misma y no añade un conjuro ni un selector de armas a la UI.
+El snapshot conserva la referencia y la confirmación conserva el daño de la
+amenaza. Las propiedades Keen, la munición por unidad y las transferencias
+entre portadores permanecen fuera de alcance.
 
 **Descripción**: `toWeaponProfile` y `deriveEquipmentStats` calculan derivados una vez, asumiendo condiciones estáticas. No pueden representar armas mágicas o efectos que modifiquen el equipo en tiempo real.
 

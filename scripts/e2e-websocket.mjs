@@ -75,6 +75,22 @@ const resumeOwner = await connectAndSend({ type: 'create-room', name: 'GM reanud
 const resumeCode = resumeOwner.room.code;
 const resumePlayer = await connectAndSend({ type: 'join-room', roomCode: resumeCode, name: 'Jugador', role: 'player' });
 await send(resumeOwner, { type: 'add-catalog-combatant', roomCode: resumeCode, actorId: resumeOwner.participant.id, category: 'heroes', templateId: 'bane' });
+const resumeHero = resumeOwner.room.combatants.find(c => c.name === 'Bane');
+const enhanceWeapon = {
+  type: 'gm-apply-effect', roomCode: resumeCode, actorId: resumeOwner.participant.id,
+  targetId: resumeHero.id, targetItemId: resumeHero.equipmentSlots.mainHandItemId,
+  effectId: 'srd_magic_weapon', durationPreset: 'until_target_turn_end',
+};
+const beforeEnhancement = JSON.stringify(resumeOwner.room);
+const beforeEnhancementErrors = resumePlayer.errors.length;
+await send(resumePlayer, { ...enhanceWeapon, actorId: resumePlayer.participant.id });
+record('jugador no puede aplicar mejora de arma', resumePlayer.errors.length === beforeEnhancementErrors + 1 &&
+  /Solo el GM/i.test(resumePlayer.errors.at(-1)) && JSON.stringify(resumeOwner.room) === beforeEnhancement);
+await send(resumeOwner, enhanceWeapon);
+const weaponEffect = resumeOwner.room.effectInstances.find(effect => effect.effectId === 'srd_magic_weapon');
+record('mejora de arma se publica con identidad de portador e ítem', weaponEffect?.targetItem?.combatantId === resumeHero.id &&
+  weaponEffect.targetItem.itemId === enhanceWeapon.targetItemId &&
+  resumePlayer.room.effectInstances.some(effect => effect.instanceId === weaponEffect.instanceId));
 const savedRoom = JSON.stringify(resumeOwner.room);
 const oldId = resumeOwner.participant.id;
 const resumeRequest = { type: 'resume-gm-session', roomCode: resumeCode, token: resumeOwner.gmResumeToken };

@@ -63,6 +63,7 @@ export const gmApplyEffectSchema = z.object({
   roomCode: z.string().min(1),
   actorId: z.string().min(1),
   targetId: z.string().min(1),
+  targetItemId: z.string().min(1).optional(),
   effectId: z.string().min(1),
   durationPreset: z.enum(["until_target_turn_end"]).optional()
 });

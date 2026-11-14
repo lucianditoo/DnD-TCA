@@ -20,6 +20,16 @@ export const effectsCatalog = {
     onStack: "ignore"
   },
 
+  srd_magic_weapon: {
+    name: "Arma mágica (+1)",
+    description: "Mejora temporal de +1 al ataque y daño del arma.",
+    traits: [],
+    modifiers: [],
+    ruleOverrides: [],
+    onStack: "ignore",
+    weaponEnhancement: 1
+  },
+
   // SRD Conditions
   "srd_blinded": {
     name: "Cegado",

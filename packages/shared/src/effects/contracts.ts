@@ -205,4 +205,5 @@ export interface EffectDefinition {
   readonly upgradeTo?: string; // Si onStack === "upgrade_to", hacia qué efecto evoluciona (string para evitar circularidad fina)
   /** Bloque declarativo de peligro ambiental (Sprint 034). Ausente en condiciones/buffs normales. */
   readonly hazard?: EnvironmentalHazard;
+  readonly weaponEnhancement?: number;
 }

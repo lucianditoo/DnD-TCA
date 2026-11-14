@@ -153,7 +153,7 @@ function assertDerivedSnapshotIntegrity(combatant: CombatantSnapshot): void {
 /**
  * Copia defensiva pura de un array de EffectInstances.
  * Garantiza que mutaciones posteriores al room original no afectan al snapshot.
- * Se clonan: instanceId, effectId, source, targets, targetCells, appliedAtEvent, duration, stacks.
+ * Se clonan también los destinos de objeto, además de combatientes y celdas.
  * Es genérica para aceptar cualquier catálogo (producción o prueba).
  * Debe mantenerse en paridad de campos con el whitelist equivalente de `EffectManager.add`
  * (`effects/manager.ts`) — ambos clonan la misma forma de `EffectInstance` de forma independiente;
@@ -167,6 +167,7 @@ export function cloneEffectInstances<TId extends string>(
     effectId: inst.effectId,
     source: { ...inst.source },
     ...(inst.targets ? { targets: [...inst.targets] } : {}),
+    ...(inst.targetItem ? { targetItem: { ...inst.targetItem } } : {}),
     ...(inst.targetCells ? { targetCells: [...inst.targetCells] } : {}),
     appliedAtEvent: { ...inst.appliedAtEvent },
     ...(inst.duration ? { duration: { ...inst.duration } } : {}),

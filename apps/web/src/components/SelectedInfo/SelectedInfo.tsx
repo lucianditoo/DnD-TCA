@@ -39,7 +39,7 @@ export function SelectedInfo({ combatant, room, snapshot: context, attackerId, c
       <Stat icon={<Shield size={16} />} label="Reflejos" value={"+" + saves.reflex.total} title={saves.reflex.parts.join(", ")} />
       <Stat icon={<Shield size={16} />} label="Voluntad" value={"+" + saves.will.total} title={saves.will.parts.join(", ")} />
       <Stat icon={<Footprints size={16} />} label="Vel." value={movementProjection.total + " ft"} title={movementProjection.parts.join(", ")} />
-      <Stat icon={<Swords size={16} />} label="Ataque total" value={"+" + Rules.totalAttackBonus(context, combatant).total} />
+      <Stat icon={<Swords size={16} />} label="Ataque total" value={"+" + (Rules.totalAttackBonus(context, combatant).total + projectWeaponDamage(context, combatant).enhancement)} />
 
       <Stat icon={<Swords size={16} />} label="Arma" value={weapon.name + " " + weapon.damageDice} />
       <Stat icon={<Crosshair size={16} />} label="Alcance" value={(weapon.rangeIncrementFeet ? weapon.rangeIncrementFeet + " ft inc. / " : "") + weapon.maxRangeFeet + " ft"} />

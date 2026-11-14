@@ -297,7 +297,7 @@ export interface ApplicableEffectOption {
 export const applicableEffectOptions: ApplicableEffectOption[] = (
   Object.entries(effectsCatalog) as [ProductionEffectId, EffectDefinition][]
 )
-  .filter(([, definition]) => !definition.hazard)
+  .filter(([, definition]) => !definition.hazard && definition.weaponEnhancement === undefined)
   .map(([effectId, definition]) => ({ effectId, name: definition.name, description: definition.description }));
 
 

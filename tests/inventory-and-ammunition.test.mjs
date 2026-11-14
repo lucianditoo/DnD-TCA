@@ -3,6 +3,9 @@ import assert from "node:assert/strict";
 import {
   Rules,
   createCombatRulesSnapshot,
+  EffectManager,
+  effectsTickListener,
+  projectWeaponDamage,
   getAmmunitionState,
   validateAttackAmmunition
 } from "../packages/shared/src/index.ts";
@@ -54,7 +57,41 @@ function setupBowRoom(quantity = 1) {
   return { room, attacker, target };
 }
 
-test("un crítico de AdO conserva el daño efectivo capturado antes de expirar el efecto", () => {
+test("mejora temporal pertenece al portador y arma concretos y no se acumula", () => {
+  const { room, attacker, target } = setupBowRoom();
+  Object.assign(attacker, inventoryEquipment("greatsword"));
+  Object.assign(target, inventoryEquipment("greatsword"));
+  const itemId = attacker.equipmentSlots.mainHandItemId;
+  assert.equal(target.equipmentSlots.mainHandItemId, itemId);
+  attacker.inventory.push({ itemId: "second", catalogId: "greatsword" });
+  const ref = { combatantId: attacker.id, itemId };
+  const instance = {
+    instanceId: "first", effectId: "srd_magic_weapon", source: { type: "system" },
+    targetItem: ref, appliedAtEvent: { type: "SystemInjected", round: 1 },
+    duration: { type: "until_turn", anchorCombatantId: attacker.id, phase: "end", appliedAtSequence: 0 },
+  };
+  assert.throws(() => EffectManager.add(room, { ...instance, duration: undefined }));
+  assert.throws(() => EffectManager.add(room, { ...instance, targets: [target.id] }));
+  assert.throws(() => EffectManager.add(room, { ...instance, targetItem: { ...ref, itemId: "missing" } }));
+  assert.deepEqual(room.effectInstances, []);
+  let enhanced = EffectManager.add(room, instance);
+  enhanced = EffectManager.add(enhanced, { ...instance, instanceId: "second", duration: { ...instance.duration, appliedAtSequence: 1 } });
+  const snapshot = createCombatRulesSnapshot(enhanced);
+  ref.itemId = "changed";
+  assert.equal(JSON.parse(JSON.stringify(snapshot)).effectInstances[0].targetItem.itemId, itemId);
+  assert.equal(projectWeaponDamage(snapshot, attacker).enhancement, 1);
+  assert.equal(projectWeaponDamage(snapshot, target).enhancement, 0);
+  const otherWeapon = { ...attacker, equipmentSlots: { ...attacker.equipmentSlots, mainHandItemId: "second" } };
+  assert.equal(projectWeaponDamage(snapshot, otherWeapon).enhancement, 0);
+  const turnEnd = { type: "TurnEnded", combatantId: attacker.id, round: 1, sequence: 1 };
+  enhanced = effectsTickListener(enhanced, turnEnd);
+  assert.deepEqual(enhanced.effectInstances.map(effect => effect.instanceId), ["second"]);
+  assert.equal(projectWeaponDamage(createCombatRulesSnapshot(enhanced), attacker).enhancement, 1);
+  enhanced = effectsTickListener(enhanced, { ...turnEnd, sequence: 2, round: 2 });
+  assert.equal(projectWeaponDamage(createCombatRulesSnapshot(enhanced), attacker).enhancement, 0);
+});
+
+test("un crítico de AdO conserva la mejora y el daño efectivo capturados aunque se retiren los efectos", () => {
   const { room, attacker, target } = setupBowRoom();
   Object.assign(attacker, inventoryEquipment("greatsword"));
   attacker.abilityScores.strength = 14;
@@ -63,6 +100,12 @@ test("un crítico de AdO conserva el daño efectivo capturado antes de expirar e
     instanceId: "fatigue", effectId: "srd_fatigued", source: { type: "system" },
     targets: [attacker.id], appliedAtEvent: { type: "SystemInjected", round: 1 }
   });
+  Object.assign(room, EffectManager.add(room, {
+    instanceId: "weapon", effectId: "srd_magic_weapon", source: { type: "system" },
+    targetItem: { combatantId: attacker.id, itemId: attacker.equipmentSlots.mainHandItemId },
+    appliedAtEvent: { type: "SystemInjected", round: 1 },
+    duration: { type: "until_turn", anchorCombatantId: attacker.id, phase: "end", appliedAtSequence: 0 },
+  }));
   room.pendingOpportunityAttacks.push({
     id: "reaction", attackerId: attacker.id, targetId: target.id,
     origin: { ...target.position }, destination: { x: 2, y: 0, zFeet: 0 },
@@ -74,13 +117,13 @@ test("un crítico de AdO conserva el daño efectivo capturado antes de expirar e
     type: "resolve-opportunity-attack", roomCode: room.code, actorId,
     opportunityId: "reaction", d20Roll: null, damage: null, isAutoRoll: true
   }, { diceRoller: (sides) => sides === 20 ? 20 : 2 });
-  assert.equal(room.activeAttackThreat.normalDamageBundle.total, 5);
+  assert.equal(room.activeAttackThreat.normalDamageBundle.total, 6);
   assert.equal(target.hpCurrent, hpBefore);
   room.effectInstances = [];
   handleResolveAttackConfirmation(room, {
     type: "resolve-attack-confirmation", roomCode: room.code, actorId, d20Roll: 20, damage: null
   });
-  assert.equal(hpBefore - target.hpCurrent, 10);
+  assert.equal(hpBefore - target.hpCurrent, 12);
   assert.equal(room.activeAttackThreat, null);
   assert.equal(room.pendingOpportunityAttacks.length, 0);
 });

@@ -35,6 +35,8 @@ export interface EffectInstance<TEffectId extends string = string> {
    * Mutuamente independiente de `targets`; ambos pueden coexistir o estar ausentes.
    */
   readonly targetCells?: readonly string[];
+  /** Inventory identity scoped to its bearer. Exclusive with the other target forms. */
+  readonly targetItem?: Readonly<{ combatantId: string; itemId: string }>;
   readonly appliedAtEvent: Readonly<{
     type: "TurnStarted" | "ActionResolved" | "CombatStarted" | "SystemInjected";
     combatantId?: string;

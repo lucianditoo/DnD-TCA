@@ -1,3 +1,5 @@
+import { getInventoryCatalogItem } from "../equipmentStats.js";
+import type { EffectDefinition } from "./contracts.js";
 import type { CombatRoom } from "../types.js";
 import type { EffectInstance } from "./types.js";
 import { effectsCatalog, isProductionEffectId, type ProductionEffectId } from "./catalog.js";
@@ -67,6 +69,18 @@ export const EffectManager = {
       throw new Error("[EffectManager] Invalid squeezingAxis for effect instance.");
     }
 
+    const definition: EffectDefinition = effectsCatalog[instance.effectId];
+    if (definition.weaponEnhancement !== undefined || instance.targetItem) {
+      const ref = instance.targetItem;
+      const owner = room.combatants.find(actor => actor.id === ref?.combatantId);
+      const item = owner && ref ? getInventoryCatalogItem(owner, ref.itemId) : undefined;
+      if (definition.weaponEnhancement === undefined || !ref || instance.targets || instance.targetCells ||
+          (instance.duration?.type !== "until_turn" && instance.duration?.type !== "rounds") ||
+          item?.kind !== "weapon" || item.entry.isAmmunition || item.entry.id === "unarmed_strike") {
+        throw new Error("El efecto requiere un arma individual válida y duración temporal.");
+      }
+    }
+
     // Copia defensiva profunda para garantizar que referencias externas no puedan mutar el estado almacenado
     const safeInstance: EffectInstance<ProductionEffectId> = {
       instanceId: instance.instanceId,
@@ -74,6 +88,7 @@ export const EffectManager = {
       source: { ...instance.source },
       appliedAtEvent: { ...instance.appliedAtEvent },
       ...(instance.targets ? { targets: [...instance.targets] } : {}),
+      ...(instance.targetItem ? { targetItem: { ...instance.targetItem } } : {}),
       ...(instance.targetCells ? { targetCells: [...instance.targetCells] } : {}),
       ...(instance.duration ? { duration: { ...instance.duration } } : {}),
       ...(instance.stacks !== undefined ? { stacks: instance.stacks } : {}),

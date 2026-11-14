@@ -99,7 +99,7 @@ export function handleGmApplyEffect(room: CombatRoom, command: Extract<ClientCom
     instanceId: cryptoId("effect"),
     effectId: command.effectId,
     source: { type: "system" },
-    targets: [target.id],
+    ...(command.targetItemId ? { targetItem: { combatantId: target.id, itemId: command.targetItemId } } : { targets: [target.id] }),
     appliedAtEvent: { type: "SystemInjected", round: room.round },
     ...(duration ? { duration } : {})
   };

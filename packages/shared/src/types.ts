@@ -528,7 +528,7 @@ export type ClientCommand =
   | { type: "gm-set-status"; roomCode: string; actorId: string; combatantId: string; status: LifeStatus }
   | { type: "gm-clear-opportunities"; roomCode: string; actorId: string }
   | { type: "gm-add-log"; roomCode: string; actorId: string; message: string }
-  | { type: "gm-apply-effect"; roomCode: string; actorId: string; targetId: string; effectId: string; durationPreset?: "until_target_turn_end" }
+  | { type: "gm-apply-effect"; roomCode: string; actorId: string; targetId: string; targetItemId?: string; effectId: string; durationPreset?: "until_target_turn_end" }
   | { type: "gm-apply-environmental-hazard"; roomCode: string; actorId: string; effectId: string; targetCells: string[] }
   | { type: "gm-remove-effect"; roomCode: string; actorId: string; instanceId: string }
   | { type: "declare-dodge-target"; roomCode: string; actorId: string; combatantId: string; targetId: string | null }

@@ -76,6 +76,7 @@ export interface ResolvedAttackSource {
   defaultDamage: number;
   damageDice?: string;
   damageModifier?: number;
+  enhancement?: number;
 }
 
 
@@ -103,10 +104,11 @@ export function resolveAttack(
 
   const attack = Rules.totalAttackBonus(context, attacker, { abilityForAttack: source.abilityForAttack, attackType: source.attackType });
   const aidAttackBonus = sumAidBonus(attacker.buffs, target.id, "attack");
-  const attackTotal = attack.total + rangePenalty.penalty + situationalAttackBonus + aidAttackBonus + helplessBonus;
+  const enhancement = source.enhancement ?? 0;
+  const attackTotal = attack.total + enhancement + rangePenalty.penalty + situationalAttackBonus + aidAttackBonus + helplessBonus;
   
   const helplessLabel = helplessBonus ? "indefenso +4" : "";
-  const attackParts = [...attack.parts, rangePenalty.label, aidAttackBonus ? "ayuda +" + aidAttackBonus : "", helplessLabel].filter(Boolean);
+  const attackParts = [...attack.parts, enhancement ? "mejora +" + enhancement : "", rangePenalty.label, aidAttackBonus ? "ayuda +" + aidAttackBonus : "", helplessLabel].filter(Boolean);
   
   const ac = Rules.totalArmorClass(context, target, {
     attackType: source.attackType,
@@ -259,6 +261,7 @@ export function resolveWeaponAttackSource(attacker: Combatant, attackType?: "mel
     criticalMultiplier: weapon.criticalMultiplier ?? 2,
     defaultDamage: damage.average,
     damageDice: damage.dice,
+    enhancement: damage.enhancement,
     damageModifier: damage.modifier
   };
 }

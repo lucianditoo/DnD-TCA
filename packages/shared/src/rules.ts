@@ -728,15 +728,30 @@ export function getEffectiveAbilityModifier(
   return getAbilityModifier(_getEffectiveAbilityScoreFromReduced(combatant, ability, reduced));
 }
 
+/** Overlapping enhancements retain their durations and contribute only the highest bonus. */
+export function getWeaponEnhancement(context: CombatRulesSnapshot<ProductionEffectId> | null, combatant: Combatant): number {
+  const itemId = combatant.equipmentSlots.mainHandItemId;
+  if (!itemId || !getEquippedWeaponEntry(combatant)) return 0;
+  let enhancement = 0;
+  for (const instance of context?.effectInstances ?? []) {
+    if (instance.targetItem?.combatantId !== combatant.id || instance.targetItem.itemId !== itemId) continue;
+    const definition: EffectDefinition = effectsCatalog[instance.effectId];
+    enhancement = Math.max(enhancement, definition?.weaponEnhancement ?? 0);
+  }
+  return enhancement;
+}
+
 /** Project weapon damage from current effects without altering the weapon or actor. */
 export function projectWeaponDamage(context: CombatRulesSnapshot<ProductionEffectId> | null, combatant: Combatant, weapon = resolveEquippedWeaponProfile(combatant).profile) {
   const ability = weapon.abilityForDamage;
   const modifier = ability === "none" ? 0 : context
     ? getEffectiveAbilityModifier(context, combatant, ability)
     : getAbilityModifier(combatant.abilityScores[ability]);
-  const scaledModifier = modifier * weapon.damageAbilityMultiplier;
+  const enhancement = getWeaponEnhancement(context, combatant);
+  const scaledModifier = modifier * weapon.damageAbilityMultiplier + enhancement;
   return {
     dice: weapon.damageDice,
+    enhancement,
     modifier: Math.floor(scaledModifier),
     average: Math.max(1, Math.floor(averageDiceDamage(weapon.damageDice) + scaledModifier))
   };
@@ -2883,7 +2898,7 @@ export function getEffectiveAttackRoutine(
     ordinal: index + 1,
     type: entry.type,
     routinePenalty: entry.penalty,
-    effectiveAttackBonus: baseAttack.total + entry.penalty
+    effectiveAttackBonus: baseAttack.total + getWeaponEnhancement(context, combatant) + entry.penalty
   })));
 }
 
