@@ -414,7 +414,7 @@ export function TacticalScene3D({
     }
 
     for (const volume of presentation.volumes) {
-      const height = volume.kind === "pillar" ? 2.4 : volume.kind === "wall" ? 2.0 : volume.kind === "rubble-stone" ? 0.38 : 0.16;
+      const height = volume.kind === "pillar" ? 2.4 : volume.kind === "wall" ? 1.55 : volume.kind === "rubble-stone" ? 0.38 : 0.16;
       const width = volume.kind === "pillar" ? 0.54 : volume.kind === "rubble-stone" ? 0.62 : 0.94;
       const geometry = volume.kind === "pillar"
         ? new THREE.CylinderGeometry(width / 2, width / 2, height, 10)
