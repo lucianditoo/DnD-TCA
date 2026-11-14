@@ -414,7 +414,7 @@ export function TacticalScene3D({
     }
 
     for (const volume of presentation.volumes) {
-      const height = volume.kind === "pillar" ? 2.4 : volume.kind === "wall" ? 1.55 : volume.kind === "rubble-stone" ? 0.38 : 0.16;
+      const height = volume.kind === "pillar" ? 2.4 : volume.kind === "wall" ? 2.0 : volume.kind === "rubble-stone" ? 0.38 : 0.16;
       const width = volume.kind === "pillar" ? 0.54 : volume.kind === "rubble-stone" ? 0.62 : 0.94;
       const geometry = volume.kind === "pillar"
         ? new THREE.CylinderGeometry(width / 2, width / 2, height, 10)
@@ -453,13 +453,14 @@ export function TacticalScene3D({
             transparent: true,
             opacity: token.isSelected ? 0.34 : 0.18,
             side: THREE.DoubleSide,
-            depthWrite: false
+            depthWrite: false,
+            depthTest: false
           })
         );
         footprint.rotation.x = -Math.PI / 2;
         footprint.position.set(
           boardX + occupiedCell.x + 0.5 - group.position.x,
-          -0.008,
+          0.01,
           boardZ + occupiedCell.y + 0.5 - group.position.z
         );
         group.add(footprint);
