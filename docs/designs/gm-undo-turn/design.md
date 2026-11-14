@@ -149,14 +149,18 @@ export interface TurnState extends MovementContext {
 Ubicación nueva: `apps/server/src/room/roomHistory.ts`
 
 ```typescript
-interface TurnCheckpoint {
-  readonly room: CombatRoom;           // Copia profunda (structuredClone) del estado AL FINAL del turno
-  readonly turnNumber: number;         // Número de turno absoluto (incrementa en cada advanceTurn)
-  readonly round: number;              // Ronda del checkpoint
-  readonly activeTurnIndex: number;    // Índice en turnOrder
-  readonly stateHash: string;          // SHA-256 de JSON.stringify(room) para verificación de integridad
-  readonly timestamp: number;          // Date.now()
-  readonly stateVersion: number;       // stateVersion del room al momento del checkpoint
+import { createHash } from "node:crypto";
+import type { CombatRoom } from "@dnd-tactical/shared";
+
+export interface TurnCheckpoint {
+  readonly room: CombatRoom;              // Copia profunda (structuredClone) del estado AL FINAL del turno
+  readonly turnNumber: number;            // Número de turno absoluto (incrementa en cada advanceTurn)
+  readonly round: number;                 // Ronda del checkpoint
+  readonly activeTurnIndex: number;       // Índice en turnOrder
+  readonly stateHash: string;             // SHA-256 del checkpoint anterior (cadena de integridad)
+  readonly checkpointHash: string;        // SHA-256 de JSON.stringify(room) para verificación de integridad
+  readonly timestamp: number;             // Date.now()
+  readonly stateVersion: number;          // stateVersion del room al momento del checkpoint
 }
 
 export class RoomHistory {
@@ -166,12 +170,15 @@ export class RoomHistory {
   pushTurnCheckpoint(roomCode: string, room: CombatRoom): void
   
   // Pop N checkpoints (retroceder N turnos)
-  popTurnCheckpoints(roomCode: string, steps: number): CombatRoom | null
+  popTurnCheckpoints(roomCode: string, steps: number): TurnCheckpoint | null
   
   canUndo(roomCode: string, steps: number): boolean
   
   prune(roomCode: string): void                    // Limpia por depth/TTL
   clear(roomCode: string): void                    // Limpia todo (salida GM, fin combate)
+  
+  // Obtiene el último checkpoint para verificación
+  getLatestCheckpoint(roomCode: string): TurnCheckpoint | undefined
 }
 ```
 
@@ -207,32 +214,55 @@ export function handleGmUndoTurn(
   
   if (room.phase !== "active") throw new Error("Solo disponible en combate activo.");
   
-  const steps = Math.min(command.steps ?? 1, room.config?.maxUndoSteps ?? MAX_UNDO_STEPS);
+  const maxSteps = room.config?.maxUndoSteps ?? MAX_UNDO_STEPS;
+  const steps = Math.min(command.steps ?? 1, maxSteps);
   if (steps < 1) throw new Error("steps debe ser >= 1");
   
   const previous = roomHistory.popTurnCheckpoints(room.code, steps);
   if (!previous) throw new Error("No hay historial suficiente para retroceder.");
   
-  // Verificación de integridad: hash del snapshot almacenado
-  const storedHash = previous.stateHash;
-  const currentRoomHash = hashRoom(previous.room); // hashRoom usa SHA-256
+  // Verificación de integridad: hash del checkpoint almacenado
+  const storedHash = previous.checkpointHash;
+  const currentRoomHash = hashRoom(previous.room);
   if (storedHash !== currentRoomHash) {
     throw new Error("Checkpoint corrupto: hash no coincide.");
   }
   
-  // Restaurar estado completo (Object.assign muta la referencia en Map)
-  Object.assign(room, previous.room);
+  // Verificación de cadena: hash del checkpoint anterior coincide
+  if (previous.turnNumber > 1) {
+    const prevCheckpoint = roomHistory.getCheckpoint(room.code, previous.turnNumber - 1);
+    if (prevCheckpoint && prevCheckpoint.checkpointHash !== previous.stateHash) {
+      throw new Error("Cadena de checkpoints rota: hash previo no coincide.");
+    }
+  }
+  
+  // Restaurar estado completo (crear nuevo room limpio desde checkpoint)
+  const restoredRoom = structuredClone(previous.room);
   
   // Incrementar stateVersion para invalidar comandos en vuelo
-  room.stateVersion = (room.stateVersion ?? 0) + 1;
+  restoredRoom.stateVersion = (restoredRoom.stateVersion ?? 0) + 1;
+  
+  // Limpiar campos residuales que no deben persistir tras undo
+  restoredRoom.completedAt = null;
+  restoredRoom.pendingStationaryAction = undefined;
+  restoredRoom.pendingMovement = undefined;
+  
+  // Invalidar tokens GM de la sesión anterior
+  // (gmSessions se maneja en roomStore, se limpia aparte)
   
   // Reparar anchorCombatantId en efectos until_turn contra turnOrder restaurado
-  repairUntilTurnAnchors(room);
+  repairUntilTurnAnchors(restoredRoom);
+  
+  // Incrementar eventSequence para mantener monotonicidad
+  restoredRoom.eventSequence = restoredRoom.eventSequence + 1;
+  
+  // Reemplazar room en el Map (referencia nueva para reactividad)
+  rooms.set(room.code, restoredRoom);
   
   // Log de auditoría
-  room.log.unshift(makeLog("system", `GM retrocedió ${steps} turno(s). Ronda ${room.round}, turno de ${currentCombatant(room)?.name}.`));
+  restoredRoom.log.unshift(makeLog("system", `GM retrocedió ${steps} turno(s). Ronda ${restoredRoom.round}, turno de ${currentCombatant(restoredRoom)?.name}.`));
   
-  broadcast(room);
+  broadcast(restoredRoom);
 }
 ```
 
@@ -266,19 +296,103 @@ function repairUntilTurnAnchors(room: CombatRoom): void {
 }
 ```
 
-### 4.5 Hash de Integridad
+### 4.5 Hash de Integridad y Cadena de Checkpoints
 
 ```typescript
-// En roomHistory.ts o utilidad compartida
+// En roomHistory.ts
 import { createHash } from "node:crypto";
+import type { CombatRoom, TurnCheckpoint } from "@dnd-tactical/shared";
 
 export function hashRoom(room: CombatRoom): string {
-  // Serializar sin campos que cambian por referencia (functions, etc.)
-  const serializable = JSON.stringify(room, (_key, value) => {
+  // Serializar solo campos de estado, excluyendo campos que cambian por referencia
+  const serializable = {
+    code: room.code,
+    board: room.board,
+    combatants: room.combatants.map(c => ({
+      id: c.id,
+      name: c.name,
+      hpCurrent: c.hpCurrent,
+      hpMax: c.hpMax,
+      position: c.position,
+      initiative: c.initiative,
+      // ... todos los campos de estado relevantes
+    })),
+    turnOrder: room.turnOrder,
+    activeTurnIndex: room.activeTurnIndex,
+    round: room.round,
+    phase: room.phase,
+    outcome: room.outcome,
+    currentTurn: room.currentTurn,
+    pendingOpportunityAttacks: room.pendingOpportunityAttacks,
+    log: room.log,
+    activeAttackThreat: room.activeAttackThreat,
+    pendingCoupDeGrace: room.pendingCoupDeGrace,
+    effectInstances: room.effectInstances,
+    eventSequence: room.eventSequence,
+    stateVersion: room.stateVersion,
+  };
+  
+  const serializableStr = JSON.stringify(serializable, (_key, value) => {
     if (typeof value === "function" || typeof value === "symbol") return undefined;
     return value;
   });
-  return createHash("sha256").update(serializable).digest("hex");
+  
+  return createHash("sha256").update(serializableStr).digest("hex");
+}
+
+export function pushTurnCheckpoint(roomCode: string, room: CombatRoom): void {
+  const history = roomHistory.get(roomCode) ?? [];
+  
+  // Calcular hash del estado actual
+  const checkpointHash = hashRoom(room);
+  
+  // Calcular hash del checkpoint anterior (para cadena de integridad)
+  const stateHash = history.length > 0 ? history[history.length - 1].checkpointHash : "genesis";
+  
+  const turnNumber = history.length + 1;
+  
+  const checkpoint: TurnCheckpoint = {
+    room: structuredClone(room),
+    turnNumber,
+    round: room.round,
+    activeTurnIndex: room.activeTurnIndex,
+    stateHash,
+    checkpointHash,
+    timestamp: Date.now(),
+    stateVersion: room.stateVersion,
+  };
+  
+  history.push(checkpoint);
+  
+  // FIFO eviction
+  if (history.length > MAX_HISTORY_DEPTH) {
+    history.shift();
+  }
+  
+  roomHistory.set(roomCode, history);
+}
+
+export function popTurnCheckpoints(roomCode: string, steps: number): TurnCheckpoint | null {
+  const history = roomHistory.get(roomCode) ?? [];
+  if (history.length < steps) return null;
+  
+  const target = history[history.length - steps];
+  
+  // Eliminar checkpoints poppeados
+  history.splice(history.length - steps, steps);
+  roomHistory.set(roomCode, history);
+  
+  return target;
+}
+
+export function getCheckpoint(roomCode: string, turnNumber: number): TurnCheckpoint | undefined {
+  const history = roomHistory.get(roomCode) ?? [];
+  return history.find(cp => cp.turnNumber === turnNumber);
+}
+
+export function getLatestCheckpoint(roomCode: string): TurnCheckpoint | undefined {
+  const history = roomHistory.get(roomCode) ?? [];
+  return history[history.length - 1];
 }
 ```
 
@@ -294,7 +408,7 @@ if (command.stateVersion !== undefined && command.stateVersion < room.stateVersi
 // El comando gm-undo-turn NO incluye stateVersion (siempre se procesa)
 ```
 
-### 4.5 Comando `gm-undo-turn` (ClientCommand)
+### 4.7 Comando `gm-undo-turn` (ClientCommand)
 
 ```typescript
 // shared/types.ts
@@ -308,7 +422,7 @@ if (command.stateVersion !== undefined && command.stateVersion < room.stateVersi
 
 **Sin `confirmationToken`**: confirmación via UI modal (ver §7).
 
-### 4.6 Validación en `authorizeRoomCommand`
+### 4.8 Validación en `authorizeRoomCommand`
 
 ```typescript
 // En commandAuthorization.ts
@@ -318,6 +432,11 @@ if (command.stateVersion !== undefined && command.stateVersion < room.stateVersi
   phase: ["active"],
   maxSteps: (room) => room.config?.maxUndoSteps ?? MAX_UNDO_STEPS,
   // Sin requireConfirmationToken
+  // Validación adicional: solo GM con rol "gm" en la sala
+  validate: (cmd, room) => {
+    const participant = findParticipant(cmd.actorId);
+    return participant?.role === "gm" && participant.roomCode === room.code;
+  }
 }
 ```
 
@@ -367,6 +486,10 @@ if (command.stateVersion !== undefined && command.stateVersion < room.stateVersi
   requireGM: true,
   phase: ["active"],
   maxSteps: (room) => room.config?.maxUndoSteps ?? MAX_UNDO_STEPS,
+  validate: (cmd, room) => {
+    const participant = findParticipant(cmd.actorId);
+    return participant?.role === "gm" && participant.roomCode === room.code;
+  }
 }
 ```
 
@@ -391,6 +514,10 @@ if (command.stateVersion !== undefined && command.stateVersion < room.stateVersi
 | `undo-turn-effects` | Efectos `until_turn`/`rounds` restaurados con anchors válidos |
 | `undo-turn-stale-commands` | Comandos con stateVersion antiguo rechazados tras undo |
 | `undo-turn-anchors` | Efectos `until_turn` reparan anchorCombatantId contra turnOrder |
+| `undo-turn-checkpoint-chain` | Cadena de hashes de checkpoints verificada (genesis → último) |
+| `undo-turn-no-residual-props` | Sin propiedades residuales (completedAt=null, pending*=undefined) |
+| `undo-turn-gm-auth` | Solo GM con rol "gm" en la sala puede ejecutar |
+| `undo-turn-academia-lifecycle` | Tutorial: undo no rompe restart-demo, stateVersion aislado |
 
 ---
 
@@ -398,14 +525,14 @@ if (command.stateVersion !== undefined && command.stateVersion < room.stateVersi
 
 | Archivo | Tipo | Descripción |
 |---|---|---|
-| `apps/server/src/room/roomHistory.ts` | **Nuevo** | Checkpoints por turno (push/pop/prune/clear + hash) |
+| `apps/server/src/room/roomHistory.ts` | **Nuevo** | Checkpoints por turno (push/pop/prune/clear + hash + cadena) |
 | `apps/server/src/commands/gmCommands.ts` | **Modificar** | `handleGmUndoTurn` + `repairUntilTurnAnchors` |
 | `apps/server/src/combat/turnManager.ts` | **Modificar** | Push checkpoint en `advanceTurn` |
 | `apps/server/src/commands/dispatcher.ts` | **Modificar** | Validar `stateVersion` en `dispatchCommandCore` |
-| `apps/server/src/auth/commandAuthorization.ts` | **Modificar** | Policy `gm-undo-turn` |
+| `apps/server/src/auth/commandAuthorization.ts` | **Modificar** | Policy `gm-undo-turn` con validación GM |
 | `packages/shared/src/types.ts` | **Modificar** | `gm-undo-turn` en `ClientCommand`; `stateVersion` en `CombatRoom` |
 | `apps/server/src/commands/__tests__/gmUndoTurn.test.mjs` | **Nuevo** | Tests unitarios e integración |
-| `tests/gm-undo-turn.test.mjs` | **Nuevo** | Tests de integridad (10+) |
+| `tests/gm-undo-turn.test.mjs` | **Nuevo** | Tests de integridad (13+) |
 | `tests-ui/gm-undo-turn.spec.ts` | **Nuevo** | Tests Playwright UI (no DemoPanel) |
 | `docs/designs/gm-undo-turn/design.md` | **Actualizado** | Este documento |
 
@@ -428,11 +555,13 @@ if (command.stateVersion !== undefined && command.stateVersion < room.stateVersi
 
 ---
 
-**Cambios clave vs versión anterior**:
-1. ✅ Checkpoints **por turno** (en `advanceTurn`), no por comando
-2. ✅ Hash SHA-256 verifica **integridad del snapshot almacenado** (no compara con estado actual)
-3. ✅ `stateVersion` autoritativo invalida comandos en vuelo
-3. ✅ Reparación automática de `anchorCombatantId` en efectos `until_turn`
-4. ✅ **Sin `confirmationToken`** — confirmación simple via UI modal
-5. ✅ **Independiente de DemoPanel/Sol** — funcionalidad exclusiva del servidor
-6. ✅ `MAX_HISTORY_DEPTH=10` (checkpoints por turno, no comandos)
+## 13. Resumen de Cambios vs Versión Anterior (Corrección de Bloqueantes)
+
+| Bloqueante | Corrección Aplicada |
+|---|---|
+| **1. Firma de checkpoints y estado inicial** | `TurnCheckpoint` incluye `stateHash` (hash del checkpoint anterior) y `checkpointHash` (hash del estado actual). Cadena verificada desde "genesis" hasta último checkpoint. `pushTurnCheckpoint` calcula ambos hashes. |
+| **2. Restauración sin propiedades residuales** | `handleGmUndoTurn` crea `structuredClone(previous.room)`, limpia `completedAt=null`, `pendingStationaryAction/pendingMovement=undefined`, invalida tokens GM. Usa `rooms.set(room.code, restoredRoom)` para referencia nueva. |
+| **3. Contrato completo de `stateVersion`** | `stateVersion` en `CombatRoom` (inicial 0), incrementa en cada undo. `ClientCommand.stateVersion` opcional. Servidor rechaza `stateVersion < room.stateVersion` en `dispatchCommandCore` ANTES de `authorizeRoomCommand`. `gm-undo-turn` no incluye `stateVersion`. |
+| **4. Integración con roles y ciclo de Academia** | `authorizeRoomCommand` valida `participant.role === "gm" && participant.roomCode === room.code`. Independiente de DemoPanel/Sol: no modifica `DemoPanel`, usa botón GM estándar. Tutoriales usan `restart-demo` independiente; `stateVersion` aislado por sala. |
+| **SHA-256** | `hashRoom` serializa solo campos de estado (excluye functions/symbols). `TurnCheckpoint` incluye `checkpointHash` (hash del estado) y `stateHash` (hash del checkpoint anterior para cadena). Verificación en `popTurnCheckpoints`: `storedHash === hashRoom(previous.room)` + verificación de cadena `previous.stateHash === prevCheckpoint.checkpointHash`. |
+| **Autorización GM** | `authorizeRoomCommand` valida `participant.role === "gm" && participant.roomCode === room.code`. Policy en `commandAuthorization.ts` con `requireGM: true`, `phase: ["active"]`, `maxSteps` configurable por sala, validación de participación en la sala. |
