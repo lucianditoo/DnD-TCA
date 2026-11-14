@@ -1,6 +1,6 @@
 import { test, expect, type Page } from "@playwright/test";
 
-const ARTIFACTS_DIR = "C:/Users/lucia/.gemini/antigravity/brain/5b3491cf-aed1-4825-84f4-051a7ba987a9";
+const ARTIFACTS_DIR = "C:/Users/lucia/OneDrive/Documentos/AGCLI-dnd-tactical-combat-assistant/docs/testing/evidence/d4-camera-occlusion";
 const RAW_ICON_IDS = ["shield", "swords", "sparkles", "skull", "crosshair", "footprints", "compass"];
 
 async function stepDemoOnce(page: Page) {
@@ -134,7 +134,7 @@ test.describe("Demostración Táctica Automática y Presentación 2.5D", () => {
     await expect(boardStage).toHaveAttribute("data-view-mode", "2.5d");
     await expect(boardStage).toHaveAttribute("data-camera-angle", "nw");
 
-    await page.screenshot({ path: `${ARTIFACTS_DIR}/demo_25d_angle_nw.png` });
+    await page.screenshot({ path: `${ARTIFACTS_DIR}/camera-preset-nw.png` });
 
     for (const angle of ["ne", "se", "sw", "nw"] as const) {
       await page.getByTestId(`camera-angle-${angle}`).click();
@@ -143,7 +143,7 @@ test.describe("Demostración Táctica Automática y Presentación 2.5D", () => {
       await expect(statusBadge).toHaveText(statusBeforeCamera ?? "");
       await expect(demoPanel).toHaveAttribute("data-sequence", seqBeforeCamera ?? "");
       if (angle !== "nw") {
-        await page.screenshot({ path: `${ARTIFACTS_DIR}/demo_25d_angle_${angle}.png` });
+        await page.screenshot({ path: `${ARTIFACTS_DIR}/camera-preset-${angle}.png` });
       }
     }
 
@@ -176,7 +176,7 @@ test.describe("Demostración Táctica Automática y Presentación 2.5D", () => {
     await page.getByTestId("view-mode-2d").click();
     await expect(boardStage).toHaveAttribute("data-view-mode", "2d");
     await expect(page.locator('[data-combatant-name="Cedrick"] .combatant-sprite-svg')).toBeVisible();
-    await page.screenshot({ path: `${ARTIFACTS_DIR}/demo_2d_fallback.png` });
+    await page.screenshot({ path: `${ARTIFACTS_DIR}/fallback-2d.png` });
 
     await page.getByTestId("view-mode-25d").click();
     await expect(boardStage).toHaveAttribute("data-view-mode", "2.5d");
@@ -252,7 +252,7 @@ test.describe("Demostración Táctica Automática y Presentación 2.5D", () => {
     }
     await page.getByTestId("view-mode-25d").click();
 
-    await page.screenshot({ path: `${ARTIFACTS_DIR}/demo_25d_scene_b_cover_and_large.png` });
+    await page.screenshot({ path: `${ARTIFACTS_DIR}/wall-occlusion-large-creature.png` });
 
     // Avanzar hasta que Guardián Coloso entre en Squeezing (SQZ)
     await stepDemoUntil(page, async () => {
@@ -264,7 +264,7 @@ test.describe("Demostración Táctica Automática y Presentación 2.5D", () => {
     await expect(page.locator('[data-scene-combatant="Guardián Coloso"]')).toHaveAttribute("data-badges", /SQZ/);
     await expect(largeToken).toHaveAttribute("data-footprint-columns", "2");
     await expect(largeToken).toHaveAttribute("data-footprint-rows", "1");
-    await page.screenshot({ path: `${ARTIFACTS_DIR}/demo_25d_large_squeezing.png` });
+    await page.screenshot({ path: `${ARTIFACTS_DIR}/large-squeezing-footprint.png` });
 
     // Avanzar hasta la Escena C y observar el Derribo (Prone) sobre el Duelista Orco
     await stepDemoUntil(page, async () => {
@@ -279,7 +279,7 @@ test.describe("Demostración Táctica Automática y Presentación 2.5D", () => {
     await expect(defensorToken).toHaveAttribute("data-pose", "prone");
     await expect(defensorToken).toHaveAttribute("data-state-icon", "prone");
     await expect(defensorToken).toHaveAttribute("data-badges", /PRN/);
-    await page.screenshot({ path: `${ARTIFACTS_DIR}/demo_25d_prone_condition.png` });
+    await page.screenshot({ path: `${ARTIFACTS_DIR}/prone-condition.png` });
 
     // Avanzar hasta c-16-mago-hold-person-resolves para observar Hold Person (PAR) sobre Guardia de Lanza
     await stepDemoUntil(page, async () => {
@@ -292,7 +292,7 @@ test.describe("Demostración Táctica Automática y Presentación 2.5D", () => {
     await expect(guardiaLanzaToken).toHaveAttribute("data-pose", "paralyzed");
     await expect(guardiaLanzaToken).toHaveAttribute("data-state-icon", "paralyzed");
     await expect(guardiaLanzaToken).toHaveAttribute("data-badges", /PAR/);
-    await page.screenshot({ path: `${ARTIFACTS_DIR}/demo_25d_hold_person_condition.png` });
+    await page.screenshot({ path: `${ARTIFACTS_DIR}/paralyzed-hold-person.png` });
 
     // Avanzar hasta completar la demostración
     await stepDemoUntil(page, async () => {
@@ -389,6 +389,6 @@ test.describe("Demostración Táctica Automática y Presentación 2.5D", () => {
 
     await page.getByTestId("view-mode-25d").click();
     await expect(page.getByTestId("tactical-scene-canvas")).toBeVisible();
-    await page.screenshot({ path: `${ARTIFACTS_DIR}/demo_25d_movement_overlay.png` });
+    await page.screenshot({ path: `${ARTIFACTS_DIR}/movement-overlay-costs.png` });
   });
 });
