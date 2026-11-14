@@ -2,7 +2,7 @@
 
 Responsabilidad: Definir la arquitectura de presentación del tablero táctico, la cámara y los assets visuales sin introducir autoridad mecánica en el cliente.
 Autoridad: Canónica (Nivel D)
-Lifecycle: Implementado — pendiente de aceptación visual y Architecture Review
+Lifecycle: **INTEGRADO** — Aceptación visual aprobada por propietario, Architecture Review completada, integrado en `develop` (commit `faddfbc`)
 Reemplaza: La implementación CSS/SVG 2.5D actual como destino de presentación; no elimina el renderer 2D de respaldo.
 Complementa: [`../spatial-engine-2.5d.md`](../spatial-engine-2.5d.md), [`../normative-spatial-geometry.md`](../normative-spatial-geometry.md), [`../scripted-combat-demo.md`](../scripted-combat-demo.md)
 Consumidores: UI React, Board, previews tácticos, demo guionada, D-2 Participant Projection, D-3 protocolo y D-5 editor.

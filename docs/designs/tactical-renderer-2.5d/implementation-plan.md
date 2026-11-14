@@ -2,7 +2,7 @@
 
 Responsabilidad: Secuenciar la futura implementación del NDD D-4 sin autorizarla.
 Autoridad: Registro del plan ejecutado
-Lifecycle: Implementado — pendiente de aceptación visual y Architecture Review
+Lifecycle: **INTEGRADO** — Aceptación visual aprobada, Architecture Review completada, integrado en `develop` (commit `faddfbc`)
 Complementa: [`design.md`](design.md)
 
 > El propietario concedió `Proceed`; las etapas se ejecutaron preservando el renderer 2D y la autoridad mecánica del servidor.
