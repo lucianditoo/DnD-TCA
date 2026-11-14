@@ -56,6 +56,9 @@ creación como si fueran documentos ausentes.
 
 ## Plataforma y producto
 
+- Mejorar la selección visual de fichas en el tablero 2.5D de la Academia.
+- Agregar un E2E de picking en WebGL que seleccione una ficha después de rotar la cámara.
+
 - Incorporar animaciones opcionales y estados visuales extendidos sobre los sprites estáticos del prototipo 2.5D, y ampliar indicadores de buffs y trazas en logs.
 - Persistir salas fuera de memoria.
 - Completar editores de encuentros/mapas y persistencia poscombate.
