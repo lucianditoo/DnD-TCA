@@ -44,6 +44,10 @@ jobs:
         if: ${{ always() }}
         run: npx tsx --test tests/cover-reach.test.mjs tests/flanking.test.mjs tests/large-footprints.test.mjs tests/ranged-into-melee.test.mjs
 
+      - name: Web component tests
+        if: ${{ always() }}
+        run: npm test -w @dnd-tactical/web
+
       - name: WebSocket E2E
         if: ${{ always() }}
         shell: pwsh

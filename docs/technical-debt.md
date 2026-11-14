@@ -118,17 +118,17 @@ Las tiradas manuales siguen siendo entradas explícitas de cada escenario. Los c
 ---
 
 <a id="dt-010"></a>
-### DT-010: Tests unitarios/de componente de UI inexistentes
+### DT-010: Cobertura de componentes de UI parcial
 
-**Descripción**: No existe ningún test unitario ni de componente para
-`apps/web`. Sí existe una suite Playwright de flujos críticos; esta deuda no
-afirma que la UI carezca de toda cobertura.
+**Avance**. Vitest y React Testing Library cubren los controles críticos de
+`ActionsPanel`. La [matriz de pruebas](testing/master-coverage.md#dt-010--actions-panel)
+registra casos, alcance y medición. Playwright mantiene la cobertura de flujos completos.
 
 **Riesgo**: Regresiones silenciosas en la interfaz tras actualización de dependencias o refactors.
 
 **Módulo afectado**: `apps/web/src/components/*`
 
-**Recomendación**: Instalar Vitest + React Testing Library en `apps/web`. Comenzar con tests de `ActionsPanel` (los controles de combate más críticos) y `ProfilesPage`.
+**Pendiente**. Agregar cobertura focalizada para `ProfilesPage`.
 
 **Bloquea MVP**: No.
 

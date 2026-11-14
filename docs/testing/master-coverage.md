@@ -1,5 +1,17 @@
 # Master Testing Coverage
 
+## DT-010 — Actions Panel
+
+Las [12 pruebas de componente](../../apps/web/tests/ActionsPanel.test.jsx)
+ejercitan fin de turno, permisos e interacción bloqueada, preparación y
+resolución de ataques, movimiento con destino libre u ocupado y resolución o
+declinación de AdO. Las pruebas comprueban los controles visibles y las
+intenciones emitidas por el panel.
+
+Verificación local con `npm test -w @dnd-tactical/web -- --coverage`: 12/12.
+V8 midió 45,86 % de líneas y sentencias, 35,21 % de ramas y 13,33 % de
+funciones de `ActionsPanel.tsx`. Estas cifras corresponden solo a ese archivo.
+
 ## D-1B-I11 — Preview normativo de Run
 
 La [paridad con el handler I10](../../tests/run-server.test.mjs) coteja ruta canónica, pasos, coste, paridad diagonal y ocupación. Cubre presupuesto normal y pesado, buffs, guardas, precedencia de terreno, Squeezing y reanudación por tramos. Los [escenarios de Chromium](../../tests-ui/run-preview.spec.ts) cubren selección por destino, confirmación con solo `to`, exposición autoritativa, bloqueos, actualización del mismo turno, ronda nueva y evidencia 2D/2.5D.
