@@ -102,6 +102,17 @@ obstrucción física para este propósito específico, sin resolver la pregunta
 más amplia de "opaco a efectos/percepción" en general (cristal, barrotes),
 que sigue abierta para Vision/Line of Sight.
 
+### 1.3.2. Conjuros de objetivo directo
+
+El servidor usa `getLineOfEffect` sobre el snapshot y las huellas de lanzador
+y objetivo. Una barrera sólida corta la trayectoria. La oscuridad y otros
+factores de visión se evalúan aparte, según la resolución del conjuro.
+El rechazo inicial precede a AdO, tiradas y consumos. Al reanudar una acción
+suspendida, se vuelve a comprobar la trayectoria antes de Concentración. Si
+queda bloqueada, se cancela el lanzamiento, se conservan slot y acción, y se
+mantienen las consecuencias del AdO ya resuelto. Las áreas requieren definir
+la trayectoria al origen y su propagación en una entrega separada.
+
 ### 1.4. Concealment (`getConcealmentAssessment`, `ConcealmentContribution`, Sprint 046)
 
 `getConcealmentAssessment(room, attacker, target)` llama `EffectReducer.reduceConcealmentContributions` sobre **únicamente** `ConcealmentContribution`s declaradas en `EffectDefinition` (ej. `srd_blinded`'s auto-ocultación). En el modelo actual no existe ninguna fuente de ocultación derivada de geometría, iluminación o distancia — toda la ocultación hoy proviene de un efecto activo sobre el atacante o el objetivo, nunca del tablero. `ConcealmentAssessment` ya declara `directTargetingAllowed`/`requiresTargetSquare` (`types.ts:90-99`), campos hoy siempre fijos en el único productor existente, pero **estructuralmente ya preparados** para la distinción SRD entre ocultación parcial (se ve la casilla) y ocultación total por ausencia de visión (hay que adivinar la casilla) — ver §3.

@@ -108,3 +108,33 @@ test("Spellcasting Transactional Handler", async (t) => {
     assert.equal(room.currentTurn.usedStandardAction, false, "NO debe consumir accion");
   });
 });
+for (const spellId of ["srd_magic_missile", "srd_ray_of_frost", "srd_hold_person"]) {
+  test("LoE bloqueada rechaza " + spellId + " antes de tiradas, AdO o consumo", () => {
+    const caster = makeTestCombatant({ id: "caster", controlledBy: { type: "player", participantId: actorId },
+      preparedSpells: [{ slotId: "spell", spellId, isExpended: false }] });
+    const target = makeTestCombatant({ id: "target", type: "enemy", position: { x: 3, y: 0, zFeet: 0 } });
+    const reactor = makeTestCombatant({ id: "reactor", type: "enemy", position: { x: 0, y: 1, zFeet: 0 } });
+    const room = makeTestRoom({ combatants: [caster, target, reactor],
+      board: { ...makeTestRoom().board, lineOfEffectBlockingCells: ["1,0"], impassableCells: spellId === "srd_magic_missile" ? ["1,0"] : [] },
+      currentTurn: { ...makeTestRoom().currentTurn, combatantId: caster.id } });
+    const before = structuredClone(room);
+    assert.throws(() => handleCastSpell(room, {
+      type: "cast-spell", roomCode: room.code, actorId, casterId: caster.id, targetId: target.id,
+      slotId: "spell", amount: 5, d20Roll: 15
+    }, { diceRoller: () => assert.fail("No debe tirar dados") }), /linea de efecto/i);
+    assert.deepEqual(room, before);
+  });
+}
+
+test("Oscuridad y terreno difícil no bloquean LoE de Magic Missile", () => {
+  const caster = makeTestCombatant({ id: "caster", controlledBy: { type: "player", participantId: actorId },
+    preparedSpells: [{ slotId: "spell", spellId: "srd_magic_missile", isExpended: false }] });
+  const target = makeTestCombatant({ id: "target", type: "enemy", position: { x: 3, y: 0, zFeet: 0 } });
+  const room = makeTestRoom({ combatants: [caster, target], board: { ...makeTestRoom().board, darknessCells: ["1,0"], difficultTerrainCells: ["2,0"] },
+    currentTurn: { ...makeTestRoom().currentTurn, combatantId: caster.id } });
+  handleCastSpell(room, { type: "cast-spell", roomCode: room.code, actorId, casterId: caster.id, targetId: target.id,
+    slotId: "spell", amount: 5, d20Roll: null });
+  assert.equal(target.hpCurrent, 15);
+  assert.equal(caster.preparedSpells[0].isExpended, true);
+  assert.equal(room.currentTurn.usedStandardAction, true);
+});

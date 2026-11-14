@@ -30,7 +30,7 @@ creación como si fueran documentos ausentes.
 
 ## Vision, Line of Effect y Concealment
 
-- Integrar Line of Effect en conjuros y áreas de efecto.
+- Integrar Line of Effect en áreas de efecto. El objetivo directo ya usa la validación autoritativa.
 - Diseñar Low-Light Vision, Blindsight, Blindsense y Tremorsense.
 - Modelar niebla, humo, invisibilidad y fuentes dinámicas de luz.
 - Completar las consecuencias defensivas y de movimiento de la oscuridad.

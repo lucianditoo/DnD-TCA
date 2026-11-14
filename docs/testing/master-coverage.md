@@ -1,5 +1,17 @@
 # Master Testing Coverage
 
+## Line of Effect de conjuros directos
+
+Las [regresiones del lanzamiento](../../tests/spellcasting-transactional.test.mjs)
+y de la [reanudación tras AdO](../../tests/opportunity-phase.test.mjs) cubren
+barreras sólidas, oscuridad y cancelación sin gasto. El
+[E2E WebSocket](../../scripts/e2e-websocket.mjs) comprueba rechazo sin mutación
+y éxito con el mismo slot al retirar el pilar.
+
+Nivel C con revisión arquitectónica independiente aprobada. Validación local:
+36/36 focalizadas, 1089/1089 globales, 146/146 WebSocket, 2/2 Chromium
+focalizadas, typecheck, build y diff check.
+
 ## DT-013 — Acumulación de bonificadores
 
 La regresión de Haste ejecuta el productor real dos veces. Antes de la

@@ -359,3 +359,32 @@ for (const [name, blockerY, startsHelpless, interrupts, recovers, allowed, obsta
     }
   });
 }
+
+test("Una barrera nueva cancela el conjuro suspendido antes de Concentración y sin gastar acción ni slot", async (t) => {
+  const { dispatchCommand } = await import("../apps/server/src/commands/dispatcher.ts");
+  const { rooms } = await import("../apps/server/src/room/roomStore.ts");
+  const { room, attacker, enemy } = createTestRoom();
+  const target = { ...enemy, id: "spell-target", position: { x: 4, y: 1, zFeet: 0 } };
+  room.combatants.push(target);
+  attacker.preparedSpells = [{ slotId: "spell", spellId: "srd_magic_missile", isExpended: false }];
+  t.mock.method(Math, "random", () => 0);
+  rooms.set(room.code, room);
+  try {
+    dispatchCommand(mockSocketPlayer, { type: "cast-spell", roomCode: room.code, actorId: "player-actor",
+      casterId: attacker.id, targetId: target.id, slotId: "spell", amount: 5, d20Roll: null });
+    const [opportunity] = room.pendingOpportunityAttacks;
+    assert.equal(opportunity.attackerId, enemy.id);
+    room.board.lineOfEffectBlockingCells = ["3,1"];
+    dispatchCommand(mockSocketGM, { type: "resolve-opportunity-attack", roomCode: room.code, actorId: "gm-actor",
+      opportunityId: opportunity.id, d20Roll: 18, damage: 5 });
+    assert.equal(attacker.hpCurrent, 15);
+    assert.equal(target.hpCurrent, 15);
+    assert.equal(attacker.preparedSpells[0].isExpended, false);
+    assert.equal(room.currentTurn.usedStandardAction, false);
+    assert.equal(room.pendingStationaryAction, undefined);
+    assert.equal(room.log.some(entry => /Concentracion/.test(entry.message)), false);
+    assert.match(room.log[0].message, /linea de efecto/i);
+  } finally {
+    rooms.delete(room.code);
+  }
+});

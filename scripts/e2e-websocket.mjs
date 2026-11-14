@@ -134,6 +134,19 @@ record('GM puede agregar enemigo desde perfil V5 y conserva fuentes de catalogo'
 await send(profilePlayer, { type: 'set-initiative', roomCode: profileCode, actorId: profilePlayer.participant.id, combatantId: addedHeroProfile.id, initiative: 20 });
 await send(profileGm, { type: 'set-initiative', roomCode: profileCode, actorId: profileGmId, combatantId: addedEnemyProfile.id, initiative: 10 });
 await send(profileGm, { type: 'sort-initiative', roomCode: profileCode, actorId: profileGmId });
+const initialSpellBoard = profileGm.room.board;
+for (const [actor, x] of [[addedHeroProfile, 1], [addedEnemyProfile, 4]]) {
+  await send(profileGm, { type: 'gm-move-combatant', roomCode: profileCode, actorId: profileGmId, combatantId: actor.id, to: { x, y: 1, zFeet: 0 } });
+}
+await send(profileGm, { type: 'update-board', roomCode: profileCode, actorId: profileGmId,
+  board: { ...initialSpellBoard, lineOfEffectBlockingCells: ['2,1'] } });
+const blockedSpellRoom = JSON.stringify(profilePlayer.room);
+const errorsBeforeSpell = profilePlayer.errors.length;
+await send(profilePlayer, { type: 'cast-spell', roomCode: profileCode, actorId: profilePlayer.participant.id, casterId: addedHeroProfile.id, targetId: addedEnemyProfile.id, slotId: 'e2e-ray-slot', d20Roll: 15, amount: 8 });
+record('cast-spell bloqueado por pilar rechaza sin mutar sala',
+  profilePlayer.errors.slice(errorsBeforeSpell).some(error => /linea de efecto/i.test(error)) &&
+    JSON.stringify(profilePlayer.room) === blockedSpellRoom, profilePlayer.errors.slice(errorsBeforeSpell).join(' | '));
+await send(profileGm, { type: 'update-board', roomCode: profileCode, actorId: profileGmId, board: initialSpellBoard });
 await send(profilePlayer, { type: 'cast-spell', roomCode: profileCode, actorId: profilePlayer.participant.id, casterId: addedHeroProfile.id, targetId: addedEnemyProfile.id, slotId: 'e2e-ray-slot', d20Roll: 15, amount: 8 });
 const savedEnemyProfile = profilePlayer.room.combatants.find(c => c.id === addedEnemyProfile.id);
 const spentRayCaster = profilePlayer.room.combatants.find(c => c.id === addedHeroProfile.id);

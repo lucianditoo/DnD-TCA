@@ -1,5 +1,5 @@
 import { findStationaryOpportunityAttacks } from "../combat/opportunityAttackResolver.js";
-import { applyDamage, averageDiceDamage, canStandardAttack, getAttackContextModifiers, lifeStatus, makeLog, Rules, createCombatRulesSnapshot, type ClientCommand, type CombatRoom, SpellsCatalog, type Ability, threatensTarget, getCellsIntersectedByAoE, getCombatantOccupiedCells, footprintCellKey, type Combatant } from "@dnd-tactical/shared";
+import { applyDamage, averageDiceDamage, canStandardAttack, getAttackContextModifiers, getLineOfEffect, lifeStatus, makeLog, Rules, createCombatRulesSnapshot, type ClientCommand, type CombatRoom, SpellsCatalog, type Ability, threatensTarget, getCellsIntersectedByAoE, getCombatantOccupiedCells, footprintCellKey, type Combatant, type SpellDefinition } from "@dnd-tactical/shared";
 import { requireCombatantControl } from "../auth/control.js";
 import { attackRangeFeet, makeDamageBundle, resolveAttack, type ResolvedAttackSource } from "../combat/attackResolver.js";
 import { resolveAbility, validateAbilityRange, validateAbilityTarget } from "../combat/abilityResolver.js";
@@ -133,6 +133,21 @@ export interface CastSpellExecutionOptions {
   readonly resumed?: boolean;
 }
 
+export function requireDirectSpellLineOfEffect(
+  snapshot: ReturnType<typeof createCombatRulesSnapshot>,
+  caster: Combatant,
+  spell: SpellDefinition,
+  targetId: string | undefined
+): void {
+  if (spell.target === "area") return;
+  if (!targetId) throw new Error("Se requiere un objetivo.");
+  const target = snapshot.combatants.find(combatant => combatant.id === targetId);
+  if (!target) throw new Error("No se encontro el objetivo del conjuro.");
+  if (!getLineOfEffect(snapshot, caster, target).hasLineOfEffect) {
+    throw new Error("No hay linea de efecto hacia el objetivo del conjuro.");
+  }
+}
+
 export function handleCastSpell(
   room: CombatRoom,
   command: Extract<ClientCommand, { type: "cast-spell" }>,
@@ -164,6 +179,8 @@ export function handleCastSpell(
     validateAbilityTarget(caster, target, spell.target);
     validateAbilityRange(room, caster, target, spell.rangeFeet);
   }
+
+  requireDirectSpellLineOfEffect(snapshot, caster, spell, command.targetId);
 
   if (resolution.kind === "attack-roll" && command.d20Roll === null) {
     throw new Error("El conjuro " + spell.name + " requiere una tirada de ataque (d20Roll).");
