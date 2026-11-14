@@ -20,6 +20,9 @@ cubren identidad, solapamiento, expiración y crítico de AdO. Pasaron 1076/1076
 globales, 6/6 focalizadas, 17/17 de componentes, 145/145 WebSocket y 7/7
 escenarios Chromium de combate. Typecheck y build correctos. Revisión
 arquitectónica independiente aprobada para infraestructura y comando GM.
+Evidencia de `8045c504da298306a4794463755fd231007c9b74`: el cierre documental
+reutiliza estos resultados sin cambios de código. Son resultados locales; no
+acreditan una nueva ejecución de Windows CI.
 
 ## DT-010 — Actions Panel
 

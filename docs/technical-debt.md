@@ -152,31 +152,28 @@ versión. El estado oficial de `ATTACK-FULL` vive en el Registry.
 ---
 
 <a id="dt-012"></a>
-### DT-012: EquipmentCatalog es estático y no soporta buffs dinámicos
+### ~~DT-012: EquipmentCatalog es estático y no soporta buffs dinámicos~~ ✅ RESUELTO
 
-**Avance parcial (Nivel C).** El daño físico automático y su previsualización
-usan una proyección compartida de la característica efectiva desde el snapshot.
-La confirmación conserva el daño capturado al abrir la amenaza. El catálogo base
-y los formatos persistidos conservan su responsabilidad. Queda pendiente el
-modelado de propiedades dinámicas más allá de la mejora temporal de arma.
+**Cierre autorizado (2026-11-14)** sobre la entrega aprobada
+`8045c504da298306a4794463755fd231007c9b74`, publicada en `develop`.
+La proyección efectiva de ataque y daño consume el snapshot sin persistir
+estadísticas derivadas ni modificar el catálogo base. Los efectos temporales
+identifican un arma por portador e `itemId`; se aplica la mayor mejora vigente
+con duración propia y aislamiento de snapshots. La confirmación crítica conserva
+el daño capturado al abrir la amenaza, incluidos los AdO; el daño manual no cambia.
 
-**Segunda entrega (Nivel D).** Un efecto puede identificar un arma individual
-por portador e ítem. El comando GM existente admite un destino de arma y la
-duración hasta el fin del turno del portador. La mejora +1 de prueba no se
-acumula consigo misma y no añade un conjuro ni un selector de armas a la UI.
-El snapshot conserva la referencia y la confirmación conserva el daño de la
-amenaza. Las propiedades Keen, la munición por unidad y las transferencias
-entre portadores permanecen fuera de alcance.
+El comando administrativo GM existente aplica la mejora temporal +1 de prueba.
+Magic Weapon es un caso de prueba de infraestructura, no un conjuro implementado.
+La [evidencia local y revisión independiente](testing/master-coverage.md#dt-012--daño-efectivo-de-arma)
+respalda el cierre del alcance aprobado.
 
-**Descripción**: `toWeaponProfile` y `deriveEquipmentStats` calculan derivados una vez, asumiendo condiciones estáticas. No pueden representar armas mágicas o efectos que modifiquen el equipo en tiempo real.
+**Trabajo futuro excluido:** Keen y cambios de rango crítico, munición por unidad,
+transferencias entre portadores y selector de armas en la UI. Requieren diseño y
+autorización propios; no bloquean este cierre. La composición general entre fuentes
+y tipos de bonificador corresponde a [DT-013](#dt-013).
+No se amplió `cast-spell` ni el catálogo de conjuros.
 
-**Riesgo**: Implementar *Arma mágica*, *Afilar*, *Improved Critical* o *Keen* requerirá una refactorización del catálogo.
-
-**Módulo afectado**: `packages/shared/src/equipmentCatalog.ts`, `packages/shared/src/equipmentStats.ts`
-
-**Recomendación**: Cambiar la firma de `toWeaponProfile` para aceptar buffs activos del combatiente y recalcular modificadores en caliente.
-
-**Bloquea MVP**: No.
+**Bloquea MVP**: No — deuda cerrada.
 
 ---
 
