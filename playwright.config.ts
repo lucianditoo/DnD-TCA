@@ -29,11 +29,13 @@ export default defineConfig({
       url: 'http://127.0.0.1:3333/health',
       reuseExistingServer: false,
       env: { TEST_MODE: 'true' },
+      timeout: 120000,
     },
     {
       command: 'npm --workspace @dnd-tactical/web run dev -- --strictPort',
       url: 'http://localhost:5173',
-      reuseExistingServer: false,
+      reuseExistingServer: true,
+      timeout: 120000,
     },
   ],
 });
