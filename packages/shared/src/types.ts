@@ -46,6 +46,10 @@ export interface ArmorClassBreakdown {
   misc: number;
 }
 export interface Buff {
+  /** Mechanical identity, distinct from the display-only source and instance ID. */
+  stackingSource?: string;
+  attackBonusType?: import("./effects/contracts.js").BonusType;
+  speedBonusType?: import("./effects/contracts.js").BonusType;
   id: string;
   name: string;
   source: string;

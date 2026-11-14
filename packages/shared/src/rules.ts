@@ -1,6 +1,8 @@
+import { activeNumericContributions, legacyBuffContributions, contribution, bonusPolicy } from "./effects/contributions.js";
+import type { NumericContribution } from "./effects/reducer.js";
 import type { MovementResolutionStep } from "./movementResolution.js";
 import type { ArmorClassBonusType, ArmorClassBreakdown, AttackContextModifiers, AttackDeliveryContext, CombatLogEntry, CombatRoom, CombatRulesSnapshot, Combatant, CombatantSnapshot, ConcealmentAssessment, ConcealmentKind, CoverAssessment, CoverKind, LifeStatus, LineOfEffectAssessment, OpportunityAttack, OpportunityAttackLegality, Position, SavingThrowType, SizeCategory, SpecialManeuverId, VisionAssessment, VisionReason, VisionTrace, VisualPathAssessment } from "./types.js";
-import type { ConditionalModifier, EffectDefinition, ModifierCondition, Trait, TraitCondition, EffectStat } from "./effects/contracts.js";
+import type { EffectDefinition, ModifierCondition, Trait, TraitCondition, EffectStat } from "./effects/contracts.js";
 import type { CatalogEffectId } from "./effects/types.js";
 import { EffectReducer, type MovementRateTrace, type ReducedConcealment, type ReducedEffects } from "./effects/reducer.js";
 import { effectsCatalog, type ProductionEffectId } from "./effects/catalog.js";
@@ -227,6 +229,7 @@ export interface AttackContext {
   readonly abilityForAttack?: "strength" | "dexterity";
   readonly isFlatFootedOverride?: boolean;
   readonly attackerId?: string;
+  readonly aidOpponentId?: string;
   /** Sprint 042: cobertura ya resuelta por `getAttackContextModifiers` para este atacante/objetivo/tipo. */
   readonly cover?: CoverAssessment;
   /** Sprint 035: distingue si la resolución actual es un Ataque de Oportunidad. */
@@ -245,32 +248,6 @@ function shouldApplyAcModifier(value: number, bonusType: string | undefined, att
   return true;
 }
 
-function projectStructuredArmorClass(breakdown: ArmorClassBreakdown, attackContext: AttackContext | undefined, suppressDexAndDodge: boolean): { total: number; parts: string[] } {
-  const components: Array<{ label: string; type: ArmorClassBonusType | "base"; value: number }> = [
-    { label: "base", type: "base", value: breakdown.base },
-    { label: "armadura", type: "armor", value: breakdown.armor },
-    { label: "escudo", type: "shield", value: breakdown.shield },
-    { label: "armadura natural", type: "natural_armor", value: breakdown.naturalArmor },
-    { label: "DEX", type: "dex", value: breakdown.dexterity },
-    { label: "tamaño", type: "size", value: breakdown.size },
-    { label: "esquiva", type: "dodge", value: breakdown.dodge },
-    { label: "desvío", type: "deflection", value: breakdown.deflection },
-    { label: "misc", type: "misc", value: breakdown.misc }
-  ];
-  let total = 0;
-  const parts: string[] = [];
-  for (const component of components) {
-    const applies = component.type === "base" || shouldApplyAcModifier(component.value, component.type, attackContext, suppressDexAndDodge);
-    if (applies) {
-      total += component.value;
-      if (component.value !== 0 || component.type === "base") parts.push(component.label + " " + (component.value >= 0 ? "+" : "") + component.value);
-    } else if (component.value !== 0) {
-      parts.push(component.label + " suprimido -" + component.value);
-    }
-  }
-  return { total, parts };
-}
-
 // ─────────────────────────────────────────────────────────────────────────────
 // Evaluador de Modificadores Condicionales
 //
@@ -278,27 +255,46 @@ function projectStructuredArmorClass(breakdown: ArmorClassBreakdown, attackConte
 // de un objetivo dado un contexto táctico de ataque.
 // ─────────────────────────────────────────────────────────────────────────────
 
-function evaluateConditionalModifiers<TCatalog extends Record<string, EffectDefinition>>(
-  applicableInstances: readonly import('./effects/types.js').EffectInstance<keyof TCatalog & string>[],
-  catalog: TCatalog,
-  attackContext: AttackContext,
-  suppressDexAndDodge: boolean,
-  targetStat: EffectStat
-): { total: number; parts: string[] } {
-  let total = 0;
-  const parts: string[] = [];
-  for (const inst of applicableInstances) {
-    const definition = catalog[inst.effectId as string];
-    if (!definition?.conditionalModifiers) continue;
-    for (const cm of definition.conditionalModifiers) {
-      if (cm.stat === targetStat && isConditionMet(cm.condition, attackContext)) {
-        if (targetStat === 'AC' && !shouldApplyAcModifier(cm.value, cm.stackingGroup, attackContext, suppressDexAndDodge)) continue;
-        total += cm.value;
-        parts.push(cm.label);
-      }
+function reduceCombatantEffects<TCatalog extends Record<string, EffectDefinition>>(
+  context: CombatRulesSnapshot<CatalogEffectId<TCatalog>>, combatant: Combatant, catalog: TCatalog,
+  attackContext?: AttackContext, suppressDexAndDodge = false, extra: readonly NumericContribution[] = []
+): ReducedEffects {
+  const numeric = [...activeNumericContributions(context.effectInstances, combatant.id, catalog), ...legacyBuffContributions(combatant, attackContext?.aidOpponentId), ...extra];
+  if (attackContext) for (const inst of context.effectInstances) {
+    if (!inst.targets?.includes(combatant.id)) continue;
+    for (const cm of catalog[inst.effectId]?.conditionalModifiers ?? []) {
+      if (!isConditionMet(cm.condition, attackContext)) continue;
+      numeric.push(contribution(combatant.id, String(inst.effectId), inst.instanceId, cm.id, cm.stat, cm.value,
+        cm.bonusType ?? `legacy:conditional:${cm.stackingGroup ?? "opaque"}`,
+        cm.bonusType ? bonusPolicy(cm.bonusType, cm.value) : cm.stackingPolicy ?? "sum",
+        cm.mechanicalSource ?? `${inst.effectId}:${cm.id}`));
     }
   }
-  return { total, parts };
+  return EffectReducer.reduceEffectsForTarget({
+    effectInstances: context.effectInstances, targetId: combatant.id, catalog, includeNumeric: false,
+    numericContributions: numeric.filter(({trace}) => trace.stat !== "AC" ||
+      shouldApplyAcModifier(trace.value, trace.stackingGroup.replace(/^legacy:(conditional:)?/, ""), attackContext, suppressDexAndDodge))
+  });
+}
+
+function modifierParts(reduced: ReducedEffects, stat: EffectStat, catalog: Record<string, EffectDefinition>): string[] {
+  const result = reduced.numericModifiers[stat];
+  const parts: string[] = [];
+  let buffs = 0;
+  let effects = 0;
+  const signed = (value: number) => (value > 0 ? "+" : "") + value;
+  for (const trace of [...(result?.bonuses ?? []), ...(result?.penalties ?? [])]) {
+    if (trace.status !== "applied") continue;
+    const conditional = catalog[trace.effectId]?.conditionalModifiers?.find(mod => mod.id === trace.modifierId);
+    if (conditional) parts.push(conditional.label);
+    else if (trace.effectId === "legacy-buff") buffs += trace.value;
+    else if (trace.effectId === "equipment/base" || trace.effectId === "cover" || trace.effectId === "aid" || trace.effectId === "feats") {
+      parts.push(trace.modifierId + " " + signed(trace.value));
+    } else effects += trace.value;
+  }
+  if (buffs !== 0) parts.push("buffs " + signed(buffs));
+  if (effects !== 0) parts.push("efectos " + signed(effects));
+  return parts;
 }
 
 function isConditionMet(condition: ModifierCondition, attackContext: AttackContext): boolean {
@@ -366,11 +362,7 @@ export function getEffectiveAbilityScore(
   combatant: Combatant,
   ability: 'strength' | 'dexterity' | 'constitution' | 'intelligence' | 'wisdom' | 'charisma'
 ): number {
-  const reduced = EffectReducer.reduceEffectsForTarget({
-    effectInstances: context.effectInstances,
-    targetId: combatant.id,
-    catalog: effectsCatalog
-  });
+  const reduced = reduceCombatantEffects(context, combatant, effectsCatalog);
   return _getEffectiveAbilityScoreFromReduced(combatant, ability, reduced);
 }
 
@@ -391,15 +383,15 @@ function projectMovementSpeed<TCatalog extends Record<string, EffectDefinition>>
   catalog: TCatalog
 ): MovementSpeedProjection {
   const reductionInput = { effectInstances: context.effectInstances, targetId: combatant.id, catalog };
-  const reduced = EffectReducer.reduceEffectsForTarget(reductionInput);
+  const reduced = reduceCombatantEffects(context, combatant, catalog);
   const rate = EffectReducer.reduceMovementRateContributions(reductionInput);
   const deltaSpeed = reduced.numericModifiers["SPEED"]?.total ?? 0;
-  const legacyBuffBonus = combatant.buffs.reduce((sum, buff) => sum + (buff.speedBonusFeet ?? 0), 0);
+
   const armorAdjustedSpeed = getArmorAdjustedSpeedFeet(combatant);
-  const beforeRate = Math.max(0, armorAdjustedSpeed + legacyBuffBonus + deltaSpeed);
+  const beforeRate = Math.max(0, armorAdjustedSpeed + deltaSpeed);
   const parts = [
     `base/equipo ${armorAdjustedSpeed} ft`,
-    ...(legacyBuffBonus !== 0 ? [`buffs ${legacyBuffBonus >= 0 ? "+" : ""}${legacyBuffBonus} ft`] : []),
+
     ...(deltaSpeed !== 0 ? [`efectos ${deltaSpeed >= 0 ? "+" : ""}${deltaSpeed} ft`] : []),
     ...rate.traces.filter((trace) => trace.status === "applied").map((trace) => trace.label)
   ];
@@ -427,40 +419,17 @@ export function createRuleEvaluator<TCatalog extends Record<string, EffectDefini
     totalAttackBonus(
       context: CombatRulesSnapshot<TEffectId>,
       combatant: Combatant,
-      attackContext?: Pick<AttackContext, "abilityForAttack" | "attackType">
+      attackContext?: Pick<AttackContext, "abilityForAttack" | "attackType" | "aidOpponentId"> & { useEquippedWeapon?: boolean }
     ): { total: number; parts: string[] } {
-      const applicable = context.effectInstances.filter(
-        (inst) => inst.targets !== undefined && inst.targets.includes(combatant.id)
-      );
-      const reduced = EffectReducer.reduceEffectsForTarget({
-        effectInstances: context.effectInstances,
-        targetId: combatant.id,
-        catalog
-      });
+      const weapon = attackContext?.useEquippedWeapon ? collectWeaponEnhancements(context, combatant) : [];
+      const reduced = reduceCombatantEffects(context, combatant, catalog, attackContext, false, weapon);
       const deltaAttack = reduced.numericModifiers["ATTACK"]?.total ?? 0;
-      const legacyBuffBonus = combatant.buffs.reduce((sum, buff) => sum + (buff.attackBonus ?? 0), 0);
       const attackAbility = attackContext?.abilityForAttack ?? resolveEquippedWeaponProfile(combatant).profile.abilityForAttack;
       const effectiveAbilityScore = _getEffectiveAbilityScoreFromReduced(combatant, attackAbility, reduced);
       const selectedModifier = getAbilityModifier(effectiveAbilityScore) + getSizeRule(combatant.sizeCategory).attackAndAcModifier;
 
-      let conditionalDelta = 0;
-      let conditionalParts: string[] = [];
-      if (attackContext && attackContext.attackType) {
-        // cast to full AttackContext, we only need attackType for "attack_type" condition
-        const fullContext = attackContext as AttackContext;
-        const conditional = evaluateConditionalModifiers(applicable, catalog, fullContext, false, "ATTACK");
-        conditionalDelta = conditional.total;
-        conditionalParts = conditional.parts;
-      }
-
-      const total = combatant.baseAttackBonus + selectedModifier + legacyBuffBonus + deltaAttack + conditionalDelta;
-      const parts: string[] = [
-        "BAB +" + combatant.baseAttackBonus,
-        "mod " + (selectedModifier >= 0 ? "+" : "") + selectedModifier,
-        legacyBuffBonus ? "buffs +" + legacyBuffBonus : "buffs +0"
-      ];
-      if (deltaAttack !== 0) parts.push("efectos " + (deltaAttack >= 0 ? "+" : "") + deltaAttack);
-      parts.push(...conditionalParts);
+      const total = combatant.baseAttackBonus + selectedModifier + deltaAttack;
+      const parts = ["BAB +" + combatant.baseAttackBonus, "mod " + (selectedModifier >= 0 ? "+" : "") + selectedModifier, ...modifierParts(reduced, "ATTACK", catalog)];
       return { total, parts };
     },
 
@@ -472,11 +441,7 @@ export function createRuleEvaluator<TCatalog extends Record<string, EffectDefini
       const applicable = context.effectInstances.filter(
         (inst) => inst.targets !== undefined && inst.targets.includes(combatant.id)
       );
-      const reduced = EffectReducer.reduceEffectsForTarget({
-        effectInstances: context.effectInstances,
-        targetId: combatant.id,
-        catalog
-      });
+      const reduced = reduceCombatantEffects(context, combatant, catalog);
       const contextualTraits = attackContext ? evaluateConditionalTraits(applicable, catalog, attackContext) : [];
 
       const defenseProj = getDefensiveAbilityProjection(combatant, reduced, attackContext, contextualTraits);
@@ -516,38 +481,24 @@ export function createRuleEvaluator<TCatalog extends Record<string, EffectDefini
         if (!Number.isFinite(value)) throw new Error(`Invariante de CA violada: ${combatant.name} posee ${component} no finito.`);
       }
 
-      const projected = projectStructuredArmorClass(armorClassBreakdown, attackContext, suppressDexAndDodge);
-      const baseAC = projected.total;
-      const parts = projected.parts;
-
-      const legacyBuffBonus = combatant.buffs.reduce((sum, buff) => {
-        const value = buff.acBonus ?? 0;
-        return sum + (shouldApplyAcModifier(value, buff.acBonusType, attackContext, suppressDexAndDodge) ? value : 0);
-      }, 0);
-
-      const coverBonus = attackContext?.cover?.acBonus ?? 0;
-
-      const acModifier = reduced.numericModifiers["AC"];
-      let deltaAC = [...(acModifier?.bonuses ?? []), ...(acModifier?.penalties ?? [])]
-        .filter((trace) => trace.status === "applied")
-        .reduce((sum, trace) => sum + (shouldApplyAcModifier(trace.value, trace.stackingGroup, attackContext, suppressDexAndDodge) ? trace.value : 0), 0);
-
-      let conditionalDelta = 0;
-      if (attackContext) {
-        const conditional = evaluateConditionalModifiers(applicable, catalog, attackContext, suppressDexAndDodge, "AC");
-        conditionalDelta = conditional.total;
-        parts.push(...conditional.parts);
-      }
-
-      if (coverBonus > 0) {
-        parts.push("cobertura +" + coverBonus);
-      }
-
-      const total = baseAC + legacyBuffBonus + deltaAC + conditionalDelta + coverBonus + featDodgeBonus;
-      parts.push(legacyBuffBonus ? "buffs " + (legacyBuffBonus >= 0 ? "+" : "") + legacyBuffBonus : "buffs +0");
-      if (deltaAC !== 0) parts.push("efectos " + (deltaAC >= 0 ? "+" : "") + deltaAC);
-      parts.push(...featDodgeParts);
-      return { total, parts };
+      const components = [
+        ["armor", armorClassBreakdown.armor], ["shield", armorClassBreakdown.shield],
+        ["natural_armor", armorClassBreakdown.naturalArmor], ["dex", armorClassBreakdown.dexterity],
+        ["size", armorClassBreakdown.size], ["dodge", armorClassBreakdown.dodge],
+        ["deflection", armorClassBreakdown.deflection], ["misc", armorClassBreakdown.misc]
+      ] as const;
+      const extra = components.map(([type, value]) => contribution(combatant.id, "equipment/base", combatant.id, type, "AC", value,
+        type === "misc" || type === "dex" ? `legacy:${type}` : type,
+        type === "misc" || type === "dex" ? "sum" : bonusPolicy(type, value), `base:${type}`));
+      extra.push(contribution(combatant.id, "feats", combatant.id, "dodge", "AC", featDodgeBonus, "dodge", "unique_by_source", "feats:dodge"));
+      extra.push(contribution(combatant.id, "cover", combatant.id, "cobertura", "AC", attackContext?.cover?.acBonus ?? 0, "cover", "highest_value", "cover"));
+      const composed = reduceCombatantEffects(context, combatant, catalog, attackContext, suppressDexAndDodge, extra);
+      const delta = composed.numericModifiers.AC?.total ?? 0;
+      const suppressedDex = suppressDexAndDodge && armorClassBreakdown.dexterity > 0
+        ? ["DEX suprimido -" + armorClassBreakdown.dexterity] : [];
+      const parts = ["base +" + armorClassBreakdown.base, ...suppressedDex, ...featDodgeParts,
+        ...modifierParts(composed, "AC", catalog)];
+      return { total: armorClassBreakdown.base + delta, parts };
     },
 
     getMovementSpeedProjection(
@@ -568,11 +519,7 @@ export function createRuleEvaluator<TCatalog extends Record<string, EffectDefini
       context: CombatRulesSnapshot<TEffectId>,
       combatant: Combatant
     ): RuleResult<true> {
-      const reduced = EffectReducer.reduceEffectsForTarget({
-        effectInstances: context.effectInstances,
-        targetId: combatant.id,
-        catalog
-      });
+      const reduced = reduceCombatantEffects(context, combatant, catalog);
       if (hasEffectTrait(reduced, "CANNOT_ACT")) {
         return { ok: false, error: combatant.name + " esta incapacitado y no puede realizar acciones." };
       }
@@ -585,11 +532,7 @@ export function createRuleEvaluator<TCatalog extends Record<string, EffectDefini
       _legacyTargetId?: string
     ): boolean {
       if (combatant.buffs.some((buff) => buff.preventsOpportunityAttacks)) return false;
-      const reduced = EffectReducer.reduceEffectsForTarget({
-        effectInstances: context.effectInstances,
-        targetId: combatant.id,
-        catalog
-      });
+      const reduced = reduceCombatantEffects(context, combatant, catalog);
       if (hasEffectTrait(reduced, "CANNOT_MAKE_AOO")) {
         if (!combatant.featIds.includes("srd_combat_reflexes")) return false;
         const withoutFlatFooted = EffectReducer.reduceEffectsForTarget({
@@ -634,11 +577,7 @@ export function createRuleEvaluator<TCatalog extends Record<string, EffectDefini
       spellId: string
     ): SpellSaveDCBreakdown {
       const spell = SpellsCatalog.require(spellId);
-      const reduced = EffectReducer.reduceEffectsForTarget({
-        effectInstances: context.effectInstances,
-        targetId: combatant.id,
-        catalog
-      });
+      const reduced = reduceCombatantEffects(context, combatant, catalog);
       const effectiveAbilityScore = _getEffectiveAbilityScoreFromReduced(combatant, spell.associatedAbility, reduced);
       const abilityModifier = getAbilityModifier(effectiveAbilityScore);
       const total = 10 + spell.level + abilityModifier;
@@ -665,11 +604,7 @@ export function createRuleEvaluator<TCatalog extends Record<string, EffectDefini
       combatant: Combatant,
       saveType: "fortitude" | "reflex" | "will"
     ): { total: number; parts: string[] } {
-      const reduced = EffectReducer.reduceEffectsForTarget({
-        effectInstances: context.effectInstances,
-        targetId: combatant.id,
-        catalog
-      });
+      const reduced = reduceCombatantEffects(context, combatant, catalog);
 
       let baseSave = 0;
       let associatedAbility: "constitution" | "dexterity" | "wisdom" = "constitution";
@@ -729,16 +664,21 @@ export function getEffectiveAbilityModifier(
 }
 
 /** Overlapping enhancements retain their durations and contribute only the highest bonus. */
-export function getWeaponEnhancement(context: CombatRulesSnapshot<ProductionEffectId> | null, combatant: Combatant): number {
+function collectWeaponEnhancements(context: CombatRulesSnapshot<string> | null, combatant: Combatant): NumericContribution[] {
   const itemId = combatant.equipmentSlots.mainHandItemId;
-  if (!itemId || !getEquippedWeaponEntry(combatant)) return 0;
-  let enhancement = 0;
+  if (!itemId || !getEquippedWeaponEntry(combatant)) return [];
+  const contributions: NumericContribution[] = [];
   for (const instance of context?.effectInstances ?? []) {
     if (instance.targetItem?.combatantId !== combatant.id || instance.targetItem.itemId !== itemId) continue;
-    const definition: EffectDefinition = effectsCatalog[instance.effectId];
-    enhancement = Math.max(enhancement, definition?.weaponEnhancement ?? 0);
+    const definition = (effectsCatalog as Record<string, EffectDefinition>)[instance.effectId];
+    contributions.push(contribution(combatant.id, String(instance.effectId), instance.instanceId, itemId, "ATTACK", definition?.weaponEnhancement ?? 0,
+      "enhancement", "highest_value", `weapon:${combatant.id}:${itemId}`));
   }
-  return enhancement;
+  return contributions;
+}
+
+export function getWeaponEnhancement(context: CombatRulesSnapshot<ProductionEffectId> | null, combatant: Combatant): number {
+  return EffectReducer.reduceNumericContributions(collectWeaponEnhancements(context, combatant)).ATTACK?.total ?? 0;
 }
 
 /** Project weapon damage from current effects without altering the weapon or actor. */
@@ -2893,12 +2833,12 @@ export function getEffectiveAttackRoutine(
   attackContext?: Pick<AttackContext, "abilityForAttack" | "attackType">
 ): readonly IterativeAttack[] {
   const routine = getAttackRoutine(combatant);
-  const baseAttack = Rules.totalAttackBonus(context, combatant, attackContext);
+  const baseAttack = Rules.totalAttackBonus(context, combatant, { ...attackContext, useEquippedWeapon: true });
   return Object.freeze(routine.map((entry, index) => Object.freeze({
     ordinal: index + 1,
     type: entry.type,
     routinePenalty: entry.penalty,
-    effectiveAttackBonus: baseAttack.total + getWeaponEnhancement(context, combatant) + entry.penalty
+    effectiveAttackBonus: baseAttack.total + entry.penalty
   })));
 }
 

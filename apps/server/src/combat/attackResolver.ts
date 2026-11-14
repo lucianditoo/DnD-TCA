@@ -6,7 +6,6 @@ import {
   isCriticalConfirmed,
   canApplySneakAttack,
   projectWeaponDamage,
-  type Buff,
   type CombatRoom,
   type CombatRulesSnapshot,
   type Combatant,
@@ -102,25 +101,23 @@ export function resolveAttack(
   const isHelpless = hasEffectTrait(reducedTarget, "HELPLESS");
   const helplessBonus = (isHelpless && source.attackType === "melee") ? 4 : 0;
 
-  const attack = Rules.totalAttackBonus(context, attacker, { abilityForAttack: source.abilityForAttack, attackType: source.attackType });
-  const aidAttackBonus = sumAidBonus(attacker.buffs, target.id, "attack");
-  const enhancement = source.enhancement ?? 0;
-  const attackTotal = attack.total + enhancement + rangePenalty.penalty + situationalAttackBonus + aidAttackBonus + helplessBonus;
+  const attack = Rules.totalAttackBonus(context, attacker, { abilityForAttack: source.abilityForAttack, attackType: source.attackType, useEquippedWeapon: source.enhancement !== undefined, aidOpponentId: target.id });
+  const attackTotal = attack.total + rangePenalty.penalty + situationalAttackBonus + helplessBonus;
   
   const helplessLabel = helplessBonus ? "indefenso +4" : "";
-  const attackParts = [...attack.parts, enhancement ? "mejora +" + enhancement : "", rangePenalty.label, aidAttackBonus ? "ayuda +" + aidAttackBonus : "", helplessLabel].filter(Boolean);
+  const attackParts = [...attack.parts, rangePenalty.label, helplessLabel].filter(Boolean);
   
   const ac = Rules.totalArmorClass(context, target, {
     attackType: source.attackType,
     targetAcType: source.targetAcType,
     attackerId: attacker.id,
+    aidOpponentId: attacker.id,
     cover: options.cover,
     isOpportunityAttack: options.isOpportunityAttack,
     isMovementProvoked: options.isMovementProvoked
   });
-  const aidAcBonus = sumAidBonus(target.buffs, attacker.id, "ac");
-  const targetArmorClass = ac.total + aidAcBonus;
-  const acParts = [...ac.parts, aidAcBonus ? "ayuda +" + aidAcBonus : ""].filter(Boolean);
+  const targetArmorClass = ac.total;
+  const acParts = ac.parts;
   const total = d20Roll + attackTotal;
   
   // Regla fundamental D&D 3.5: 1 natural siempre falla, 20 natural siempre impacta
@@ -281,10 +278,6 @@ export function multiplyDamageBundle(bundle: DamageBundle, multiplier: number, b
     }
     return { ...component, amount: component.amount * multiplier, label: `${component.label} ×${multiplier}` };
   }));
-}
-
-function sumAidBonus(buffs: Buff[], opponentId: string, choice: "attack" | "ac"): number {
-  return buffs.reduce((sum, buff) => sum + (buff.aidChoice === choice && buff.aidTargetId === opponentId ? buff.aidBonus ?? 2 : 0), 0);
 }
 
 function consumeChosenAid(combatant: Combatant, opponentId: string, choice: "attack" | "ac"): void {

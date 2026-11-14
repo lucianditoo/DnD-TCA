@@ -184,15 +184,23 @@ Estas deudas no generan riesgo activo pero conviene resolverlas antes de las fas
 ---
 
 <a id="dt-013"></a>
-### DT-013: Stack de buffs del mismo tipo sin validación
+### ~~DT-013: Stack de buffs del mismo tipo sin validación~~ ✅ RESUELTO
 
-**Descripción**: Múltiples buffs del mismo tipo (ej. dos Bless) pueden acumularse y sumar bonificadores incorrectamente. D&D 3.5 tiene reglas de no-stack por tipo de bonificador.
+**Resolución (Nivel D).** El reducer compone los aportes numéricos de
+ActiveEffects, sus modificadores condicionales, del equipo y de los buffs
+legacy por estadística, grupo, polaridad y fuente mecánica sobre un destino.
+Los consumidores seleccionan primero el contexto aplicable, incluidos el
+ataque armado, el toque y la pérdida de esquiva. La selección de la mayor
+mejora sigue limitada al portador y al arma. La supresión no elimina efectos
+ni altera sus duraciones.
 
-**Módulo afectado**: `apps/server/src/combat/buffRules.ts`
+El caso reproducido fue Haste legacy aplicado dos veces. Conserva sus valores
+de demostración de +1 al ataque y +10 ft, sin duplicarlos. Los buffs históricos
+sin metadatos tienen su semántica anterior. Los perfiles V6 conservan los campos
+opcionales de los buffs tipados y los validan antes de la proyección.
 
-**Recomendación**: Agregar campo `bonusType` al modelo de `Buff` y validar que solo el mayor bonificador de cada tipo se aplique.
-
-**Bloquea MVP**: No.
+Ver [SRD 3.5](rules/srd-3.5/spells/magic-overview.md#combining-magical-effects)
+y [evidencia de regresión](testing/master-coverage.md#dt-013--acumulación-de-bonificadores).
 
 ---
 

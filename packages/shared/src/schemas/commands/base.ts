@@ -37,7 +37,11 @@ export const equipmentSlotsSchema = z.object({
   armorItemId: z.string().min(1).nullable()
 }).strict();
 
-export const buffSchema = z.object({
+const bonusTypeSchema = z.enum(["alchemical", "armor", "shield", "natural_armor", "deflection", "enhancement", "morale", "competence", "insight", "luck", "resistance", "sacred", "profane", "size", "dodge", "circumstance", "racial", "untyped"]);
+const buffFieldsSchema = z.object({
+  stackingSource: z.string().min(1).optional(),
+  attackBonusType: bonusTypeSchema.optional(),
+  speedBonusType: bonusTypeSchema.optional(),
   id: z.string().optional(),
   name: z.string(),
   source: z.string(),
@@ -55,6 +59,13 @@ export const buffSchema = z.object({
   aidChoice: z.enum(["pending", "attack", "ac"]).optional(),
   aidSourceId: z.string().optional()
 });
+
+function hasTypedBuffSource(buff: { stackingSource?: string; attackBonusType?: string; speedBonusType?: string }): boolean {
+  return Boolean(buff.stackingSource) || (!buff.attackBonusType && !buff.speedBonusType);
+}
+
+const typedBuffSourceError = { message: "Un buff tipado requiere stackingSource explícito.", path: ["stackingSource"] };
+export const buffSchema = buffFieldsSchema.refine(hasTypedBuffSource, typedBuffSourceError);
 
 export const intrinsicDefenseSchema = z.object({
   naturalArmorBonus: z.number().finite(),
@@ -93,6 +104,6 @@ export const creatureTemplateSchema = z.object({
   naturalAttackId: z.string().optional(),
   abilities: z.array(z.string()),
   preparedSpellLoadout: z.array(preparedSpellLoadoutEntrySchema).optional(),
-  buffs: z.array(buffSchema.omit({ id: true })),
+  buffs: z.array(buffFieldsSchema.omit({ id: true }).refine(hasTypedBuffSource, typedBuffSourceError)),
   position: positionSchema
 }).strict();

@@ -78,6 +78,8 @@ export type Modifier =
       readonly id: string;
       readonly stat: EffectStat;
       readonly stackingGroup: string;
+      readonly bonusType?: BonusType;
+      readonly mechanicalSource?: string;
       readonly stackingPolicy: StackingPolicy;
       readonly value: number;
     }
@@ -111,6 +113,9 @@ export interface ConditionalModifier {
   readonly stat: EffectStat;
   readonly value: number;
   readonly stackingGroup?: string;
+  readonly stackingPolicy?: StackingPolicy;
+  readonly bonusType?: BonusType;
+  readonly mechanicalSource?: string;
   readonly condition: ModifierCondition;
 }
 
@@ -207,3 +212,6 @@ export interface EffectDefinition {
   readonly hazard?: EnvironmentalHazard;
   readonly weaponEnhancement?: number;
 }
+
+/** SRD bonus types; opaque legacy groups are deliberately not aliases of these. */
+export type BonusType = "alchemical" | "armor" | "shield" | "natural_armor" | "deflection" | "enhancement" | "morale" | "competence" | "insight" | "luck" | "resistance" | "sacred" | "profane" | "size" | "dodge" | "circumstance" | "racial" | "untyped";

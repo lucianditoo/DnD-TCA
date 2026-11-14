@@ -25,7 +25,7 @@ export function resolveAbility(room: CombatRoom, caster: Combatant, target: Comb
     return;
   }
   if (ability.resolution.kind === "effect" && (ability.resolution.effectId === "haste" || ability.resolution.effectId === "srd_haste")) {
-    target.buffs.push({ id: "buff-" + Math.random().toString(36).slice(2, 10), name: "Haste", source: caster.name, attackBonus: 1, speedBonusFeet: 10, remainingTurns: 5 });
+    target.buffs.push({ id: "buff-" + Math.random().toString(36).slice(2, 10), name: "Haste", source: caster.name, stackingSource: "legacy:haste", attackBonusType: "untyped", speedBonusType: "enhancement", attackBonus: 1, speedBonusFeet: 10, remainingTurns: 5 });
     room.log.unshift(makeLog("status", caster.name + " usa Haste sobre " + target.name + ". +1 ataque y +10 ft velocidad por 5 turnos."));
     return;
   }

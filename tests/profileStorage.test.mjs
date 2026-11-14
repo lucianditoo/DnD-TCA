@@ -32,6 +32,15 @@ function memoryStorage(initial = {}) {
 }
 
 describe("Profile Storage V6", () => {
+  test("DT-013: roundtrip conserva buffs tipados y opacos sin reclasificar", () => {
+    const opaque = { name: "Haste", source: "Display", attackBonus: 1, remainingTurns: 2 };
+    const typed = { ...opaque, stackingSource: "legacy:haste", attackBonusType: "untyped", speedBonusType: "enhancement", speedBonusFeet: 10 };
+    const storage = memoryStorage();
+    const saved = v5({ buffs: [opaque, typed] });
+    writeStoredProfiles(storage, [saved]);
+    assert.deepEqual(readStoredProfiles(storage)[0].buffs, [opaque, typed]);
+    assert.equal(readStoredProfiles(storage)[0].buffs[0].stackingSource, undefined);
+  });
   test("migra V1/V3/V4 a inventario V6 determinista y conserva backup", () => {
     const storage = memoryStorage({ [LEGACY_PROFILE_STORAGE_KEY]: JSON.stringify([legacy()]) });
     const result = readStoredProfilesWithIssues(storage);

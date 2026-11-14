@@ -1,3 +1,4 @@
+import { activeNumericContributions } from "./contributions.js";
 import type { ConcealmentContribution, EffectDefinition, EffectSource, EffectStat, Modifier, RuleOverride, StackingPolicy, Trait } from "./contracts.js";
 import type { EffectInstance } from "./types.js";
 
@@ -10,6 +11,8 @@ import type { EffectInstance } from "./types.js";
  * y el resultado (applied / suppressed) de un modificador numérico.
  */
 export interface ModifierTrace {
+  readonly targetId?: string;
+  readonly sourceKey?: string;
   readonly effectId: string;
   readonly effectInstanceId: string;
   /** Identificador declarativo del modificador dentro del EffectDefinition */
@@ -101,10 +104,19 @@ export interface ReducedConcealment {
 // Entrada del Reducer
 // ─────────────────────────────────────────────────────────────────────────────
 
+/** A numeric contribution keeps mechanical source distinct from application identity. */
+export interface NumericContribution {
+  readonly trace: Omit<ModifierTrace, "status" | "reason">;
+  readonly sourceKey: string;
+  readonly policy: StackingPolicy;
+}
+
 export interface EffectReductionInput<TCatalog extends Record<string, EffectDefinition>> {
   readonly effectInstances: readonly EffectInstance<keyof TCatalog & string>[];
   readonly targetId: string;
   readonly catalog: TCatalog;
+  readonly numericContributions?: readonly NumericContribution[];
+  readonly includeNumeric?: boolean;
 }
 
 function greatestCommonDivisor(a: number, b: number): number {
@@ -151,30 +163,6 @@ function validateConcealmentContribution(effectId: string, contribution: Conceal
  * Una fuente realmente global debe indicarlo explícitamente mediante type="system".
  * Si se requiere unique_by_source pero la fuente carece de id Y no es "system", se rechaza.
  */
-function resolveSourceKey(
-  source: EffectInstance["source"],
-  policy: StackingPolicy,
-  effectInstanceId: string,
-  modifierId: string
-): string {
-  if (policy !== "unique_by_source") {
-    return `${source.type}:${source.id ?? effectInstanceId}`;
-  }
-  // unique_by_source requiere identidad estable
-  if (source.type === "system") {
-    return "system:global";
-  }
-  if (!source.id) {
-    throw new Error(
-      `[EffectReducer] Política unique_by_source rechazada: el modificador "${modifierId}" ` +
-      `de la instancia "${effectInstanceId}" tiene source.type="${source.type}" sin id explícito. ` +
-      `Una fuente sin id estable no puede participar en unique_by_source. ` +
-      `Proporciona source.id o usa source.type="system" para fuentes verdaderamente globales.`
-    );
-  }
-  return `${source.type}:${source.id}`;
-}
-
 /**
  * Clave de agrupación de stacking: stat + stackingGroup + polaridad.
  * Los valores cero no se clasifican como bonus ni penalty; se omiten.
@@ -275,6 +263,9 @@ function applyPolicy(
 // ─────────────────────────────────────────────────────────────────────────────
 
 export const EffectReducer = {
+  reduceNumericContributions(contributions: readonly NumericContribution[]) {
+    return this.reduceEffectsForTarget({ effectInstances: [], targetId: "", catalog: {}, numericContributions: contributions }).numericModifiers;
+  },
   /**
    * Compone las contribuciones de ocultacion aplicables a las perspectivas indicadas.
    * Una misma stackingKey representa una semantica identica; las claves distintas no
@@ -482,47 +473,19 @@ export const EffectReducer = {
           continue;
         }
 
-        if (modifier.type !== "numeric") continue;
-
-        const numMod = modifier;
-
-        // Omitir modificadores con value === 0
-        if (numMod.value === 0) continue;
-
-        const polarity: "bonus" | "penalty" = numMod.value > 0 ? "bonus" : "penalty";
-        const key = groupKey(numMod.stat, numMod.stackingGroup, polarity);
-
-        // Resolver sourceKey (puede lanzar para unique_by_source sin id)
-        const sourceKey = resolveSourceKey(inst.source, numMod.stackingPolicy, inst.instanceId, numMod.id);
-
-        const pending: PendingTrace = {
-          trace: {
-            effectId: String(inst.effectId),
-            effectInstanceId: inst.instanceId,
-            modifierId: numMod.id,
-            stat: numMod.stat,
-            stackingGroup: numMod.stackingGroup,
-            value: numMod.value
-          },
-          sourceKey,
-          policy: numMod.stackingPolicy
-        };
-
-        if (!groups.has(key)) {
-          groups.set(key, { policy: numMod.stackingPolicy, traces: [pending] });
-        } else {
-          const group = groups.get(key)!;
-          // Detectar políticas contradictorias
-          if (group.policy !== numMod.stackingPolicy) {
-            throw new Error(
-              `[EffectReducer] Políticas contradictorias en el grupo "${key}": ` +
-              `"${group.policy}" vs "${numMod.stackingPolicy}". ` +
-              `Todos los modificadores del mismo stat+stackingGroup+polaridad deben declarar la misma política.`
-            );
-          }
-          group.traces.push(pending);
-        }
       }
+    }
+
+    for (const pending of [...(input.includeNumeric === false ? [] : activeNumericContributions(effectInstances, targetId, catalog)), ...(input.numericContributions ?? [])].sort((a, b) =>
+      a.trace.effectId.localeCompare(b.trace.effectId) || a.trace.effectInstanceId.localeCompare(b.trace.effectInstanceId) || a.trace.modifierId.localeCompare(b.trace.modifierId))) {
+      const { trace, policy, sourceKey } = pending;
+      if (!Number.isFinite(trace.value) || !sourceKey) throw new Error("Invalid numeric contribution");
+      if (trace.value === 0) continue;
+      const key = groupKey(trace.stat, trace.stackingGroup, trace.value > 0 ? "bonus" : "penalty");
+      const group = groups.get(key);
+      if (group && group.policy !== policy) throw new Error(`[EffectReducer] Políticas contradictorias en el grupo "${key}".`);
+      if (group) group.traces.push(pending);
+      else groups.set(key, { policy, traces: [pending] });
     }
 
     // Resolver grupos y construir ReducedNumericModifier por stat

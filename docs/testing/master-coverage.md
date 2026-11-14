@@ -1,5 +1,23 @@
 # Master Testing Coverage
 
+## DT-013 — Acumulación de bonificadores
+
+La regresión de Haste ejecuta el productor real dos veces. Antes de la
+corrección obtuvo ataque 4 en lugar de 3. Después conserva +1 ataque y +10 ft
+con dos aplicaciones. Las [regresiones](../../tests/dt-013-stacking.test.mjs)
+cubren composición entre fuentes, excepciones SRD, penalizadores, CA
+contextual, recuperación del bono menor vigente y alcance por arma frente a
+toque corporal. Los [perfiles V6](../../tests/profileStorage.test.mjs) cubren
+el ida y vuelta de buffs tipados y opacos.
+
+Validación local: 1084/1084 globales, 17/17 de componentes, 145/145 WebSocket,
+39/39 Chromium, typecheck, build y diff check.
+
+Revisión arquitectónica independiente aprobada sobre el diff final.
+El revisor ejecutó 15/15 pruebas focalizadas y comprobó las correcciones
+posteriores de compatibilidad por inspección.
+
+
 ## DT-012 — Daño efectivo de arma
 
 La regresión de daño automático con fatiga reprodujo 7 puntos en lugar de 5
