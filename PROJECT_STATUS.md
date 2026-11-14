@@ -12,6 +12,7 @@
 ## Estado actual
 
 - Rama permanente de trabajo: `develop`. Rama estable: `master`.
+- Line of Effect para conjuros de objetivo directo integrado en `develop` mediante `0c58a8e`, con revisión independiente Nivel C aprobada. La [matriz de cobertura](docs/testing/master-coverage.md#line-of-effect-de-conjuros-directos) registra la validación local. Line of Effect para áreas queda pendiente.
 - DT-012 cerrado sobre `8045c504`, publicado en `develop`, con revisión independiente Nivel D aprobada. Alcance y exclusiones en la [deuda canónica](docs/technical-debt.md#dt-012).
 - DT-008 resuelto e integrado en `03854a9` mediante el PR #1. La [deuda técnica](docs/technical-debt.md#dt-008) y el [informe](docs/audits/dt-008-authorization.md) registran el cierre y su evidencia.
 - Última vertical funcional implementada: D-5 Editor Táctico de Mapas (MVP), conforme a su [NDD canónico](docs/designs/map-builder-mvp/design.md) y [plan](docs/designs/map-builder-mvp/implementation-plan.md); **CERRADA y TÉCNICAMENTE APROBADA** (Architecture Review sobre commit `6fd385b42b4dc51b8dcbb195108d7051a600944f`).
