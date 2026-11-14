@@ -576,9 +576,11 @@ export type DemoServerEvent =
 export type RoomInterruption = { kind: "move" | "run" | "withdraw" | "charge" | "cast-spell" | "resolve-attack" | "stand-up" };
 
 export type ServerEvent =
-  | { type: "hello"; participant: Participant; room: CombatRoom; catalog: GameCatalog; gmResumeToken?: string; interruption?: RoomInterruption }
+  | { type: "hello"; participant: Participant; room: CombatRoom; catalog: GameCatalog; gmResumeToken?: string; academy?: import("./academy.js").AcademyState; interruption?: RoomInterruption }
   | { type: "gm-resume-rejected"; reason: "active" | "unavailable" }
   | { type: "gm-session-heartbeat" }
   | { type: "room-update"; room: CombatRoom; interruption?: RoomInterruption }
   | { type: "error"; message: string }
+  | { type: "academy-state"; state: import("./academy.js").AcademyState }
+  | { type: "academy-exited" }
   | DemoServerEvent;

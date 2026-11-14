@@ -25,3 +25,5 @@ export * from "./geometry/spellArea.js";
 export * from "./demo/types.js";
 export * from "./demo/catalog.js";
 export type { ConfirmedSpatialTransition } from "./movementContracts.js";
+
+export * from "./academy.js";

@@ -1,6 +1,6 @@
 import { test, expect, type Page } from "@playwright/test";
 
-const ARTIFACTS_DIR = "C:/Users/lucia/OneDrive/Documentos/AGCLI-dnd-tactical-combat-assistant/docs/testing/evidence/d4-camera-occlusion";
+const ARTIFACTS_DIR = "test-results/d4-camera-occlusion";
 const RAW_ICON_IDS = ["shield", "swords", "sparkles", "skull", "crosshair", "footprints", "compass"];
 
 async function stepDemoOnce(page: Page) {
@@ -66,6 +66,7 @@ test.describe("Demostración Táctica Automática y Presentación 2.5D", () => {
 
     await page.goto("/");
 
+    await page.getByTestId("tutorials-btn").click();
     const startDemoBtn = page.getByTestId("start-demo-btn");
     await expect(startDemoBtn).toBeVisible();
     await startDemoBtn.click();
@@ -200,7 +201,7 @@ test.describe("Demostración Táctica Automática y Presentación 2.5D", () => {
     expect(page.url()).toMatch(/\/combat\/DM/);
 
     await exitDemoReliably(page);
-    await expect(page.getByTestId("start-demo-btn")).toBeVisible();
+    await expect(page.getByTestId("tutorials-btn")).toBeVisible();
 
     expect(consoleErrors).toEqual([]);
     expect(pageErrors).toEqual([]);
@@ -218,6 +219,7 @@ test.describe("Demostración Táctica Automática y Presentación 2.5D", () => {
     });
 
     await page.goto("/");
+    await page.getByTestId("tutorials-btn").click();
     await page.getByTestId("start-demo-btn").click();
     await expect(page.getByTestId("demo-panel")).toBeVisible();
 

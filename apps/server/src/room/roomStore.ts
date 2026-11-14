@@ -5,8 +5,10 @@ import type { CombatRoom, Participant, RoomInterruption, ServerEvent } from "@dn
 export const rooms = new Map<string, CombatRoom>();
 export const clients = new Map<WebSocket, Participant>();
 
+export const internalParticipants = new Map<string, Participant>();
+
 export function findParticipant(actorId: string): Participant | undefined {
-  return [...clients.values()].find((item) => item.id === actorId);
+  return [...clients.values()].find((item) => item.id === actorId) ?? internalParticipants.get(actorId);
 }
 
 export function register(socket: WebSocket, roomCode: string, name: string, role: Participant["role"]): Participant {

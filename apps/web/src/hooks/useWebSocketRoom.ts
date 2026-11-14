@@ -3,6 +3,9 @@ import type { FormEvent } from "react";
 import type {
   ClientCommand,
   CombatRoom,
+  AcademyCommand,
+  AcademyState,
+  AcademyScenarioId,
   DemoClientCommand,
   DemoSessionState,
   DemoSpeedMultiplier,
@@ -60,6 +63,7 @@ export function useWebSocketRoom({ onHello, onActiveTurnChanged }: { onHello: ()
   const [selectedHeroTemplateId, setSelectedHeroTemplateId] = useState("");
   const [selectedEnemyTemplateId, setSelectedEnemyTemplateId] = useState("");
   const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [academy, setAcademy] = useState<AcademyState | null>(null);
   const [demoSessionState, setDemoSessionState] = useState<DemoSessionState | null>(null);
   const demoSessionStateRef = useRef<DemoSessionState | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -69,7 +73,7 @@ export function useWebSocketRoom({ onHello, onActiveTurnChanged }: { onHello: ()
     setDemoSessionState(nextState);
   }
 
-  function connect(command: ClientCommand | DemoClientCommand | ResumeGmSessionCommand, attempt = 0) {
+  function connect(command: ClientCommand | DemoClientCommand | AcademyCommand | ResumeGmSessionCommand, attempt = 0) {
     window.clearTimeout(retryTimer.current);
     window.clearTimeout(handshakeTimer.current);
     const resuming = command.type === "resume-gm-session";
@@ -106,6 +110,7 @@ export function useWebSocketRoom({ onHello, onActiveTurnChanged }: { onHello: ()
         armWatchdog();
       }
       if (payload.type === "hello") {
+        setAcademy(payload.academy ?? null);
         established = true;
         window.clearTimeout(handshakeTimer.current);
         setReconnecting(false);
@@ -141,7 +146,9 @@ export function useWebSocketRoom({ onHello, onActiveTurnChanged }: { onHello: ()
       if (payload.type === "demo-session-state") {
         updateDemoSessionState(payload.state);
       }
-      if (payload.type === "demo-exited") {
+      if (payload.type === "academy-state") setAcademy(payload.state);
+      if (payload.type === "demo-exited" || payload.type === "academy-exited") {
+        setAcademy(null);
         activeCombatantIdRef.current = null;
         updateDemoSessionState(null);
         setRoom(null);
@@ -158,6 +165,7 @@ export function useWebSocketRoom({ onHello, onActiveTurnChanged }: { onHello: ()
     };
     function disconnect() {
       if (socketRef.current !== socket) return;
+      setAcademy(null);
       socketRef.current = null;
       socket.close();
       window.clearTimeout(handshakeTimer.current);
@@ -190,7 +198,7 @@ export function useWebSocketRoom({ onHello, onActiveTurnChanged }: { onHello: ()
     };
   }, [initialResume]);
 
-  function send(command: ClientCommand | DemoClientCommand) {
+  function send(command: ClientCommand | DemoClientCommand | AcademyCommand) {
     if (!socketRef.current || socketRef.current.readyState !== WebSocket.OPEN) {
       setError("La conexion WebSocket no esta lista.");
       return;
@@ -260,6 +268,9 @@ export function useWebSocketRoom({ onHello, onActiveTurnChanged }: { onHello: ()
     participant, room, catalog, interruption, selectedId, setSelectedId,
     selectedHeroTemplateId, setSelectedHeroTemplateId,
     selectedEnemyTemplateId, setSelectedEnemyTemplateId,
+    academy,
+    startAcademy: (scenarioId: AcademyScenarioId) => connect({ type: "start-academy", scenarioId }),
+    academyAction: (type: "exit-academy" | "restart-academy") => academy && send({ type, attemptId: academy.attemptId }),
     demoSessionState, reconnecting,
     error, setError, createRoom, joinRoom, roomCommand,
     startDemo, pauseDemo, resumeDemo, stepDemo, setDemoSpeed, restartDemo, exitDemo

@@ -3,19 +3,20 @@ import { lifeStatus, lifeStatusLabel, type CombatRoom, type Combatant } from "@d
 import { CombatantAvatar } from "../Board/sprites";
 import { Stat } from "../common";
 
-export function ResultScreen({ room }: { room: CombatRoom }) {
+export function ResultScreen({ room, academy }: { room: CombatRoom; academy?: { restart: () => void; exit: () => void } }) {
   const players = room.combatants.filter((combatant) => combatant.type === "player");
   const enemies = room.combatants.filter((combatant) => combatant.type === "enemy");
   const totalDamage = room.combatants.reduce((sum, combatant) => sum + combatant.stats.damageDealt, 0);
   const totalDistance = room.combatants.reduce((sum, combatant) => sum + combatant.stats.distanceMovedFeet, 0);
   const totalKills = room.combatants.reduce((sum, combatant) => sum + combatant.stats.kills, 0);
-  const title = room.outcome === "victory" ? "Victoria!" : "TPK!";
-  const subtitle = room.outcome === "victory" ? "Todos los enemigos han caido." : "Todos los heroes han muerto.";
+  const title = academy ? "Objetivo completado" : room.outcome === "victory" ? "Victoria!" : "TPK!";
+  const subtitle = academy ? "Tutorial completado." : room.outcome === "victory" ? "Todos los enemigos han caido." : "Todos los heroes han muerto.";
   return (
     <main className="end-shell">
       <section className={"end-hero " + room.outcome}>
-        <div className="end-title-row">{room.outcome === "victory" ? <Trophy size={34} /> : <Skull size={34} />}<div><p className="eyebrow">Sala {room.code}</p><h1>{title}</h1></div></div>
+        <div className="end-title-row">{academy || room.outcome === "victory" ? <Trophy size={34} /> : <Skull size={34} />}<div><p className="eyebrow">Sala {room.code}</p><h1>{title}</h1></div></div>
         <p>{subtitle}</p>
+        {academy && <><button onClick={academy.restart}>Reiniciar</button><button onClick={academy.exit}>Volver al menú</button></>}
         <div className="summary-grid">
           <Stat icon={<BarChart3 size={16} />} label="Rondas" value={String(room.round)} />
           <Stat icon={<Swords size={16} />} label="Daño total" value={String(totalDamage)} />

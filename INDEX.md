@@ -59,6 +59,7 @@ tienen consumidores y granularidad diferentes y no redefinen Rule IDs.
 
 - [`docs/adr/`](docs/adr/): decisiones arquitectónicas estables.
 - [`docs/designs/`](docs/designs/): NDD y planes por vertical.
+  - [Academia de Combate](docs/designs/combat-academy.md): diagnóstico, arquitectura y plan propuestos.
   - [`docs/designs/scripted-combat-demo.md`](docs/designs/scripted-combat-demo.md): NDD de demo táctica automática por comandos reales, escenas, aislamiento y controles de reproducción (aprobado).
   - [`docs/designs/scripted-combat-demo/implementation-plan.md`](docs/designs/scripted-combat-demo/implementation-plan.md): plan de implementación ejecutable de la demo táctica automática.
   - [`docs/designs/spatial-engine-2.5d.md`](docs/designs/spatial-engine-2.5d.md): NDD Oficial del Motor Espacial 3D Discreto y Presentación 2.5D.

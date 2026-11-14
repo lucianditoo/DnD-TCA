@@ -1,3 +1,4 @@
+import { closeAcademy, handleAcademyCommand } from "./academy/session.js";
 import cors from "cors";
 import express from "express";
 import http from "node:http";
@@ -20,6 +21,7 @@ app.get("/health", (_req, res) => res.json({ ok: true }));
 
 if (process.env.TEST_MODE === "true") {
   app.post("/api/test/reset", (_req, res) => {
+    for (const socket of clients.keys()) closeAcademy(socket);
     resetAllRoomsForTest();
     res.json({ ok: true, message: "System reset for test" });
   });
@@ -70,6 +72,11 @@ wss.on("connection", (socket, request) => {
     }
 
     try {
+      if (rawData && typeof rawData === "object" && "type" in rawData &&
+          (rawData.type === "start-academy" || rawData.type === "restart-academy" || rawData.type === "exit-academy")) {
+        handleAcademyCommand(socket, rawData);
+        return;
+      }
       if (
         typeof rawData === "object" &&
         rawData !== null &&
@@ -112,6 +119,7 @@ wss.on("connection", (socket, request) => {
     }
   });
   socket.on("close", () => {
+    closeAcademy(socket);
     destroyDemoSessionBySocket(socket);
     clients.delete(socket);
   });

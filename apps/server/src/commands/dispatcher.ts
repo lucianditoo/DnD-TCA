@@ -1,3 +1,6 @@
+import { randomUUID } from "node:crypto";
+import { executeAcademyAction, getAcademyAttempt, isAcademyRoom } from "../academy/session.js";
+import { internalParticipants } from "../room/roomStore.js";
 import { rollDice } from "../combat/diceRoller.js";
 import type { WebSocket } from "ws";
 import { createCombatRulesSnapshot, getEffectiveAbilityModifier, lifeStatus, makeLog, Rules, SpellsCatalog, type CombatRoom, type ClientCommand } from "@dnd-tactical/shared";
@@ -166,12 +169,15 @@ function resumeStationaryAction(room: CombatRoom, context?: InternalExecutionCon
 }
 
 export function dispatchCommand(socket: WebSocket, command: ClientCommand, allowGmResume = false): void {
+  if (getAcademyAttempt(socket) && (command.type === "create-room" || command.type === "join-room")) {
+    throw new Error("Salí de la Academia antes de entrar en otra sala.");
+  }
   if (command.type === "create-room") {
     handleCreateRoom(socket, command, allowGmResume);
     return;
   }
   if (command.type === "join-room") {
-    if (isDemoRoom(command.roomCode)) {
+    if (isDemoRoom(command.roomCode) || isAcademyRoom(command.roomCode)) {
       throw new Error("No se permite unirse manualmente a una sala de demostracion.");
     }
     handleJoinRoom(socket, command);
@@ -185,7 +191,32 @@ export function dispatchCommand(socket: WebSocket, command: ClientCommand, allow
   if (!participant || participant.id !== command.actorId || participant.roomCode !== command.roomCode.toUpperCase()) {
     throw new Error("La conexion no esta autorizada para este participante y sala.");
   }
-  dispatchCommandCore(socket, { ...command, actorId: participant.id, roomCode: participant.roomCode });
+  const boundCommand = { ...command, actorId: participant.id, roomCode: participant.roomCode };
+  const attempt = getAcademyAttempt(socket);
+  if (isAcademyRoom(participant.roomCode)) {
+    if (!attempt || attempt.room.code !== participant.roomCode) throw new Error("Intento de Academia inválido.");
+    executeAcademyAction(socket, attempt, boundCommand, action => dispatchCommandCore(socket, action), () => {
+      const actorId = randomUUID();
+      const roomCode = attempt.room.code;
+      internalParticipants.set(actorId, { id: actorId, roomCode, role: "gm", name: "Instructor" });
+      try {
+        // Only server-owned reactions against the learner are driven internally.
+        for (const opportunity of [...attempt.room.pendingOpportunityAttacks]) {
+          if (!attempt.enemyIds.includes(opportunity.attackerId) || opportunity.targetId !== attempt.heroId) continue;
+          dispatchCommandCore(null, { type: "resolve-opportunity-attack", actorId, roomCode,
+            opportunityId: opportunity.id, d20Roll: null, damage: null, isAutoRoll: true });
+          if (attempt.room.activeAttackThreat?.attackerId === opportunity.attackerId) {
+            dispatchCommandCore(null, { type: "resolve-attack-confirmation", actorId, roomCode,
+              d20Roll: null, damage: null, isAutoRoll: true });
+          }
+        }
+      } finally {
+        internalParticipants.delete(actorId);
+      }
+    });
+    return;
+  }
+  dispatchCommandCore(socket, boundCommand);
 }
 
 export function dispatchInternalDemoCommand(

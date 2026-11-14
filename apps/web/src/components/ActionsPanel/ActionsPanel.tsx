@@ -27,6 +27,7 @@ export function ActionsPanel(props: {
   isInteractionLocked?: boolean;
   actionMode: ActionMode;
   tacticMode: TacticMode;
+  academyActionMode?: "move" | "ability";
   targetId: string;
   targetPosition?: import("@dnd-tactical/shared").Position | null;
   targets: Combatant[];
@@ -175,10 +176,10 @@ export function ActionsPanel(props: {
         <button onClick={props.onRollStabilization} disabled={actionDisabled || room.phase !== "active" || room.currentTurn.combatantId !== selected.id || room.currentTurn.usedStabilization}><HeartPulse size={16} /> Resolver estabilizacion</button>
       </div>}
       <div className="action-menu">
-        <button className={"action-button move " + (props.actionMode === "move" ? "active" : "")} onClick={() => props.onSelectActionMode("move")} disabled={actionDisabled}><Footprints size={18} /> Mover</button>
-        <button className={"action-button attack " + (props.actionMode === "attack" ? "active" : "")} style={grappleAttackBlocked ? { color: "var(--danger)", borderColor: "var(--danger)" } : undefined} title={grappleAttackBlocked ? grappleAttackEligibility?.error : undefined} onClick={() => props.onSelectActionMode("attack")} disabled={actionDisabled || grappleAttackBlocked}><Swords size={18} /> Atacar</button>
-        <button className={"action-button ability " + (props.actionMode === "ability" ? "active" : "")} onClick={() => props.onSelectActionMode("ability")} disabled={actionDisabled || selected.abilities.length === 0}><Sparkles size={18} /> Habilidad</button>
-        <button className={"action-button tactics " + (props.actionMode === "tactics" ? "active" : "")} onClick={() => props.onSelectActionMode("tactics")} disabled={actionDisabled}><Shield size={18} /> Tacticas</button>
+        <button className={"action-button move " + (props.actionMode === "move" ? "active" : "")} onClick={() => props.onSelectActionMode("move")} disabled={props.academyActionMode === "ability" || actionDisabled}><Footprints size={18} /> Mover</button>
+        <button className={"action-button attack " + (props.actionMode === "attack" ? "active" : "")} style={grappleAttackBlocked ? { color: "var(--danger)", borderColor: "var(--danger)" } : undefined} title={grappleAttackBlocked ? grappleAttackEligibility?.error : undefined} onClick={() => props.onSelectActionMode("attack")} disabled={!!props.academyActionMode || actionDisabled || grappleAttackBlocked}><Swords size={18} /> Atacar</button>
+        <button className={"action-button ability " + (props.actionMode === "ability" ? "active" : "")} onClick={() => props.onSelectActionMode("ability")} disabled={props.academyActionMode === "move" || actionDisabled || (selected.abilities.length === 0 && !selected.preparedSpells?.some(slot => !slot.isExpended))}><Sparkles size={18} /> Habilidad</button>
+        <button className={"action-button tactics " + (props.actionMode === "tactics" ? "active" : "")} onClick={() => props.onSelectActionMode("tactics")} disabled={!!props.academyActionMode || actionDisabled}><Shield size={18} /> Tacticas</button>
         <button className={"action-button inspect " + (props.actionMode === "inspect" ? "active" : "")} onClick={() => props.onSelectActionMode("inspect")}><MousePointer2 size={18} /> Ver</button>
       </div>
       {props.hasPendingOpportunities && <div className="rules-box">Hay ataques de oportunidad pendientes. Resolvelos o limpialos como GM antes de continuar con otras acciones.</div>}
@@ -188,7 +189,7 @@ export function ActionsPanel(props: {
         <div className="rules-box">{room.phase === "preparation" ? "Click en una casilla verde para colocar al combatiente seleccionado." : props.runArmed ? "Correr requiere un destino horizontal, vertical o diagonal de 45°." : "Click en casillas adyacentes para dibujar la ruta. El preview distingue legalidad y presupuesto; el servidor confirma el resultado."}</div>
         {props.movementPreview ? <>
           <MovementPreviewSummary preview={props.movementPreview} isWithdraw={props.previewKind === "withdraw"} isRun={props.previewKind === "run"} blockedReason={moveBlockedReason ?? null} />
-          {props.previewKind === "ordinary-move" && <label className="inline-check"><input data-testid="movement-tumble" type="checkbox" checked={props.isAcrobatic ?? false} onChange={event => props.onAcrobaticChange?.(event.target.checked)} /> Tumble (Acrobacias)</label>}
+          {!props.academyActionMode && props.previewKind === "ordinary-move" && <label className="inline-check"><input data-testid="movement-tumble" type="checkbox" checked={props.isAcrobatic ?? false} onChange={event => props.onAcrobaticChange?.(event.target.checked)} /> Tumble (Acrobacias)</label>}
         </> : room.phase !== "preparation" && <div className="rules-box">Movimiento usado: {room.currentTurn.movementUsedFeet} ft - Disponible: {Math.max(0, (movementProjection?.total ?? 0) - room.currentTurn.movementUsedFeet)} ft - Ruta: {props.movementPathCost} ft - Paso 5 ft: {room.currentTurn.usedFiveFootStep ? "si" : "no"}</div>}
         {movementProjection && movementProjection.rateTraces.length > 0 && <div className="rules-box" data-testid="movement-speed-preview">Velocidad efectiva: {movementProjection.total} ft ({movementProjection.parts.join(", ")})</div>}
         {props.isMoveDestinationOccupied && <div className="rules-box error-text">No puedes terminar tu movimiento en una casilla ocupada.</div>}
@@ -535,7 +536,7 @@ export function ActionsPanel(props: {
                   className="primary" 
                   style={{ marginTop: "0.5rem", width: "100%" }}
                   onClick={() => props.onCastSpell?.(activeSlot.slotId)}
-                  disabled={actionDisabled || room.phase !== "active" || props.hasPendingOpportunities || activeSlot.isExpended || !props.targetId || isOutOfRange}
+                  disabled={actionDisabled || room.phase !== "active" || props.hasPendingOpportunities || activeSlot.isExpended || (spellDef.target === "area" ? !props.targetPosition : !props.targetId || isOutOfRange)}
                 >
                   <Sparkles size={16} /> Lanzar {spellDef.name}
                 </button>
