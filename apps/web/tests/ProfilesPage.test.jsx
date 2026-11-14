@@ -54,7 +54,7 @@ it("edita el perfil elegido sin duplicarlo ni modificar el otro", async () => {
   expect(button(/Lira veterana/)).toBeTruthy();
 });
 
-it("persiste el mínimo de 1 HP al guardar un valor de cero", async () => {
+it("muestra y persiste el mínimo de 1 HP al guardar un valor de cero", async () => {
   const user = userEvent.setup();
   const page = render(<ProfilesPage />);
   await create(user, "Heroe", "Lira");
@@ -63,6 +63,7 @@ it("persiste el mínimo de 1 HP al guardar un valor de cero", async () => {
   await user.type(hp, "0");
   await user.click(button("Guardar perfil"));
   expect(stored()[0].hpMax).toBe(1);
+  expect(screen.getByRole("spinbutton", { name: "HP max" }).value).toBe("1");
   page.unmount();
 
   render(<ProfilesPage />);

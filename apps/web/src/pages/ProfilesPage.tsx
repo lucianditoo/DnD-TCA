@@ -18,8 +18,7 @@ export function ProfilesPage() {
   }
 
   function save(profile: StoredProfile) {
-    saveProfile(profile);
-    setDraft(profile);
+    setDraft(saveProfile(profile));
   }
 
   function duplicate(profile: StoredProfile) {

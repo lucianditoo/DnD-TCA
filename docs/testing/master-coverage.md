@@ -16,7 +16,8 @@ funciones de `ActionsPanel.tsx`. Estas cifras corresponden solo a ese archivo.
 
 Las [cuatro pruebas de componente](../../apps/web/tests/ProfilesPage.test.jsx)
 ejercitan creación y recarga desde almacenamiento local, edición sin duplicar
-ni alterar otro perfil, normalización de HP al guardar y aviso ante un registro
+ni alterar otro perfil, normalización de HP visible al guardar y tras recargar,
+y aviso ante un registro
 incompatible. La suite web completa pasó 16/16.
 V8 midió 89,58 % de líneas y sentencias, 72,72 % de ramas y 54,54 % de funciones
 en `ProfilesPage.tsx`. La medición no incluye la cobertura interna de sus hijos.

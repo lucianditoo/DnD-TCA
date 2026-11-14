@@ -65,6 +65,7 @@ export function useStoredProfiles() {
       updatedAt: new Date().toISOString()
     };
     setProfiles((current) => current.map((item) => item.id === normalized.id ? normalized : item));
+    return normalized;
   }
 
   function duplicateProfile(profile: StoredProfile): StoredProfile {
