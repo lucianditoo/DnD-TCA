@@ -86,3 +86,11 @@ export const gmRemoveEffectSchema = z.object({
   actorId: z.string().min(1),
   instanceId: z.string().min(1)
 });
+
+export const gmUndoTurnSchema = z.object({
+  type: z.literal("gm-undo-turn"),
+  roomCode: z.string().min(1),
+  actorId: z.string().min(1),
+  steps: z.number().int().min(1).max(10).optional(),
+  stateVersion: z.number().int().min(0).optional()
+});

@@ -15,6 +15,7 @@ import { broadcast, createRoomCode, findParticipant, issueGmResumeToken, registe
 export function handleCreateRoom(socket: WebSocket, command: Extract<ClientCommand, { type: "create-room" }>, allowResume = false): void {
   const code = createRoomCode();
   const room = createEmptyRoom(code);
+  room.stateVersion = 0;
   const participant = register(socket, code, command.name || "GM", "gm");
   rooms.set(code, room);
   const gmResumeToken = allowResume ? issueGmResumeToken(participant) : undefined;

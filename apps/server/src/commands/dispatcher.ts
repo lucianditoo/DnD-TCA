@@ -7,7 +7,7 @@ import { createCombatRulesSnapshot, getEffectiveAbilityModifier, lifeStatus, mak
 import { handleResolveAttack, handleResolveOpportunityAttack, handleResolveAttackConfirmation, handleCancelAttackThreat } from "./attackCommands.js";
 import { handleResolveAbilityAttack, handleRollStabilization, handleUseAbility, handleCastSpell, validateSpellGeometry } from "./abilityCommands.js";
 import { handleAddCatalogCombatant, handleAddDemoCombatant, handleAddProfileCombatant } from "./combatantCommands.js";
-import { handleGmAddLog, handleGmApplyEffect, handleGmApplyEnvironmentalHazard, handleGmRemoveEffect, handleGmClearOpportunities, handleGmForceOutcome, handleGmMoveCombatant, handleGmSetHp, handleGmSetStatus, handleHealCombatant } from "./gmCommands.js";
+import { handleGmAddLog, handleGmApplyEffect, handleGmApplyEnvironmentalHazard, handleGmRemoveEffect, handleGmClearOpportunities, handleGmForceOutcome, handleGmMoveCombatant, handleGmSetHp, handleGmSetStatus, handleGmUndoTurn, handleHealCombatant } from "./gmCommands.js";
 import { handleEndTurn, handleSetInitiative, handleSortInitiative } from "./initiativeCommands.js";
 import { handleMoveCombatant, resumeMovement } from "./movementCommands.js";
 import { handleCreateRoom, handleJoinRoom, handleUpdateBoard } from "./roomCommands.js";
@@ -55,6 +55,14 @@ function dispatchCommandCore(
     }
   }
 
+  if (
+    command.type !== "gm-undo-turn" &&
+    room.stateVersion !== undefined &&
+    ("stateVersion" in command ? command.stateVersion ?? 0 : 0) !== room.stateVersion
+  ) {
+    throw new Error("Estado desactualizado (posible undo previo). Refresca estado.");
+  }
+
   authorizeRoomCommand(room, command);
 
   const pending = room.pendingStationaryAction;
@@ -99,6 +107,7 @@ function executeCommand(room: CombatRoom, command: Exclude<ClientCommand, { type
     case "resolve-grapple-escape": handleResolveGrappleEscape(room, command, context?.maneuverDiceSource); return;
     case "equip-item": handleEquipItem(room, command); return;
     case "unequip-item": handleUnequipItem(room, command); return;
+    case "gm-undo-turn": handleGmUndoTurn(room, command); return;
     case "heal-combatant": handleHealCombatant(room, command); return;
     case "gm-move-combatant": handleGmMoveCombatant(room, command); return;
     case "gm-set-hp": handleGmSetHp(room, command); return;

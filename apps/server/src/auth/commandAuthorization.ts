@@ -1,6 +1,7 @@
 import { currentCombatant, type ClientCommand, type CombatRoom } from "@dnd-tactical/shared";
 import { findCombatant } from "../room/roomState.js";
 import { findParticipant } from "../room/roomStore.js";
+import { isExcludedFromHistory, MAX_UNDO_STEPS } from "../room/roomHistory.js";
 import { requireCombatantControl, requireGM, requireInitiativeControl, requireTurnControl } from "./control.js";
 
 export type RoomCommand = Exclude<ClientCommand, { type: "create-room" | "join-room" }>;
@@ -77,6 +78,21 @@ export const commandAuthorizationPolicies: PolicyMap = Object.freeze({
   "end-turn": (room, command) => {
     const outgoing = currentCombatant(room);
     if (outgoing) requireTurnControl(command.actorId, outgoing);
+  },
+  "gm-undo-turn": (room, command) => {
+    const participant = findParticipant(command.actorId);
+    if (!participant || participant.role !== "gm") {
+      throw new Error("Solo el GM puede retroceder turnos.");
+    }
+    if (room.phase !== "active") {
+      throw new Error("Retroceder turno solo esta disponible en combate activo.");
+    }
+    if (isExcludedFromHistory(room)) {
+      throw new Error("Retroceder turno no esta disponible en Academia o Demo.");
+    }
+    if (command.steps !== undefined && (!Number.isInteger(command.steps) || command.steps < 1 || command.steps > MAX_UNDO_STEPS)) {
+      throw new Error("Cantidad de turnos a retroceder invalida.");
+    }
   }
 } satisfies PolicyMap);
 

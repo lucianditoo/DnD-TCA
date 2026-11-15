@@ -13,9 +13,19 @@ export function validateClientCommand(raw: unknown): { success: true; data: Clie
     return { success: false, error: `Validación de comando fallida: Tipo de comando desconocido '${rawObj.type}'.` };
   }
 
-  const result = schema.safeParse(raw);
+  const isRoomAction = rawObj.type !== "create-room" && rawObj.type !== "join-room" && rawObj.type !== "gm-undo-turn";
+  const { stateVersion, ...payload } = rawObj;
+  if (isRoomAction && stateVersion !== undefined &&
+      (typeof stateVersion !== "number" || !Number.isSafeInteger(stateVersion) || stateVersion < 0)) {
+    return { success: false, error: "Validación de comando fallida: stateVersion inválida." };
+  }
+  const result = schema.safeParse(isRoomAction ? payload : raw);
   if (result.success) {
-    return { success: true, data: result.data as ClientCommand };
+    const data = result.data as ClientCommand;
+    if (isRoomAction && typeof stateVersion === "number" && "actorId" in data) {
+      return { success: true, data: { ...data, stateVersion } };
+    }
+    return { success: true, data };
   }
   const errorMsg = result.error.issues
     .map((issue) => {

@@ -3,6 +3,7 @@ import { currentCombatant, lifeStatus, makeLog, type ClientCommand, type CombatR
 import { requireGM, requireInitiativeControl, requireTurnControl } from "../auth/control.js";
 import { expireStartOfTurnBuffs } from "../combat/buffRules.js";
 import { advanceTurn, emptyTurn, emitCombatEvent } from "../combat/turnManager.js";
+import { roomHistory } from "../room/roomHistory.js";
 import { findCombatant } from "../room/roomState.js";
 import { broadcast } from "../room/roomStore.js";
 
@@ -64,6 +65,7 @@ export function handleSortInitiative(room: CombatRoom, command: Extract<ClientCo
   }
 
   room.log.unshift(makeLog("turn", active ? "Combate en curso. Ronda " + room.round + ". Turno de " + active.name + "." : "No hay iniciativas cargadas."));
+  roomHistory.pushTurnCheckpoint(room.code, room);
   broadcast(room);
 }
 
@@ -76,5 +78,6 @@ export function handleEndTurn(room: CombatRoom, command: Extract<ClientCommand, 
   const active = currentCombatant(room);
   room.currentTurn = emptyTurn(active?.id ?? null);
   room.log.unshift(makeLog("turn", (outgoing?.name ?? "Combatiente") + " termina turno. Ahora actua " + (active?.name ?? "nadie") + ". Ronda " + room.round + "."));
+  roomHistory.pushTurnCheckpoint(room.code, room);
   broadcast(room);
 }

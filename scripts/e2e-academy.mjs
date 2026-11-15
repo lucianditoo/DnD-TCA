@@ -24,6 +24,9 @@ const visitor = await connect();
 try {
   player.send({ type: "start-academy", scenarioId: "camera" });
   const initial = await player.next("hello");
+  assert.equal(initial.room.stateVersion, undefined);
+  player.send({ type: "gm-undo-turn", actorId: initial.participant.id, roomCode: initial.room.code, steps: 1 });
+  assert.match((await player.next("error")).message, /no disponible en este tutorial/i);
   visitor.send({ type: "join-room", name: "Visitante", role: "player", roomCode: initial.room.code });
   await visitor.next("error");
   player.send({ type: "end-turn", actorId: initial.participant.id, roomCode: initial.room.code });

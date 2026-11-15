@@ -1,8 +1,9 @@
-import { applyHealing, lifeStatus, lifeStatusLabel, makeLog, normalizeLifeStateAfterHpChange, type ClientCommand, type CombatRoom, EffectManager, isProductionEffectId, effectsCatalog, cryptoId, type EffectInstance, type EffectDefinition, type ProductionEffectId } from "@dnd-tactical/shared";
+import { applyHealing, currentCombatant, lifeStatus, lifeStatusLabel, makeLog, normalizeLifeStateAfterHpChange, type ClientCommand, type CombatRoom, EffectManager, isProductionEffectId, effectsCatalog, cryptoId, type EffectInstance, type EffectDefinition, type ProductionEffectId } from "@dnd-tactical/shared";
 import { requireGM } from "../auth/control.js";
 import { applyGMStatus } from "../gm/gmState.js";
 import { checkCombatOutcome, findCombatant, formatCell, isCombatantInsideBoard, isCellOccupied, logStatusChange, syncEncounterPhase } from "../room/roomState.js";
-import { broadcast } from "../room/roomStore.js";
+import { broadcast, rooms } from "../room/roomStore.js";
+import { isExcludedFromHistory, MAX_UNDO_STEPS, roomHistory } from "../room/roomHistory.js";
 import { commitSpatialTransition } from "../combat/spatialTransition.js";
 
 export function handleHealCombatant(room: CombatRoom, command: Extract<ClientCommand, { type: "heal-combatant" }>): void {
@@ -72,7 +73,10 @@ export function handleGmForceOutcome(room: CombatRoom, command: Extract<ClientCo
   requireGM(command.actorId);
   room.outcome = command.outcome;
   room.completedAt = command.outcome === "ongoing" ? null : new Date().toISOString();
-  if (command.outcome !== "ongoing") room.pendingOpportunityAttacks = [];
+  if (command.outcome !== "ongoing") {
+    room.pendingOpportunityAttacks = [];
+    roomHistory.clear(room.code);
+  }
   syncEncounterPhase(room);
   room.log.unshift(makeLog("system", "GM fuerza resultado: " + command.outcome + "."));
   broadcast(room);
@@ -158,4 +162,51 @@ export function handleGmApplyEnvironmentalHazard(room: CombatRoom, command: Extr
   room.log.unshift(makeLog("status", "GM ancla el peligro ambiental " + command.effectId + " sobre " + command.targetCells.length + " celda(s)."));
   checkCombatOutcome(room);
   broadcast(room);
+}
+
+function repairUntilTurnAnchors(room: CombatRoom): void {
+  const validAnchors = new Set(
+    room.turnOrder.filter((id) => room.combatants.some((c) => c.id === id && lifeStatus(c) !== "dead"))
+  );
+  const fallbackAnchor = room.turnOrder.find((id) => validAnchors.has(id));
+  room.effectInstances = room.effectInstances.flatMap((effect) => {
+    if (effect.duration?.type === "until_turn" && effect.duration.anchorCombatantId) {
+      if (!validAnchors.has(effect.duration.anchorCombatantId)) {
+        if (!fallbackAnchor) return [];
+        return [{
+          ...effect,
+          duration: { ...effect.duration, anchorCombatantId: fallbackAnchor }
+        }];
+      }
+    }
+    return [effect];
+  });
+}
+
+export function handleGmUndoTurn(room: CombatRoom, command: Extract<ClientCommand, { type: "gm-undo-turn" }>): void {
+  if (isExcludedFromHistory(room)) throw new Error("Retroceder turno no está disponible en esta sala.");
+  const steps = Math.min(command.steps ?? 1, MAX_UNDO_STEPS);
+  const checkpoint = roomHistory.popTurnCheckpoints(room.code, steps);
+  if (!checkpoint) {
+    throw new Error("No hay historial suficiente para retroceder.");
+  }
+
+  const restoredRoom = structuredClone(checkpoint.room);
+  restoredRoom.completedAt = null;
+  restoredRoom.pendingStationaryAction = undefined;
+  restoredRoom.pendingMovement = undefined;
+  restoredRoom.stateVersion = (room.stateVersion ?? 0) + 1;
+
+  repairUntilTurnAnchors(restoredRoom);
+
+  const active = currentCombatant(restoredRoom);
+  restoredRoom.log.unshift(
+    makeLog(
+      "system",
+      `GM retrocedio ${steps} turno(s). Ronda ${restoredRoom.round}, turno de ${active?.name ?? "nadie"}.`
+    )
+  );
+
+  rooms.set(room.code, restoredRoom);
+  broadcast(restoredRoom);
 }

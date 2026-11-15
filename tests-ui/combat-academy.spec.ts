@@ -6,6 +6,7 @@ test("Academia: derrota, reinicio, victoria y vuelta al menú", async ({ page })
   await page.getByRole("button", { name: "Academia de Combate" }).click();
   await page.getByRole("button", { name: "Cámara y oclusión" }).click();
   await expect(page.getByRole("heading", { name: "Cámara y oclusión" })).toBeVisible();
+  await expect(page.getByRole("button", { name: /Retroceder turno/i })).toHaveCount(0);
   await page.getByRole("button", { name: "Finalizar turno del tutorial" }).click();
   await expect(page.getByRole("heading", { name: "YOU FAILED" })).toBeVisible();
   await page.getByRole("button", { name: "Reiniciar" }).click();

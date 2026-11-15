@@ -25,6 +25,8 @@ import { TacticalScene3D } from "./renderer/TacticalScene3D";
 
 export function Board({
   movementPreview = null,
+  onGmUndoTurn,
+  canGmUndo = false,
   room,
   snapshot,
   selected,
@@ -40,6 +42,8 @@ export function Board({
   onCellClick
 }: {
   movementPreview?: MovementPreviewProjection | null;
+  onGmUndoTurn?: () => void;
+  canGmUndo?: boolean;
   room: CombatRoom;
   snapshot: CombatRulesSnapshot<ProductionEffectId>;
   selected: Combatant | null;
@@ -170,6 +174,24 @@ export function Board({
           ))}
         </div>
 
+        {onGmUndoTurn && (
+          <div className="board-toolbar-group" role="group" aria-label="Controles GM">
+            <button
+              type="button"
+              className="board-tool-btn"
+              title="Retroceder 1 turno"
+              data-testid="gm-undo-turn-btn"
+              disabled={!canGmUndo}
+              onClick={() => {
+                if (window.confirm("¿Retroceder 1 turno?")) {
+                  onGmUndoTurn();
+                }
+              }}
+            >
+              ↶ Retroceder turno
+            </button>
+          </div>
+        )}
         <div className="board-toolbar-group" role="group" aria-label="Zoom y restablecimiento de cámara">
           <button
             type="button"

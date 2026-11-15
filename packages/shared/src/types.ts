@@ -433,7 +433,7 @@ export interface PendingStationaryAction {
   actorRole: ParticipantRole;
 }
 
-export interface CombatRoom { pendingStationaryAction?: PendingStationaryAction; pendingMovement?: { kind: "move" | "run" | "withdraw" | "charge"; charge?: Extract<ClientCommand, { action: "charge" }>; exemptDepartureCells?: string[]; evadedReactors?: string[]; startedDisabled?: boolean; actorId: string; path: Position[]; remainingBudget: number; isAcrobatic: boolean; origin: Position }; code: string; board: Board; combatants: Combatant[]; turnOrder: string[]; activeTurnIndex: number; round: number; phase: EncounterPhase; outcome: CombatOutcome; completedAt: string | null; currentTurn: TurnState; pendingOpportunityAttacks: OpportunityAttack[]; log: CombatLogEntry[]; activeAttackThreat: AttackThreatState | null; pendingCoupDeGrace: PendingCoupDeGrace | null; effectInstances: EffectInstance<ProductionEffectId>[]; eventSequence: number; }
+export interface CombatRoom { pendingStationaryAction?: PendingStationaryAction; pendingMovement?: { kind: "move" | "run" | "withdraw" | "charge"; charge?: Extract<ClientCommand, { action: "charge" }>; exemptDepartureCells?: string[]; evadedReactors?: string[]; startedDisabled?: boolean; actorId: string; path: Position[]; remainingBudget: number; isAcrobatic: boolean; origin: Position }; code: string; board: Board; combatants: Combatant[]; turnOrder: string[]; activeTurnIndex: number; round: number; phase: EncounterPhase; outcome: CombatOutcome; completedAt: string | null; currentTurn: TurnState; pendingOpportunityAttacks: OpportunityAttack[]; log: CombatLogEntry[]; activeAttackThreat: AttackThreatState | null; pendingCoupDeGrace: PendingCoupDeGrace | null; effectInstances: EffectInstance<ProductionEffectId>[]; eventSequence: number; stateVersion?: number; }
 export interface CombatRulesSnapshot<TEffectId extends string = string> {
   readonly board: {
     readonly width: number;
@@ -465,7 +465,7 @@ export type SizedStructuralMatch<T, K> = {
   [P in keyof T]: P extends keyof K ? true : never;
 };
 
-type _EphemeralRoomKeys = "code" | "log" | "completedAt" | "outcome" | "turnOrder" | "activeTurnIndex" | "round" | "eventSequence" | "pendingStationaryAction" | "pendingMovement";
+type _EphemeralRoomKeys = "code" | "log" | "completedAt" | "outcome" | "turnOrder" | "activeTurnIndex" | "round" | "eventSequence" | "stateVersion" | "pendingStationaryAction" | "pendingMovement";
 type _RequiredSnapshotKeys = Omit<CombatRoom, _EphemeralRoomKeys>;
 type _RoomSnapshotExhaustiveGuard = SizedStructuralMatch<_RequiredSnapshotKeys, CombatRulesSnapshot>;
 type _AssertGuard<T extends Record<string, true>> = T;
@@ -481,9 +481,8 @@ export type AttackTarget =
   | { readonly kind: "combatant"; readonly combatantId: string }
   | { readonly kind: "square"; readonly position: Position };
 
-export type ClientCommand =
-  | { type: "create-room"; name: string }
-  | { type: "join-room"; roomCode: string; name: string; role: ParticipantRole }
+type RoomCommandPayload =
+  | { type: "gm-undo-turn"; roomCode: string; actorId: string; steps?: number; stateVersion?: number }
   | { type: "add-demo-combatant"; roomCode: string; actorId: string; variant: "hero" | "enemy" | "cedrick" | "ranger" }
   | { type: "add-catalog-combatant"; roomCode: string; actorId: string; templateId: string; category: "heroes" | "enemies" }
   | { type: "add-profile-combatant"; roomCode: string; actorId: string; profile: CreatureTemplate }
@@ -541,6 +540,11 @@ export type ClientCommand =
   | { type: "end-turn"; roomCode: string; actorId: string };
 
 export type DemoSpeedMultiplier = 0.5 | 1 | 2;
+
+export type ClientCommand =
+  | { type: "create-room"; name: string }
+  | { type: "join-room"; roomCode: string; name: string; role: ParticipantRole }
+  | (RoomCommandPayload & { stateVersion?: number });
 
 export type DemoClientCommand =
   | { type: "start-demo"; demoId: string; name?: string }

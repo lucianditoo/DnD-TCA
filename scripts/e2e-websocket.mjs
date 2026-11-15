@@ -71,6 +71,35 @@ await send(ownerA, { type: 'declare-attack-mode', roomCode: ownershipCode, actor
 await send(ownerA, { type: 'resolve-attack', roomCode: ownershipCode, actorId: ownerA.participant.id, attackerId: ownedEnemy.id, targetId: ownedBane.id, d20Roll: 20, damage: 1 });
 record('jugador no puede atacar con enemigos', ownerA.errors.some(e => /jugadores no pueden controlar enemigos/i.test(e)), ownerA.errors.join(' | '));
 
+const undoTurn = { type: 'gm-undo-turn', roomCode: ownershipCode, actorId: ownershipGmId, steps: 1 };
+const beforeUndo = JSON.stringify(ownershipGm.room);
+const playerUndoErrors = ownerA.errors.length;
+await send(ownerA, { ...undoTurn, actorId: ownerA.participant.id });
+record('Undo rechaza al jugador sin mutar la sala', ownerA.errors.length === playerUndoErrors + 1 && JSON.stringify(ownershipGm.room) === beforeUndo);
+
+await send(ownershipGm, undoTurn);
+record('Undo restaura el primer turno y publica la nueva versión a GM y jugador',
+  ownershipGm.room.stateVersion === 1 && ownerA.room.stateVersion === 1 &&
+  ownershipGm.room.currentTurn.combatantId === ownedBane.id &&
+  JSON.stringify(ownershipGm.room) === JSON.stringify(ownerA.room) &&
+  !ownershipGm.room.log.some(entry => entry.message.includes('intenta salvación de fortitude')));
+
+const afterUndo = JSON.stringify(ownershipGm.room);
+const gmUndoErrors = ownershipGm.errors.length;
+await send(ownershipGm, undoTurn);
+const undoRejected = ownershipGm.errors.length === gmUndoErrors + 1 &&
+  /historial suficiente/i.test(ownershipGm.errors.at(-1));
+await send(ownerA, { type: 'end-turn', roomCode: ownershipCode, actorId: ownerA.participant.id, stateVersion: 0 });
+record('Undo descarta la rama futura y rechaza comandos de la versión anterior',
+  undoRejected && /Estado desactualizado/i.test(ownerA.errors.at(-1)) &&
+  JSON.stringify(ownershipGm.room) === afterUndo);
+
+await send(ownerA, { type: 'end-turn', roomCode: ownershipCode, actorId: ownerA.participant.id, stateVersion: 1 });
+const advanced = ownerA.room.currentTurn.combatantId === ownedEnemy.id && ownerA.room.stateVersion === 1;
+await send(ownershipGm, undoTurn);
+record('Undo permite avanzar desde la restauración y volver a deshacer',
+  advanced && ownerA.room.currentTurn.combatantId === ownedBane.id && ownerA.room.stateVersion === 2);
+
 const resumeOwner = await connectAndSend({ type: 'create-room', name: 'GM reanudable' });
 const resumeCode = resumeOwner.room.code;
 const resumePlayer = await connectAndSend({ type: 'join-room', roomCode: resumeCode, name: 'Jugador', role: 'player' });

@@ -5,7 +5,7 @@ import { moveCombatantSchema } from "./movementCommands.js";
 import { resolveAttackSchema, resolveAttackConfirmationSchema, cancelAttackThreatSchema, resolveOpportunityAttackSchema } from "./attackCommands.js";
 import { useTacticalActionSchema, chooseAidBonusSchema, declareAttackModeSchema, cancelAttackModeSchema, resolveSavingThrowSchema, declareDodgeTargetSchema, resumeCoupDeGraceSchema } from "./tacticalCommands.js";
 import { useAbilitySchema, resolveAbilityAttackSchema, rollStabilizationSchema, castSpellSchema } from "./abilityCommands.js";
-import { healCombatantSchema, gmMoveCombatantSchema, gmSetHpSchema, gmSetStatusSchema, gmClearOpportunitiesSchema, gmAddLogSchema, gmApplyEffectSchema, gmApplyEnvironmentalHazardSchema, gmRemoveEffectSchema, gmForceOutcomeSchema } from "./gmCommands.js";
+import { healCombatantSchema, gmMoveCombatantSchema, gmSetHpSchema, gmSetStatusSchema, gmUndoTurnSchema, gmClearOpportunitiesSchema, gmAddLogSchema, gmApplyEffectSchema, gmApplyEnvironmentalHazardSchema, gmRemoveEffectSchema, gmForceOutcomeSchema } from "./gmCommands.js";
 import { setInitiativeSchema, sortInitiativeSchema, endTurnSchema } from "./initiativeCommands.js";
 import { resolveSpecialManeuverSchema } from "./specialManeuverCommands.js";
 import { equipItemSchema, unequipItemSchema } from "./equipmentCommands.js";
@@ -53,6 +53,7 @@ export const clientCommandSchema = z.union([
   gmMoveCombatantSchema,
   gmSetHpSchema,
   gmSetStatusSchema,
+  gmUndoTurnSchema,
   gmClearOpportunitiesSchema,
   gmAddLogSchema,
   gmApplyEffectSchema,
@@ -97,6 +98,7 @@ export const commandSchemasMap: Record<string, z.ZodTypeAny> = {
   "gm-move-combatant": gmMoveCombatantSchema,
   "gm-set-hp": gmSetHpSchema,
   "gm-set-status": gmSetStatusSchema,
+  "gm-undo-turn": gmUndoTurnSchema,
   "gm-clear-opportunities": gmClearOpportunitiesSchema,
   "gm-add-log": gmAddLogSchema,
   "gm-apply-effect": gmApplyEffectSchema,

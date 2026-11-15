@@ -8,7 +8,7 @@ import { authorizeRoomCommand, commandAuthorizationPolicies } from "../apps/serv
 import { validateClientCommand } from "../apps/server/src/validation/validateClientCommand.ts";
 
 function setup(t) {
-  const room = makeTestRoom({ code: "AUTH", combatants: [makeTestCombatant({
+  const room = makeTestRoom({ code: "AUTH", stateVersion: 0, combatants: [makeTestCombatant({
     controlledBy: { type: "player", participantId: "owner" }
   })] });
   const messages = [];
@@ -53,7 +53,7 @@ const overrideCases = [
   { type: "resolve-saving-throw", targetId: "hero-test" },
   { type: "resolve-opportunity-attack", opportunityId: "reaction" }, { type: "end-turn" }
 ];
-const gmCases = ["sort-initiative", "heal-combatant", "gm-move-combatant", "gm-set-hp", "gm-set-status",
+const gmCases = ["sort-initiative", "heal-combatant", "gm-move-combatant", "gm-set-hp", "gm-set-status", "gm-undo-turn",
   "gm-clear-opportunities", "gm-add-log", "gm-apply-effect", "gm-apply-environmental-hazard",
   "gm-remove-effect", "gm-force-outcome", "update-board"].map(type => ({ type }));
 const creationCases = [

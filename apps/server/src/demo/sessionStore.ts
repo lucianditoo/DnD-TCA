@@ -9,6 +9,7 @@ import {
   type Participant
 } from "@dnd-tactical/shared";
 import { clients, rooms } from "../room/roomStore.js";
+import { roomHistory } from "../room/roomHistory.js";
 
 export interface DemoSessionRecord {
   readonly sessionId: string;
@@ -128,6 +129,7 @@ export function destroyDemoSession(sessionId: string): DemoSessionRecord | undef
   const code = record.roomCode.toUpperCase();
   sessionByRoomCode.delete(code);
   rooms.delete(code);
+  roomHistory.clear(code);
   sessionsById.delete(sessionId);
   if (sessionBySocket.get(record.socket)?.sessionId === sessionId) {
     sessionBySocket.delete(record.socket);

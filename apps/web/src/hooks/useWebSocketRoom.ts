@@ -260,6 +260,10 @@ export function useWebSocketRoom({ onHello, onActiveTurnChanged }: { onHello: (a
 
   function roomCommand<T extends ClientCommand>(command: T) {
     if (!room || !participant || demoSessionStateRef.current) return;
+    if ("actorId" in command && command.type !== "gm-undo-turn" && room.stateVersion !== undefined) {
+      send({ ...command, stateVersion: room.stateVersion });
+      return;
+    }
     send(command);
   }
 
