@@ -1,8 +1,8 @@
 # Evidencias Visuales D-4 — Cámara y Oclusión 2.5D
 
-**Fecha**: 2026-11-14  
-**Commit**: `e8b73d7` (fix(d4): correct 3D occlusion for walls and token footprints)  
-**Rama**: `fix/d4-camera-occlusion`  
+**Fecha**: 2026-11-14
+**Commit**: `e8b73d7` (fix(d4): correct 3D occlusion for walls and token footprints)
+**Rama**: `fix/d4-camera-occlusion`
 **Base**: `develop` @ `23eb4bf`
 
 ---

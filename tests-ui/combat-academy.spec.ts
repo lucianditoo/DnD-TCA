@@ -85,3 +85,20 @@ test("Academia: el adversario resuelve el AdO y el aprendiz alcanza la meta", as
   await expect(page.getByRole("heading", { name: "Objetivo completado" })).toBeVisible();
   await expect(page.getByText(/el movimiento se interrumpió.*su AdO.*continuó hasta/)).toBeVisible();
 });
+
+test("Academia: el canvas permanece visible tras un clic en vista 2.5D con cámara rotada (SE)", async ({ page }) => {
+  await page.goto("/");
+  await page.getByRole("button", { name: "Tutoriales" }).click();
+  await page.getByRole("button", { name: "Academia de Combate" }).click();
+  await page.getByRole("button", { name: "Cámara y oclusión", exact: true }).click();
+  await page.getByTestId("camera-angle-se").click();
+  const canvas = page.locator("canvas").first();
+  await expect(canvas).toBeVisible();
+  const box = await canvas.boundingBox();
+  expect(box).not.toBeNull();
+  if (box) {
+    await page.mouse.click(box.x + box.width * 0.5, box.y + box.height * 0.5);
+  }
+  await expect(page.getByTestId("camera-angle-se")).toHaveAttribute("aria-pressed", "true");
+  await expect(canvas).toBeVisible();
+});

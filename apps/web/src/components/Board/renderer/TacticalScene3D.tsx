@@ -453,7 +453,7 @@ export function TacticalScene3D({
           new THREE.MeshBasicMaterial({
             color: token.isSelected ? 0xffd54f : factionColor,
             transparent: true,
-            opacity: token.isSelected ? 0.34 : 0.18,
+            opacity: token.isSelected ? 0.45 : 0.18,
             side: THREE.DoubleSide,
             depthWrite: false,
             depthTest: false
@@ -469,7 +469,7 @@ export function TacticalScene3D({
       }
 
       const ring = new THREE.Mesh(
-        new THREE.RingGeometry(token.isSelected ? 0.27 : 0.23, token.isSelected ? 0.36 : 0.31, 32),
+        new THREE.RingGeometry(token.isSelected ? 0.29 : 0.23, token.isSelected ? 0.40 : 0.31, 32),
         new THREE.MeshBasicMaterial({
           color: token.isSelected ? 0xffd54f : factionColor,
           transparent: true,
