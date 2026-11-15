@@ -1,11 +1,11 @@
 import { randomUUID } from "node:crypto";
 import type { WebSocket } from "ws";
 import {
-  academyScenarios, createCatalogCombatant, createCombatRulesSnapshot, createEmptyRoom, gameCatalog, lifeStatus,
+  academyScenarios, createCatalogCombatant, createCombatRulesSnapshot, createEmptyRoom, gameCatalog, lifeStatus, makeLog,
   projectSpellArea, SpellsCatalog, type AcademyCommand, type AcademyScenarioId, type AcademyState,
   type CombatRoom, type ClientCommand, type Participant
 } from "@dnd-tactical/shared";
-import { clients, createRoomCode, register, rooms, send } from "../room/roomStore.js";
+import { clients, createRoomCode, register, rooms, send, broadcast } from "../room/roomStore.js";
 
 interface Attempt {
   state: AcademyState;
@@ -105,15 +105,28 @@ export function executeAcademyAction(
   // Academy casts always use the real server default damage and saves.
   execute(command.type === "cast-spell" ? { ...command, amount: null, d20Roll: null }
     : command.type === "move-combatant" ? { ...command, isAcrobatic: false } : command);
-  const interrupted = Boolean(room.pendingMovement) && room.pendingOpportunityAttacks.some(attack =>
+  const reaction = room.pendingMovement && room.pendingOpportunityAttacks.find(attack =>
     enemyIds.includes(attack.attackerId) && attack.targetId === heroId);
+  const reactor = reaction && room.combatants.find(actor => actor.id === reaction.attackerId);
+  const reactionBefore = reactor && { name: reactor.name, hits: reactor.stats.hits, id: reactor.id };
+  const stoppedAt = { ...hero.position };
   runReactions();
   const current = room.combatants.find(actor => actor.id === heroId)!;
+  if (reactionBefore) {
+    const resolved = room.combatants.find(actor => actor.id === reactionBefore.id);
+    const hit = resolved && resolved.stats.hits > reactionBefore.hits;
+    const continued = !room.pendingMovement && (stoppedAt.x !== current.position.x ||
+      stoppedAt.y !== current.position.y || stoppedAt.zFeet !== current.position.zFeet);
+    room.log.unshift(makeLog("system",
+      `Academia: el movimiento se interrumpió en (${stoppedAt.x}, ${stoppedAt.y}). ${reactionBefore.name} ${hit ? "acertó" : "falló"} su AdO. ${
+        continued ? `El movimiento continuó hasta (${current.position.x}, ${current.position.y}).` : "El movimiento no continuó."} `.trim()));
+    broadcast(room);
+  }
   const spent = Boolean(current.preparedSpells[0]?.isExpended);
   const changedHp = (id: string) => room.combatants.find(actor => actor.id === id)!.hpCurrent !== before.find(actor => actor.id === id)!.hp;
   const reached = state.goal && current.position.x === state.goal.x && current.position.y === state.goal.y;
   const passed = fireball ? spent && projection?.ok && projection.earlyDetonation && changedHp(enemyIds[0]) && !changedHp(enemyIds[1])
-    : reached && (state.scenarioId !== "opportunity" || interrupted) && !room.pendingMovement;
+    : reached && (state.scenarioId !== "opportunity" || reactionBefore) && !room.pendingMovement;
   if (lifeStatus(current) !== "active" || command.type === "end-turn") {
     state.status = "failed";
     state.reason = "El turno terminó o el aprendiz quedó incapacitado.";

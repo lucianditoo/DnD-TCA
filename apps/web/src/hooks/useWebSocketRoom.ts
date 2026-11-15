@@ -44,7 +44,7 @@ function readResume(roomCode: string): ResumeGmSessionCommand | null {
 
 export type JoinMode = "gm" | "player";
 
-export function useWebSocketRoom({ onHello, onActiveTurnChanged }: { onHello: () => void; onActiveTurnChanged: (room: CombatRoom) => void }) {
+export function useWebSocketRoom({ onHello, onActiveTurnChanged }: { onHello: (academy: AcademyState | undefined) => void; onActiveTurnChanged: (room: CombatRoom) => void }) {
   const socketRef = useRef<WebSocket | null>(null);
   const activeCombatantIdRef = useRef<string | null>(null);
   const [name, setName] = useState("Lucia");
@@ -131,7 +131,7 @@ export function useWebSocketRoom({ onHello, onActiveTurnChanged }: { onHello: ()
         setSelectedEnemyTemplateId(payload.catalog.creatures.enemies[0]?.id ?? "");
         setSelectedId(payload.room.phase === "active" ? nextActiveId : payload.room.combatants[0]?.id ?? null);
         window.history.replaceState({}, "", "/combat/" + payload.room.code);
-        onHello();
+        onHello(payload.academy);
         setError(null);
       }
       if (payload.type === "room-update") {

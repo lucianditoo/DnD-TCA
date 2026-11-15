@@ -30,6 +30,8 @@ export function CombatantsPanel({
   canControlSelected,
   onDeclareDodgeTarget,
   isDemoActive = false,
+  isAcademy = false,
+  inspected,
   isInteractionLocked = false
 }: {
   room: CombatRoom;
@@ -57,11 +59,13 @@ export function CombatantsPanel({
   canControlSelected: boolean;
   onDeclareDodgeTarget: (combatantId: string, dodgeTargetId: string | null) => void;
   isDemoActive?: boolean;
+  isAcademy?: boolean;
+  inspected?: Combatant;
   isInteractionLocked?: boolean;
 }) {
   return <aside className="panel roster">
     <Collapsible title="Combatientes" defaultOpen preview={room.phase === "active" && active ? <CombatantPreview combatant={active} context={snapshot} /> : undefined}>
-      {!isDemoActive && (
+      {!isDemoActive && !isAcademy && (
         <div className="catalog-picker">
           <label>Perfiles guardados<select value={selectedProfileId} onChange={(event) => onProfileChange(event.target.value)}>
             <option value="">Elegir perfil</option>
@@ -85,12 +89,13 @@ export function CombatantsPanel({
         ))}
       </div>
     </Collapsible>
-    <Collapsible title="Iniciativa manual">
+    {!isAcademy && <Collapsible title="Iniciativa manual">
       <div className="initiative-list">
         {room.combatants.map((combatant) => <label key={combatant.id}>{combatant.name}<input type="number" defaultValue={combatant.initiative ?? ""} disabled={isInteractionLocked || !canEditInitiative(combatant)} onBlur={(event) => onSetInitiative(combatant, event.target.value)} /></label>)}
         <button className="primary" onClick={onSortInitiative} disabled={isInteractionLocked || !canStartCombat}>Iniciar combate</button>
       </div>
-    </Collapsible>
-    {selected && <SelectedInfo combatant={selected} room={room} snapshot={snapshot} attackerId={attackerId} canControlSelected={canControlSelected} onDeclareDodgeTarget={onDeclareDodgeTarget} />}
+    </Collapsible>}
+    {inspected && <p role="status">Inspeccionando a {inspected.name}. Seguís controlando a {selected?.name}.</p>}
+    {selected && <SelectedInfo combatant={inspected ?? selected} room={room} snapshot={snapshot} attackerId={attackerId} canControlSelected={!isAcademy && canControlSelected} onDeclareDodgeTarget={onDeclareDodgeTarget} />}
   </aside>;
 }

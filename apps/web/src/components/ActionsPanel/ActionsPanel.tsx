@@ -27,6 +27,7 @@ export function ActionsPanel(props: {
   isInteractionLocked?: boolean;
   actionMode: ActionMode;
   tacticMode: TacticMode;
+  academyIncompletePath?: boolean;
   academyActionMode?: "move" | "ability";
   targetId: string;
   targetPosition?: import("@dnd-tactical/shared").Position | null;
@@ -197,8 +198,11 @@ export function ActionsPanel(props: {
           {!props.runArmed && <button onClick={props.onUndoMovementStep} disabled={props.movementPathLength === 0}>Deshacer paso</button>}
           <button onClick={props.onClearMovementPath} disabled={props.movementPathLength === 0}>Limpiar ruta</button>
         </div>}
+        {props.academyIncompletePath && <p role="status" className="error-text">
+          Esta ruta no llega a la meta. Si la confirmás, gastarás tu única acción de movimiento y quizá debas reiniciar.
+        </p>}
         {room.phase === "active" && <button className="primary move-confirm" onClick={props.onConfirmMovementPath} disabled={actionDisabled || props.movementPathLength === 0 || props.hasPendingOpportunities || props.isMoveDestinationOccupied || !!props.fiveFootStepArmed || (!!props.movementPreview && (props.movementPreview.status !== "legal" || !!moveBlockedReason))}><Footprints size={18} /> {props.withdrawArmed ? "Confirmar Retirada" : props.runArmed ? "Confirmar Correr" : "Confirmar movimiento"}</button>}
-        {room.phase === "active" && (() => {
+        {!props.academyActionMode && room.phase === "active" && (() => {
           const withdrawal = props.withdrawAvailability;
           return <>
             <div className="rules-box" data-testid="withdraw-availability" style={{ marginTop: "0.75rem", borderTop: "1px solid var(--border)", paddingTop: "0.75rem" }}>
@@ -210,7 +214,7 @@ export function ActionsPanel(props: {
             <button data-testid="withdraw-mode" className={props.withdrawArmed ? "primary move-confirm" : "move-confirm"} onClick={props.onToggleWithdraw} disabled={!props.withdrawArmed && (actionDisabled || !withdrawal || !!withdrawal.blockedReason)}>{props.withdrawArmed ? "Cancelar Retirada" : withdrawal?.status === "ready" && withdrawal.variant === "limited" ? "Retirada limitada (×1 velocidad)" : "Retirarse (×2 velocidad)"}</button>
           </>;
         })()}
-        {(room.phase === "active" || props.runArmed) && <>
+        {!props.academyActionMode && (room.phase === "active" || props.runArmed) && <>
           <div className="rules-box" data-testid="run-availability">
             <strong>Correr (Run)</strong> — acción de asalto completo.
             {run?.status === "ready" && <p>Límite: {run.budgetFeet} ft (×{run.multiplier} velocidad).</p>}
@@ -225,7 +229,7 @@ export function ActionsPanel(props: {
             <Footprints size={18} /> {props.runArmed ? "Cancelar Correr" : "Correr (×4/×3 velocidad)"}
           </button>
         </>}
-        {room.phase === "active" && (() => {
+        {!props.academyActionMode && room.phase === "active" && (() => {
           const canStep = fiveFootStepAvailability?.ok === true;
           return <>
             <div className="rules-box" style={{ marginTop: "0.75rem", borderTop: "1px solid var(--border)", paddingTop: "0.75rem" }}>
@@ -443,7 +447,7 @@ export function ActionsPanel(props: {
         <div className="panel-title"><Sparkles size={18} /> Habilidades y Conjuros</div>
         
         {/* HABILIDADES COMUNES */}
-        {selected.abilities.length > 0 && <div className="rules-box" style={{ marginBottom: "1rem" }}>
+        {!props.academyActionMode && selected.abilities.length > 0 && <div className="rules-box" style={{ marginBottom: "1rem" }}>
           <strong>Aptitudes (Abilities)</strong><br />
           <label>Habilidad<select value={props.selectedAbilityId || props.selectedAbility?.id || ""} onChange={(event) => props.onSelectedAbilityChange(event.target.value)}><option value="">Elegir</option>{selected.abilities.map((ability) => <option key={ability.id} value={ability.id}>{ability.name}</option>)}</select></label>
           <label>Objetivo<select value={props.targetId} onChange={(event) => props.onTargetChange(event.target.value)}><option value="">Elegir</option>{props.abilityTargets.map((target) => <option key={target.id} value={target.id}>{target.name}</option>)}</select></label>
@@ -516,7 +520,11 @@ export function ActionsPanel(props: {
                     {` — éxito: ${spellDef.saveEffect === "half" ? "mitad de daño" : spellDef.saveEffect === "negates" ? "niega el efecto" : "sin mitigación"}`}<br />
                   </span>
                 )}
-                <label style={{ marginTop: "0.5rem", display: "block" }}>Objetivo<select value={props.targetId} onChange={(event) => props.onTargetChange(event.target.value)} style={{ width: "100%" }}><option value="">Elegir</option>{props.abilityTargets.map((target) => <option key={target.id} value={target.id}>{target.name}</option>)}</select></label>
+                {props.academyActionMode === "ability" && spellDef.target === "area"
+                  ? <p role="status">Elegí en el tablero el punto al que querés lanzar Fireball. {props.targetPosition
+                    ? `Casilla elegida: (${props.targetPosition.x}, ${props.targetPosition.y}).`
+                    : "Todavía no elegiste una casilla."} Si el proyectil choca con el muro, detonará antes.</p>
+                  : <label style={{ marginTop: "0.5rem", display: "block" }}>Objetivo<select value={props.targetId} onChange={(event) => props.onTargetChange(event.target.value)} style={{ width: "100%" }}><option value="">Elegir</option>{props.abilityTargets.map((target) => <option key={target.id} value={target.id}>{target.name}</option>)}</select></label>}
                 {(() => {
                   const provokesAoO = Rules.actionProvokesOpportunityAttack(snapshot, selected, "cast-spell");
                   return provokesAoO ? (
