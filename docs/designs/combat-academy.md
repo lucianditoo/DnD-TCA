@@ -95,3 +95,19 @@ la oclusión de píxeles y una selección nueva en WebGL requieren inspección v
 
 La revisión independiente aprobó arquitectura y autoridad. La integración
 queda pendiente de autorización del propietario.
+
+## Correcciones de UX de los pilotos
+
+Cámara y AdO explican que la ruta debe llegar a la meta en una sola acción.
+Si el borrador termina antes, se advierte antes de confirmar. Cuando el
+movimiento ya se gastó, el panel indica cómo reiniciar. El roster separa
+la inspección de la unidad controlada y conserva la ruta. Los controles de
+combate ajenos al piloto quedan ocultos o deshabilitados.
+
+Fireball muestra la casilla elegida como punto de lanzamiento. La selección
+se conserva si el servidor rechaza el comando y se limpia al recibir un
+intento nuevo. El log de AdO se genera en el servidor con la casilla de
+interrupción, el resultado de la reacción y la continuación observada.
+
+Los recorridos están cubiertos por [Chromium](../../tests-ui/combat-academy.spec.ts).
+Las pruebas de picking con cámara rotada continúan en el backlog visual.
