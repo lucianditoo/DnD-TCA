@@ -87,7 +87,7 @@ function CombatApp() {
       }
     },
     onActiveTurnChanged: (nextRoom) => {
-      const nextTurn = JSON.stringify([nextRoom.code, nextRoom.round, nextRoom.currentTurn.combatantId]);
+      const nextTurn = JSON.stringify([nextRoom.code, nextRoom.round, nextRoom.currentTurn.combatantId, nextRoom.stateVersion]);
       if (runTurnRef.current === nextTurn) return;
       setActionMode("inspect");
       setTargetId("");
@@ -144,7 +144,7 @@ function CombatApp() {
   const runAvailability = useMemo(() => getRunPreviewAvailability(rulesSnapshot, selected?.id ?? null, canControlSelected), [rulesSnapshot, selected?.id, canControlSelected]);
   useEffect(() => { setRunArmed(false); setRunDestination(null); }, [room?.code, room?.currentTurn.combatantId, room?.round, selected?.id]);
   useEffect(() => { if (previewKind !== "run") { setRunArmed(false); setRunDestination(null); } }, [previewKind]);
-  runTurnRef.current = runArmed && room ? JSON.stringify([room.code, room.round, room.currentTurn.combatantId]) : null;
+  runTurnRef.current = runArmed && room ? JSON.stringify([room.code, room.round, room.currentTurn.combatantId, room.stateVersion]) : null;
   const ordinaryMoveBlockedReason = getOrdinaryMoveBlockedReason(rulesSnapshot, selected?.id ?? null, canControlSelected);
   const canEndCurrentTurn = !isDemoActive && !isMapEditing && (participant?.role === "gm" || canParticipantControlCombatant(participant, active));
 

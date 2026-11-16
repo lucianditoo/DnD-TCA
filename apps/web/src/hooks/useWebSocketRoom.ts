@@ -47,6 +47,7 @@ export type JoinMode = "gm" | "player";
 export function useWebSocketRoom({ onHello, onActiveTurnChanged }: { onHello: (academy: AcademyState | undefined) => void; onActiveTurnChanged: (room: CombatRoom) => void }) {
   const socketRef = useRef<WebSocket | null>(null);
   const activeCombatantIdRef = useRef<string | null>(null);
+  const stateVersionRef = useRef<number | undefined>(undefined);
   const [name, setName] = useState("Lucia");
   const pathRoomCode = window.location.pathname.startsWith("/combat/") ? window.location.pathname.split("/")[2]?.toUpperCase() ?? "" : "";
   const [initialResume] = useState(() => readResume(pathRoomCode));
@@ -123,6 +124,7 @@ export function useWebSocketRoom({ onHello, onActiveTurnChanged }: { onHello: (a
         setRoomCode(payload.room.code);
         const nextActiveId = payload.room.phase === "active" ? getActiveCombatant(payload.room)?.id ?? null : null;
         activeCombatantIdRef.current = nextActiveId;
+        stateVersionRef.current = payload.room.stateVersion;
         setParticipant(payload.participant);
         setRoom(payload.room);
         setInterruption(payload.interruption ?? null);
@@ -136,8 +138,11 @@ export function useWebSocketRoom({ onHello, onActiveTurnChanged }: { onHello: (a
       }
       if (payload.type === "room-update") {
         const nextActiveId = payload.room.phase === "active" ? getActiveCombatant(payload.room)?.id ?? null : null;
-        if (nextActiveId !== activeCombatantIdRef.current) onActiveTurnChanged(payload.room);
+        if (nextActiveId !== activeCombatantIdRef.current || payload.room.stateVersion !== stateVersionRef.current) {
+          onActiveTurnChanged(payload.room);
+        }
         activeCombatantIdRef.current = nextActiveId;
+        stateVersionRef.current = payload.room.stateVersion;
         setRoom(payload.room);
         setInterruption(payload.interruption ?? null);
         setSelectedId((current) => payload.room.phase === "active" ? nextActiveId : current ?? payload.room.combatants[0]?.id ?? null);

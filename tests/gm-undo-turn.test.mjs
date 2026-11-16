@@ -2,7 +2,8 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import { makeTestRoom, makeTestCombatant } from "./test-utils.mjs";
 import { createEmptyRoom } from "@dnd-tactical/shared";
-import { hashRoom, RoomHistory } from "../apps/server/src/room/roomHistory.ts";
+import { hashRoom, HISTORY_TTL_MS, RoomHistory, roomHistory } from "../apps/server/src/room/roomHistory.ts";
+import { checkCombatOutcome } from "../apps/server/src/room/roomState.ts";
 import { clients, rooms } from "../apps/server/src/room/roomStore.ts";
 import { dispatchCommand } from "../apps/server/src/commands/dispatcher.ts";
 import { validateClientCommand } from "../apps/server/src/validation/validateClientCommand.ts";
@@ -94,6 +95,29 @@ test("hashRoom incluye la versión y conserva el orden significativo de los turn
   const room = { ...createEmptyRoom("UNDO1"), turnOrder: ["a", "b"], stateVersion: 0 };
   assert.notEqual(hashRoom(room), hashRoom({ ...room, stateVersion: 1 }));
   assert.notEqual(hashRoom(room), hashRoom({ ...room, turnOrder: ["b", "a"] }));
+});
+
+test("la poda global elimina un historial inactivo sin consultar su sala", () => {
+  const history = new RoomHistory();
+  const room = { ...createEmptyRoom("IDLE1"), phase: "active", stateVersion: 0 };
+  history.pushTurnCheckpoint(room.code, room);
+  history.history.get(room.code)[0].timestamp = Date.now() - HISTORY_TTL_MS - 1_000;
+  history.pruneAll();
+  assert.equal(history.history.has(room.code), false);
+});
+
+test("el cierre natural descarta checkpoints antes de una eventual reapertura", (t) => {
+  const room = makeTestRoom({ code: "END01", stateVersion: 0, combatants: [
+    makeTestCombatant({ id: "hero", type: "player" }),
+    makeTestCombatant({ id: "enemy", type: "enemy", hpCurrent: -10 }),
+  ] });
+  t.after(() => roomHistory.clear(room.code));
+  roomHistory.pushTurnCheckpoint(room.code, room);
+  roomHistory.pushTurnCheckpoint(room.code, room);
+  assert.equal(roomHistory.canUndo(room.code), true);
+  checkCombatOutcome(room);
+  assert.equal(room.phase, "finished");
+  assert.equal(roomHistory.canUndo(room.code), false);
 });
 
 test("Undo restaura el índice y el actor del mismo turno", (t) => {

@@ -109,6 +109,15 @@ export class RoomHistory {
     this.history.delete(roomCode);
     this.turnCounters.delete(roomCode);
   }
+
+  pruneAll(): void {
+    for (const roomCode of this.history.keys()) this.prune(roomCode);
+  }
+
+  clearAll(): void {
+    this.history.clear();
+    this.turnCounters.clear();
+  }
 }
 
 export const roomHistory = new RoomHistory();

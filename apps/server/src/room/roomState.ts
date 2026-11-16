@@ -1,4 +1,5 @@
 import { getCombatantOccupiedCells, lifeStatus, lifeStatusLabel, makeLog, type CombatRoom, type Combatant, type EffectInstance, type Position, type TurnState } from "@dnd-tactical/shared";
+import { roomHistory } from "./roomHistory.js";
 
 export function findCombatant(room: CombatRoom, id: string): Combatant {
   const combatant = room.combatants.find((item) => item.id === id);
@@ -32,6 +33,7 @@ export function checkCombatOutcome(room: CombatRoom): void {
 export function syncEncounterPhase(room: CombatRoom): void {
   if (room.outcome !== "ongoing") {
     room.phase = "finished";
+    roomHistory.clear(room.code);
   } else if (room.activeAttackThreat) {
     room.phase = "critical-confirmation";
   } else if (room.pendingOpportunityAttacks && room.pendingOpportunityAttacks.length > 0) {

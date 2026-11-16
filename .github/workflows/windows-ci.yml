@@ -100,6 +100,10 @@ jobs:
 
             & node scripts/e2e-websocket.mjs
             $e2eExitCode = $LASTEXITCODE
+            if ($e2eExitCode -eq 0) {
+              & node scripts/e2e-academy.mjs
+              $e2eExitCode = $LASTEXITCODE
+            }
           } catch {
             $failure = $_
           } finally {

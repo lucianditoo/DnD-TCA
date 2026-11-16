@@ -5,12 +5,13 @@ import { emptyTurn } from "../apps/server/src/combat/turnManager.ts";
 import { clients } from "../apps/server/src/room/roomStore.ts";
 
 /** Only transport/initial state are controlled: every confirmation runs the unchanged I10 handler. */
-async function fixture(page: Page, options: { heavy?: boolean; large?: boolean; height?: number } = {}) {
+async function fixture(page: Page, options: { heavy?: boolean; large?: boolean; height?: number; versioned?: boolean } = {}) {
   const actor = createDemoCombatant("hero",1,{type:"gm"});
   actor.position={x:2,y:2,zFeet:options.height??0}; actor.baseSpeedFeet=30; actor.equipmentSlots.armorItemId=null;
   if (options.heavy) { actor.inventory.push({ itemId: "heavy", catalogId: "banded_mail" }); actor.equipmentSlots.armorItemId = "heavy"; }
   if(options.large)actor.sizeCategory="large";
   const room=createEmptyRoom("I11UI"); room.board=structuredClone(room.board); room.phase="active"; room.combatants=[actor];room.turnOrder=[actor.id];room.currentTurn=emptyTurn(actor.id);
+  if (options.versioned) room.stateVersion = 0;
   room.board.difficultTerrainCells=[];
   if(options.large)room.board.narrowCells=Array.from({length:room.board.width*room.board.height},(_,i)=>`${i%room.board.width},${Math.floor(i/room.board.width)}`);
   let route: WebSocketRoute; let held=false;let pending:any;const intents:any[]=[];
@@ -33,6 +34,18 @@ async function fixture(page: Page, options: { heavy?: boolean; large?: boolean; 
 
 const confirm = (page: Page) => page.getByRole("button", { name: "Confirmar Correr", exact: true });
 const preview = (page: Page) => page.getByTestId("movement-preview");
+
+test("Undo invalida el borrador aunque conserve el actor activo", async ({ page }) => {
+  const f = await fixture(page, { versioned: true });
+  try {
+    await page.getByTestId("cell-4-4").click();
+    await expect(confirm(page)).toBeEnabled();
+    f.room.stateVersion = 1;
+    f.publish();
+    await expect(confirm(page)).toHaveCount(0);
+    expect(f.intents).toHaveLength(0);
+  } finally { f.cleanup(); }
+});
 
 test("I11 endpoint, two diagonals, destination-only intent and authoritative exposure", async ({ page }) => {
   const f = await fixture(page);

@@ -6,12 +6,20 @@ import https from "node:https";
 import { readFileSync } from "node:fs";
 import { TLSSocket } from "node:tls";
 import { WebSocketServer } from "ws";
+import { z } from "zod";
 import { gameCatalog, isDemoCommandType, resumeGmSessionSchema, validateDemoCommand } from "@dnd-tactical/shared";
 import { dispatchCommand } from "./commands/dispatcher.js";
 import { handleDemoCommand } from "./demo/demoCommands.js";
 import { destroyDemoSessionBySocket } from "./demo/sessionStore.js";
 import { clients, resumeGmSession, send, resetAllRoomsForTest } from "./room/roomStore.js";
 import { validateClientCommand } from "./validation/validateClientCommand.js";
+import { roomHistory } from "./room/roomHistory.js";
+
+const academyCommandSchema = z.discriminatedUnion("type", [
+  z.object({ type: z.literal("start-academy"), scenarioId: z.enum(["camera", "fireball", "opportunity"]) }).strict(),
+  z.object({ type: z.literal("restart-academy"), attemptId: z.string().uuid() }).strict(),
+  z.object({ type: z.literal("exit-academy"), attemptId: z.string().uuid() }).strict(),
+]);
 
 const PORT = Number(process.env.PORT ?? 3333);
 
@@ -23,6 +31,7 @@ if (process.env.TEST_MODE === "true") {
   app.post("/api/test/reset", (_req, res) => {
     for (const socket of clients.keys()) closeAcademy(socket);
     resetAllRoomsForTest();
+    roomHistory.clearAll();
     res.json({ ok: true, message: "System reset for test" });
   });
 }
@@ -48,7 +57,12 @@ const heartbeat = setInterval(() => {
   }
 }, 15_000);
 heartbeat.unref();
-wss.on("close", () => clearInterval(heartbeat));
+const historySweep = setInterval(() => roomHistory.pruneAll(), 5 * 60 * 1000);
+historySweep.unref();
+wss.on("close", () => {
+  clearInterval(heartbeat);
+  clearInterval(historySweep);
+});
 
 wss.on("connection", (socket, request) => {
   const peer = request.socket.remoteAddress;
@@ -74,7 +88,9 @@ wss.on("connection", (socket, request) => {
     try {
       if (rawData && typeof rawData === "object" && "type" in rawData &&
           (rawData.type === "start-academy" || rawData.type === "restart-academy" || rawData.type === "exit-academy")) {
-        handleAcademyCommand(socket, rawData);
+        const parsed = academyCommandSchema.safeParse(rawData);
+        if (!parsed.success) throw new Error("Comando de Academia inválido.");
+        handleAcademyCommand(socket, parsed.data);
         return;
       }
       if (

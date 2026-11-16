@@ -31,6 +31,8 @@ try {
   await visitor.next("error");
   player.send({ type: "end-turn", actorId: initial.participant.id, roomCode: initial.room.code });
   assert.equal((await player.next("academy-state")).state.status, "failed");
+  player.send({ type: "restart-academy", attemptId: initial.academy.attemptId, extra: true });
+  assert.match((await player.next("error")).message, /Comando de Academia inválido/);
   player.send({ type: "restart-academy", attemptId: initial.academy.attemptId });
   const next = await player.next("hello");
   assert.notEqual(next.room.code, initial.room.code);
