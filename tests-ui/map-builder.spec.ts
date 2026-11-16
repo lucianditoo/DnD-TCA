@@ -222,6 +222,42 @@ test.describe("Editor Táctico de Mapa (D-5 MVP)", () => {
     await expect(page.getByTestId("cell-4-4")).toHaveAttribute("data-scenic-prop", "loe-pillar");
   });
 
+  test("conserva barreras válidas al redimensionar y las quita al borrar", async ({ page }) => {
+    let board;
+    await page.routeWebSocket(/:3333\/?$/, socket => {
+      const server = socket.connectToServer();
+      server.onMessage(raw => {
+        const event = JSON.parse(String(raw));
+        if (event.type === "hello") {
+          server.send(JSON.stringify({
+            type: "update-board", roomCode: event.room.code, actorId: event.participant.id,
+            board: { ...event.room.board, lineOfEffectBlockingCells: ["3,3", "15,3"],
+              barrierCells: { "3,3": { hp: 2, hardness: 0 }, "15,3": { hp: 1, hardness: 1 } } },
+          }));
+        }
+        if (event.type === "room-update") board = event.room.board;
+        socket.send(raw);
+      });
+    });
+    await page.goto("/");
+    await page.getByRole("button", { name: "Crear sala" }).click();
+    await expect.poll(() => board?.barrierCells).toEqual({ "3,3": { hp: 2, hardness: 0 }, "15,3": { hp: 1, hardness: 1 } });
+    await page.getByTestId("view-mode-2d").click();
+    await page.getByTestId("map-editor-open-btn").click();
+    await page.getByTestId("map-editor-width").fill("14");
+    await page.getByTestId("map-editor-apply-dims").click();
+    await page.getByTestId("map-editor-save").click();
+    await expect(page.getByTestId("map-editor-toolbar")).not.toBeVisible();
+    await expect.poll(() => board?.barrierCells).toEqual({ "3,3": { hp: 2, hardness: 0 } });
+
+    await page.getByTestId("map-editor-open-btn").click();
+    await page.getByTestId("brush-clear").click();
+    await page.getByTestId("cell-3-3").click();
+    await page.getByTestId("map-editor-save").click();
+    await expect(page.getByTestId("map-editor-toolbar")).not.toBeVisible();
+    await expect.poll(() => board?.barrierCells).toEqual({});
+  });
+
   test("bloqueo completo de interacción de combate durante la edición del mapa", async ({ page }) => {
     await page.goto("/");
     await page.getByLabel("Nombre").fill("Master Lock");

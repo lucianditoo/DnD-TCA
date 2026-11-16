@@ -1,3 +1,4 @@
+import { averageDiceDamage } from "../equipmentStats.js";
 import { traversedCellKeysBetween } from "./gridTrace.js";
 import { footprintCellKey, getCombatantOccupiedCells, isPositionInsideBoard } from "../movementGeometry.js";
 import { lifeStatus } from "../lifeStatus.js";
@@ -11,7 +12,7 @@ const planarKey = ({ x, y }: Point) => `${x},${y}`;
 
 export type SpellAreaProjection =
   | { ok: false; error: string }
-  | { ok: true; origin: Point; earlyDetonation: boolean; cells: Position[]; affectedIds: string[] };
+  | { ok: true; origin: Point; earlyDetonation: boolean; cells: Position[]; affectedIds: string[]; destroyedBarrierKeys: string[] };
 
 /** Vertex/impact to vertex/cell-center trace. The cell-center supercover
  * used for lines and attacks cannot express these fractional endpoints.
@@ -47,28 +48,42 @@ export function projectSpellArea(snapshot: CombatRulesSnapshot, caster: Combatan
     return { ok: false, error: "La posición objetivo del área no es válida para este tablero." };
   }
 
-  const avgSpellDamage = spell.resolution.kind === "automatic-damage"
-    ? (() => {
-        const m = /^(\d+)d(\d+)(?:\+(\d+))?$/i.exec(spell.resolution.damageExpression.trim());
-        return m ? Number(m[1]) * ((Number(m[2]) + 1) / 2) + Number(m[3] ?? 0) : 0;
-      })()
+  const energyDamage = spell.resolution.kind === "automatic-damage"
+    ? averageDiceDamage(spell.resolution.damageExpression)
     : 0;
-  const barrierCells = (board as { barrierCells?: Record<string, { hp: number; hardness: number }> }).barrierCells ?? {};
-  const activeBarrierKeys = Object.entries(barrierCells)
-    .filter(([, barrier]) => avgSpellDamage <= barrier.hardness + barrier.hp)
-    .map(([key]) => key);
-
-  const blockers = [...(board.lineOfEffectBlockingCells ?? []), ...activeBarrierKeys].filter(key => !ownCells.has(key)).map(key => {
+  const dealHalfToObjects = ["srd_fireball", "srd_lightning_bolt", "srd_burning_hands"].includes(spell.id);
+  const objectDamage = energyDamage / (dealHalfToObjects ? 2 : 1);
+  const barriers = board.barrierCells ?? {};
+  const blockerKeys = new Set([...(board.lineOfEffectBlockingCells ?? []), ...Object.keys(barriers)]
+    .map(key => key.split(",").map(Number).join(","))
+    .filter(key => !ownCells.has(key)));
+  const blockers = [...blockerKeys].map(key => {
     const [x, y] = key.split(",").map(Number);
     return { x, y };
   }).filter(cell => Number.isInteger(cell.x) && Number.isInteger(cell.y) && isPositionInsideBoard(snapshot, cell));
-  function firstBarrier(from: Point, to: Point): number | undefined {
+  const breakableKeys = new Set(Object.entries(barriers)
+    .filter(([key, barrier]) => blockerKeys.has(key) && objectDamage > barrier.hardness + barrier.hp)
+    .map(([key]) => key));
+  const destroyedBarrierKeys = new Set<string>();
+
+  function firstImpact(from: Point, to: Point, obstacles: readonly Point[]): number | undefined {
     let first: number | undefined;
-    for (const cell of blockers) {
+    for (const cell of obstacles) {
       const entry = cellEntry(from, to, cell);
       if (entry !== undefined && (first === undefined || entry < first)) first = entry;
     }
     return first;
+  }
+
+  const opaque = blockers.filter(cell => !breakableKeys.has(planarKey(cell)));
+  const breakable = blockers.filter(cell => breakableKeys.has(planarKey(cell)));
+  function reachesCell(from: Point, to: Point): boolean {
+    const stop = firstImpact(from, to, opaque);
+    for (const cell of breakable) {
+      const entry = cellEntry(from, to, cell);
+      if (entry !== undefined && (stop === undefined || entry < stop)) destroyedBarrierKeys.add(planarKey(cell));
+    }
+    return stop === undefined;
   }
 
   const corners = footprint.flatMap(({ x, y }) => [{ x, y }, { x: x + 1, y }, { x, y: y + 1 }, { x: x + 1, y: y + 1 }]);
@@ -89,9 +104,8 @@ export function projectSpellArea(snapshot: CombatRulesSnapshot, caster: Combatan
   const cells: Position[] = [];
   const addCell = (x: number, y: number) => {
     const cell = { x, y, zFeet: caster.position.zFeet };
-    if (isPositionInsideBoard(snapshot, cell) && !blockerKeys.has(planarKey(cell))) cells.push(cell);
+    if (isPositionInsideBoard(snapshot, cell) && (!blockerKeys.has(planarKey(cell)) || destroyedBarrierKeys.has(planarKey(cell)))) cells.push(cell);
   };
-  const blockerKeys = new Set(blockers.map(planarKey));
 
   if (shape.type === "burst") {
     if (!target) return { ok: false, error: "Elegí la posición del estallido." };
@@ -100,7 +114,17 @@ export function projectSpellArea(snapshot: CombatRulesSnapshot, caster: Combatan
     candidates.sort((a, b) => distance(a, target) - distance(b, target) || a.y - b.y || a.x - b.x);
     const start = candidates[0];
     if (!start) return { ok: false, error: "El origen del estallido está fuera del alcance del conjuro." };
-    const impact = firstBarrier(start, target);
+    const bodies = spell.id === "srd_fireball"
+      ? snapshot.combatants.filter(actor => actor.id !== caster.id && lifeStatus(actor) !== "dead")
+          .flatMap(actor => getCombatantOccupiedCells(actor, snapshot))
+          .filter(cell => cell.zFeet === caster.position.zFeet && !ownCells.has(planarKey(cell)))
+      : [];
+    // An axis-aligned shot along a grid line belongs to the row or column
+    // named by the selected cell, not to the wall on the other side of the edge.
+    const trajectoryObstacles = [...blockers, ...bodies].filter(cell =>
+      (start.x !== target.x || cell.x === target.x) &&
+      (start.y !== target.y || cell.y === target.y));
+    const impact = firstImpact(start, target, trajectoryObstacles);
     earlyDetonation = impact !== undefined;
     origin = impact === undefined ? { x: target.x, y: target.y } : {
       x: start.x + (target.x - start.x) * impact,
@@ -119,8 +143,12 @@ export function projectSpellArea(snapshot: CombatRulesSnapshot, caster: Combatan
       let previous = first;
       for (let step = 0; getDistance5105(Math.abs(delta.dx) * (step + 1), Math.abs(delta.dy) * (step + 1)) <= length; step++) {
         const cell = { x: first.x + delta.dx * step, y: first.y + delta.dy * step };
-        if (!isPositionInsideBoard(snapshot, cell) || blockerKeys.has(planarKey(cell))
-            || [...traversedCellKeysBetween(previous.x, previous.y, cell.x, cell.y)].some(key => blockerKeys.has(key))) break;
+        if (!isPositionInsideBoard(snapshot, cell)) break;
+        const crossed = new Set([...traversedCellKeysBetween(previous.x, previous.y, cell.x, cell.y), planarKey(cell)]);
+        if ([...crossed].some(key => blockerKeys.has(key) && !breakableKeys.has(key))) break;
+        for (const key of crossed) {
+          if (breakableKeys.has(key)) destroyedBarrierKeys.add(key);
+        }
         addCell(cell.x, cell.y);
         previous = cell;
       }
@@ -144,7 +172,7 @@ export function projectSpellArea(snapshot: CombatRulesSnapshot, caster: Combatan
           const sideways = dx * delta.dy - dy * delta.dx;
           if (forward <= 0 || Math.abs(sideways) > forward) continue;
         }
-        if (distance(origin, far) <= radius && firstBarrier(origin, center) === undefined) addCell(x, y);
+        if (distance(origin, far) <= radius && reachesCell(origin, center)) addCell(x, y);
       }
     }
   }
@@ -152,5 +180,5 @@ export function projectSpellArea(snapshot: CombatRulesSnapshot, caster: Combatan
   const reached = new Set(cells.map(footprintCellKey));
   const affectedIds = snapshot.combatants.filter(actor => lifeStatus(actor) !== "dead"
     && getCombatantOccupiedCells(actor, snapshot).some(cell => reached.has(footprintCellKey(cell)))).map(actor => actor.id);
-  return { ok: true, origin, earlyDetonation, cells, affectedIds };
+  return { ok: true, origin, earlyDetonation, cells, affectedIds, destroyedBarrierKeys: [...destroyedBarrierKeys] };
 }

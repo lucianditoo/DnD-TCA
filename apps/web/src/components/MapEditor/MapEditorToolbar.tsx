@@ -17,7 +17,13 @@ export function areBoardsSemanticallyEqual(a: Board, b: Board): boolean {
     return true;
   };
 
+  const barriersA = Object.entries(a.barrierCells ?? {});
+  const barriersB = b.barrierCells ?? {};
+  const sameBarriers = barriersA.length === Object.keys(barriersB).length &&
+    barriersA.every(([key, barrier]) => barriersB[key]?.hp === barrier.hp && barriersB[key]?.hardness === barrier.hardness);
+
   return (
+    sameBarriers &&
     compareSets(a.impassableCells, b.impassableCells) &&
     compareSets(a.lineOfEffectBlockingCells, b.lineOfEffectBlockingCells) &&
     compareSets(a.difficultTerrainCells, b.difficultTerrainCells) &&

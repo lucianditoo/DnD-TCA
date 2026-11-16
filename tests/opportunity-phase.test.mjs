@@ -388,3 +388,29 @@ test("Una barrera nueva cancela el conjuro suspendido antes de Concentración y 
     rooms.delete(room.code);
   }
 });
+
+
+test("Fireball no destruye barreras al quedar suspendida y aplica la destrucción al reanudar", async (t) => {
+  const { dispatchCommand } = await import("../apps/server/src/commands/dispatcher.ts");
+  const { rooms } = await import("../apps/server/src/room/roomStore.ts");
+  const { room, attacker, enemy } = createTestRoom();
+  attacker.preparedSpells = [{ slotId: "fireball", spellId: "srd_fireball", isExpended: false }];
+  room.board.lineOfEffectBlockingCells = ["3,1"];
+  room.board.barrierCells = { "3,1": { hp: 2, hardness: 0 } };
+  t.after(() => rooms.delete(room.code));
+  rooms.set(room.code, room);
+  dispatchCommand(mockSocketPlayer, { type: "cast-spell", roomCode: room.code, actorId: "player-actor",
+    casterId: attacker.id, targetPosition: { x: 6, y: 1 }, slotId: "fireball", amount: 0, d20Roll: null });
+  const [opportunity] = room.pendingOpportunityAttacks;
+  assert.equal(opportunity.attackerId, enemy.id);
+  assert.deepEqual(room.board.barrierCells, { "3,1": { hp: 2, hardness: 0 } });
+  assert.equal(attacker.preparedSpells[0].isExpended, false);
+  assert.equal(room.currentTurn.usedStandardAction, false);
+  dispatchCommand(mockSocketGM, { type: "resolve-opportunity-attack", roomCode: room.code,
+    actorId: "gm-actor", opportunityId: opportunity.id, decline: true });
+  assert.deepEqual(room.board.barrierCells, {});
+  assert.deepEqual(room.board.lineOfEffectBlockingCells, []);
+  assert.equal(attacker.preparedSpells[0].isExpended, true);
+  assert.equal(room.currentTurn.usedStandardAction, true);
+  assert.equal(room.pendingStationaryAction, undefined);
+});

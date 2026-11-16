@@ -446,6 +446,7 @@ export interface CombatRulesSnapshot<TEffectId extends string = string> {
     readonly lineOfEffectBlockingCells?: ReadonlyArray<string>;
     readonly dimLightCells?: ReadonlyArray<string>;
     readonly darknessCells?: ReadonlyArray<string>;
+    readonly barrierCells?: Readonly<Record<string, Readonly<{ hp: number; hardness: number }>>>;
   };
   readonly combatants: ReadonlyArray<Readonly<CombatantSnapshot>>;
   readonly currentTurn: Readonly<TurnState>;

@@ -134,6 +134,7 @@ test("Undo restaura el índice y el actor del mismo turno", (t) => {
   send("sort-initiative");
   send("end-turn");
   send("end-turn");
+  assert.equal(rooms.get(code).stateVersion, 0, "Los checkpoints no avanzan la versión");
   send("gm-undo-turn");
   const restored = rooms.get(code);
   assert.equal(restored.turnOrder[restored.activeTurnIndex], "enemy");

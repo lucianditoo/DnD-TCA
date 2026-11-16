@@ -231,6 +231,11 @@ export function handleCastSpell(
   const dcBreakdown = Rules.calculateSpellSaveDCBreakdown(snapshot, caster, spell.id);
   
   if (area) {
+    if (draft.board.barrierCells && area.destroyedBarrierKeys.length) {
+      const destroyed = new Set(area.destroyedBarrierKeys);
+      for (const key of destroyed) delete draft.board.barrierCells[key];
+      draft.board.lineOfEffectBlockingCells = draft.board.lineOfEffectBlockingCells?.filter(key => !destroyed.has(key.split(",").map(Number).join(",")));
+    }
     const affectedIds = new Set(area.affectedIds);
     const affectedCombatants = draft.combatants.filter(combatant => affectedIds.has(combatant.id));
     if (area.earlyDetonation) {

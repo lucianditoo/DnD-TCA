@@ -245,7 +245,8 @@ function CombatApp() {
         difficultTerrainCells: (prev.difficultTerrainCells ?? []).filter(isWithinBounds),
         narrowCells: (prev.narrowCells ?? []).filter(isWithinBounds),
         dimLightCells: (prev.dimLightCells ?? []).filter(isWithinBounds),
-        darknessCells: (prev.darknessCells ?? []).filter(isWithinBounds)
+        darknessCells: (prev.darknessCells ?? []).filter(isWithinBounds),
+        ...(prev.barrierCells && { barrierCells: Object.fromEntries(Object.entries(prev.barrierCells).filter(([key]) => isWithinBounds(key))) })
       };
     });
   }
@@ -259,7 +260,8 @@ function CombatApp() {
         impassableCells: [],
         lineOfEffectBlockingCells: [],
         difficultTerrainCells: [],
-        narrowCells: []
+        narrowCells: [],
+        ...(prev.barrierCells && { barrierCells: {} })
       };
     });
   }
@@ -306,7 +308,8 @@ function CombatApp() {
         impassableCells: impassable,
         lineOfEffectBlockingCells: loe,
         difficultTerrainCells: difficult,
-        narrowCells: narrow
+        narrowCells: narrow,
+        ...(prev.barrierCells && { barrierCells: Object.fromEntries(Object.entries(prev.barrierCells).filter(([cell]) => cell !== key)) })
       };
     });
   }

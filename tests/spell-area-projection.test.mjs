@@ -14,7 +14,7 @@ const east = { direction: "E", targetPosition: at(9, 2) };
 test("Lightning Bolt termina en el pilar y la LoE del cono deja una sombra", () => {
   const near = victim("near", 2, 2);
   const behind = victim("behind", 4, 2);
-  const room = makeTestRoom({ board: board(["3,2"]), combatants: [caster, near, behind] });
+  const room = makeTestRoom({ board: board(["03,2"]), combatants: [caster, near, behind] });
   const snapshot = createCombatRulesSnapshot(room);
   for (const name of ["lightning_bolt", "burning_hands"]) {
     const result = projectSpellArea(snapshot, caster, get(name), east);
@@ -28,7 +28,7 @@ test("Lightning Bolt termina en el pilar y la LoE del cono deja una sombra", () 
 
 test("Fireball detona en la primera barrera; el preview dibuja las mismas celdas alcanzadas", () => {
   const room = makeTestRoom({ board: board(Array.from({ length: 10 }, (_, y) => "5," + y)),
-    combatants: [caster, victim("near", 4, 2), victim("behind", 6, 2)] });
+    combatants: [caster, victim("near", 4, 3), victim("behind", 6, 2)] });
   const snapshot = createCombatRulesSnapshot(room);
   const result = projectSpellArea(snapshot, caster, get("fireball"), east);
   assert.equal(result.ok, true);
@@ -80,28 +80,53 @@ test("Fireball oblicua prorratea la segunda diagonal desde el punto de impacto",
   assert.ok(result.cells.some(cell => cell.x === 1 && cell.y === 2));
 });
 
-test("Fireball: barrera de madera (hp 10, hardness 5) es destruida y continúa LoE; piedra (hp 25, hardness 8) detiene LoE", () => {
-  const caster = { id: "c1", name: "Mago", type: "player", position: { x: 1, y: 5, zFeet: 0 }, size: "Medium", hpCurrent: 20, hpMax: 20, armorClass: 12, speedFeet: 30, initiative: 10, abilities: [], buffs: [], equipment: {}, preparedSpells: [], controlledBy: { type: "player", participantId: "p1" }, status: "active" };
-  const snapshotWood = {
-    board: { width: 12, height: 12, cellSizeFeet: 5, barrierCells: { "3,5": { hp: 10, hardness: 5 } } },
-    combatants: [caster],
-    effectInstances: []
-  };
-  const fireball = SpellsCatalog.require("srd_fireball");
-  const projWood = projectSpellArea(snapshotWood, caster, fireball, { targetPosition: { x: 5, y: 5, zFeet: 0 } });
-  assert.equal(projWood.ok, true);
-  if (projWood.ok) {
-    assert.equal(projWood.origin.x, 5);
-  }
+for (const [name, hp, hardness, broken] of [
+  ["papel", 2, 0, true], ["cristal", 1, 1, true], ["madera", 10, 5, false],
+  ["piedra", 15, 8, false], ["hierro", 30, 10, false],
+]) {
+  test("Fireball 8d6 aplica mitad de daño a barrera de " + name, () => {
+    const room = makeTestRoom({ board: { ...board(["3,2"]), barrierCells: { "3,2": { hp, hardness } } },
+      combatants: [caster, victim("behind", 4, 2)] });
+    const snapshot = createCombatRulesSnapshot(room);
+    const before = structuredClone(snapshot);
+    const result = projectSpellArea(snapshot, caster, get("fireball"), east);
+    assert.equal(result.ok, true);
+    assert.deepEqual(result.origin, { x: 3, y: 2 });
+    assert.deepEqual(result.destroyedBarrierKeys, broken ? ["3,2"] : []);
+    assert.equal(result.affectedIds.includes("behind"), broken);
+    assert.deepEqual(snapshot, before);
+    assert.deepEqual(room.board.barrierCells, { "3,2": { hp, hardness } });
+  });
+}
 
-  const snapshotStone = {
-    board: { width: 12, height: 12, cellSizeFeet: 5, barrierCells: { "3,5": { hp: 25, hardness: 8 } } },
-    combatants: [caster],
-    effectInstances: []
-  };
-  const projStone = projectSpellArea(snapshotStone, caster, fireball, { targetPosition: { x: 5, y: 5, zFeet: 0 } });
-  assert.equal(projStone.ok, true);
-  if (projStone.ok) {
-    assert.ok(projStone.origin.x <= 3);
-  }
+test("Lightning Bolt y Burning Hands usan mitad de daño al evaluar una barrera", () => {
+  const snapshot = createCombatRulesSnapshot(makeTestRoom({
+    board: { ...board(["3,2"]), barrierCells: { "3,2": { hp: 5, hardness: 3 } } },
+    combatants: [caster, victim("behind", 4, 2)],
+  }));
+  const line = projectSpellArea(snapshot, caster, get("lightning_bolt"), east);
+  const cone = projectSpellArea(snapshot, caster, get("burning_hands"), east);
+  assert.deepEqual(line.destroyedBarrierKeys, ["3,2"]);
+  assert.ok(line.affectedIds.includes("behind"));
+  assert.deepEqual(cone.destroyedBarrierKeys, []);
+  assert.ok(!cone.affectedIds.includes("behind"));
+});
+
+test("Fireball detona en el primer cuerpo y no en la barrera posterior", () => {
+  const snapshot = createCombatRulesSnapshot(makeTestRoom({ board: board(["6,2"]),
+    combatants: [caster, victim("first", 3, 2), victim("second", 5, 2)] }));
+  const result = projectSpellArea(snapshot, caster, get("fireball"), east);
+  assert.equal(result.earlyDetonation, true);
+  assert.deepEqual(result.origin, { x: 3, y: 2 });
+  assert.ok(result.affectedIds.includes("first"));
+  assert.ok(result.affectedIds.includes("second"));
+});
+
+test("Fireball atraviesa un corredor de una casilla sin tirar dados", () => {
+  const walls = [1, 3].flatMap(y => Array.from({ length: 5 }, (_, index) => (index + 3) + "," + y));
+  const corridorCaster = victim("caster", 2, 2);
+  const snapshot = createCombatRulesSnapshot(makeTestRoom({ board: board(walls), combatants: [corridorCaster] }));
+  const result = projectSpellArea(snapshot, corridorCaster, get("fireball"), { targetPosition: at(8, 2) });
+  assert.deepEqual(result.origin, { x: 8, y: 2 });
+  assert.equal(result.earlyDetonation, false);
 });

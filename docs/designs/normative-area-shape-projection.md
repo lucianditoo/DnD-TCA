@@ -157,4 +157,14 @@ adyacente a esa esquina y la diagonal conserva el supercover existente.
 El cono y el estallido comprueban alcance al borde lejano y trazan hacia el
 centro de cada celda candidata. La prueba de LoE usa la misma celda que
 intersecta la huella. El servidor repite la proyección tras una interrupción.
-Cuerpos, pasos estrechos y barreras destructibles quedan pendientes.
+Fireball detona en el primer cuerpo o sólido que intersecta la perla.
+Un corredor abierto de una casilla permite el paso sin tirada. El tablero
+de 5 ft no representa aberturas subcasilla.
+
+Las barreras destructibles se configuran mediante `update-board`. La
+proyección usa la mitad del promedio del daño de fuego o electricidad
+antes de comparar con dureza más HP. Devuelve las barreras alcanzadas que
+superan ese umbral. El servidor elimina esas barreras y sus bloqueos de
+LoE en la misma transacción que el lanzamiento. Las capas de movimiento
+conservan sus reglas independientes. Lightning Bolt continúa en línea
+recta y no rebota.

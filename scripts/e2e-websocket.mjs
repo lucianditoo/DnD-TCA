@@ -832,12 +832,16 @@ await send(mapGm, {
     cellSizeFeet: 5,
     impassableCells: ['2,2'],
     lineOfEffectBlockingCells: ['2,2', '3,3'],
-    difficultTerrainCells: ['4,4']
+    difficultTerrainCells: ['4,4'],
+    barrierCells: { '3,3': { hp: 2, hardness: 0 } }
   }
 });
 
 const gmBoard = mapGm.room.board;
 const playerBoard = mapPlayer.room.board;
+record('Map Builder: barrera persiste y se publica a GM y jugador',
+  gmBoard.barrierCells?.['3,3']?.hp === 2 && gmBoard.barrierCells?.['3,3']?.hardness === 0 &&
+  JSON.stringify(gmBoard.barrierCells) === JSON.stringify(playerBoard.barrierCells));
 record('Map Builder: GM recibe room-update con nuevo tablero y cellSizeFeet normalizado a 5',
   gmBoard.width === 14 &&
   gmBoard.height === 10 &&

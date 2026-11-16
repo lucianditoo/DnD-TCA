@@ -131,7 +131,7 @@ const spellsData = {
     saveEffect: "half",
     resolution: {
       kind: "automatic-damage",
-      damageExpression: "1d4"
+      damageExpression: "5d4"
     }
   },
   "srd_lightning_bolt": {
@@ -148,7 +148,7 @@ const spellsData = {
     saveEffect: "half",
     resolution: {
       kind: "automatic-damage",
-      damageExpression: "5d6"
+      damageExpression: "8d6"
     }
   },
   "srd_fireball": {
@@ -165,7 +165,7 @@ const spellsData = {
     saveEffect: "half",
     resolution: {
       kind: "automatic-damage",
-      damageExpression: "5d6"
+      damageExpression: "8d6"
     }
   }
 } as const satisfies Record<string, SpellDefinition>;

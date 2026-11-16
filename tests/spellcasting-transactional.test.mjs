@@ -171,3 +171,23 @@ test("Fireball inválida no consume recursos; una intercepción válida detona y
   assert.equal(room.currentTurn.usedStandardAction, true);
   assert.ok(room.log.some(entry => /detona antes/.test(entry.message)));
 });
+
+
+test("Fireball aplica la destrucción al tablero autoritativo solo al confirmar un origen válido", () => {
+  const caster = makeTestCombatant({ id: "caster", position: { x: 1, y: 2, zFeet: 0 },
+    controlledBy: { type: "player", participantId: actorId },
+    preparedSpells: [{ slotId: "area", spellId: "srd_fireball", isExpended: false }] });
+  const room = makeTestRoom({ combatants: [caster],
+    board: { ...makeTestRoom().board, lineOfEffectBlockingCells: ["03,2", "8,2"],
+      barrierCells: { "3,2": { hp: 2, hardness: 0 }, "8,2": { hp: 30, hardness: 10 } } },
+    currentTurn: { ...makeTestRoom().currentTurn, combatantId: caster.id } });
+  const command = { type: "cast-spell", roomCode: room.code, actorId, casterId: caster.id, slotId: "area", d20Roll: null, amount: 0 };
+  const before = structuredClone(room);
+  assert.throws(() => handleCastSpell(room, { ...command, targetPosition: { x: -1, y: 2 } }), /posición objetivo/);
+  assert.deepEqual(room, before);
+  handleCastSpell(room, { ...command, targetPosition: { x: 9, y: 2 } }, { diceRoller: () => 1 });
+  assert.deepEqual(room.board.barrierCells, { "8,2": { hp: 30, hardness: 10 } });
+  assert.deepEqual(room.board.lineOfEffectBlockingCells, ["8,2"]);
+  assert.equal(caster.preparedSpells[0].isExpended, true);
+  assert.equal(room.currentTurn.usedStandardAction, true);
+});

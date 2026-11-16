@@ -60,6 +60,15 @@ export function handleUpdateBoard(room: CombatRoom, command: Extract<ClientComma
   const rawDifficult = new Set((command.board.difficultTerrainCells ?? []).filter(isValidCoord));
   const rawNarrow = new Set((command.board.narrowCells ?? []).filter(isValidCoord));
 
+  const barriers = command.board.barrierCells ?? room.board.barrierCells;
+  for (const [key, barrier] of Object.entries(barriers ?? {})) {
+    if (!isValidCoord(key) || key !== key.split(",").map(Number).join(",") ||
+        !Number.isSafeInteger(barrier.hp) || barrier.hp <= 0 ||
+        !Number.isSafeInteger(barrier.hardness) || barrier.hardness < 0) {
+      throw new Error("Barrera inválida en la casilla " + key + ".");
+    }
+  }
+
   // cellSizeFeet se normaliza siempre a 5 (no es editable por el cliente)
   const candidateBoard: Board = {
     width,
@@ -70,7 +79,8 @@ export function handleUpdateBoard(room: CombatRoom, command: Extract<ClientComma
     difficultTerrainCells: Array.from(rawDifficult),
     narrowCells: Array.from(rawNarrow),
     dimLightCells: (command.board.dimLightCells ?? []).filter(isValidCoord),
-    darknessCells: (command.board.darknessCells ?? []).filter(isValidCoord)
+    darknessCells: (command.board.darknessCells ?? []).filter(isValidCoord),
+    ...(barriers && { barrierCells: structuredClone(barriers) })
   };
 
   // Construir una vista / snapshot candidato no mutante para validar el estado RESULTANTE

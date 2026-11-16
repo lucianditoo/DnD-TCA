@@ -187,7 +187,8 @@ export function createCombatRulesSnapshot(room: CombatRoom): CombatRulesSnapshot
       narrowCells: room.board.narrowCells,
       lineOfEffectBlockingCells: room.board.lineOfEffectBlockingCells,
       dimLightCells: room.board.dimLightCells,
-      darknessCells: room.board.darknessCells
+      darknessCells: room.board.darknessCells,
+      barrierCells: room.board.barrierCells
     },
     combatants: room.combatants.map((combatant) => {
       assertDerivedSnapshotIntegrity(combatant);
