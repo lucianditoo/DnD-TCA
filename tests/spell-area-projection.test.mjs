@@ -79,3 +79,29 @@ test("Fireball oblicua prorratea la segunda diagonal desde el punto de impacto",
   assert.ok(!result.cells.some(cell => cell.x === 1 && cell.y === 1));
   assert.ok(result.cells.some(cell => cell.x === 1 && cell.y === 2));
 });
+
+test("Fireball: barrera de madera (hp 10, hardness 5) es destruida y continúa LoE; piedra (hp 25, hardness 8) detiene LoE", () => {
+  const caster = { id: "c1", name: "Mago", type: "player", position: { x: 1, y: 5, zFeet: 0 }, size: "Medium", hpCurrent: 20, hpMax: 20, armorClass: 12, speedFeet: 30, initiative: 10, abilities: [], buffs: [], equipment: {}, preparedSpells: [], controlledBy: { type: "player", participantId: "p1" }, status: "active" };
+  const snapshotWood = {
+    board: { width: 12, height: 12, cellSizeFeet: 5, barrierCells: { "3,5": { hp: 10, hardness: 5 } } },
+    combatants: [caster],
+    effectInstances: []
+  };
+  const fireball = SpellsCatalog.require("srd_fireball");
+  const projWood = projectSpellArea(snapshotWood, caster, fireball, { targetPosition: { x: 5, y: 5, zFeet: 0 } });
+  assert.equal(projWood.ok, true);
+  if (projWood.ok) {
+    assert.equal(projWood.origin.x, 5);
+  }
+
+  const snapshotStone = {
+    board: { width: 12, height: 12, cellSizeFeet: 5, barrierCells: { "3,5": { hp: 25, hardness: 8 } } },
+    combatants: [caster],
+    effectInstances: []
+  };
+  const projStone = projectSpellArea(snapshotStone, caster, fireball, { targetPosition: { x: 5, y: 5, zFeet: 0 } });
+  assert.equal(projStone.ok, true);
+  if (projStone.ok) {
+    assert.ok(projStone.origin.x <= 3);
+  }
+});

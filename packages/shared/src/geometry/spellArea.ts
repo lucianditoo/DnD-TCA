@@ -47,7 +47,18 @@ export function projectSpellArea(snapshot: CombatRulesSnapshot, caster: Combatan
     return { ok: false, error: "La posición objetivo del área no es válida para este tablero." };
   }
 
-  const blockers = (board.lineOfEffectBlockingCells ?? []).filter(key => !ownCells.has(key)).map(key => {
+  const avgSpellDamage = spell.resolution.kind === "automatic-damage"
+    ? (() => {
+        const m = /^(\d+)d(\d+)(?:\+(\d+))?$/i.exec(spell.resolution.damageExpression.trim());
+        return m ? Number(m[1]) * ((Number(m[2]) + 1) / 2) + Number(m[3] ?? 0) : 0;
+      })()
+    : 0;
+  const barrierCells = (board as { barrierCells?: Record<string, { hp: number; hardness: number }> }).barrierCells ?? {};
+  const activeBarrierKeys = Object.entries(barrierCells)
+    .filter(([, barrier]) => avgSpellDamage <= barrier.hardness + barrier.hp)
+    .map(([key]) => key);
+
+  const blockers = [...(board.lineOfEffectBlockingCells ?? []), ...activeBarrierKeys].filter(key => !ownCells.has(key)).map(key => {
     const [x, y] = key.split(",").map(Number);
     return { x, y };
   }).filter(cell => Number.isInteger(cell.x) && Number.isInteger(cell.y) && isPositionInsideBoard(snapshot, cell));

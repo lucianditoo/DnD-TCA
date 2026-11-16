@@ -39,6 +39,7 @@ export const updateBoardSchema = z.object({
     narrowCells: z.array(boardCellKeySchema).optional(),
     lineOfEffectBlockingCells: z.array(boardCellKeySchema).optional(),
     dimLightCells: z.array(boardCellKeySchema).optional(),
-    darknessCells: z.array(boardCellKeySchema).optional()
+    darknessCells: z.array(boardCellKeySchema).optional(),
+    barrierCells: z.record(boardCellKeySchema, z.object({ hp: z.number().int().min(1), hardness: z.number().int().min(0) })).optional()
   })
 });
