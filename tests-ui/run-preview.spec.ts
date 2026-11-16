@@ -11,7 +11,10 @@ async function fixture(page: Page, options: { heavy?: boolean; large?: boolean; 
   if (options.heavy) { actor.inventory.push({ itemId: "heavy", catalogId: "banded_mail" }); actor.equipmentSlots.armorItemId = "heavy"; }
   if(options.large)actor.sizeCategory="large";
   const room=createEmptyRoom("I11UI"); room.board=structuredClone(room.board); room.phase="active"; room.combatants=[actor];room.turnOrder=[actor.id];room.currentTurn=emptyTurn(actor.id);
-  if (options.versioned) room.stateVersion = 0;
+  if (options.versioned) {
+    room.stateVersion = 0;
+    actor.preparedSpells = [{ slotId: "undo-fireball", spellId: "srd_fireball", isExpended: false }];
+  }
   room.board.difficultTerrainCells=[];
   if(options.large)room.board.narrowCells=Array.from({length:room.board.width*room.board.height},(_,i)=>`${i%room.board.width},${Math.floor(i/room.board.width)}`);
   let route: WebSocketRoute; let held=false;let pending:any;const intents:any[]=[];
@@ -44,6 +47,26 @@ test("Undo invalida el borrador aunque conserve el actor activo", async ({ page 
     f.publish();
     await expect(confirm(page)).toHaveCount(0);
     expect(f.intents).toHaveLength(0);
+  } finally { f.cleanup(); }
+});
+
+test("Undo invalida la casilla y el conjuro preparado del borrador", async ({ page }) => {
+  const f = await fixture(page, { versioned: true });
+  try {
+    const ability = page.getByRole("button", { name: "Habilidad", exact: true });
+    const fireball = page.getByRole("button", { name: "Fireball", exact: true });
+    const cast = page.getByRole("button", { name: "Lanzar Fireball" });
+    await ability.click();
+    await fireball.click();
+    await page.getByTestId("cell-4-4").click();
+    await expect(cast).toBeEnabled();
+    f.room.stateVersion = 1;
+    f.publish();
+    await expect(cast).toHaveCount(0);
+    await ability.click();
+    await expect(cast).toHaveCount(0);
+    await fireball.click();
+    await expect(cast).toBeDisabled();
   } finally { f.cleanup(); }
 });
 

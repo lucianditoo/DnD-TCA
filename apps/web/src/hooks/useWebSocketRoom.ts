@@ -44,7 +44,7 @@ function readResume(roomCode: string): ResumeGmSessionCommand | null {
 
 export type JoinMode = "gm" | "player";
 
-export function useWebSocketRoom({ onHello, onActiveTurnChanged }: { onHello: (academy: AcademyState | undefined) => void; onActiveTurnChanged: (room: CombatRoom) => void }) {
+export function useWebSocketRoom({ onHello, onActiveTurnChanged }: { onHello: (academy: AcademyState | undefined) => void; onActiveTurnChanged: (room: CombatRoom, versionChanged: boolean) => void }) {
   const socketRef = useRef<WebSocket | null>(null);
   const activeCombatantIdRef = useRef<string | null>(null);
   const stateVersionRef = useRef<number | undefined>(undefined);
@@ -138,8 +138,9 @@ export function useWebSocketRoom({ onHello, onActiveTurnChanged }: { onHello: (a
       }
       if (payload.type === "room-update") {
         const nextActiveId = payload.room.phase === "active" ? getActiveCombatant(payload.room)?.id ?? null : null;
-        if (nextActiveId !== activeCombatantIdRef.current || payload.room.stateVersion !== stateVersionRef.current) {
-          onActiveTurnChanged(payload.room);
+        const versionChanged = payload.room.stateVersion !== stateVersionRef.current;
+        if (nextActiveId !== activeCombatantIdRef.current || versionChanged) {
+          onActiveTurnChanged(payload.room, versionChanged);
         }
         activeCombatantIdRef.current = nextActiveId;
         stateVersionRef.current = payload.room.stateVersion;
