@@ -97,6 +97,8 @@ function CombatApp() {
       setIsAcrobatic(false);
       setFiveFootStepArmed(false);
       setWithdrawArmed(false);
+      setGmMoveMode(false);
+      setGmMoveTargetId("");
       if (versionChanged) {
         setRunArmed(false);
         setRunDestination(null);
