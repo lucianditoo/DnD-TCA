@@ -32,6 +32,7 @@ export interface Board {
   lineOfEffectBlockingCells?: string[]; // Claves "x,y" O(1): obstrucción física completa para Line of Effect (Sprint 052B). Independiente de impassableCells: no se infiere de un campo al otro.
   dimLightCells?: string[];  // Claves "x,y" O(1): iluminación tenue (Sprint 053B). Celda ausente de dimLightCells/darknessCells = luz brillante por defecto.
   darknessCells?: string[];  // Claves "x,y" O(1): oscuridad total (Sprint 053B). Si una celda aparece en ambos campos, darkness domina (ver getVisionAssessment).
+  barrierCells?: Record<string, { hp: number; hardness: number }>; // Barreras destructibles por AoE (D-1A)
 }
 export type ArmorClassBonusType = "armor" | "shield" | "natural_armor" | "dex" | "dodge" | "deflection" | "size" | "misc";
 export interface ArmorClassBreakdown {
