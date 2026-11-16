@@ -174,6 +174,23 @@ Se invoca `roomHistory.clear(roomCode)` en:
 
 ---
 
+### 4.6 Recuperación tras reinicio
+
+El servidor guarda juntas las salas ordinarias con credencial vigente, la
+identidad del GM, el hash SHA-256 del token y los checkpoints en
+`.data/room-history.json`. El token original queda en el navegador. La credencial
+vence 24 horas después de emitirse. El TTL de checkpoints permanece en 30 minutos.
+
+El servidor escribe un archivo temporal y reemplaza el JSON al publicar estado,
+podar o cerrar. Undo publica la sala restaurada y la pila truncada en un mismo
+reemplazo. La carga valida el esquema, la pertenencia a la sala y las huellas
+antes de admitir comandos. `DND_ROOM_STORE_PATH` permite configurar la ruta. Cada
+archivo corresponde a una instancia de servidor.
+
+Academia, Demo y las salas LAN HTTP sin token siguen siendo efímeras. Se conservan
+las restricciones de transporte y se recupera al GM que presenta su token
+original. La identidad de jugadores tras reinicio queda fuera del alcance.
+
 ## 5. UI y Sincronización Cliente
 
 - **Toolbar GM (`Board.tsx`)**: Botón "Retroceder turno" visible únicamente para `participant.role === "gm"` fuera de Academia y Demo (`!academy && !isDemoActive`), deshabilitado si `phase !== "active"`.

@@ -60,3 +60,6 @@ Desktop.ini
 # Lote A) — los planes de implementación son documentación versionada por
 # política oficial (docs/designs/document-architecture-cleanup.md §1). La
 # línea que lo ignoraba era un error, no una decisión aprobada.
+
+# Estado local del servidor
+.data/

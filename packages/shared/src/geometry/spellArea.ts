@@ -35,6 +35,14 @@ function cellEntry(from: Point, to: Point, cell: Point): number | undefined {
   if (enter <= leave && leave > 0 && enter < 1) return enter;
 }
 
+function getSpellAvgDamageSRD(spell: SpellDefinition): number {
+  const energyDamage = spell.resolution.kind === "automatic-damage"
+    ? averageDiceDamage(spell.resolution.damageExpression)
+    : 0;
+  const dealHalfToObjects = ["srd_fireball", "srd_lightning_bolt", "srd_burning_hands"].includes(spell.id);
+  return energyDamage / (dealHalfToObjects ? 2 : 1);
+}
+
 export function projectSpellArea(snapshot: CombatRulesSnapshot, caster: Combatant, spell: SpellDefinition, aim: Aim): SpellAreaProjection {
   const shape = spell.aoe;
   if (spell.target !== "area" || !shape) return { ok: false, error: "El conjuro no tiene una plantilla de área." };
@@ -48,11 +56,7 @@ export function projectSpellArea(snapshot: CombatRulesSnapshot, caster: Combatan
     return { ok: false, error: "La posición objetivo del área no es válida para este tablero." };
   }
 
-  const energyDamage = spell.resolution.kind === "automatic-damage"
-    ? averageDiceDamage(spell.resolution.damageExpression)
-    : 0;
-  const dealHalfToObjects = ["srd_fireball", "srd_lightning_bolt", "srd_burning_hands"].includes(spell.id);
-  const objectDamage = energyDamage / (dealHalfToObjects ? 2 : 1);
+  const objectDamage = getSpellAvgDamageSRD(spell);
   const barriers = board.barrierCells ?? {};
   const blockerKeys = new Set([...(board.lineOfEffectBlockingCells ?? []), ...Object.keys(barriers)]
     .map(key => key.split(",").map(Number).join(","))

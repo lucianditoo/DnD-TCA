@@ -60,7 +60,7 @@ creación como si fueran documentos ausentes.
 - Agregar un E2E de picking en WebGL que seleccione una ficha después de rotar la cámara.
 
 - Incorporar animaciones opcionales y estados visuales extendidos sobre los sprites estáticos del prototipo 2.5D, y ampliar indicadores de buffs y trazas en logs.
-- Persistir salas fuera de memoria.
+- Definir la recuperación de salas sin token y de identidades de jugadores tras reinicio.
 - Completar editores de encuentros/mapas y persistencia poscombate.
 - Diseñar autenticación y autorización persistentes.
 - Extender footprints a formas no cuadradas y completar Squeezing.

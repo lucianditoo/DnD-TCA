@@ -11,7 +11,7 @@ import { gameCatalog, isDemoCommandType, resumeGmSessionSchema, validateDemoComm
 import { dispatchCommand } from "./commands/dispatcher.js";
 import { handleDemoCommand } from "./demo/demoCommands.js";
 import { destroyDemoSessionBySocket } from "./demo/sessionStore.js";
-import { clients, resumeGmSession, send, resetAllRoomsForTest } from "./room/roomStore.js";
+import { clients, resumeGmSession, send, resetAllRoomsForTest, loadFromDisk, saveToDisk } from "./room/roomStore.js";
 import { validateClientCommand } from "./validation/validateClientCommand.js";
 import { roomHistory } from "./room/roomHistory.js";
 
@@ -23,6 +23,8 @@ const academyCommandSchema = z.discriminatedUnion("type", [
 
 const PORT = Number(process.env.PORT ?? 3333);
 
+loadFromDisk();
+
 const app = express();
 app.use(cors());
 app.get("/health", (_req, res) => res.json({ ok: true }));
@@ -32,6 +34,7 @@ if (process.env.TEST_MODE === "true") {
     for (const socket of clients.keys()) closeAcademy(socket);
     resetAllRoomsForTest();
     roomHistory.clearAll();
+    saveToDisk();
     res.json({ ok: true, message: "System reset for test" });
   });
 }
@@ -57,7 +60,10 @@ const heartbeat = setInterval(() => {
   }
 }, 15_000);
 heartbeat.unref();
-const historySweep = setInterval(() => roomHistory.pruneAll(), 5 * 60 * 1000);
+const historySweep = setInterval(() => {
+  roomHistory.pruneAll();
+  saveToDisk();
+}, 5 * 60 * 1000);
 historySweep.unref();
 wss.on("close", () => {
   clearInterval(heartbeat);
@@ -140,6 +146,14 @@ wss.on("connection", (socket, request) => {
     clients.delete(socket);
   });
 });
+
+for (const signal of ["SIGINT", "SIGTERM"] as const) {
+  process.once(signal, () => {
+    saveToDisk();
+    for (const socket of wss.clients) socket.terminate();
+    server.close(() => process.exit(0));
+  });
+}
 
 server.listen(PORT, "0.0.0.0", () => {
   console.log("D&D Tactical server listening on " + (tlsCert ? "https" : "http") + "://localhost:" + PORT);

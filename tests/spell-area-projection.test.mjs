@@ -130,3 +130,27 @@ test("Fireball atraviesa un corredor de una casilla sin tirar dados", () => {
   assert.deepEqual(result.origin, { x: 8, y: 2 });
   assert.equal(result.earlyDetonation, false);
 });
+
+
+for (const [material, hp, hardness, destroyed] of [
+  ["papel", 2, 0, true],
+  ["cristal", 1, 1, true],
+  ["madera delgada", 10, 5, false],
+  ["madera estándar", 20, 5, false],
+  ["piedra", 15, 8, false],
+  ["hierro", 30, 10, false],
+]) {
+  test("Lightning Bolt aplica 14 contra " + material + " y continúa solo si cede", () => {
+    const room = makeTestRoom({ board: { ...board(["3,2"]), barrierCells: { "3,2": { hp, hardness } } },
+      combatants: [caster, victim("in-line", 4, 2), victim("around-corner", 3, 3)] });
+    const snapshot = createCombatRulesSnapshot(room);
+    const before = structuredClone(snapshot);
+    const result = projectSpellArea(snapshot, caster, get("lightning_bolt"), east);
+    assert.equal(result.ok, true);
+    assert.deepEqual(result.destroyedBarrierKeys, destroyed ? ["3,2"] : []);
+    assert.deepEqual(result.affectedIds, destroyed ? ["in-line"] : []);
+    assert.ok(result.cells.every(cell => cell.y === 2));
+    assert.equal(result.cells.some(cell => cell.x > 3), destroyed);
+    assert.deepEqual(snapshot, before);
+  });
+}

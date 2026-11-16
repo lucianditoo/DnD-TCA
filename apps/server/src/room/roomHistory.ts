@@ -105,6 +105,17 @@ export class RoomHistory {
     }
   }
 
+  exportRoom(roomCode: string) {
+    return { checkpoints: this.history.get(roomCode) ?? [], turnCounter: this.turnCounters.get(roomCode) ?? 0 };
+  }
+
+  importRoom(roomCode: string, checkpoints: TurnCheckpoint[], turnCounter: number): void {
+    if (!checkpoints.length) return;
+    this.history.set(roomCode, checkpoints);
+    this.turnCounters.set(roomCode, turnCounter);
+    this.prune(roomCode);
+  }
+
   clear(roomCode: string): void {
     this.history.delete(roomCode);
     this.turnCounters.delete(roomCode);
